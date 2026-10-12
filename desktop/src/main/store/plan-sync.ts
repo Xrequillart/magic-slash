@@ -1,12 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { createHash } from 'crypto'
-import type { PlanSpecInput, PlanTicket } from '../../types'
+import type { PlanSessionRef, PlanSpecInput, PlanTicket } from '../../types'
 import { readAgents } from '../config/agents'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { enqueue } from './outbox'
-import { isSpecPath, readSpecFile } from './spec-file'
+import { isSpecPath, MAX_SPEC_BYTES, readSpecFile, specFields } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -36,6 +36,19 @@ import { getStore } from './Store'
  * collapse into a single upsert of the file as it stands when the timer fires. The
  * file is read at THAT moment, not at ping time: last write wins, always.
  */
+
+/**
+ * Told the session's id once an upsert has landed — every time, not only the first: a
+ * row id is stable, so repeating it costs the listener one comparison, and it is what
+ * links an agent whose first write went through the outbox instead.
+ */
+type PlanSessionListener = (agentId: string, plan: PlanSessionRef) => void
+let onPlanSession: PlanSessionListener | null = null
+
+/** Registered by `main/index.ts`, which owns the agent's metadata and the window. */
+export function setPlanSessionListener(listener: PlanSessionListener | null): void {
+  onPlanSession = listener
+}
 
 /** How long a burst of pings is allowed to collapse into one upload. */
 const DEBOUNCE_MS = 3000
@@ -168,16 +181,36 @@ async function run(key: string): Promise<void> {
 /**
  * Read the file and upsert the row. Queues the upload to the outbox when the write
  * fails, so an offline session is uploaded on the next connectivity tick.
+ *
+ * THE TWO REFUSALS ARE NOT THE SAME REFUSAL, and collapsing them is what this used to
+ * get wrong. `readSpecFile` answered `undefined` for both, `requireSpecFile` is true for
+ * every spec ping, and so a spec past the 1 MiB ceiling returned here and NOTHING was
+ * ever upserted — the session did not appear at all, or sat at an empty spec that the
+ * page words as "not uploaded yet". A document too large to send is not a document on
+ * its way.
+ *
+ * Only `missing` is decided here, and only because `requireSpecFile` is a question about
+ * this caller rather than about the file: the skill announces its spec path before
+ * creating it, so a ping legitimately arrives first and there is nothing to record yet.
+ * The session row is still created for a file that never arrives, by `recordPlanSession`,
+ * which is exactly what `requireSpecFile: false` is. What the other two states put on the
+ * wire is `specFields`' business, shared with the outbox so the two writers cannot
+ * disagree about it.
  */
 async function send(upload: PendingUpload): Promise<void> {
   if (!syncEnabled()) return
 
-  const spec = readSpecFile(upload.specPath)
-  if (spec === undefined && upload.requireSpecFile) return
+  const read = readSpecFile(upload.specPath)
+  if (read.kind === 'missing' && upload.requireSpecFile) return
 
-  const input: PlanSpecInput = { agentId: upload.agentId, specPath: upload.specPath, ...(spec !== undefined ? { spec } : {}) }
+  const input: PlanSpecInput = {
+    agentId: upload.agentId,
+    specPath: upload.specPath,
+    ...specFields(read),
+  }
   try {
-    await getStore().savePlanSpec(input)
+    const plan = await getStore().savePlanSpec(input)
+    if (plan) onPlanSession?.(upload.agentId, plan)
   } catch (error) {
     console.error('[plan-sync] Queued a spec upload after a failed write:', error)
     // The PATH, never the markdown: see the outbox header for what a queue full of
@@ -262,6 +295,10 @@ export async function syncPlanTickets(agentId: string, specPath: string, tickets
  * Compared against `spec_synced_at`, NOT `updated_at`: the org-derivation trigger
  * bumps `updated_at` whenever the repository is shared or deleted, which would make
  * the row look newer than a spec that really did change.
+ *
+ * A spec past the ceiling has no `spec_synced_at` to compare against at all, since it
+ * was never uploaded — so it gets the size test instead, and the file's own size is
+ * what tells the two cases apart. See the comment at that test.
  */
 export async function reconcilePlanSpecs(): Promise<void> {
   if (!syncEnabled()) return
@@ -272,21 +309,35 @@ export async function reconcilePlanSpecs(): Promise<void> {
   if (planned.length === 0) return
 
   try {
-    const syncedAt = new Map(
-      (await getStore().loadPlanSyncState()).map((row) => [row.specKey, row.specSyncedAt]),
+    const state = new Map(
+      (await getStore().loadPlanSyncState()).map((row) => [row.specKey, row]),
     )
 
     for (const { id, specPath } of planned) {
-      let mtimeMs: number
+      let stat: fs.Stats
       try {
-        mtimeMs = fs.statSync(specPath).mtimeMs
+        stat = fs.statSync(specPath)
       } catch {
         // The spec is gone (a cleaned worktree, a moved repository). Nothing to
         // upload, and nothing to repair — the row keeps what it last received.
         continue
       }
-      const synced = syncedAt.get(specKeyFor(specPath))
-      if (synced && Date.parse(synced) >= mtimeMs) continue
+      const row = state.get(specKeyFor(specPath))
+
+      // A spec past the ceiling is never uploaded, so it never stamps
+      // `spec_synced_at` — and the timestamp check below would therefore queue it
+      // again on every single launch, forever, for an upload that can only send
+      // the same flag the row already carries.
+      //
+      // The file's own size is what settles it, and it is the one signal that
+      // cannot go stale: still too large AND already flagged means there is
+      // nothing to say. The moment it is trimmed back under the ceiling this test
+      // stops matching, the mtime check below sees an absent timestamp, and the
+      // spec uploads — which is the "becomes uploadable" half, kept intact.
+      if (stat.size > MAX_SPEC_BYTES && row?.specOversize) continue
+
+      const synced = row?.specSyncedAt
+      if (synced && Date.parse(synced) >= stat.mtimeMs) continue
       schedulePlanSpecUpload(id, specPath)
     }
   } catch (error) {

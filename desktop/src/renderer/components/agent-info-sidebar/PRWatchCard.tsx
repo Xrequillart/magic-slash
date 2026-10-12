@@ -1,32 +1,34 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Banner,
+  CheckList,
+  CollapsibleLine,
+  PullRequestCard,
+  ReviewThreadLine,
+  Tally,
+  type PRTone,
+  type PullRequestState,
+} from '@ds/desktop'
 import {
   AlertTriangle,
   CheckCircle,
   CheckCircle2,
-  ChevronDown,
   Circle,
   EyeOff,
-  GitMerge,
-  GitPullRequest,
-  GitPullRequestClosed,
-  GitPullRequestDraft,
   Loader2,
   MessagesSquare,
   MinusCircle,
-  RefreshCw,
   SendHorizontal,
   Users,
   XCircle,
-} from 'lucide-react'
+} from '@ds/desktop/icons'
 import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
 import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'
-import {
-  formatThreadContext, formatThreadsContext, selectUnresolvedThreads,
-} from '../../utils/prThreadContext'
+import { formatThreadsContext, selectUnresolvedThreads } from '../../utils/prThreadContext'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
-import type { PRCheck, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import type { PRCheck, PRChecksSummary, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 import { isPRStatusError } from '../../../types'
 
 interface PRWatchCardProps {
@@ -55,7 +57,7 @@ interface PRWatchCardProps {
  */
 interface ChecklistItem {
   Icon: typeof CheckCircle2
-  tone: string
+  tone: PRTone
   label: string
   done: boolean
   /** For the one state that is genuinely in motion: checks still running. */
@@ -76,12 +78,12 @@ interface ChecklistItem {
  */
 export const REVIEW_BADGE: Record<
   NonNullable<RepositoryMetadata['prReviewStatus']>,
-  { label: MessageKey; tone: string }
+  { label: MessageKey; tone: PRTone }
 > = {
-  approved: { label: 'prReview.approved', tone: 'bg-green/10 text-green' },
-  'changes-requested': { label: 'prReview.changesRequested', tone: 'bg-red/10 text-red' },
-  commented: { label: 'prReview.commented', tone: 'bg-blue/10 text-blue' },
-  pending: { label: 'prReview.pending', tone: 'bg-yellow/10 text-yellow' },
+  approved: { label: 'prReview.approved', tone: 'green' },
+  'changes-requested': { label: 'prReview.changesRequested', tone: 'red' },
+  commented: { label: 'prReview.commented', tone: 'blue' },
+  pending: { label: 'prReview.pending', tone: 'yellow' },
 }
 
 const STATE_LABELS: Record<PRState, MessageKey> = {
@@ -92,12 +94,14 @@ const STATE_LABELS: Record<PRState, MessageKey> = {
 }
 
 // Badge colours, not a status colour scale: merged is purple on GitHub and the
-// sidebar keeps that association so the state reads at a glance.
-const STATE_BADGE: Record<PRState, string> = {
-  open: 'bg-green/10 text-green',
-  draft: 'bg-surface-strong text-text-secondary',
-  merged: 'bg-purple/10 text-purple',
-  closed: 'bg-red/10 text-red',
+// sidebar keeps that association so the state reads at a glance. A `PRTone` rather
+// than a pair of classes now — `PullRequestCard` owns what a badge is made of, and
+// this only says which of the seven it wears.
+const STATE_TONE: Record<PRState, PRTone> = {
+  open: 'green',
+  draft: 'neutral',
+  merged: 'purple',
+  closed: 'red',
 }
 
 // Each failure names its own fix: an error with no remedy is the same dead end as
@@ -110,25 +114,27 @@ const WATCH_ERROR_LABELS: Record<PRWatchError, { label: MessageKey; fix: Message
   network: { label: 'agentInfo.pr.error.network', fix: 'agentInfo.pr.error.networkFix' },
 }
 
-// One entry per state a single check can be in — the icons of the list inside the
-// checks card, and the same vocabulary the card's own checks line is built from.
-const CHECK_STATES = {
-  passed: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.checkPassed', spin: false },
-  failed: { Icon: XCircle, tone: 'text-red', label: 'agentInfo.pr.checkFailed', spin: false },
-  running: { Icon: Loader2, tone: 'text-blue', label: 'agentInfo.pr.checkRunning', spin: true },
-  skipped: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.checkSkipped', spin: false },
-} as const satisfies Record<
-  PRCheck['state'],
-  { Icon: typeof CheckCircle2; tone: string; label: MessageKey; spin: boolean }
->
+// What each state is CALLED, and nothing else: the glyph and the colour are
+// `CHECK_STATE_MARK`'s in the design system, on `PR_STATE_MARK`'s model — a red cross
+// for a failed check is not a fact about this watcher. What stays here is the half
+// that needs a catalogue and a language. The app's four states and the design
+// system's are the same four words, so `PRCheck['state']` is already a `CheckState`
+// and the list below hands one straight over — the day they diverge, that call site
+// is what stops compiling.
+const CHECK_STATE_LABELS = {
+  passed: 'agentInfo.pr.checkPassed',
+  failed: 'agentInfo.pr.checkFailed',
+  running: 'agentInfo.pr.checkRunning',
+  skipped: 'agentInfo.pr.checkSkipped',
+} as const satisfies Record<PRCheck['state'], MessageKey>
 
 // `undefined` is its own entry, not a missing one: GitHub answers UNKNOWN while it
 // computes mergeability, and that must never render as "conflicts" — nor as a tick,
 // which is why the unknown line gets an empty box rather than a check.
 const MERGEABLE_ITEMS = {
-  true: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.mergeable', done: true },
-  false: { Icon: AlertTriangle, tone: 'text-red', label: 'agentInfo.pr.conflicts', done: false },
-  unknown: { Icon: Circle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.mergeableUnknown', done: false },
+  true: { Icon: CheckCircle2, tone: 'green', label: 'agentInfo.pr.mergeable', done: true },
+  false: { Icon: AlertTriangle, tone: 'red', label: 'agentInfo.pr.conflicts', done: false },
+  unknown: { Icon: Circle, tone: 'muted', label: 'agentInfo.pr.mergeableUnknown', done: false },
 } as const satisfies Record<string, Omit<ChecklistItem, 'label'> & { label: MessageKey }>
 
 /**
@@ -162,19 +168,6 @@ interface CommentRow {
   value: number
 }
 
-function StateIcon({ state, className = 'w-4 h-4' }: { state: PRState; className?: string }) {
-  switch (state) {
-    case 'merged':
-      return <GitMerge className={`${className} text-purple`} />
-    case 'closed':
-      return <GitPullRequestClosed className={`${className} text-red`} />
-    case 'draft':
-      return <GitPullRequestDraft className={`${className} text-text-secondary`} />
-    case 'open':
-      return <GitPullRequest className={`${className} text-green`} />
-  }
-}
-
 async function runSlashCommand(terminalId: string, command: string, t: Translate) {
   try {
     const result = await window.electronAPI.prWatcher.sendCommand(terminalId, command)
@@ -189,104 +182,95 @@ async function runSlashCommand(terminalId: string, command: string, t: Translate
 }
 
 /**
- * The band every item on this card is drawn in — a checklist line, the comments —
- * so the rows read as one list rather than as separate treatments. Edge to edge,
- * with no chrome of its own: the rows sit flush in the card, separated by the
- * container's dividers. The surface only comes up while the row is unfolded — the
- * commit-hash button's, one shade up from the card — so the open item is the one
- * that stands out and the closed ones stay part of the card.
+ * The four check states as arcs of one ring, in the order a reader cares about them.
+ *
+ * WHY A RING AND NOT A BAR. "9/12" says how far along; what it cannot say is what the
+ * other three are — three failures and three skips are the same fraction and not
+ * remotely the same pull request. The proportion is the whole point, and a proportion
+ * of a fixed whole is the one thing a donut is actually good at. At 14px it is read as
+ * a colour and a rough share, which is all that is wanted beside a count: the names and
+ * the exact numbers are one click away, behind the fold this sits on.
+ *
+ * The palette is `CHECK_STATES`', arc for arc — the same green, red and blue the list
+ * inside draws its icons in, so the ring is a legend for the thing it opens. Skipped
+ * takes `icon-muted` rather than that map's `text-secondary/60`: a 3px arc at 60%
+ * disappears on the light themes, where a glyph of the same colour does not.
+ *
+ * ORDER IS FIXED, worst last. Passed, then skipped, then running, then failed, so the
+ * eye lands on red at the end of the sweep wherever it falls. Any check the summary
+ * counts but does not classify — `total` is the authority, the four states are what
+ * GitHub answered — stays as bare track, which is honest: something is there and we do
+ * not know what.
  */
-function Chip({ open = false, children }: { open?: boolean; children: ReactNode }) {
-  return <div className={`w-full px-3 transition-colors ${open ? 'bg-surface' : ''}`}>{children}</div>
-}
+const CHECK_RING_ARCS = [
+  { key: 'passed', stroke: 'stroke-green', label: 'agentInfo.pr.checkPassed' },
+  { key: 'skipped', stroke: 'stroke-icon-muted', label: 'agentInfo.pr.checkSkipped' },
+  { key: 'running', stroke: 'stroke-blue', label: 'agentInfo.pr.checkRunning' },
+  { key: 'failed', stroke: 'stroke-red', label: 'agentInfo.pr.checkFailed' },
+] as const satisfies readonly { key: keyof Omit<PRChecksSummary, 'total'>; stroke: string; label: MessageKey }[]
 
-/**
- * A chip holding one item: an icon gutter, what the item is about, and an optional
- * detail pinned right.
- *
- * A fixed `h-9`, not a `min-h`: every header line lands on exactly the same 36 px — a
- * line carrying a button is no taller than one carrying a word, and a checklist of
- * ragged boxes stops reading as a list. Safe because every header truncates rather
- * than wraps; only `children`, below the line, are allowed to grow.
- *
- * The icon is a flex item OF the header line, not centred in its own box beside it:
- * that box only lines up while the line happens to be exactly as tall as it is.
- *
- * `toggle` turns the header into a button and gates `children` behind it; `children`
- * is indented by hand to the same gutter, 16 px of icon plus the 8 px gap.
- */
-function ItemCard({
-  icon,
-  header,
-  detail,
-  toggle,
-  children,
-}: {
-  icon: ReactNode
-  header: ReactNode
-  /** Pinned right of the header line: a count, or a command. */
-  detail?: ReactNode
-  toggle?: { open: boolean; onToggle: () => void }
-  children?: ReactNode
-}) {
-  const line = (
-    <>
-      <span className="w-4 flex-shrink-0 flex items-center justify-center">{icon}</span>
-      <div className="min-w-0 flex-1">{header}</div>
-      {detail !== undefined && <span className="flex-shrink-0">{detail}</span>}
-      {toggle && (
-        <ChevronDown
-          className={`w-3 h-3 flex-shrink-0 text-icon group-hover:text-ink transition-all ${toggle.open ? '' : '-rotate-90'}`}
-        />
-      )}
-    </>
-  )
+/** Geometry of the ring: a 16px box, a 6px radius and a 3px stroke. */
+const RING_RADIUS = 6
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+
+function ChecksRing({ checks, t }: { checks: PRChecksSummary; t: Translate }) {
+  // `total` and not the sum of the four: the summary is what the count beside the ring
+  // is drawn from, and a ring that closed while the count read 9/12 would be the two
+  // halves of one detail disagreeing in front of the reader.
+  const total = Math.max(checks.total, 1)
+
+  const segments: { key: string; stroke: string; length: number; offset: number }[] = []
+  let consumed = 0
+  for (const arc of CHECK_RING_ARCS) {
+    const count = checks[arc.key]
+    if (count <= 0) continue
+    segments.push({
+      key: arc.key,
+      stroke: arc.stroke,
+      length: (count / total) * RING_CIRCUMFERENCE,
+      offset: -(consumed / total) * RING_CIRCUMFERENCE,
+    })
+    consumed += count
+  }
+
+  // Read out as "9 passed · 2 failed", from the same keys the list inside uses — the
+  // ring is a picture of a sentence the card can already say.
+  const label = CHECK_RING_ARCS
+    .filter((arc) => checks[arc.key] > 0)
+    .map((arc) => `${checks[arc.key]} ${t(arc.label).toLowerCase()}`)
+    .join(' · ')
 
   return (
-    <Chip open={Boolean(toggle?.open)}>
-      {toggle ? (
-        <button onClick={toggle.onToggle} className="group w-full h-9 flex items-center gap-2 text-left">
-          {line}
-        </button>
-      ) : (
-        <div className="h-9 flex items-center gap-2">{line}</div>
-      )}
-      {children && (!toggle || toggle.open) && <div className="pb-2.5 pl-6">{children}</div>}
-    </Chip>
-  )
-}
-
-/**
- * One item of the checklist: the box, what it is about, and an optional detail.
- *
- * A card per item rather than one panel of rows, because each line here is a
- * separate question — green? mergeable? merged? — and giving each its own edge stops
- * them reading as one paragraph of status.
- */
-function ChecklistRow({
-  item,
-  detail,
-  toggle,
-  children,
-}: {
-  item: ChecklistItem
-  detail?: ReactNode
-  toggle?: { open: boolean; onToggle: () => void }
-  children?: ReactNode
-}) {
-  return (
-    <ItemCard
-      icon={<item.Icon className={`w-3.5 h-3.5 ${item.tone} ${item.spin ? 'animate-spin' : ''}`} />}
-      header={(
-        <span className={`block text-xs truncate ${item.done ? 'text-text-secondary/70' : `font-medium ${item.tone}`}`}>
-          {item.label}
-        </span>
-      )}
-      detail={detail}
-      toggle={toggle}
+    <svg
+      viewBox="0 0 16 16"
+      className="w-3.5 h-3.5 flex-shrink-0 -rotate-90"
+      role="img"
+      aria-label={label}
     >
-      {children}
-    </ItemCard>
+      <title>{label}</title>
+      {/* The track, so a partly-classified ring still reads as a whole. */}
+      <circle
+        cx="8"
+        cy="8"
+        r={RING_RADIUS}
+        fill="none"
+        strokeWidth="3"
+        className="stroke-line-subtle"
+      />
+      {segments.map((segment) => (
+        <circle
+          key={segment.key}
+          cx="8"
+          cy="8"
+          r={RING_RADIUS}
+          fill="none"
+          strokeWidth="3"
+          strokeDasharray={`${segment.length} ${RING_CIRCUMFERENCE - segment.length}`}
+          strokeDashoffset={segment.offset}
+          className={segment.stroke}
+        />
+      ))}
+    </svg>
   )
 }
 
@@ -322,9 +306,9 @@ export const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
  */
 export const THREAD_STATE: Record<
   PRReviewThread['state'],
-  { Icon: typeof CheckCircle2; tone: string; label: MessageKey; pill: string }
+  { Icon: typeof CheckCircle2; tone: PRTone; label: MessageKey; strong?: boolean }
 > = {
-  open: { Icon: Circle, tone: 'text-blue', label: 'agentInfo.pr.threadOpen', pill: 'text-text-secondary/60' },
+  open: { Icon: Circle, tone: 'blue', label: 'agentInfo.pr.threadOpen' },
   // The one state drawn as a BADGE — same tint scale as `REVIEW_BADGE` — rather than as a
   // word beside an icon. Resolved is the state the reader is looking for: it is what
   // separates "still to do" from "done" in a list of twenty threads, and a grey word at
@@ -332,13 +316,13 @@ export const THREAD_STATE: Record<
   // what lets a row be skipped at a glance.
   resolved: {
     Icon: CheckCircle2,
-    tone: 'text-green',
+    tone: 'green',
     label: 'agentInfo.pr.commentResolved',
-    pill: 'bg-green/10 text-green font-semibold px-1.5 py-0.5 rounded',
+    strong: true,
   },
   // The diff moved out from under it, so the line it hangs on no longer exists —
   // quiet rather than tinted: nothing is wrong, it is just stale.
-  outdated: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.threadOutdated', pill: 'text-text-secondary/60' },
+  outdated: { Icon: MinusCircle, tone: 'muted', label: 'agentInfo.pr.threadOutdated' },
 }
 
 /**
@@ -375,71 +359,40 @@ export function prUrlParts(url: string): { repoSlug?: string; prNumber?: string 
  * reads as a box in a box. `ReviewCommentsButton`'s `HEADER_TRIGGER` and the `BUTTON_ACTION`
  * next door to it are bespoke for the same reason, at the same scale.
  *
- * A BASE plus two suffixes, on `ChangeNavigator`'s `BUTTON_BASE` model: the base holds
- * everything the two share — the shape, the resting tone, the disabled chrome — and each
- * suffix adds only layout and padding, which the base deliberately does not set, so nothing
- * here is one Tailwind group overriding itself. The row's is an icon in a square; the fold's
- * carries a word beside it.
+ * A BASE plus a suffix, on `ChangeNavigator`'s `BUTTON_BASE` model: the base holds the
+ * shape, the resting tone and the disabled chrome, and the suffix adds only layout and
+ * padding, which the base deliberately does not set, so nothing here is one Tailwind
+ * group overriding itself.
+ *
+ * There was a second suffix, for the icon-only send on every thread row. That control is
+ * gone — see `ThreadEntry` — and the split is kept because the bulk one still wants its
+ * padding stated where a reader can see it against the base.
  */
 const SEND_BASE =
-  'flex items-center rounded-md bg-transparent border-none cursor-pointer transition-colors ' +
+  'flex items-center rounded-lg bg-transparent border-none cursor-pointer transition-colors ' +
   'text-text-secondary/70 hover:text-ink hover:bg-surface-strong ' +
   'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary/70'
-
-const THREAD_SEND = `${SEND_BASE} flex-shrink-0 justify-center p-1`
 
 const THREADS_SEND = `${SEND_BASE} gap-1 py-1 px-1.5 text-[10px] font-medium`
 
 /**
- * One thread, on one line: who opened it, where, how many answers, and whether it is
- * settled.
+ * One thread, as `ReviewThreadLine` wants it.
  *
- * A row to SCAN, not to read. The sidebar is 500 px wide and does not resize, so the
- * bodies are deliberately absent here — a card per comment turned a bot-reviewed PR
- * into a page of prose in a column too narrow for it, and the question this fold
- * answers is "what is still open, and where", not "what exactly was said". Reading the
- * conversation is a panel of its own.
+ * WHAT IS LEFT HERE IS THE TRANSLATION, and only that: the row itself — the fill, the
+ * border, the group travelling to the right edge, the resolved reading — is the design
+ * system's now. This turns a `PRReviewThread` into the four or five already-worded
+ * strings that row draws, which is work that needs `t`, the app's enums and the
+ * catalogue's plural keys, and none of which belongs in a folder the webapp compiles.
  *
- * `bg-surface` — the same token the PR card itself is painted with, so the rows belong
- * to the card rather than to a palette of their own. It still reads a shade lighter
- * than that card: these are TRANSLUCENT overlays, and a row sits on three of them
- * (card, chip, row), not one. The separation comes from the border, and the fill only
- * has to stop the rows running together — which is also why this is not a call to
- * `Chip`, whose padding is sized for the checklist.
- *
- * A BUTTON across the full width, opening the comments panel on this thread. The row
- * used to be inert and said so, on the grounds that lighting it up would promise an
- * action that did not exist; the panel is that action, so the affordance is now the
- * truth rather than the promise. Full-width because the target is the row — every part
- * of it names the same thread, and a chevron at one end would be a smaller target
- * saying the same thing.
- *
- * The panel it opens is given the WHOLE thread list, not just this one thread: it is a
- * conversation, and dropping the reader into it with a single exchange and no way to
- * reach the others would be a worse surface than the fold they came from. Its own thread
- * is the anchor, which is where the panel scrolls to — see `PRCommentsView`.
- *
- * The row does not assemble that itself, though: it reports an ID through `onOpen` and
- * knows nothing of the list, the PR URL or the store. The card holds all three already,
- * so passing them down would be fifty rows each carrying a copy of the list they are in
- * and each opening a store subscription, to answer a click that only ever names a thread.
+ * The row reports an ID through `onOpen` and knows nothing of the list, the PR URL or
+ * the store. The card holds all three already, so passing them down would be fifty rows
+ * each carrying a copy of the list they are in and each opening a store subscription, to
+ * answer a click that only ever names a thread.
  */
-function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
+function ThreadEntry({ thread, onOpen, now, t }: {
   thread: PRReviewThread
   /** Hand the panel this thread's id; the card knows what to open it on. */
   onOpen: (threadId: string) => void
-  /**
-   * Hand the agent this thread — the whole object, not an id, because what is composed
-   * from it is text and the card would otherwise look the thread back up in a list it
-   * already gave this row.
-   */
-  onSend: (thread: PRReviewThread) => void
-  /**
-   * Whether there is an agent terminal to paste into. Resolved ONCE by the card and passed
-   * down, for the reason `onOpen` is: fifty rows each opening a store subscription to answer
-   * a question with one answer for the whole list.
-   */
-  canSend: boolean
   now: number
   t: Translate
 }) {
@@ -448,10 +401,10 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
   // down the column in order instead of jumping about. Not `updatedAt`: a row that
   // said "5 min ago" between two saying "2 d ago" would look misfiled.
   const createdAt = root.createdAt ? Date.parse(root.createdAt) : NaN
-  const badge = thread.kind === 'review' ? REVIEW_STATE_BADGE[(root.reviewState || '').toUpperCase()] : undefined
+  const verdict = thread.kind === 'review' ? REVIEW_STATE_BADGE[(root.reviewState || '').toUpperCase()] : undefined
 
   // The basename only: a sidebar column cannot hold `desktop/src/main/…/watcher.ts`,
-  // and the full path is one click away on GitHub. The title attribute keeps it.
+  // and the full path is one click away on GitHub. The title keeps it.
   const where = thread.path
     ? `${thread.path.split('/').pop()}${typeof thread.line === 'number' ? `:${thread.line}` : ''}`
     : undefined
@@ -461,88 +414,36 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
   // would spend the row's width saying nothing.
   const state = thread.kind === 'inline' ? THREAD_STATE[thread.state] : undefined
 
-  // One string for both the accessible name and the tooltip: an icon-only control needs
-  // both, and they must not be able to drift into saying two different things.
-  const prepareLabel = canSend
-    ? t('agentInfo.pr.prepareThread')
-    : t('agentInfo.pr.prepareThreadNoAgent')
-
   return (
-    /* The row is a BUTTON and stays one — the send is a sibling after it rather than a child,
-       because a `<button>` cannot nest a `<button>`. Turning the row into a `div onClick` to
-       make room would have been the smaller diff and the wrong one: it would silently drop
-       the keyboard access and the focus ring the row has today. The `ml-auto` metadata group
-       still travels to the right edge INSIDE the row button, so the columns stay aligned. */
-    <li className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => onOpen(thread.id)}
-        title={t('prComments.openThread')}
-        /* A resolved row steps back — border tinted green, text dimmed — the same reading
-           as the card's checklist, where a ticked line goes quiet so the eye lands on what
-           is still open. The badge inside it stays at full strength: it is the one thing
-           on the row that has to be readable without stopping. */
-        className={`flex-1 flex items-center gap-1.5 min-w-0 rounded-md border bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors ${
-          thread.state === 'resolved' ? 'border-green/30' : 'border-border/30'
-        }`}
-      >
-        {/* The author can give way to the location: on an inline thread "which file"
-            is the part that places the row, and a truncated login is still readable. */}
-        <span className={`font-medium truncate ${thread.state === 'resolved' ? 'text-ink/50' : 'text-ink/80'}`}>{root.author}</span>
-        {badge && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
-            {t(REVIEW_BADGE[badge].label)}
-          </span>
-        )}
-        {/* A review whose verdict this card has no badge for — DISMISSED, today. Untinted
-            on purpose: it is not a fourth verdict, it is the row saying which of the three
-            connections it came from, which is the only thing separating it from a
-            conversation comment once the badge is gone. */}
-        {thread.kind === 'review' && !badge && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
-            {t('agentInfo.pr.threadReview')}
-          </span>
-        )}
-        {where && (
-          <span className="text-text-secondary/60 font-mono truncate" title={thread.path}>{where}</span>
-        )}
-        {/* One group travelling to the right edge, so the counts and states line up
-            column-wise down the list rather than trailing each row's own text. */}
-        <span className="ml-auto flex items-center gap-1.5 flex-shrink-0 text-[10px]">
-          {/* The real number of answers, which is not how many the thread carries once
-              the per-thread cap has bitten. Two keys rather than one: the catalogue
-              interpolates but does not pluralise. */}
-          {thread.replyCount > 0 && (
-            <span className="text-text-secondary/70 tabular-nums">
-              {t(thread.replyCount === 1 ? 'agentInfo.pr.threadReply' : 'agentInfo.pr.threadReplies', { count: thread.replyCount })}
-            </span>
-          )}
-          {state && (
-            <span className={`flex items-center gap-1 ${state.pill}`}>
-              <state.Icon className={`w-3 h-3 ${state.tone}`} />
-              {t(state.label)}
-            </span>
-          )}
-          {Number.isFinite(createdAt) && (
-            <span className="text-text-secondary/40">{formatTimestamp(createdAt, now, t)}</span>
-          )}
-        </span>
-      </button>
-      {/* DISABLED rather than hidden when there is no agent to paste into, and the tooltip is
-          what makes that state worth having: a control that vanished would leave the reader
-          looking for it, where this one names the reason. There is nothing to fall back on
-          here — unlike the review's popover, a thread row carries no Copy. */}
-      <button
-        type="button"
-        onClick={() => onSend(thread)}
-        disabled={!canSend}
-        aria-label={prepareLabel}
-        title={prepareLabel}
-        className={THREAD_SEND}
-      >
-        <SendHorizontal className="w-3 h-3" />
-      </button>
-    </li>
+    <ReviewThreadLine
+      author={root.author}
+      badge={
+        verdict
+          ? { label: t(REVIEW_BADGE[verdict].label), tone: REVIEW_BADGE[verdict].tone }
+          /* A review whose verdict this card has no badge for — DISMISSED, today.
+             Untinted on purpose: it is not a fourth verdict, it is the row saying which
+             of the three connections it came from, which is the only thing separating it
+             from a conversation comment once the badge is gone. */
+          : thread.kind === 'review'
+            ? { label: t('agentInfo.pr.threadReview'), tone: 'muted' }
+            : undefined
+      }
+      location={where}
+      locationTitle={thread.path}
+      /* The real number of answers, which is not how many the thread carries once the
+         per-thread cap has bitten. Two keys rather than one: the catalogue interpolates
+         but does not pluralise. */
+      replies={
+        thread.replyCount > 0
+          ? t(thread.replyCount === 1 ? 'agentInfo.pr.threadReply' : 'agentInfo.pr.threadReplies', { count: thread.replyCount })
+          : undefined
+      }
+      state={state ? { icon: state.Icon, label: t(state.label), tone: state.tone, strong: state.strong } : undefined}
+      age={Number.isFinite(createdAt) ? formatTimestamp(createdAt, now, t) : undefined}
+      resolved={thread.state === 'resolved'}
+      openLabel={t('prComments.openThread')}
+      onOpen={() => onOpen(thread.id)}
+    />
   )
 }
 
@@ -647,10 +548,6 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     if (!delivered) showToast(t('agentInfo.pr.prepareThreadFailed'), 'error')
   }, [agentId, t])
 
-  const sendThread = useCallback((thread: PRReviewThread) => {
-    void sendToAgent(formatThreadContext(thread))
-  }, [sendToAgent])
-
   // What the fold's bulk control is about, and what it says on the tin: the inline threads
   // still open. `selectUnresolvedThreads` carries why the two halves of that filter are both
   // needed — a resolved or outdated thread is settled, and the singletons are `open` by
@@ -685,7 +582,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     state === 'open' && reviewStatus
       ? { label: t(REVIEW_BADGE[reviewStatus].label), tone: REVIEW_BADGE[reviewStatus].tone }
       : state
-        ? { label: t(STATE_LABELS[state]), tone: STATE_BADGE[state] }
+        ? { label: t(STATE_LABELS[state]), tone: STATE_TONE[state] }
         : reviewStatus
           ? { label: t(REVIEW_BADGE[reviewStatus].label), tone: REVIEW_BADGE[reviewStatus].tone }
           : undefined
@@ -807,26 +704,20 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     checks === undefined
       ? undefined
       : checks.total === 0
-        ? { Icon: MinusCircle, tone: 'text-text-secondary/60', label: t('agentInfo.pr.noChecks'), done: false }
+        ? { Icon: MinusCircle, tone: 'muted', label: t('agentInfo.pr.noChecks'), done: false }
         : checks.failed > 0
-          ? { Icon: XCircle, tone: 'text-red', label: t('agentInfo.pr.checksLabel'), done: false }
+          ? { Icon: XCircle, tone: 'red', label: t('agentInfo.pr.checksLabel'), done: false }
           : checks.running > 0
-            ? { Icon: Loader2, tone: 'text-blue', label: t('agentInfo.pr.checksLabel'), done: false, spin: true }
-            : { Icon: CheckCircle2, tone: 'text-green', label: t('agentInfo.pr.checksLabel'), done: true }
+            ? { Icon: Loader2, tone: 'blue', label: t('agentInfo.pr.checksLabel'), done: false, spin: true }
+            : { Icon: CheckCircle2, tone: 'green', label: t('agentInfo.pr.checksLabel'), done: true }
 
   const checksOpen = checksExpanded ?? (checks !== undefined && (checks.failed > 0 || checks.running > 0))
 
-  // An empty `border-t` band reads as a rendering bug, so both middle bands are
-  // gated on having a line to draw. Only the status bar is unconditional — the
-  // freshness stamp and its button are meaningful even on a card that knows
-  // nothing else yet.
+  // An empty band under a hairline reads as a rendering bug, so every line gates
+  // itself on having something to say. `PullRequestCard` draws a rule over each child
+  // it is given, so a line that renders `false` costs nothing — there is no wrapper
+  // left that could come out empty.
   const showComments = commentRows.length > 0 || authors.length > 0
-  const showChecklist =
-    watchError !== undefined ||
-    showComments ||
-    checksItem !== undefined ||
-    showMergeable ||
-    showDone
 
   const handleEnableWatcher = async () => {
     setEnabling(true)
@@ -858,93 +749,93 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   }
 
   return (
-    <div className="mt-2 bg-surface rounded-lg border border-line-subtle overflow-hidden">
-      {/* Header — the card's identity IS the link to GitHub, which is why the
-          separate "View pull request" button below the card could go away. The
-          badge sits inside that target: it labels the PR, so clicking it should open
-          the PR rather than land on dead space. The whole row is one
-          generous hit area — the negative margin lets its hover surface reach past
-          the container's padding to 4px from the card edge, while its own padding
-          keeps the text off that edge. No external-link glyph: the title, the
-          repo slug and the tooltip already say where this goes. */}
-      <div className="flex items-center p-2">
-        <button
-          onClick={() => window.electronAPI.shell.openExternal(prUrl)}
-          title={t('agentInfo.viewPullRequest')}
-          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md -m-1 p-2 hover:bg-surface-strong transition-colors"
-        >
-          <span className="w-4 flex-shrink-0 flex items-center justify-center">
-            {state ? <StateIcon state={state} /> : <GitPullRequest className="w-4 h-4 text-text-secondary" />}
-          </span>
-          <span className="min-w-0 flex-1">
-            {/* Hover brightens the title to full white rather than tinting it: the
-                surface lighting up is already the affordance, and the accent read as
-                a state change on the PR itself. */}
-            <span className="block text-xs font-medium text-ink/90 truncate group-hover:text-ink transition-colors">
-              {prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
-            </span>
-            {repoSlug && (
-              <span className="block text-[10px] text-text-secondary/50 truncate" title={repoSlug}>
-                {repoSlug}
-              </span>
-            )}
-          </span>
-          {badge && (
-            // Not upper-cased any more: "CHANGES REQUESTED" is twice the width of
-            // "Open" and would eat the title it sits next to.
-            <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.tone}`}>
-              {badge.label}
-            </span>
-          )}
-        </button>
-      </div>
+    /* The plate, the header, the hairline between every band and the status bar are
+       `PullRequestCard`'s now. What stays here is the three things only the app knows:
+       what GitHub last answered about this PR, what each of those answers is called in
+       this language, and which of the bands below applies right now.
 
+       The footer is DROPPED while the watcher is off, which is the one state where a
+       refresh button would be a control that cannot do what it says: nothing above it
+       will move again until the watcher is back on. */
+    <PullRequestCard
+      state={state as PullRequestState | undefined}
+      title={prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
+      subtitle={repoSlug}
+      badge={badge}
+      open={{ label: t('agentInfo.viewPullRequest'), onOpen: () => window.electronAPI.shell.openExternal(prUrl) }}
+      footer={
+        watcherOff
+          ? undefined
+          : {
+            label: checkedLabel,
+            refresh: {
+              label: t('agentInfo.pr.refresh'),
+              busy: refreshing,
+              onRefresh: handleRefresh,
+            },
+          }
+      }
+    >
       {/* The setting, not a failure: the watcher is off, so nothing the card could
           show below would ever move again. Everything else is therefore replaced by
           this one prompt rather than stacked above a frozen snapshot presented as
           the state of the PR — and it carries its own fix, the same way each watch
           error names one. */}
       {watcherOff ? (
-        <div className="border-t border-line-subtle p-2">
-          <div className="flex items-start gap-2 rounded-md bg-surface-sunken px-2 py-1.5">
-            <EyeOff className="w-3.5 h-3.5 text-icon flex-shrink-0 mt-px" />
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
-              <div className="text-[10px] text-text-secondary/70">
-                {/* Two different situations behind one setting: a card that has a
-                    snapshot hidden behind it is dated, one carrying only the link
-                    is empty. */}
-                {t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
-              </div>
-            </div>
-            <button
-              onClick={handleEnableWatcher}
-              disabled={enabling}
-              className="flex-shrink-0 px-2 py-1 rounded-md bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-medium transition-colors disabled:opacity-50"
-            >
-              {t('agentInfo.pr.enableWatcher')}
-            </button>
-          </div>
-        </div>
+        /* `accent` AND NOT A SEVERITY, which is exactly what that variant is for:
+           nothing has gone wrong and nothing has succeeded — the reader switched the
+           watcher off and can switch it back on, and the band is here to explain why
+           the card below behaves differently until they do. Its mark is `EyeOff`
+           rather than the variant's own: a mode is a specific thing, and this one is
+           "not looking". */
+        <Banner
+          variant="accent"
+          layout="inset"
+          icon={EyeOff}
+          /* Two different situations behind one setting: a card that has a snapshot
+             hidden behind it is dated, one carrying only the link is empty. */
+          hint={t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
+          actions={[
+            {
+              label: t('agentInfo.pr.enableWatcher'),
+              onClick: () => void handleEnableWatcher(),
+              busy: enabling,
+              primary: true,
+            },
+          ]}
+        >
+          {t('agentInfo.pr.watcherOff')}
+        </Banner>
       ) : (
+        /* The checklist — everything that has to be true before this PR can ship, one
+           line each, ticked when it is. Straight under the header because it is the band
+           that answers "can this ship", and a list rather than a stack of differently
+           shaped panels because the shape itself carries the meaning: same gutter, same
+           box, so the open items are the ones that stand out.
+
+           A FRAGMENT AND NOT A BAND. These were wrapped in a div that drew one rule over
+           the whole group and an inset box-shadow between the rows inside it — a shadow
+           spelled as an arbitrary value, which is the one thing `designTokens.test.ts`
+           will not have. Unwrapped, each row is a child of the card, and the card's own
+           hairline rule draws every separator there is. Nothing gates the group either:
+           every line below already gates itself, and their OR is all `showChecklist`
+           ever was. */
         <>
-        {/* The checklist — everything that has to be true before this PR can ship,
-            one line each, ticked when it is. Straight under the header because it is
-            the band that answers "can this ship", and a list rather than a stack of
-            differently-shaped panels because the shape itself carries the meaning:
-            same gutter, same box, so the open items are the ones that stand out.
-            Rendered whenever any line has something to say. */}
-        {showChecklist && <div className="border-t border-line-subtle [&>*+*]:shadow-[inset_0_1px_0_0_var(--c-line-subtle)]">
           {/* Why the watcher is blind, and how to fix it. Above the verdict on
               purpose: a stale verdict is worth less than the reason it is stale. */}
           {watchError && (
-            <div className="flex items-start gap-2 bg-red/10 px-3 py-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
-              <div className="min-w-0">
-                <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
-                <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
-              </div>
-            </div>
+            /* No `icon`: `danger` brings its own, and a variant that names its mark is
+               one this card cannot spell differently from the next surface to report
+               the same failure. The FIX goes in the hint, which is the one thing an
+               `inset` band lets wrap — a truncated remedy is a remedy nobody can
+               follow. */
+            <Banner
+              variant="danger"
+              layout="inset"
+              hint={t(WATCH_ERROR_LABELS[watchError].fix)}
+            >
+              {t(WATCH_ERROR_LABELS[watchError].label)}
+            </Banner>
           )}
 
           {/* No review line here: the verdict is the header badge now, and stating
@@ -955,9 +846,13 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               the list because it is the one line that is about people rather than
               machinery, and the reason anyone opens this card mid-review. */}
           {showComments && (
-            <ItemCard
-              icon={<MessagesSquare className="w-3.5 h-3.5 text-blue" />}
-              header={<span className="block text-xs truncate text-text-secondary/70">{t('agentInfo.pr.commentsLabel')}</span>}
+            <CollapsibleLine
+              icon={MessagesSquare}
+              tone="blue"
+              label={t('agentInfo.pr.commentsLabel')}
+              // Not a box to tick, so it wears the settled reading from the start: it
+              // reports, it does not gate.
+              muted
               detail={commentTotal > 0 ? (
                 // The bare number needed the label beside it to be read as a count of
                 // comments rather than of whatever the line happened to be about. Two
@@ -973,14 +868,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 {/* Where they were left, then who left them. Allowed to wrap here —
                     the fold is open because somebody asked for the detail. */}
                 {commentRows.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-text-secondary/70">
-                    {commentRows.map((row) => (
-                      <span key={row.label} className="flex items-center gap-1">
-                        <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
-                        {t(row.label)}
-                      </span>
-                    ))}
-                  </div>
+                  <Tally counts={commentRows.map((row) => ({ label: t(row.label), value: row.value }))} />
                 )}
                 {/* Who spoke, until we know what they said. The list below names its
                     own authors line by line, so keeping both would say it twice. */}
@@ -1009,8 +897,6 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                         key={thread.id}
                         thread={thread}
                         onOpen={openComments}
-                        onSend={sendThread}
-                        canSend={canSendToAgent}
                         now={now}
                         t={t}
                       />
@@ -1018,9 +904,9 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                   </ul>
                 )}
                 {/* The same hand-off over the whole list. In CHILDREN, beside the `<ul>`, and
-                    not in `detail`: this fold is an `ItemCard` with a `toggle`, and `ItemCard`
-                    renders `detail` inside that header `<button>` — a button in a button, and
-                    a click on it would also fold the list away under the paste.
+                    not in `detail`: this fold is a `CollapsibleLine` with a `toggle`, and
+                    that component renders `detail` inside the header `<button>` — a button in
+                    a button, and a click on it would also fold the list away under the paste.
 
                     Rendered only when there is something to send. A permanently dead bulk
                     control on a fully resolved PR teaches nothing, where its absence is
@@ -1051,7 +937,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                   <div className="text-[10px] text-text-secondary/50">{t('agentInfo.pr.commentsEmpty')}</div>
                 )}
               </div>
-            </ItemCard>
+            </CollapsibleLine>
           )}
 
           {/* Checks — the count beside the label, and the checks themselves folded
@@ -1060,11 +946,18 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               "9/12" says how far along, and the names say which. The header is only
               a button when there is a list to unfold. */}
           {checksItem && (
-            <ChecklistRow
-              item={checksItem}
+            <CollapsibleLine
+              icon={checksItem.Icon}
+              tone={checksItem.tone}
+              spin={checksItem.spin}
+              label={checksItem.label}
+              muted={checksItem.done}
               detail={checks && checks.total > 0 ? (
-                <span className="text-[10px] text-text-secondary/60 tabular-nums">
-                  {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
+                <span className="flex items-center gap-1.5">
+                  <ChecksRing checks={checks} t={t} />
+                  <span className="text-[10px] text-text-secondary/60 tabular-nums">
+                    {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
+                  </span>
                 </span>
               ) : undefined}
               toggle={checkList.length > 0
@@ -1072,37 +965,25 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 : undefined}
             >
               {checkList.length > 0 && (
-                <ul className="space-y-1">
-                  {checkList.map((check) => {
-                    const { Icon, tone, label, spin } = CHECK_STATES[check.state]
-                    return (
-                      <li key={`${check.state}:${check.name}`} className="flex items-center gap-1.5">
-                        <span className="flex-shrink-0 flex" title={t(label)}>
-                          <Icon className={`w-3 h-3 ${tone} ${spin ? 'animate-spin' : ''}`} />
-                        </span>
-                        {/* Sans, like every other label on this card: a check name is
-                            read as a name, not as code, and the mono face it used to
-                            carry was the one thing here in a different typeface. */}
-                        <span className="min-w-0 text-[10px] text-text-secondary/70 truncate" title={check.name}>
-                          {check.name}
-                        </span>
-                      </li>
-                    )
-                  })}
-                  {hiddenChecks > 0 && (
-                    <li className="pl-[18px] text-[10px] text-text-secondary/50">
-                      {t('agentInfo.pr.checksMore', { count: hiddenChecks })}
-                    </li>
-                  )}
-                </ul>
+                /* The names as the watcher ordered them — worst first, and capped by it
+                   too, which is what `more` says out loud. Every check goes over as a
+                   state and a word: the glyph and the colour are the design system's. */
+                <CheckList
+                  checks={checkList.map((check) => ({
+                    name: check.name,
+                    state: check.state,
+                    stateLabel: t(CHECK_STATE_LABELS[check.state]),
+                  }))}
+                  more={hiddenChecks > 0 ? t('agentInfo.pr.checksMore', { count: hiddenChecks }) : undefined}
+                />
               )}
-            </ChecklistRow>
+            </CollapsibleLine>
           )}
 
           {/* Conflicts — absent means unknown, never a conflict */}
           {showMergeable && (() => {
-            const { label, ...rest } = MERGEABLE_ITEMS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ITEMS]
-            return <ChecklistRow item={{ ...rest, label: t(label) }} />
+            const { Icon, tone, label, done } = MERGEABLE_ITEMS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ITEMS]
+            return <CollapsibleLine icon={Icon} tone={tone} label={t(label)} muted={done} />
           })()}
 
           {/* The last box, and the only one with a command attached: merged, so all
@@ -1112,16 +993,19 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               fields. Offered on a freshly opened PR it would be an affordance that
               lies, which is why it is gated at all. */}
           {showDone && (
-            <ChecklistRow
+            <CollapsibleLine
               // Ticked box, merge colour: the shape says the work is done, the
               // purple keeps GitHub's association the header badge already uses.
-              item={{ Icon: CheckCircle2, tone: 'text-purple', label: t('agentInfo.pr.state.merged'), done: true }}
+              icon={CheckCircle2}
+              tone="purple"
+              label={t('agentInfo.pr.state.merged')}
+              muted
               detail={(
                 <button
                   onClick={() => runSlashCommand(agentId, '/magic:done', t)}
                   // Fixed 20 px so this chip is exactly as tall as the ones carrying
                   // a single word — the button is what used to make it the odd one.
-                  className="flex h-5 items-center gap-1.5 px-2 bg-green/10 hover:bg-green/20 rounded-md text-green text-[11px] font-medium transition-colors"
+                  className="flex h-5 items-center gap-1.5 px-2 bg-green/10 hover:bg-green/20 rounded-lg text-green text-[11px] font-medium transition-colors"
                 >
                   <CheckCircle className="w-3 h-3" />
                   {t('agentInfo.launchDone')}
@@ -1129,26 +1013,8 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               )}
             />
           )}
-        </div>}
-
-        {/* Status bar — the card's footer, and the one band that is always there:
-            how old everything above it is, and the button that makes it newer.
-            Reading on the left, action on the right, so the button is where the eye
-            already is when the stamp turns out to be stale. */}
-        <div className="border-t border-line-subtle px-2 py-1.5 flex items-center gap-2">
-          <span className="min-w-0 text-[10px] text-text-secondary/50 truncate">{checkedLabel}</span>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title={t('agentInfo.pr.refresh')}
-            className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border border-line-subtle text-[11px] font-medium text-text-secondary hover:text-ink hover:bg-surface-strong hover:border-border transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-            {t('agentInfo.pr.refreshAction')}
-          </button>
-        </div>
         </>
       )}
-    </div>
+    </PullRequestCard>
   )
 }

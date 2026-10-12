@@ -1,13 +1,15 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org, PRReviewThread } from '../../types'
+import type { AgentDisplayMode, ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, Org, PRReviewThread } from '../../types'
 import { reviewFileKey } from '../utils/reviewLayout'
 import {
   commentFileKey, commentFileKeyPrefix,
   type CommentTarget, type LineRange,
 } from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
+import { selectInfoSidebarOpen, selectInspectedTerminalId } from './infoSidebar'
 import type { TasksTarget } from '../utils/taskSelection'
+import type { SettingsTab } from '../components/SettingsModal'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -15,7 +17,7 @@ interface CloseAgentModalData {
 }
 
 /** Agents is the only page; everything else opens as a centered overlay. */
-export type ModalId = 'settings' | 'skills' | 'team' | 'tasks'
+export type ModalId = 'settings' | 'skills' | 'plans' | 'tasks'
 
 
 /**
@@ -238,19 +240,64 @@ interface AppState {
   focusedPane: 'primary' | 'secondary'
   isSplitMode: boolean
   isWideScreen: boolean
-  splitEnabled: boolean
   splitActive: boolean
   rightPaneTerminalIds: string[]
 
   // UI
-  // When set, the Config page selects this settings tab on mount, then resets it
-  // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
-  settingsInitialTab: SettingsTab | null
+  /**
+   * THE TITLE BAR'S TWO CONTROLS AND THE ONE DIALOG THEY LEAD TO.
+   *
+   * IN THE STORE AND NOT IN `TitleBar`, which is where the sheet started, because none
+   * of the four is opened only by the control beside it any more. ⌘, opens the sheet
+   * from a window-level listener; the app menu's Account item and the Tasks page's
+   * missing-credential banner both open the settings window on the page they mean; the
+   * sheet itself opens it and closes on the way. Four surfaces that share no ancestor short of
+   * the app root.
+   *
+   * A NULL TAB IS A SHUT DIALOG. It is one value rather than an
+   * `open` boolean beside a tab, because the two can only ever disagree: an open dialog
+   * showing no page, or a page nobody can see.
+   */
+  quickSettingsOpen: boolean
+  accountMenuOpen: boolean
+  /**
+   * The agents whose Claude Code is being swapped for a resumed session, by terminal id.
+   * Their chat shows a loader until the resumed conversation's entries arrive (see
+   * AgentPane). Never persisted: a swap does not outlive the window.
+   */
+  resumingSessions: Record<string, true>
+  settingsTab: SettingsTab | null
   // When set, the Tasks page opens on this ticket rather than on the backlog, then
   // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
   // ticket somebody clicked in the sidebar. See `TasksTarget`.
   tasksInitialTarget: TasksTarget | null
+  /**
+   * The agent a ticket is being PICKED for, or null for an ordinary visit.
+   *
+   * Not one-shot like `tasksInitialTarget`: it is a mode the whole modal is in, so it
+   * outlives mount and is cleared by `closeModal` instead — including the close that
+   * follows an attachment, and the one that follows Escape, which is what makes
+   * cancelling free. The board reads it to turn a card's click from "open this ticket"
+   * into "attach this ticket", and to pin the banner that says so.
+   */
+  tasksPickAgentId: string | null
+  /**
+   * The planner a plan is being PICKED for, or null for an ordinary visit — the Plans
+   * modal's twin of `tasksPickAgentId`, cleared by `closeModal` for the same reason. A
+   * row's click attaches the plan instead of opening it.
+   */
+  plansPickAgentId: string | null
+  // When set, the Plans page opens straight on this plan rather than on the list,
+  // then resets it to null. `tasksInitialTarget`'s twin, one-shot for its reason —
+  // opening Plans by hand afterwards must give the list, not replay the plan somebody
+  // reached from a ticket an hour ago.
+  //
+  // An ID and not a card, unlike the page's own `selected`: the caller is a TICKET,
+  // which has no `PlanCard` and could not build one — the repository name, the author
+  // and their photo are resolved by the list read. The page looks it up once that read
+  // lands; see `PlansPage`.
+  plansInitialPlanId: string | null
   // Which organization the Organization page is scoped to. Held here rather than
   // in the page because the settings rail lists the organizations too, and both
   // it and the page's tab strip have to agree on which one is open. `null` = the
@@ -258,7 +305,20 @@ interface AppState {
   settingsOrgId: string | null
   // The overlay currently on screen, if any. Only one can be open at a time.
   activeModal: ModalId | null
-  rightSidebar: 'info' | null
+  /**
+   * Whether the page modal fills the window rather than sitting in its 85vh panel.
+   *
+   * ONE FLAG FOR ALL FOUR MODALS, not one per page, and that is what "the choice is
+   * restored" means: a reader who has decided that overlays should take the whole
+   * window has decided it about the window, not about Plans in particular. Settings
+   * opening small after Tasks opened large would read as the setting having been
+   * forgotten.
+   *
+   * Persisted in localStorage (see the outer `partialize`), which is what carries it
+   * across a relaunch — sessionStorage holds the terminal layout and dies with the
+   * window.
+   */
+  pageModalFullScreen: boolean
   leftSidebarVisible: boolean
   // Which context window the Skills page's budget gauges are scaled to. See
   // SkillsContextWindowSetting above.
@@ -399,20 +459,53 @@ interface AppState {
   setFocusedPane: (pane: 'primary' | 'secondary') => void
   setSplitMode: (enabled: boolean) => void
   setIsWideScreen: (wide: boolean) => void
-  toggleSplitEnabled: () => void
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setSettingsInitialTab: (tab: SettingsTab | null) => void
+  setQuickSettingsOpen: (open: boolean) => void
+  setResumingSession: (id: string, resuming: boolean) => void
+  /** ⌘, — the same key puts the sheet away again. */
+  toggleQuickSettings: () => void
+  setAccountMenuOpen: (open: boolean) => void
+  /** Open the settings window on `tab`, or shut it with null. */
+  setSettingsTab: (tab: SettingsTab | null) => void
+
   setTasksInitialTarget: (target: TasksTarget | null) => void
+  setPlansInitialPlanId: (id: string | null) => void
   setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
-  openSettingsModal: (tab?: SettingsTab) => void
+  /** Open `modal`, or shut it if it is the one already up. See the implementation. */
+  toggleModal: (modal: ModalId) => void
+  /** Open the settings window. It is the repository list and its detail pages now,
+   *  so there is no tab to name — everything else moved to the two title-bar sheets. */
+  openSettingsModal: () => void
+  /** Open one repository's settings page. See the implementation for the hash route. */
+  openRepoSettings: (repoName: string) => void
   openTasksModal: (target: TasksTarget) => void
-  setRightSidebar: (sidebar: 'info' | null) => void
-  toggleRightSidebar: (sidebar: 'info') => void
+  /** Attach a ticket to an agent and leave picking mode. See `tasksPickAgentId`. */
+  pickTicketForAgent: (agentId: string, ticketId: string) => void
+  /** Take an agent off the ticket it is on, leaving the agent itself alone. */
+  detachTicketFromAgent: (agentId: string) => void
+  /** Open Plans to choose the plan a planner is writing. See `plansPickAgentId`. */
+  openPlansPicker: (agentId: string) => void
+  /** Attach a plan to a planner and leave picking mode. */
+  pickPlanForAgent: (agentId: string, planId: string, planNumber?: number) => void
+  /** Take a planner off the plan it is on, leaving the agent itself alone. */
+  detachPlanFromAgent: (agentId: string) => void
+  openPlansModal: (planId: string) => void
+  /**
+   * Remember whether the info panel is open for ONE agent, and write it through to
+   * that agent's row. There is no window-wide flag any more — see
+   * `Agent.infoSidebarOpen`.
+   */
+  setInfoSidebarOpen: (terminalId: string, open: boolean) => void
+  /** Terminal or chat for ONE agent, written through like the panel. See `Agent.displayMode`. */
+  setDisplayMode: (terminalId: string, mode: AgentDisplayMode) => void
+  /** Flip the panel for the agent currently being inspected. */
+  toggleInfoSidebar: () => void
   toggleLeftSidebar: () => void
+  togglePageModalFullScreen: () => void
   setSkillsContextWindow: (contextWindow: SkillsContextWindowSetting) => void
 
   // Close agent modal actions
@@ -524,6 +617,10 @@ const DRAWER_CLOSED = {
   focusedComment: null,
 } as const satisfies Partial<AppState>
 
+// Re-exported so every caller keeps importing the store's public surface from one
+// place, while the rule itself stays testable without a window. See ./infoSidebar.
+export { selectInspectedTerminalId, selectInfoSidebarOpen } from './infoSidebar'
+
 export const useStore = create<AppState>()(
   persist(
     persist(
@@ -543,15 +640,22 @@ export const useStore = create<AppState>()(
         focusedPane: 'primary',
         isSplitMode: false,
         isWideScreen: false,
-        splitEnabled: false,
         splitActive: false,
         rightPaneTerminalIds: [],
 
-        settingsInitialTab: null,
+        quickSettingsOpen: false,
+        accountMenuOpen: false,
+        resumingSessions: {},
+        settingsTab: null,
         tasksInitialTarget: null,
+        tasksPickAgentId: null,
+        plansPickAgentId: null,
+        plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
-        rightSidebar: null,
+        // Small by default: the panel is what every existing user knows, and a
+        // preference nobody has expressed yet must not change what the app looks like.
+        pageModalFullScreen: false,
         leftSidebarVisible: true,
         skillsContextWindow: 'auto',
 
@@ -573,7 +677,6 @@ export const useStore = create<AppState>()(
           config,
           configLoading: false,
           configError: null,
-          ...(config?.splitEnabled !== undefined ? { splitEnabled: config.splitEnabled } : {}),
           ...(config?.splitActive !== undefined ? { splitActive: config.splitActive } : {}),
         }),
         setConfigLoading: (configLoading) => set({ configLoading }),
@@ -588,10 +691,14 @@ export const useStore = create<AppState>()(
             if (state.terminals.some((t) => t.id === terminal.id)) {
               return { activeTerminalId: terminal.id }
             }
+            // The panel is NOT forced open here any more. A new agent carries no
+            // decision of its own, and an undecided agent reads as
+            // `config.infoSidebarOnCreate` — which is what makes that setting mean
+            // anything, and what stops a restored agent coming back open after the
+            // user closed it.
             return {
               terminals: [...state.terminals, terminal],
               activeTerminalId: terminal.id,
-              rightSidebar: 'info',
             }
           }),
 
@@ -638,10 +745,6 @@ export const useStore = create<AppState>()(
               focusedPane:
                 state.splitTerminalId === id ? 'primary' : state.focusedPane,
               rightPaneTerminalIds: newRightIds,
-              // The info sidebar describes an agent, so it has nothing to show
-              // once the last one is gone: leaving it open would slide an empty
-              // panel back in on the next launch's blank slate.
-              rightSidebar: newTerminals.length === 0 ? null : state.rightSidebar,
             }
           }),
 
@@ -672,7 +775,6 @@ export const useStore = create<AppState>()(
             // someone else's diff.
             collapsedFiles: {},
             fileComments: {},
-            rightSidebar: null,
           }),
 
         setActiveTerminal: (activeTerminalId) =>
@@ -695,8 +797,6 @@ export const useStore = create<AppState>()(
           set((state) => state.isSplitMode === isSplitMode ? {} : { isSplitMode }),
         setIsWideScreen: (isWideScreen) =>
           set((state) => state.isWideScreen === isWideScreen ? {} : { isWideScreen }),
-        toggleSplitEnabled: () =>
-          set((state) => ({ splitEnabled: !state.splitEnabled })),
         toggleSplitActive: () =>
           set((state) => {
             if (state.splitActive) {
@@ -737,8 +837,38 @@ export const useStore = create<AppState>()(
           })
         },
 
-        setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
+        // The two are EXCLUSIVE and it is settled here rather than in the title bar:
+        // they hang from the same corner of the same bar, and the sheet blurs the whole
+        // window behind it — a dropdown over that is a menu floating on fog.
+        // Switched off in Settings → Quick settings, the sheet does not open: every door
+        // to it (⌘, above all) opens the settings window on that page instead, so the
+        // chord still leads somewhere and says where the sheet went.
+        setQuickSettingsOpen: (quickSettingsOpen) => {
+          if (quickSettingsOpen && get().config?.quickSettingsEnabled === false) {
+            get().setSettingsTab('quick-settings')
+            return
+          }
+          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen })
+        },
+        setResumingSession: (id, resuming) => set((s) => {
+          const next = { ...s.resumingSessions }
+          if (resuming) next[id] = true
+          else delete next[id]
+          return { resumingSessions: next }
+        }),
+        // Through the setter above and not a bare flip, so the chord cannot open the
+        // sheet over an account dropdown the setter would have closed.
+        toggleQuickSettings: () => get().setQuickSettingsOpen(!get().quickSettingsOpen),
+        setAccountMenuOpen: (accountMenuOpen) =>
+          set(accountMenuOpen ? { accountMenuOpen, quickSettingsOpen: false } : { accountMenuOpen }),
+        // Opening either dialog puts away whatever opened it: you asked for the page, so
+        // the menu gets out of the way rather than sitting under a dialog it cannot be
+        // reached past.
+        setSettingsTab: (settingsTab) =>
+          set(settingsTab ? { settingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { settingsTab }),
+
         setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
+        setPlansInitialPlanId: (plansInitialPlanId) => set({ plansInitialPlanId }),
         setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
         // Modals are overlays, never destinations: the agents page stays mounted
         // and visible behind them. Two things are normalised on open — every shape
@@ -752,24 +882,170 @@ export const useStore = create<AppState>()(
           }
           return updates
         }),
-        closeModal: () => set({ activeModal: null }),
-        // Convenience wrapper: opens Settings straight on a given tab.
-        openSettingsModal: (tab) => {
-          if (tab) set({ settingsInitialTab: tab })
-          get().openModal('settings')
+        /**
+         * Shut the overlay — and put the SHARED HASH ROUTE back to its home.
+         *
+         * Two of the four pages route off `window.location.hash`: Settings has
+         * `#/repo/<name>`, Skills has `#/skill/<name>`, `#/new` and
+         * `#/repo-skill/<path>`. Leaving the hash where it was means the next open of
+         * that page lands on whatever sub-page was abandoned, which is not what any of
+         * the ways out of here mean — Escape, the close button, picking an agent in the
+         * sidebar, a tray notification, and now the chord that toggles the page shut.
+         *
+         * It used to live in `App`'s `onClose` handler, so it only covered the button
+         * and Escape: closing by any of the other paths left a stale route behind for
+         * the next open to land on.
+         */
+        closeModal: () => {
+          set({ activeModal: null, tasksPickAgentId: null, plansPickAgentId: null })
+          if (window.location.hash && window.location.hash !== '#/') {
+            window.location.hash = '#/'
+          }
+        },
+        /**
+         * THE CHORDS TOGGLE, which is what a chord is for: the hand that pressed ⌘J to
+         * look at the board is already on the keys when it is done looking, and reaching
+         * for Escape or the corner of the window to put it away is a trip the same two
+         * fingers could have made. ⌘, has worked this way since the quick settings sheet
+         * arrived; this is the other four catching up.
+         *
+         * ONLY THE SAME PAGE CLOSES. ⌘J with Skills open is not "put Skills away" — the
+         * four are tabs of one overlay, so it switches to the board, exactly as the tab
+         * strip would. A toggle that closed on any modal would make every chord a
+         * coin-flip between switching and dismissing, depending on which page happened
+         * to be up.
+         *
+         * Openers with an argument — `openTasksModal`, `openPlansModal`,
+         * `openRepoSettings` — stay plain opens and must not route through this: they
+         * are deep links, and a deep link that dismissed the page when it was already
+         * showing something else in the same modal would drop the thing the caller
+         * asked for.
+         */
+        toggleModal: (modal) => {
+          if (get().activeModal === modal) get().closeModal()
+          else get().openModal(modal)
+        },
+        openSettingsModal: () => get().openModal('settings'),
+        /**
+         * Settings, opened straight on ONE repository's page.
+         *
+         * The repository detail is a hash sub-page of the Repositories tab
+         * (`#/repo/<name>`, parsed in pages/Config/index.tsx), so the route is set
+         * BEFORE the modal opens: `ConfigPage` reads the hash once on mount, and a
+         * modal opened first would paint the repository list for a frame and then
+         * jump. When Settings is already up, the `hashchange` carries it instead.
+         *
+         * Closing the detail returns to `#/`, which is the repository list — the one
+         * other thing this window has to show.
+         *
+         * `repoName` is the KEY the repository has in `Config.repositories`, which is
+         * what the route matches on — not a display name. See `RepoMark`.
+         */
+        openRepoSettings: (repoName) => {
+          window.location.hash = `#/repo/${encodeURIComponent(repoName)}`
+          get().openSettingsModal()
         },
         // Same wrapper for Tasks, scoped to one ticket. The target is REQUIRED, unlike
         // `openSettingsModal`'s tab: opening Tasks plain is what `openModal('tasks')`
         // already is, and every caller of this one is a deep link by definition.
         openTasksModal: (target) => {
-          set({ tasksInitialTarget: target })
+          set({ tasksInitialTarget: target, tasksPickAgentId: target.pickForAgentId ?? null })
           get().openModal('tasks')
         },
-        setRightSidebar: (rightSidebar) => set({ rightSidebar }),
-        toggleRightSidebar: (sidebar) => set((state) => ({
-          rightSidebar: state.rightSidebar === sidebar ? null : sidebar
-        })),
+        // One call rather than a metadata write at the call site followed by a close:
+        // the two are one action, and an attachment that left the modal open would put
+        // the reader back on a board they are no longer choosing from.
+        //
+        // BOTH HALVES, which `updateTerminalMetadata` above is not: that action only
+        // moves the store, and the main process is what owns an agent's metadata across
+        // restarts. Every other writer reaches the backend through `useTerminals`, which
+        // the Tasks page cannot call — the hook installs the app's global terminal
+        // listeners and loads the roster on mount, so a second caller would duplicate
+        // both. So the pair is spelled out here, the way `toggleSplitActive` below
+        // already does for the split panes. Failing to persist must not leave the modal
+        // open on a ticket the sidebar is already showing: the store is the source the
+        // UI reads, and a retry is one more click on the same badge.
+        pickTicketForAgent: (agentId, ticketId) => {
+          get().updateTerminalMetadata(agentId, { ticketId })
+          window.electronAPI?.terminal.updateMetadata(agentId, { ticketId }).catch(() => {})
+          get().closeModal()
+        },
+        // The EMPTY STRING and not `undefined`: that is what `createDefaultMetadata`
+        // spells an absent ticket as, it is what `normalizeTicketId` filters out of the
+        // agent index, and it crosses the IPC boundary as itself — where a property
+        // whose value is `undefined` is exactly the kind of thing a serializer is free
+        // to drop, turning "clear this" into "change nothing".
+        //
+        // The modal stays open, unlike picking: the reader is on the ticket's page and
+        // detaching is something they did TO it, not a way of leaving it. The green
+        // banner goes on its own — `hasAgent` is derived from the agent index, which
+        // this write rebuilds.
+        detachTicketFromAgent: (agentId) => {
+          get().updateTerminalMetadata(agentId, { ticketId: '' })
+          window.electronAPI?.terminal.updateMetadata(agentId, { ticketId: '' }).catch(() => {})
+        },
+        // The same wrapper for Plans, scoped to one plan, and REQUIRED for
+        // `openTasksModal`'s reason: opening Plans plain is what `openModal('plans')`
+        // already is, and every caller of this one is a deep link by definition.
+        //
+        // It swaps one overlay for another — a ticket's page is itself inside the Tasks
+        // modal — which `openModal` already handles: only one can be on screen, so the
+        // Tasks modal closes as this opens rather than stacking behind it.
+        openPlansModal: (planId) => {
+          set({ plansInitialPlanId: planId, plansPickAgentId: null })
+          get().openModal('plans')
+        },
+        // `openTasksModal`'s picking mode, for a planner and its plan: the list, not a
+        // plan, because the reader came to choose one.
+        openPlansPicker: (agentId) => {
+          set({ plansInitialPlanId: null, plansPickAgentId: agentId })
+          get().openModal('plans')
+        },
+        // `pickTicketForAgent`'s pair, both halves and for its reasons. The desktop also
+        // writes `planId` itself when the agent's own spec lands on a plan — the plan an
+        // agent is actually writing is the truth, so that write wins over a pick.
+        // `detachTicketFromAgent`'s pair: an EMPTY id rather than a removed key, for its
+        // reason — a key omitted from a metadata merge is a key left alone. The number is
+        // left behind with nothing to label; the badge reads the id.
+        detachPlanFromAgent: (agentId) => {
+          get().updateTerminalMetadata(agentId, { planId: '' })
+          window.electronAPI?.terminal.updateMetadata(agentId, { planId: '' }).catch(() => {})
+        },
+        pickPlanForAgent: (agentId, planId, planNumber) => {
+          // The number goes with the id, or a plan picked in place of a numbered one
+          // would keep the old `#` on its badge.
+          const plan = { planId, planNumber }
+          get().updateTerminalMetadata(agentId, plan)
+          window.electronAPI?.terminal.updateMetadata(agentId, plan).catch(() => {})
+          get().closeModal()
+        },
+        setInfoSidebarOpen: (terminalId, open) => {
+          // Written through on every flip, the way `moveTerminalToPane` writes the
+          // pane: the agent's row is where this lives, and a decision that only
+          // reached the store would not survive the next launch.
+          window.electronAPI?.terminal.updateInfoSidebar(terminalId, open).catch(() => {})
+          set((state) => ({
+            terminals: state.terminals.map((t) =>
+              t.id === terminalId ? { ...t, infoSidebarOpen: open } : t
+            ),
+          }))
+        },
+        setDisplayMode: (terminalId, mode) => {
+          window.electronAPI?.terminal.updateDisplayMode(terminalId, mode).catch(() => {})
+          set((state) => ({
+            terminals: state.terminals.map((t) =>
+              t.id === terminalId ? { ...t, displayMode: mode } : t
+            ),
+          }))
+        },
+        toggleInfoSidebar: () => {
+          const state = get()
+          const terminalId = selectInspectedTerminalId(state)
+          if (!terminalId) return
+          state.setInfoSidebarOpen(terminalId, !selectInfoSidebarOpen(state))
+        },
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
+        togglePageModalFullScreen: () => set((state) => ({ pageModalFullScreen: !state.pageModalFullScreen })),
         setSkillsContextWindow: (skillsContextWindow) => set({ skillsContextWindow }),
 
         // Close agent modal actions
@@ -987,6 +1263,9 @@ export const useStore = create<AppState>()(
       },
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
+        // No `version` bump for this: it is a new key with a default, so nothing already
+        // stored changes meaning and there is no old value to migrate.
+        pageModalFullScreen: state.pageModalFullScreen,
         skillsContextWindow: state.skillsContextWindow,
       }),
     }

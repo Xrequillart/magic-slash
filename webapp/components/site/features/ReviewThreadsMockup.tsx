@@ -113,7 +113,7 @@ export function ReviewThreadsMockup() {
                 <div className="truncate bg-green/10 px-3 text-ink/70">+ {thread.added}</div>
               </div>
 
-              {/* The comment, and the author is YOU — which is not a marketing
+              {/* The comment, and the author is YOU — which is not a showcase
                   flourish, it is who GitHub records. `/magic:review` posts through the
                   authenticated `gh` CLI, so the comments arrive under the user's own
                   account: the review is theirs, written by the agent. Saying

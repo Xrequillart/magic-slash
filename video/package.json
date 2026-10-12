@@ -1,0 +1,36 @@
+{
+  "name": "@magic-slash/video",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The product film, rendered with Remotion from the desktop design system",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "scripts": {
+    "audio": "node scripts/make-audio.mjs",
+    "studio": "npm run audio && remotion studio",
+    "render": "npm run audio && remotion render MagicSlashFilm out/magic-slash.mp4",
+    "render:clips": "npm run audio && for id in Clip-Plan Clip-Build Clip-Workflow Clip-Ship Clip-Review; do remotion render $id out/$id.mp4 || exit 1; done",
+    "still": "remotion still MagicSlashFilm out/still.png"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.533",
+    "@remotion/cli": "4.0.533",
+    "@remotion/fonts": "4.0.533",
+    "@remotion/tailwind": "4.0.533",
+    "@xyflow/react": "^12.12.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remotion": "4.0.533"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.3.7",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}

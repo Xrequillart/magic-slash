@@ -28,7 +28,7 @@ import type { MessageKey } from './i18n'
  *
  * NOT `lib/skills.ts`, and the two are easy to confuse. That file's `TRACKED_SKILLS` is
  * the TELEMETRY vocabulary — read by `/admin` and `components/SkillStats.tsx` to bucket
- * recorded skill hours — and it imports `./supabase`. This is marketing copy. The same
+ * recorded skill hours — and it imports `./supabase`. This is showcase copy. The same
  * separation `lib/commands.ts` documents, and for the same reason: importing that one from
  * a public page would drag the auth SDK into the bundle of a page that authenticates
  * nobody.
@@ -63,7 +63,7 @@ export const SKILLS_BAND_CHROME = {
  * AN ANCHOR AND NOT A PAGE OF ITS OWN, and it is the homepage body's one DIRECT link to
  * that page's command list — the workflow band directly above goes via `/workflow`, which
  * links on to this same anchor, so the two buttons in adjacent bands are one hop apart
- * rather than duplicates. `app/(marketing)/page.tsx` holds the history of how thin the
+ * rather than duplicates. `app/(showcase)/page.tsx` holds the history of how thin the
  * page's links out have been.
  *
  * HERE RATHER THAN TYPED AT THE CALL SITE, for `WORKFLOW_PATH`'s reason: the path and
@@ -86,7 +86,7 @@ export type SkillsBandIcon = 'SquareTerminal' | 'GitMerge' | 'Sparkles'
  * THREE, AND THEY ARE THE THREE THE PRODUCT OWNER ASKED FOR: how many skills there are,
  * that they cover the whole implementation cycle, and that almost nothing is asked of you.
  * A fourth is the slot somebody would have to fill, which is how every cut band on this
- * page started (`app/(marketing)/page.tsx` keeps that history).
+ * page started (`app/(showcase)/page.tsx` keeps that history).
  *
  * THE ORDER IS AN ARGUMENT rather than a list: the first row is a fact you can count, the
  * second is the span it covers, and the third is what that leaves you doing. Read in

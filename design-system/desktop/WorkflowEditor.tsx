@@ -1,0 +1,470 @@
+import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
+
+import { AppTitleBar } from './AppTitleBar'
+import { Banner, type BannerVariant } from './Banner'
+import { CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
+import { CopyPlus, History, RotateCcw } from './icons'
+import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositories, type WorkflowCanvasSelection } from './WorkflowCanvas'
+import type { WorkflowDockLabels } from './WorkflowDock'
+import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
+import type { WorkflowProblemItem } from './WorkflowProblems'
+import { WorkflowHistory, type WorkflowHistoryProps } from './WorkflowHistory'
+import { WorkflowSkillPicker, type WorkflowSkillOption, type WorkflowSkillPickerLabels } from './WorkflowSkillPicker'
+import type { WorkflowCanvasFrame } from './WorkflowFrame'
+import type { WorkflowCanvasSticky } from './WorkflowSticky'
+import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
+
+/**
+ * THE WORKFLOW EDITOR, FULL SCREEN: the app's title bar across the top, naming what is
+ * edited in its middle (`title`), and under it the canvas, framed 6px in from the window's
+ * edges, with everything else floating on it.
+ *
+ *  - the title bar is `AppTitleBar` itself, so the window is still dragged by it and the
+ *    traffic lights keep their corner (`trafficLightGutter`) while the editor covers the app;
+ *  - top centre, the banners: a conflict, a change made elsewhere, a refused save;
+ *  - on the right, the INSPECTOR, only while something is selected. A press on a card or
+ *    a link opens it, a press on the ground or its X closes it;
+ *  - top left, first, the way out (`labels.back`): the settings are where it goes;
+ *  - right of it, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
+ *    others to go to: which flow is edited is the caller's, the picker only asks;
+ *  - right of it, the ACTIONS dropdown (`labels.actions`), saying when the flow last changed. Its rows: the HISTORY (`history`): who changed the flow and its start
+ *    settings, and when (`WorkflowHistory`), in the inspector's place on the right while it
+ *    is open, which of the two shows being the caller's (it closes one as it opens the
+ *    other); DUPLICATE (`duplicate`), a copy of this flow onto another repository; and RESET
+ *    (`reset`), back to the default flow. What the last two do, confirmations included, is
+ *    the caller's;
+ *  - at the bottom centre, the DOCK (`WorkflowDock`): add a step, undo and redo, the
+ *    zoom, the problems, discard, save, close.
+ *
+ * THE TOOLBOX, beside the "+", adds what is not a step: a FRAME (`onAddFrame`), a titled box
+ * grouping cards, at the middle of the view. Selected, it opens in the inspector (its title,
+ * its two colours, Remove), and it is resized from its edges (`onResizeBox`); and a STICKY
+ * NOTE (`onAddSticky`), free text written on the card, its colour and Remove in the inspector.
+ *
+ * A NEW STEP LANDS WHERE THE ADMIN IS LOOKING. The dock's "+" opens the skill picker off
+ * its button, and the skill picked comes back to `onAdd` with the canvas point at the
+ * middle of the view. It is linked to nothing: links are drawn from the cards' ports.
+ *
+ * IT FILLS ITS BOX. The app gives it the whole window (a fixed layer over everything);
+ * the showcase, a stage. It holds the picker's anchor and nothing else: the flow, the
+ * selection and the history are the caller's.
+ *
+ * IT MOVES, and the motion is `workflowCanvas.css`'s: the bar drops in, the canvas rises,
+ * the cards arrive one after the other, the dock slides up from the bottom edge; the
+ * inspector slides in from the right on a selection, back out on none, and swaps its
+ * content in place from one selection to the next. LEAVING is asked for (`leaving`) and
+ * played backwards, and `onLeft` says when it is over: the caller unmounts then.
+ *
+ * NO KEYBOARD OF ITS OWN. ⌘Z, Delete and Escape are the app's to bind, for `Modal`'s
+ * reason: which of several open layers answers a key is a fact about the app's
+ * layering, not about the shape of an editor.
+ *
+ * READ-ONLY (`readOnly`, a member who may not change the flow), the same screen with
+ * nothing to change: no drag, no link to draw, a dock of zoom and close, and an
+ * inspector that says how each step and link runs.
+ *
+ */
+
+export interface WorkflowEditorBanner {
+  id: string
+  variant: BannerVariant
+  message: string
+  hint?: string
+  action?: { label: string; onClick: () => void }
+}
+
+export interface WorkflowEditorLabels {
+  canvas: WorkflowCanvasLabels
+  inspector: WorkflowInspectorLabels
+  picker: WorkflowSkillPickerLabels
+  dock: WorkflowDockLabels
+  /** The way out, top left of the canvas beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
+  back: string
+  /** The actions dropdown's word, and its menu's accessible name: "More actions". */
+  actions?: string
+}
+
+/**
+ * The history panel's tallest: from its top (`top-4`) down to a gap above the canvas's
+ * minimap, bottom right, so a long history scrolls instead of covering it. The minimap sits
+ * xyflow's 15px panel margin in from the canvas, itself 6px in from this box.
+ */
+const HISTORY_MAX_HEIGHT = `calc(100% - 16px - ${6 + 15 + CANVAS_MINIMAP_SIZE.height + 12}px)`
+
+export interface WorkflowEditorHistory {
+  /** The button's word: "History". */
+  label: string
+  /** After it, when the flow last changed: "Updated 2 h ago". */
+  detail?: string
+  detailTitle?: string
+  open: boolean
+  onToggle: () => void
+  panel: Omit<WorkflowHistoryProps, 'onClose' | 'ground' | 'className'>
+}
+
+/** One row of the actions dropdown, past the history's. */
+export interface WorkflowEditorAction {
+  label: string
+  /** Greyed, and never fires: "already the default flow". */
+  disabled?: boolean
+  onClick: () => void
+}
+
+export interface WorkflowEditorProps {
+  /** In the middle of the title bar: "Editing the workflow of magic-slash". */
+  title: string
+  /** The picker left of the canvas's legend, to edit another repository's flow. Not drawn without it. */
+  repositories?: WorkflowCanvasRepositories
+  labels: WorkflowEditorLabels
+  /**
+   * The history button and its panel. Not drawn without it. The panel's content is
+   * `WorkflowHistory`'s props, its X is `onToggle`.
+   */
+  history?: WorkflowEditorHistory
+  /** The dropdown's "copy onto another repository" row. Not drawn without it. */
+  duplicate?: WorkflowEditorAction
+  /** The dropdown's "back to the default flow" row, in red. Not drawn without it. */
+  reset?: WorkflowEditorAction
+
+  nodes: WorkflowCanvasNode[]
+  links: WorkflowCanvasLink[]
+  entry: string[]
+  positions?: Readonly<Record<string, { x: number; y: number }>>
+  selected: WorkflowCanvasSelection | null
+  onSelect: (selection: WorkflowCanvasSelection | null) => void
+  onMove: (id: string, position: { x: number; y: number }, carried?: Record<string, { x: number; y: number }>) => void
+  /** The frames, under the cards. */
+  frames?: WorkflowCanvasFrame[]
+  frameMinSize?: { width: number; height: number }
+  onResizeBox?: (id: string, box: { x: number; y: number; width: number; height: number }) => void
+  /** The toolbox's frame row was picked: add a frame centred on that point. No toolbox without it. */
+  onAddFrame?: (centre: { x: number; y: number }) => void
+  stickies?: WorkflowCanvasSticky[]
+  stickyMinSize?: { width: number; height: number }
+  /** The toolbox's sticky note row was picked: add one centred on that point. */
+  onAddSticky?: (centre: { x: number; y: number }) => void
+  onChangeStickyText?: (id: string, text: string) => void
+  onChangeSticky?: WorkflowInspectorProps['onChangeSticky']
+  onChangeFrame?: WorkflowInspectorProps['onChangeFrame']
+  onConnect: (from: string, to: string, outcome?: string) => void
+  focusRequest?: { id: string; n: number } | null
+
+  /** What the inspector shows for `selected`. */
+  target: WorkflowInspectorTarget | null
+  /** What a step may run, for the dock's picker. */
+  skills: WorkflowSkillOption[]
+  onChangeMode: WorkflowInspectorProps['onChangeMode']
+  onRemove: WorkflowInspectorProps['onRemove']
+  onChangeKind: WorkflowInspectorProps['onChangeKind']
+  onChangeOutcome: WorkflowInspectorProps['onChangeOutcome']
+  onChangeNoteText?: WorkflowInspectorProps['onChangeNoteText']
+  onChangeAction?: WorkflowInspectorProps['onChangeAction']
+  /** The names an action's instruction may use: the inspector's chips. */
+  actionVariables?: WorkflowInspectorProps['actionVariables']
+  onRemoveLink: WorkflowInspectorProps['onRemoveLink']
+  /** A step's switch, on its card or in the inspector: turn it on (`true`) or off. */
+  onToggle: (id: string, enabled: boolean) => void
+  onChangeColor: WorkflowInspectorProps['onChangeColor']
+  onChangeStepOutcomes?: WorkflowInspectorProps['onChangeStepOutcomes']
+  validateStepOutcome?: WorkflowInspectorProps['validateStepOutcome']
+
+  /** A skill was picked off the dock's "+": add it there, the middle of the view. */
+  onAdd: (skill: string, position: { x: number; y: number }) => void
+  /** The picker's end note row was picked: add a note there. Without it, the picker offers skills only. */
+  onAddNote?: (position: { x: number; y: number }) => void
+  /** The picker's Slack action row was picked: add an action there. Without it, no such row. */
+  onAddAction?: (position: { x: number; y: number }) => void
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
+  problems: WorkflowProblemItem[]
+  onFocusProblem: (nodeId: string) => void
+  dirty: boolean
+  saving: boolean
+  canSave: boolean
+  onSave: () => void
+  onDiscard: () => void
+  onClose: () => void
+
+  banners?: WorkflowEditorBanner[]
+  /** Look, don't touch: see above. */
+  readOnly?: boolean
+  /** Play the way out. `onLeft` fires once it has played. */
+  leaving?: boolean
+  onLeft?: () => void
+  /** Keep the title bar's left corner clear of the traffic lights. */
+  trafficLightGutter?: boolean
+  /** Where the picker portals. `document.body` unless the theme is scoped, see `Menu`. */
+  portalTo?: HTMLElement | null
+  /** Margins, or the box. Not the ground. */
+  className?: string
+}
+
+export function WorkflowEditor({
+  title,
+  repositories,
+  labels,
+  history,
+  duplicate,
+  reset,
+  nodes,
+  links,
+  entry,
+  positions,
+  selected,
+  onSelect,
+  onMove,
+  frames,
+  frameMinSize,
+  onResizeBox,
+  onAddFrame,
+  onChangeFrame,
+  stickies,
+  stickyMinSize,
+  onAddSticky,
+  onChangeStickyText,
+  onChangeSticky,
+  onConnect,
+  focusRequest = null,
+  target,
+  skills,
+  onChangeMode,
+  onRemove,
+  onChangeKind,
+  onChangeOutcome,
+  onChangeNoteText,
+  onChangeAction,
+  actionVariables,
+  onRemoveLink,
+  onToggle,
+  onChangeColor,
+  onChangeStepOutcomes,
+  validateStepOutcome,
+  onAdd,
+  onAddNote,
+  onAddAction,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  problems,
+  onFocusProblem,
+  dirty,
+  saving,
+  canSave,
+  onSave,
+  onDiscard,
+  onClose,
+  banners = [],
+  readOnly = false,
+  leaving = false,
+  onLeft,
+  trafficLightGutter = false,
+  portalTo,
+  className = '',
+}: WorkflowEditorProps) {
+  // Where the picker hangs, and where the step it adds will land.
+  const [picker, setPicker] = useState<{ anchor: HTMLElement; position: { x: number; y: number } } | null>(null)
+
+  // The inspector outlives its selection by the length of its exit: what it showed last
+  // slides out with it. `target` is rebuilt on every render of the caller, so only its
+  // presence is watched.
+  const last = useRef<WorkflowInspectorTarget | null>(null)
+  if (target) last.current = target
+  const [exiting, setExiting] = useState<WorkflowInspectorTarget | null>(null)
+  const open = target !== null
+  const wasOpen = useRef(open)
+  useEffect(() => {
+    if (wasOpen.current && !open) setExiting(last.current)
+    if (open) setExiting(null)
+    wasOpen.current = open
+  }, [open])
+  const panel = target ?? exiting
+  // One key per thing selected, so a new selection replays the swap and a re-render does not.
+  const panelKey = !panel ? '' : panel.type === 'node' ? `node:${panel.step.id}`
+    : panel.type === 'frame' ? `frame:${panel.frame.id}` : panel.type === 'sticky' ? `sticky:${panel.sticky.id}` : `link:${panel.link.from}>${panel.link.to}|${panel.link.outcome ?? ''}`
+  // The panel scrolls, and outlives its selection: a new one starts back at the top.
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (panelRef.current) panelRef.current.scrollTop = 0
+  }, [panelKey])
+
+  // A press anywhere but on the history, or on the button that toggles it, closes it: the
+  // canvas, a card, the dock, the title bar. On pointerdown, captured, so a drag that
+  // starts on the canvas closes it too, and nothing under it can swallow the press first.
+  const historyRef = useRef<HTMLDivElement>(null)
+  const historyOpen = history?.open ?? false
+  const closeHistory = useRef<(() => void) | undefined>(undefined)
+  closeHistory.current = history?.onToggle
+  useEffect(() => {
+    if (!historyOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null
+      if (!target || historyRef.current?.contains(target)) return
+      if (target.closest('[data-wf-history-toggle]')) return
+      // A menu or a dialog portalled over the editor is not "outside": it is on top.
+      if (target.closest('[role="menu"], [role="listbox"], [role="dialog"]')) return
+      closeHistory.current?.()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [historyOpen])
+
+  const onRootAnimationEnd = (event: AnimationEvent<HTMLDivElement>) => {
+    if (leaving && event.target === event.currentTarget && event.animationName === 'ms-wfe-leave') onLeft?.()
+  }
+
+  return (
+    <div
+      className={`ms-wfe flex h-full w-full flex-col overflow-hidden bg-bg ${leaving ? 'ms-wfe-leaving ' : ''}${className}`.trim()}
+      onAnimationEnd={onRootAnimationEnd}
+    >
+      <AppTitleBar
+        trafficLightGutter={trafficLightGutter}
+        titles={[{ id: 'workflow', label: title }]}
+        className="ms-wfe-bar flex-shrink-0"
+      />
+      {/* 6px in from the window on every side: the canvas is framed, not bled. */}
+      <div className="relative min-h-0 flex-1 p-1.5">
+        <div className="ms-wfe-stage h-full">
+          <WorkflowCanvas
+            nodes={nodes}
+            links={links}
+            entry={entry}
+            labels={labels.canvas}
+            className="h-full"
+            editable
+            selected={selected}
+            onSelect={onSelect}
+            positions={positions}
+            onMove={readOnly ? undefined : onMove}
+            frames={frames}
+            frameMinSize={frameMinSize}
+            onResizeBox={readOnly ? undefined : onResizeBox}
+            stickies={stickies}
+            stickyMinSize={stickyMinSize}
+            onChangeStickyText={readOnly ? undefined : onChangeStickyText}
+            onConnect={readOnly ? undefined : onConnect}
+            onToggle={readOnly ? undefined : onToggle}
+            focusRequest={focusRequest}
+            back={{ label: labels.back, title: labels.dock.close, onClick: onClose }}
+            repositories={repositories}
+            actions={history || duplicate || reset ? {
+              label: labels.actions ?? history?.label ?? '',
+              detail: history?.detail,
+              detailTitle: history?.detailTitle,
+              active: history?.open ?? false,
+              menuLabel: labels.actions ?? history?.label ?? '',
+              portalTo,
+              items: [
+                ...(history ? [{ id: 'history', label: history.label, icon: History }] : []),
+                ...(duplicate ? [{ id: 'duplicate', label: duplicate.label, icon: CopyPlus, disabled: duplicate.disabled }] : []),
+                ...(reset ? [{ id: 'reset', label: reset.label, icon: RotateCcw, tone: 'danger' as const, disabled: reset.disabled }] : []),
+              ],
+              onSelect: (id) => {
+                if (id === 'history') history?.onToggle()
+                else if (id === 'duplicate') duplicate?.onClick()
+                else if (id === 'reset') reset?.onClick()
+              },
+            } : undefined}
+            // The dock has no close button: the back plate, top left, is the way out.
+            dock={readOnly ? { labels: labels.dock } : {
+              labels: labels.dock,
+              onAdd: (anchor, position) => setPicker({ anchor, position }),
+              onAddFrame,
+              onAddSticky,
+              canUndo,
+              canRedo,
+              onUndo,
+              onRedo,
+              problems,
+              onFocusProblem,
+              dirty,
+              saving,
+              canSave,
+              onSave,
+              onDiscard,
+            }}
+          />
+        </div>
+
+        {banners.length > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 top-4 flex flex-col items-center gap-2 px-4">
+            {banners.map((banner) => (
+              <div key={banner.id} className="ms-wfe-banner pointer-events-auto w-full max-w-xl rounded-xl shadow-lg">
+                <Banner
+                  variant={banner.variant}
+                  hint={banner.hint}
+                  actions={banner.action ? [banner.action] : undefined}
+                >
+                  {banner.message}
+                </Banner>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {history?.open && (
+          <div
+            ref={historyRef}
+            className="ms-wfe-panel absolute right-4 top-4 flex w-[30rem] flex-col rounded-xl shadow-2xl"
+            style={{ maxHeight: HISTORY_MAX_HEIGHT }}
+          >
+            <WorkflowHistory {...history.panel} ground="raised" onClose={history.onToggle} className="flex min-h-0 flex-col" />
+          </div>
+        )}
+
+        {panel && !history?.open && (
+          <div
+            ref={panelRef}
+            className={`ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[27rem] overflow-y-auto rounded-xl shadow-2xl ${open ? '' : 'ms-wfe-panel-leaving'}`.trim()}
+            onAnimationEnd={(event) => { if (event.animationName === 'ms-wfe-panel-out' && !open) setExiting(null) }}
+          >
+            <div key={panelKey} className="ms-wfe-swap">
+              <WorkflowInspector
+                target={panel}
+                labels={labels.inspector}
+                readOnly={readOnly}
+                ground="raised"
+                onChangeMode={onChangeMode}
+                onRemove={onRemove}
+                onChangeKind={onChangeKind}
+                onChangeOutcome={onChangeOutcome}
+                onChangeNoteText={readOnly ? undefined : onChangeNoteText}
+                onChangeAction={readOnly ? undefined : onChangeAction}
+                actionVariables={actionVariables}
+                onChangeFrame={readOnly ? undefined : onChangeFrame}
+                onChangeSticky={readOnly ? undefined : onChangeSticky}
+                onRemoveLink={onRemoveLink}
+                onToggle={readOnly ? undefined : onToggle}
+                onChangeColor={readOnly ? undefined : onChangeColor}
+                onChangeStepOutcomes={readOnly ? undefined : onChangeStepOutcomes}
+                validateStepOutcome={validateStepOutcome}
+                onClose={() => onSelect(null)}
+              />
+            </div>
+          </div>
+        )}
+
+        <WorkflowSkillPicker
+          open={picker !== null}
+          onClose={() => setPicker(null)}
+          anchor={picker?.anchor ?? null}
+          skills={skills}
+          labels={labels.picker}
+          portalTo={portalTo}
+          onPick={(skill) => {
+            if (picker) onAdd(skill, picker.position)
+          }}
+          onPickNote={onAddNote && (() => {
+            if (picker) onAddNote(picker.position)
+          })}
+          onPickAction={onAddAction && (() => {
+            if (picker) onAddAction(picker.position)
+          })}
+        />
+      </div>
+    </div>
+  )
+}

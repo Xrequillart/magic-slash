@@ -12,6 +12,7 @@ It's people like you that make Magic Slash such a great tool.
 - [Style Guidelines](#style-guidelines)
 - [Commit Messages](#commit-messages)
 - [Pull Request Process](#pull-request-process)
+- [License of Contributions](#license-of-contributions)
 
 ## Code of Conduct
 
@@ -248,6 +249,20 @@ Before submitting your PR, ensure:
 - [ ] Commit messages follow conventional commits
 - [ ] PR description clearly explains the changes
 - [ ] Related issues are linked
+
+## License of Contributions
+
+Magic Slash is published under the [PolyForm Shield License 1.0.0](LICENSE). It is not an
+OSI open source license: the code is public and you may use it for any purpose, including
+commercially, but you may not use it to provide a product that competes with Magic Slash.
+
+By opening a pull request you agree that your contribution is licensed to the project under
+those same terms, and that you have the right to grant that license for the code you submit.
+If your employer holds rights over what you write, make sure you are allowed to contribute
+before you open the PR.
+
+Contributions merged before the relicensing commit were made under the MIT license and stay
+available under it.
 
 ## Questions?
 

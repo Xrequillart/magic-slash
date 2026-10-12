@@ -1,4 +1,4 @@
-import { Edit2, Check } from 'lucide-react'
+import { EditableText, type EditableTextProps } from '@ds/desktop'
 import { useT } from '../../i18n'
 
 /**
@@ -12,6 +12,12 @@ import { useT } from '../../i18n'
  *
  * The editing state lives in AgentInfoSidebar rather than here: a field can be
  * open for editing while the agent is switched, and the sidebar is what resets it.
+ *
+ * THE DRAWING IS `EditableText`, in the design system — the ground that appears on
+ * hover and stays for the edit, the pencil that reserves the column the text wraps
+ * against, the box that grows to its content, and the rule that nothing moves when a
+ * field opens. What is left in this file is which of the two readings each field is,
+ * and the four strings it needs in the reader's language.
  */
 export interface AgentIdentity {
   title?: string
@@ -28,97 +34,63 @@ export interface AgentIdentity {
   saveDescription: () => void
   setIsEditingTitle: (v: boolean) => void
   setIsEditingDescription: (v: boolean) => void
-  titleInputRef: React.RefObject<HTMLInputElement>
-  descriptionInputRef: React.RefObject<HTMLTextAreaElement>
 }
 
-/** Click-to-edit agent title. Enter saves, Escape cancels, blur saves. */
+/** What `EditableText` needs, minus everything the two presets below decide. */
+type FieldProps = Omit<EditableTextProps, 'variant' | 'multiline' | 'as' | 'className'>
+
+/**
+ * The two fields, as props.
+ *
+ * A HOOK BESIDE THE TWO COMPONENTS, for the reason the ticket badge and the status
+ * have one: `TitleAgentCard` takes both fields as data, and the spec panel renders the
+ * title on its own. One resolution, so the strings and the keyboard rules cannot
+ * differ between an implementation agent and a planning one.
+ */
+export function useAgentIdentityFields(identity: AgentIdentity): {
+  title: FieldProps
+  description: FieldProps
+} {
+  const t = useT()
+
+  return {
+    title: {
+      value: identity.title ?? '',
+      placeholder: t('agentInfo.addTitle'),
+      editPlaceholder: t('agentInfo.titlePlaceholder'),
+      editing: identity.isEditingTitle,
+      draft: identity.editTitle,
+      onDraftChange: identity.setEditTitle,
+      onStartEditing: identity.startEditingTitle,
+      onSave: identity.saveTitle,
+      onCancel: () => identity.setIsEditingTitle(false),
+    },
+    description: {
+      value: identity.description ?? '',
+      placeholder: t('agentInfo.addDescription'),
+      editPlaceholder: t('agentInfo.descriptionPlaceholder'),
+      // ENTER RATHER THAN ⌘ENTER, and no Save button beside it. The button was the only
+      // way out that did not require knowing a shortcut, and it sat under a hint that
+      // was hardcoded English — the one string in the sidebar the language switch never
+      // reached. Enter is what the title does; the multi-line case keeps Shift+Enter,
+      // which every chat box in the app already trains.
+      hint: t('agentInfo.descriptionHint'),
+      editing: identity.isEditingDescription,
+      draft: identity.editDescription,
+      onDraftChange: identity.setEditDescription,
+      onStartEditing: identity.startEditingDescription,
+      onSave: identity.saveDescription,
+      onCancel: () => identity.setIsEditingDescription(false),
+    },
+  }
+}
+
+/** Click-to-edit agent title, for a caller that draws the field itself. */
 export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
-  const t = useT()
-
-  if (identity.isEditingTitle) {
-    return (
-      <div className="flex items-center gap-2">
-        <input
-          ref={identity.titleInputRef}
-          type="text"
-          value={identity.editTitle}
-          onChange={(e) => identity.setEditTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') identity.saveTitle()
-            if (e.key === 'Escape') identity.setIsEditingTitle(false)
-          }}
-          onBlur={identity.saveTitle}
-          placeholder={t('agentInfo.titlePlaceholder')}
-          className="flex-1 bg-surface border border-accent rounded px-2 py-1 text-ink font-semibold text-sm focus:outline-none"
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="flex items-start gap-2 cursor-pointer hover:bg-surface -mx-2 px-2 py-1 rounded transition-colors"
-      onClick={identity.startEditingTitle}
-    >
-      {identity.title ? (
-        <h2 className="flex-1 text-ink font-semibold text-sm leading-tight break-words">{identity.title}</h2>
-      ) : (
-        <h2 className="flex-1 text-text-secondary/40 italic text-sm">{t('agentInfo.addTitle')}</h2>
-      )}
-      <Edit2 className="w-3.5 h-3.5 text-icon-muted hover:text-icon transition-colors flex-shrink-0 mt-0.5" />
-    </div>
-  )
+  return <EditableText as="h2" variant="title" {...useAgentIdentityFields(identity).title} />
 }
 
-/** Click-to-edit agent description. ⌘Enter saves, Escape cancels. */
+/** Click-to-edit agent description, for a caller that draws the field itself. */
 export function AgentDescriptionField({ identity }: { identity: AgentIdentity }) {
-  const t = useT()
-
-  if (identity.isEditingDescription) {
-    return (
-      <div className="space-y-2">
-        <textarea
-          ref={identity.descriptionInputRef}
-          value={identity.editDescription}
-          onChange={(e) => identity.setEditDescription(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') identity.setIsEditingDescription(false)
-            if (e.key === 'Enter' && e.metaKey) identity.saveDescription()
-          }}
-          placeholder={t('agentInfo.descriptionPlaceholder')}
-          rows={3}
-          className="w-full bg-surface border border-accent rounded px-2 py-1.5 text-xs text-ink/70 focus:outline-none resize-none leading-relaxed"
-        />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-text-secondary/40">⌘Enter to save, Esc to cancel</span>
-          <button
-            onClick={identity.saveDescription}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-green hover:bg-green/10 rounded transition-colors"
-          >
-            <Check className="w-3 h-3" />
-            {t('common.save')}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="cursor-pointer hover:bg-surface -mx-2 px-2 py-1 rounded transition-colors"
-      onClick={identity.startEditingDescription}
-    >
-      <div className="flex items-start gap-2">
-        {identity.description ? (
-          <div className="flex-1 text-xs text-ink/60 whitespace-pre-wrap break-words leading-relaxed">
-            {identity.description}
-          </div>
-        ) : (
-          <span className="flex-1 text-xs text-text-secondary/40 italic">{t('agentInfo.addDescription')}</span>
-        )}
-        <Edit2 className="w-3 h-3 text-icon-muted hover:text-icon transition-colors flex-shrink-0 mt-0.5" />
-      </div>
-    </div>
-  )
+  return <EditableText multiline {...useAgentIdentityFields(identity).description} />
 }

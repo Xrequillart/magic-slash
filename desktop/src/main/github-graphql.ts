@@ -68,12 +68,16 @@ export const PR_STATUS_QUERY = `query($owner:String!,$repo:String!,$number:Int!)
       author { login }
       headRefOid
       commits(last:1){ nodes { commit { statusCheckRollup { state contexts(last:100){ nodes {
-        ... on CheckRun { name status conclusion detailsUrl }
+        ... on CheckRun { databaseId name status conclusion detailsUrl
+          checkSuite { workflowRun { event workflow { name } } } }
         ... on StatusContext { context state targetUrl }
       } } } } } }
       reviews(last:100){ pageInfo { hasPreviousPage startCursor } nodes { author{login} state submittedAt body } }
-      reviewThreads(last:50){ nodes { comments(first:1){ totalCount nodes { author{login} } } } }
-      comments(last:20){ totalCount nodes { author{login} } }
+      reviewThreads(last:50){ nodes {
+        comments(first:1){ totalCount nodes { author{login} } }
+        latestComment: comments(last:1){ nodes { author{login} createdAt } }
+      } }
+      comments(last:20){ totalCount nodes { author{login} createdAt } }
     }
   }
 }`
@@ -186,10 +190,14 @@ interface GQLActor {
 /** A `statusCheckRollup` context: either a CheckRun or a StatusContext. */
 interface GQLCheckContext {
   // CheckRun
+  databaseId?: number | null
   name?: string | null
   status?: string | null
   conclusion?: string | null
   detailsUrl?: string | null
+  checkSuite?: {
+    workflowRun?: { event?: string | null; workflow?: { name?: string | null } | null } | null
+  } | null
   // StatusContext
   context?: string | null
   state?: string | null
@@ -231,6 +239,12 @@ export interface GQLPullRequest {
       /** Comments query only — `RIGHT` (the file after the change) or `LEFT` (before it). */
       diffSide?: string | null
       comments?: { totalCount?: number; nodes?: (GQLCommentNode | null)[] | null } | null
+      /**
+       * Status query only: the thread's NEWEST comment, aliased beside `comments`, which
+       * asks for the first one (its author is "who spoke first" on the card). This one
+       * is what dates a reply, for `latestFeedback`.
+       */
+      latestComment?: { nodes?: (GQLCommentNode | null)[] | null } | null
     } | null)[] | null
   } | null
   comments?: {
@@ -412,6 +426,35 @@ function mapCheck(node: GQLCheckContext): PRCheck | null {
   return { name: node.name, state, ...(node.detailsUrl ? { url: node.detailsUrl } : {}) }
 }
 
+/**
+ * Which slot a context occupies on GitHub's own checks list.
+ *
+ * A StatusContext is already the latest per `context`. CheckRuns are not: every run of
+ * a workflow adds one to the head commit, so a job triggered on `pull_request_review`
+ * leaves a new run behind each time somebody reviews. GitHub shows only the newest per
+ * workflow, event and job (the same job under `pull_request` and
+ * `pull_request_review` is two rows there too). A run from an app, with no
+ * workflow run behind it, is keyed by its name alone.
+ */
+function checkSlot(node: GQLCheckContext): string {
+  if (typeof node.context === 'string') return `status:${node.context}`
+  const run = node.checkSuite?.workflowRun
+  return `run:${run?.workflow?.name ?? ''}:${run?.event ?? ''}:${node.name ?? ''}`
+}
+
+/** Keeps the newest context per slot, at the position its slot first appeared. */
+function latestPerSlot(nodes: (GQLCheckContext | null)[]): GQLCheckContext[] {
+  const latest = new Map<string, GQLCheckContext>()
+  for (const node of nodes) {
+    if (!node) continue
+    const slot = checkSlot(node)
+    const kept = latest.get(slot)
+    // databaseId grows with every run; a node without one never displaces another.
+    if (!kept || (node.databaseId ?? -1) > (kept.databaseId ?? -1)) latest.set(slot, node)
+  }
+  return [...latest.values()]
+}
+
 function summarise(checks: PRCheck[]): PRChecksSummary {
   const summary: PRChecksSummary = { total: checks.length, passed: 0, failed: 0, running: 0, skipped: 0 }
   for (const check of checks) summary[check.state] += 1
@@ -441,6 +484,29 @@ function mapMergeable(mergeable: string | null | undefined): boolean | undefined
   return undefined
 }
 
+/**
+ * The newest review or comment written by somebody other than the PR author.
+ *
+ * What the watcher notifies on: a verdict-level status cannot say "somebody spoke
+ * again", since a second comment on a `commented` PR leaves it `commented`. The
+ * author is excluded because their own replies — typed, or posted by
+ * `/magic:resolve` under their `gh` login — are not news to them. Nodes without a
+ * timestamp (a PENDING review has no `submittedAt`) are skipped.
+ */
+function findLatestFeedback(
+  entries: { login?: string | null; at?: string | null }[],
+  authorLogin: string | undefined,
+): { at: number; author: string } | undefined {
+  let latest: { at: number; author: string } | undefined
+  for (const { login, at } of entries) {
+    if (!login || !at || login === authorLogin) continue
+    const ms = new Date(at).getTime()
+    if (!Number.isFinite(ms)) continue
+    if (!latest || ms > latest.at) latest = { at: ms, author: login }
+  }
+  return latest
+}
+
 /** Maps a successful payload onto the shared snapshot shape. */
 export function mapPullRequestToSnapshot(
   pr: GQLPullRequest,
@@ -450,8 +516,7 @@ export function mapPullRequestToSnapshot(
 
   const rollup = pr.commits?.nodes?.[0]?.commit?.statusCheckRollup ?? null
   const checks: PRCheck[] = []
-  for (const node of rollup?.contexts?.nodes ?? []) {
-    if (!node) continue
+  for (const node of latestPerSlot(rollup?.contexts?.nodes ?? [])) {
     const check = mapCheck(node)
     if (check) checks.push(check)
   }
@@ -492,6 +557,15 @@ export function mapPullRequestToSnapshot(
     ...conversationNodes.map(c => ({ user: { login: c.author?.login || undefined } })),
   ]
 
+  const latestFeedback = findLatestFeedback(
+    [
+      ...reviewNodes.map(r => ({ login: r.author?.login, at: r.submittedAt })),
+      ...threadNodes.flatMap(t => (t.latestComment?.nodes ?? []).map(c => ({ login: c?.author?.login, at: c?.createdAt }))),
+      ...conversationNodes.map(c => ({ login: c.author?.login, at: c.createdAt })),
+    ],
+    authorLogin,
+  )
+
   const state = mapState(pr.state, pr.isDraft === true)
   const aggregated = aggregatePRStatus(
     {
@@ -518,6 +592,7 @@ export function mapPullRequestToSnapshot(
     checksSummary: summarise(checks),
     commentCounts,
     commentAuthors: Array.from(authors),
+    ...(latestFeedback ? { latestFeedback } : {}),
     headSha: pr.headRefOid || '',
     ...(rollup?.state ? { rollupState: rollup.state } : {}),
   }

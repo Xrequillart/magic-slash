@@ -1,3 +1,6 @@
+import type { ResolvedWorkflow } from './workflow/model'
+import type { WorkflowOverlay, WorkflowProblem } from './workflow/overlay'
+
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
 export type AggregatedReviewStatus = 'approved' | 'changes-requested' | 'commented' | 'pending'
@@ -227,6 +230,14 @@ export interface RepositoryMetadata {
   prMergeable?: boolean
   prWatchError?: PRWatchError
   prLastCheckedAt?: number
+  /**
+   * Epoch ms of the newest review or comment by someone other than the author, as
+   * of the last persisted read; 0 when there was none. The watcher's durable
+   * baseline for "is this feedback new", so a review that landed while the app
+   * was closed is still announced at the next launch. Absent means never
+   * recorded (a row from an older version), which announces nothing.
+   */
+  prLastFeedbackAt?: number
 }
 
 /** One CI check or commit status attached to the PR head commit. */
@@ -256,6 +267,11 @@ export interface PRStatusSnapshot extends AggregatedPRStatus {
   checksSummary: PRChecksSummary
   commentCounts: PRCommentCounts
   commentAuthors: string[]
+  /**
+   * The newest review or comment by someone other than the PR author, epoch ms and
+   * login. Absent when nobody else has said anything yet.
+   */
+  latestFeedback?: { at: number; author: string }
   headSha: string
   /** Rollup state, part of the cache key: a check flipping green need not move updatedAt. */
   rollupState?: string
@@ -778,9 +794,20 @@ export interface GitHubTaskRepoGroup extends TaskRepoGroupBase {
  *
  * No `totalOpen`, and that is Jira's doing rather than an omission: `/rest/api/3/
  * search/jql` is paginated by TOKEN and returns no `total` at all, so "50 of 214" is
- * a sentence this side cannot say. `truncated` is what it can say instead — there is
- * another page — and the card words it accordingly.
+ * a sentence this side cannot say. `truncatedColumns` is what it can say instead —
+ * these columns have another page — and the board words it accordingly.
  */
+/**
+ * The four columns the Tasks board deals a ticket into, as a name both sides of the
+ * bridge can use.
+ *
+ * Declared here rather than in `renderer/utils/taskBoard.ts`, which owns the ORDER
+ * they are drawn in and the rule that puts a ticket in one, because the main process
+ * now reads a sprint one column at a time — a budget each — and has to say which of
+ * them it had to cut short. See `JiraTaskRepoGroup.truncatedColumns`.
+ */
+export type TaskBoardColumn = 'blocked' | 'backlog' | 'progress' | 'done'
+
 export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
   tracker: 'jira'
   issues: JiraTaskIssue[]
@@ -797,8 +824,17 @@ export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
    * simply says less in that case.
    */
   sprintName?: string
-  /** Set when Jira offered a further page and the read stopped at the cap. */
-  truncated?: boolean
+  /**
+   * The columns Jira offered a further page for, so the read stopped at that column's
+   * cap. Absent when every column came back whole.
+   *
+   * A LIST AND NOT A FLAG, since the read became one query per column. The single
+   * boolean it replaces was the honest answer while all three unfinished columns shared
+   * one 50-ticket budget — nothing could say which of them the cap had eaten. Now each
+   * column has a budget of its own, so the board can mark the one column that is short
+   * instead of hanging a caveat over the whole page.
+   */
+  truncatedColumns?: TaskBoardColumn[]
   error?: JiraTaskStatusError
 }
 
@@ -844,6 +880,22 @@ export interface TasksSnapshot {
     jira: boolean
   }
   groups: TaskRepoGroup[]
+  /**
+   * EVERY repository the page could show, in config order — what the repository picker
+   * offers. Named without being read: the groups above cover `configKey` alone.
+   */
+  repos: TaskRepoOption[]
+  /**
+   * The repository `groups` were read for, resolved from the one asked for, then the
+   * saved `Config.tasksRepo`, then the first of `repos`. `''` when `repos` is empty.
+   */
+  configKey: string
+}
+
+/** One entry of the Tasks page's repository picker. See `TasksSnapshot.repos`. */
+export interface TaskRepoOption {
+  configKey: string
+  name: string
 }
 
 export interface TerminalUsage {
@@ -863,6 +915,120 @@ export interface TerminalUsage {
   sevenDayPercent?: number   // rate_limits.seven_day.used_percentage (0-100)
   sevenDayResetsAt?: number  // rate_limits.seven_day.resets_at (unix epoch seconds)
   updatedAt?: number         // timestamp of last statusline report
+  /**
+   * transcript_path — the session's JSONL, which the chat view renders. Rides on the
+   * statusLine report because it is the one payload every session already sends, and
+   * a new session (`/clear`, a relaunch) announces its new file the same way.
+   */
+  transcriptPath?: string
+  /** version — the Claude Code running this session, e.g. "2.1.3". */
+  version?: string
+}
+
+/**
+ * How an agent's Claude Code session is shown. `terminal` is the TUI itself; `chat`
+ * renders the same session from its transcript, over the same process — so the two are
+ * views, not modes of the session, and switching never restarts anything.
+ */
+export type AgentDisplayMode = 'terminal' | 'chat'
+
+export function isValidDisplayMode(value: unknown): value is AgentDisplayMode {
+  return value === 'terminal' || value === 'chat'
+}
+
+/**
+ * THE CHAT VIEW'S OWN SETTINGS (Settings → Sessions → Chat view). Each absent value reads
+ * as the first of its list, which is how the chat behaved before it could be set.
+ *
+ *   - send key: `enter` sends (Shift+Enter is a new line), or `mod-enter` sends on ⌘Enter
+ *     and leaves Enter to the new line, for long prompts.
+ *   - tool detail: every tool call on its line, only the ones that change something
+ *     (edits, commands, failures), or each run of calls folded into one line.
+ *   - diffs: the card's first lines with the rest on request, the whole diff, or the
+ *     file's name and counts only until opened.
+ *   - timestamps: on no message, on the one under the pointer, or on every one.
+ */
+export const CHAT_SEND_KEYS = ['enter', 'mod-enter'] as const
+export type ChatSendKey = (typeof CHAT_SEND_KEYS)[number]
+export const CHAT_TOOL_DETAILS = ['all', 'changes', 'grouped'] as const
+export type ChatToolDetail = (typeof CHAT_TOOL_DETAILS)[number]
+export const CHAT_DIFF_DISPLAYS = ['collapsed', 'preview', 'full'] as const
+export type ChatDiffDisplay = (typeof CHAT_DIFF_DISPLAYS)[number]
+export const CHAT_TIMESTAMPS = ['never', 'hover', 'always'] as const
+export type ChatTimestamps = (typeof CHAT_TIMESTAMPS)[number]
+
+export const isValidChatSendKey = (v: unknown): v is ChatSendKey => (CHAT_SEND_KEYS as readonly unknown[]).includes(v)
+export const isValidChatToolDetail = (v: unknown): v is ChatToolDetail => (CHAT_TOOL_DETAILS as readonly unknown[]).includes(v)
+export const isValidChatDiffDisplay = (v: unknown): v is ChatDiffDisplay => (CHAT_DIFF_DISPLAYS as readonly unknown[]).includes(v)
+export const isValidChatTimestamps = (v: unknown): v is ChatTimestamps => (CHAT_TIMESTAMPS as readonly unknown[]).includes(v)
+
+/**
+ * One line of the chat view, built from the transcript (see main/chat/transcript.ts).
+ * A tool call and its result are ONE entry: the result arrives later and updates it.
+ */
+export type ChatEntry =
+  /** `at`: when it was sent, epoch ms, from the transcript line. */
+  | { kind: 'user'; id: string; text: string; at?: number }
+  | { kind: 'assistant'; id: string; text: string; at?: number }
+  /** What a local slash command printed (`/cost`, `/model`, `/mcp`…): Claude Code's, not Claude's. */
+  | { kind: 'notice'; id: string; text: string }
+  | {
+      kind: 'tool'
+      id: string
+      name: string
+      /** The one argument worth reading: the command, the file, the pattern. */
+      summary: string
+      status: 'running' | 'done' | 'error'
+      output?: string
+      /** A file the call changed (Edit, MultiEdit, Write), drawn as a diff card. */
+      diff?: ChatDiff
+      /** What a shell command changed on disk, measured around it (main/chat/command-diff.ts). */
+      diffs?: ChatDiff[]
+    }
+
+/**
+ * A prompt Claude Code holds until the turn at work lets it in: typed while the agent
+ * was busy, in the chat or in the terminal. Read off the transcript's `queue-operation`
+ * lines (see main/chat/transcript.ts). `at`: when it was queued, epoch ms.
+ */
+export interface ChatQueuedPrompt {
+  id: string
+  text: string
+  at?: number
+}
+
+/**
+ * A subagent the session launched in the background (an Agent call with
+ * `run_in_background`), from its launch until Claude Code notifies its end. Read off the
+ * transcript (see main/chat/transcript.ts). `id`: the launching tool call's id. `at`:
+ * when it was launched, epoch ms.
+ */
+export interface ChatBackgroundAgent {
+  id: string
+  description: string
+  at?: number
+}
+
+/** What the chat view is drawn from: the conversation, and what waits to join it. */
+export interface ChatSnapshot {
+  entries: ChatEntry[]
+  queue: ChatQueuedPrompt[]
+  /** The subagents still running in the background, oldest first. */
+  background: ChatBackgroundAgent[]
+}
+
+/**
+ * What a file edit changed, from Claude Code's own record of it (`toolUseResult`:
+ * `structuredPatch` for an edit, the whole `content` for a file written new).
+ * `lines` are unified-diff lines: a `+`, `-` or ` ` and the text.
+ */
+export interface ChatDiff {
+  path: string
+  added: number
+  removed: number
+  hunks: { oldStart: number; newStart: number; lines: string[] }[]
+  /** Lines were dropped past the cap: the terminal, or the file, has the rest. */
+  truncated?: boolean
 }
 
 // Signed-in Claude account (from ~/.claude.json oauthAccount).
@@ -885,6 +1051,12 @@ export interface SpendSummary {
   week: SpendBucket
   allTime: SpendBucket
   hasData: boolean
+}
+
+/** Which plan a write landed on: the row id, and the short `#7` when the row has one. */
+export interface PlanSessionRef {
+  id: string
+  number?: number
 }
 
 export interface TerminalMetadata {
@@ -916,6 +1088,23 @@ export interface TerminalMetadata {
    */
   specPath?: string
   /**
+   * The `plan_sessions` row this planner writes, as soon as the desktop has created it.
+   *
+   * NOT SENT BY ANY SKILL, and that is the point of it: the skill announces `specPath`,
+   * the desktop creates the session from it (`recordPlanSession`) and writes the row's
+   * id back here. A planner is linked to its plan from its first minute rather than to a
+   * ticket at its last — the tickets hang off the plan (`plan_tickets`), not off the
+   * agent.
+   */
+  planId?: string
+  /**
+   * That plan's short id — the `#7` the Plans page prints — carried beside `planId` so
+   * the sidebar badge can say which plan without a read. Refreshed on every write of the
+   * agent's own spec, which is what keeps it honest in the one case the database moves
+   * it (see `PlanSession.number`). Absent on a row from before numbers existed.
+   */
+  planNumber?: number
+  /**
    * Absent on agents created before the type existed, and on any agent whose skill
    * has not announced one yet. Readers must treat absent as `coder`: that is what
    * every agent was before planning existed, and it is the default for a new one.
@@ -925,6 +1114,42 @@ export interface TerminalMetadata {
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>
   usage?: TerminalUsage
+  /**
+   * The JSONL of the Claude Code session this agent is on, so that quitting the app and
+   * opening it again resumes the conversation (`claude --resume`) instead of starting a
+   * new one. Persisted, unlike `usage.transcriptPath` it mirrors: written when the
+   * statusLine reports a DIFFERENT file (a `/clear` does), and dropped whenever the app
+   * replaces Claude Code with a fresh one — the restart button, a double Ctrl+C — so a
+   * conversation thrown away on purpose stays thrown away. See `resumableSessionId`.
+   */
+  claudeTranscriptPath?: string
+  /**
+   * Every Claude Code session this agent has been on, oldest first, so the title bar can
+   * list them and resume any one. Grows when the statusLine reports a file it has not seen
+   * (see `withSession`), capped at `MAX_AGENT_SESSIONS`. In the cloud with the agent; the
+   * files themselves stay on the machine that wrote them.
+   */
+  claudeSessions?: ClaudeSessionRef[]
+}
+
+/** One Claude Code session an agent has been on: its JSONL, and when the agent met it. */
+export interface ClaudeSessionRef {
+  transcriptPath: string
+  startedAt: number
+}
+
+/** A session as the title bar's history lists it (`terminal:listSessions`). */
+export interface ClaudeSessionEntry {
+  transcriptPath: string
+  /** `/rename`'s title, else Claude Code's own, else the last prompt. */
+  title?: string
+  startedAt: number
+  /** The file's last write. Absent when the file is not on this machine. */
+  lastActiveAt?: number
+  /** The session the agent is on right now. */
+  current: boolean
+  /** Whether it can be resumed HERE: its file exists, in a directory the agent has. */
+  available: boolean
 }
 
 /**
@@ -957,6 +1182,10 @@ export interface TerminalInfo {
   createdAt?: Date
   tsCreate?: number
   metadata?: TerminalMetadata
+  /** See `Agent.infoSidebarOpen`. Absent = never decided, resolved at read time. */
+  infoSidebarOpen?: boolean
+  /** See `Agent.displayMode`. Absent = never decided, resolved at read time. */
+  displayMode?: AgentDisplayMode
 }
 
 /**
@@ -1052,6 +1281,12 @@ export interface RepositoryConfig {
      * resolved with resolveSpecLanguage() from `desktop/src/languages.ts`.
      */
     spec?: string
+    /**
+     * The language /magic:review writes its comments and review body in, on GitHub.
+     * Inherits `pullRequest` when unset: a review is read where the pull request is,
+     * by the same people. Resolved with resolveReviewLanguage().
+     */
+    review?: string
   }
   commit?: {
     style?: string
@@ -1071,6 +1306,12 @@ export interface RepositoryConfig {
      * branch first. See skills/magic-commit/SKILL.md step 4.6.
      */
     allowOnProtectedBranch?: boolean
+    /**
+     * Push the branch right after the commit (`git push`, setting its upstream on the
+     * first push). Defaults to FALSE: a push is outward-facing, so it is never a thing
+     * an update starts doing on its own. See skills/magic-commit/SKILL.md step 6.2.
+     */
+    pushAfterCommit?: boolean
   }
   resolve?: {
     commitMode?: string        // 'new' | 'amend' | 'ask'
@@ -1094,11 +1335,81 @@ export interface RepositoryConfig {
      */
     replyVerbosity?: string    // 'minimal' | 'normal' | 'detailed'
   }
+  review?: {
+    /**
+     * Whether /magic:review gives a confidence score out of 10 (and the reasons for the
+     * missing points) in its draft and in the review body. True by default.
+     */
+    confidenceScore?: boolean
+    /**
+     * - 'ask'  show the draft, then ask the human what to post. The default.
+     * - 'post' post every comment straight away, no question.
+     *
+     * See skills/magic-review/SKILL.md step 8.
+     */
+    mode?: string              // 'ask' | 'post'
+  }  /**
+   * /magic:start's settings: which of its phases run, and how hard its critic is to
+   * satisfy. Every field unset is today's behaviour. See skills/magic-start/SKILL.md
+   * Step 5, where each one is read.
+   */
+  start?: {
+    /**
+     * Explore the codebase before the plan (Step 5.1):
+     * - 'auto'   when the ticket is broad enough to need it. The default.
+     * - 'always' every time; 'never' never.
+     */
+    exploration?: string       // 'auto' | 'always' | 'never'
+    /** Write an implementation plan (Step 5.2). Off, the agent implements straight from the ticket. True by default. */
+    plan?: boolean
+    /** Have a sub-agent review the plan (Step 5.2.3). Only with a plan. True by default. */
+    planReview?: boolean
+    /** Ask the user to approve the plan before any code (Step 5.3). Only with a plan. True by default. */
+    planApproval?: boolean
+    /**
+     * Who implements (Step 5.2.5): 'auto' lets the dispatcher choose (the default), 'solo'
+     * is always one agent, 'multi' splits across agents whenever the plan allows it.
+     */
+    execution?: string         // 'auto' | 'solo' | 'multi'
+    /** Run /simplify on the changed files after implementing (Step 5.4.5). True by default. */
+    simplify?: boolean
+    /** How many times the critic may send the work back for fixes (Step 5.5.2), 0 to 5. 3 by default. */
+    criticIterations?: number
+    /** The critic's score, out of 10, at which the work is accepted (Step 5.5.2), 1 to 10. 8 by default. */
+    criticMinScore?: number
+  }
+
   pullRequest?: {
     autoLinkTickets?: boolean
     watchCI?: boolean            // true = watch checks + review feedback after creating the PR
     testAccounts?: string        // 'off' | 'reference' | 'inline'
     testAccountsSource?: string  // explicit file path or project-skill name holding the accounts
+    /**
+     * Whether /magic:pr may tick the checkboxes of the repository's PR template.
+     * Absent means 'never', resolved at read time: the key is deliberately NOT in
+     * DEFAULT_REPOSITORY_FIELDS, so an org-shared value can still reach a repo that
+     * never set one (see mergeOrgSharedConfig).
+     */
+    templateCheckboxes?: string  // 'never' | 'type' | 'all'
+    /**
+     * How long the PR body /magic:pr writes may be. Absent means 'concise', resolved
+     * at read time for the same reason as `templateCheckboxes` above: the key stays
+     * OUT of DEFAULT_REPOSITORY_FIELDS so an org-shared value can still reach a repo
+     * that never set one (see mergeOrgSharedConfig).
+     */
+    bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
+    /**
+     * Whether /magic:pr leaves out the sections of the repository's PR template that
+     * the change does not touch (browsers on a backend-only change, data model on a
+     * front-only one) instead of keeping them with an "N/A". Absent means true,
+     * resolved at read time like the two keys above.
+     */
+    hideIrrelevantSections?: boolean
+    /**
+     * Whether /magic:pr opens the pull request as a draft rather than ready for review.
+     * Absent means false, resolved at read time like the keys above.
+     */
+    draft?: boolean
   }
   issues?: {
     commentOnPR?: boolean
@@ -1199,6 +1510,8 @@ export interface StoredRepository {
   commit?: RepositoryConfig['commit']
   pullRequest?: RepositoryConfig['pullRequest']
   resolve?: RepositoryConfig['resolve']
+  review?: RepositoryConfig['review']
+  start?: RepositoryConfig['start']
   issues?: RepositoryConfig['issues']
   plan?: RepositoryConfig['plan']
   jira?: RepositoryConfig['jira']
@@ -1265,6 +1578,24 @@ export interface Agent {
   tsCreate?: number
   metadata?: TerminalMetadata
   splitPane?: 'left' | 'right'
+  /**
+   * Whether the right-hand info panel is open while THIS agent is inspected.
+   *
+   * Per agent, not per window: closing the panel on the agent you are reading a diff
+   * in said nothing about the one you opened next, and a single flag made every
+   * switch overwrite the last decision. Absent means never decided, and reads as
+   * `Config.infoSidebarOnCreate` — so a brand-new agent follows the app setting, and
+   * so does every agent created before this field existed.
+   *
+   * Rides in the `agents.metadata.__app` jsonb beside `splitPane`, which is the same
+   * kind of per-agent layout state and has no column either.
+   */
+  infoSidebarOpen?: boolean
+  /**
+   * Terminal or chat, for THIS agent. Absent reads as `terminal`. Rides in
+   * `metadata.__app` beside `infoSidebarOpen`.
+   */
+  displayMode?: AgentDisplayMode
 }
 
 export type SpotlightShortcut =
@@ -1383,39 +1714,319 @@ export function isValidTheme(value: unknown): value is ThemeId {
 }
 
 /**
- * How the syntax highlighting inside the file preview is painted.
+ * The palettes code is highlighted in, as FAMILIES: one name, a light variant and a dark
+ * one. The reader picks a family and the app's theme picks the variant, so choosing
+ * Catppuccin on a dark theme and then moving to a light one paints Latte instead of
+ * leaving Mocha's pale ink on a white page.
  *
- * `auto` — the default and the only one most people should need — takes the
- * appearance of the theme in use, so a light theme stops showing a black slab of
- * code in the middle of a white drawer. The two explicit values exist because
- * reading code is not reading UI: someone on a light interface may still want
- * their code dark, and that preference has nothing to do with the theme.
+ * WHY FAMILIES AND NOT THEMES. The setting this replaced let a reader pin "always dark"
+ * code on a light interface, and every single-appearance palette would have reopened that:
+ * Dracula has no light variant, so on a light theme it is either a black slab in a white
+ * drawer or light ink on white. A family has an answer for both appearances by
+ * construction, which is what lets the preview drop the palette's own background and
+ * sit the code straight on the panel (`useCodeAppearance`'s `blend`).
+ *
+ * Each id is shiki's own theme name, resolved in the main process — see
+ * `previewShikiTheme` in main/ipc/config-handlers.ts. The labels are proper names and are
+ * not translated.
+ *
+ * The ids are the `user_settings.code_syntax` CHECK (20260928110000): adding a family is
+ * an entry here AND a migration widening that list.
  */
-export const CODE_THEME_MODES = ['auto', 'light', 'dark'] as const
+export const CODE_SYNTAX_FAMILIES = {
+  github: { label: 'GitHub', light: 'github-light', dark: 'github-dark' },
+  'github-high-contrast': {
+    label: 'GitHub High Contrast', light: 'github-light-high-contrast', dark: 'github-dark-high-contrast',
+  },
+  one: { label: 'One', light: 'one-light', dark: 'one-dark-pro' },
+  vscode: { label: 'Visual Studio', light: 'light-plus', dark: 'dark-plus' },
+  catppuccin: { label: 'Catppuccin', light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
+  'rose-pine': { label: 'Rosé Pine', light: 'rose-pine-dawn', dark: 'rose-pine' },
+  'night-owl': { label: 'Night Owl', light: 'night-owl-light', dark: 'night-owl' },
+  solarized: { label: 'Solarized', light: 'solarized-light', dark: 'solarized-dark' },
+  gruvbox: { label: 'Gruvbox', light: 'gruvbox-light-medium', dark: 'gruvbox-dark-medium' },
+  everforest: { label: 'Everforest', light: 'everforest-light', dark: 'everforest-dark' },
+  kanagawa: { label: 'Kanagawa', light: 'kanagawa-lotus', dark: 'kanagawa-wave' },
+  vitesse: { label: 'Vitesse', light: 'vitesse-light', dark: 'vitesse-dark' },
+  ayu: { label: 'Ayu', light: 'ayu-light', dark: 'ayu-dark' },
+  material: { label: 'Material', light: 'material-theme-lighter', dark: 'material-theme-darker' },
+  min: { label: 'Min', light: 'min-light', dark: 'min-dark' },
+} as const satisfies Record<string, { label: string; light: string; dark: string }>
 
-export type CodeThemeMode = (typeof CODE_THEME_MODES)[number]
+export type CodeSyntaxFamily = keyof typeof CODE_SYNTAX_FAMILIES
 
-export const DEFAULT_CODE_THEME_MODE: CodeThemeMode = 'auto'
+export const CODE_SYNTAX_FAMILY_IDS = Object.keys(CODE_SYNTAX_FAMILIES) as CodeSyntaxFamily[]
 
-export function isValidCodeThemeMode(value: unknown): value is CodeThemeMode {
-  return typeof value === 'string' && (CODE_THEME_MODES as readonly string[]).includes(value)
+/**
+ * What the reader stored: a family, or `auto` — the family each interface theme is paired
+ * with below. `auto` is the default and what an untouched account gets.
+ */
+export type CodeSyntaxChoice = 'auto' | CodeSyntaxFamily
+
+export const DEFAULT_CODE_SYNTAX: CodeSyntaxChoice = 'auto'
+
+export function isValidCodeSyntax(value: unknown): value is CodeSyntaxChoice {
+  return value === 'auto' || (typeof value === 'string' && Object.hasOwn(CODE_SYNTAX_FAMILIES, value))
 }
 
 /**
- * The appearance the highlighter should paint in, from the theme and the mode.
+ * The family `auto` means on each interface theme — the palette whose ground and ink sit
+ * closest to the window's. GitHub on the two neutral themes, which is what the preview
+ * painted before the setting existed, so an untouched account sees no change there.
  *
- * Lives here — beside THEME_APPEARANCE, which it reads — rather than in either
- * process, because BOTH have to reach the same answer from the same inputs: the
- * main process picks the shiki theme with it, and the renderer keys its read
- * cache on it so switching theme actually re-highlights. Two copies of this rule
- * would be a preview cached under one appearance and painted in the other.
- *
- * Anything unknown for either argument reads as "never chosen", which is what
- * makes it safe to call with a raw config value.
+ * A total record, like THEME_APPEARANCE: a new theme cannot be added without pairing it.
  */
-export function codeAppearance(theme: unknown, mode: unknown): 'light' | 'dark' {
-  if (mode === 'light' || mode === 'dark') return mode
-  return THEME_APPEARANCE[isValidTheme(theme) ? theme : DEFAULT_THEME]
+export const THEME_CODE_SYNTAX: Record<ThemeId, CodeSyntaxFamily> = {
+  dark: 'github',
+  midnight: 'night-owl',
+  espresso: 'gruvbox',
+  'high-contrast': 'github-high-contrast',
+  light: 'github',
+  mist: 'catppuccin',
+  sepia: 'solarized',
+  daylight: 'github-high-contrast',
+}
+
+/** The family actually in force: the stored one, or the theme's own pairing. */
+export function codeSyntaxFamily(theme: unknown, choice: unknown): CodeSyntaxFamily {
+  const id = isValidTheme(theme) ? theme : DEFAULT_THEME
+  return isValidCodeSyntax(choice) && choice !== 'auto' ? choice : THEME_CODE_SYNTAX[id]
+}
+
+/**
+ * The shiki theme to highlight in, from the interface theme and the stored choice.
+ *
+ * Lives here, beside THEME_APPEARANCE, because BOTH processes have to reach the same
+ * answer: the main process highlights with it, and the renderer keys its read cache on it
+ * so a change of theme or of palette actually re-highlights. Two copies of this rule would
+ * be a preview cached under one palette and painted in another.
+ */
+export function codeSyntaxTheme(theme: unknown, choice: unknown): string {
+  const id = isValidTheme(theme) ? theme : DEFAULT_THEME
+  return CODE_SYNTAX_FAMILIES[codeSyntaxFamily(id, choice)][THEME_APPEARANCE[id]]
+}
+
+/**
+ * The size code is set in, in CSS pixels, everywhere a file or a diff is previewed.
+ * 12 is the `text-xs` the preview always used. Bounded on both sides by the
+ * `user_settings.code_font_size` CHECK.
+ */
+/**
+ * Is this something `claude --model` could be handed? An alias (`opus`, `sonnet[1m]`) or a
+ * full id (`claude-fable-5-1[1m]`), never anything a shell would read as more than a word.
+ * The value reaches a command line, so this is the gate and `shQuote` the belt.
+ */
+/** A Quick Launch repository choice: `first`, `match`, or a repository key. */
+export function isValidQuickLaunchRepo(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 200
+}
+
+export function isValidModelName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100
+    && /^[A-Za-z0-9][A-Za-z0-9._:@/[\]-]*$/.test(value)
+}
+
+/** One entry of the model picker: what Claude Code's own `/model` offers. */
+export interface ClaudeModelOption {
+  /** What `--model` takes. */
+  value: string
+  label: string
+  description?: string
+  /**
+   * The model id the value stands for (`opus` → `claude-opus-5-5`): what the statusLine
+   * reports as `model.id`, so the one row a running agent is on can be found.
+   */
+  resolvedModel?: string
+}
+
+/**
+ * Which pane of the split view a new agent (⌘N, the sidebar's +, the File menu) opens in.
+ * `focused` is the one that has the keyboard, which is what the split always did; the two
+ * others pin it to a side, for a reader who keeps one pane for the work and the other for
+ * what they are watching.
+ */
+export const SPLIT_NEW_AGENT_PANES = ['focused', 'left', 'right'] as const
+
+export type SplitNewAgentPane = (typeof SPLIT_NEW_AGENT_PANES)[number]
+
+export const DEFAULT_SPLIT_NEW_AGENT_PANE: SplitNewAgentPane = 'focused'
+
+export function isValidSplitNewAgentPane(value: unknown): value is SplitNewAgentPane {
+  return typeof value === 'string' && (SPLIT_NEW_AGENT_PANES as readonly string[]).includes(value)
+}
+
+/**
+ * The switches the quick settings sheet can carry, as ids. Every one is a setting that
+ * already has a row somewhere in Settings: the sheet is a second, faster door, never the
+ * only one. The reader picks which of them it shows and in what order (Settings → Quick
+ * settings); the catalogue itself is this list, and the tile each id draws is wired in
+ * renderer/components/quickSettingTiles.ts.
+ *
+ * The ids are the `user_settings_quick_settings_items_check` CHECK (20260928150000):
+ * adding one is an entry here AND a migration widening that list.
+ */
+export const QUICK_SETTING_IDS = [
+  'notifications',
+  'quick-launch',
+  'usage-card',
+  'agent-context',
+  'split-view',
+  'pr-watcher',
+  'plan-sync',
+  'activity',
+  'claude-theme',
+  'archive-confirm',
+  'info-panel',
+  'quick-launch-background',
+  'daily-digest',
+] as const
+
+export type QuickSettingId = (typeof QUICK_SETTING_IDS)[number]
+
+/** What the sheet carried before it could be arranged, in that order. */
+export const DEFAULT_QUICK_SETTINGS: QuickSettingId[] = ['notifications', 'quick-launch', 'usage-card', 'agent-context', 'split-view']
+
+export function isValidQuickSettingId(value: unknown): value is QuickSettingId {
+  return typeof value === 'string' && (QUICK_SETTING_IDS as readonly string[]).includes(value)
+}
+
+/** A stored list, cleaned: unknown ids (a newer build's) and repeats dropped, order kept. */
+export function cleanQuickSettings(value: unknown): QuickSettingId[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.filter((id, index): id is QuickSettingId => isValidQuickSettingId(id) && value.indexOf(id) === index)
+}
+
+/**
+ * The pages of the sidebar's menu, in the order it drew them before it could be arranged:
+ * the order the work happens in (plan, pick up, reference), then the account's entry,
+ * then the two the menu only draws on request (see SIDEBAR_OPT_IN_PAGES).
+ */
+export const SIDEBAR_PAGE_IDS = ['plans', 'tasks', 'skills', 'repositories', 'settings', 'account'] as const
+
+export type SidebarPageId = (typeof SIDEBAR_PAGE_IDS)[number]
+
+/**
+ * THE PAGES THE MENU LEAVES OUT UNTIL ASKED. Settings and Account have their own way in
+ * (the title bar's account menu), so a menu that drew them for everyone would be two rows
+ * nobody asked for. Their visibility is `sidebarShown`'s, never `sidebarHidden`'s: the
+ * other pages are shown unless taken off, these are hidden unless put on.
+ */
+export const SIDEBAR_OPT_IN_PAGES: readonly SidebarPageId[] = ['settings', 'account']
+
+/** Whether the menu draws a page, by the rule `SIDEBAR_OPT_IN_PAGES` gives. */
+export function isSidebarPageShown(
+  id: SidebarPageId,
+  hidden: readonly SidebarPageId[] | undefined,
+  shown: readonly SidebarPageId[] | undefined,
+): boolean {
+  return SIDEBAR_OPT_IN_PAGES.includes(id) ? Boolean(shown?.includes(id)) : !hidden?.includes(id)
+}
+
+export function isValidSidebarPageId(value: unknown): value is SidebarPageId {
+  return typeof value === 'string' && (SIDEBAR_PAGE_IDS as readonly string[]).includes(value)
+}
+
+/**
+ * A stored page list, cleaned: unknown ids (a newer build's) and repeats dropped, order
+ * kept. Unlike the quick settings sheet this is not a selection, so it is NOT completed
+ * here: `sidebarPageOrder` puts the missing pages back when the menu is drawn.
+ */
+export function cleanSidebarPages(value: unknown): SidebarPageId[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.filter((id, index): id is SidebarPageId => isValidSidebarPageId(id) && value.indexOf(id) === index)
+}
+
+/**
+ * Every page, in the stored order: the ones the stored list names first, then any it does
+ * not (a page this account has never arranged, like one a newer release added) in their
+ * default place. A page is hidden by `sidebarHidden`, never by being absent from here.
+ */
+export function sidebarPageOrder(stored: readonly SidebarPageId[] | undefined): SidebarPageId[] {
+  const known = cleanSidebarPages(stored) ?? []
+  return [...known, ...SIDEBAR_PAGE_IDS.filter((id) => !known.includes(id))]
+}
+
+export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
+
+export const DEFAULT_CODE_FONT_SIZE = 12
+
+export function isValidCodeFontSize(value: unknown): value is number {
+  return typeof value === 'number' && (CODE_FONT_SIZES as readonly number[]).includes(value)
+}
+
+/**
+ * Settings → Workflow: how far a repository's flow may run on its own on THIS person's
+ * machine. The flow is the repository's, shared by its members; these are the person's,
+ * applied by `applyChainPolicy` (workflow/next.ts) to every chain `/workflow/next` hands out.
+ */
+export const WORKFLOW_CONFIRM_CHAINS = ['never', 'custom', 'always'] as const
+export type WorkflowConfirmChain = (typeof WORKFLOW_CONFIRM_CHAINS)[number]
+
+/** How many steps may chain in a row, with no prompt typed in between. 0 = no limit. */
+export const WORKFLOW_CHAIN_LIMITS = [3, 5, 10, 0] as const
+
+export const WORKFLOW_MISSING_SKILLS = ['stop', 'skip'] as const
+export type WorkflowMissingSkill = (typeof WORKFLOW_MISSING_SKILLS)[number]
+
+export interface WorkflowSettings {
+  /** Ask before a chain: never (what it always did), before one into a custom step, or always. */
+  confirmChain?: WorkflowConfirmChain
+  /** One of WORKFLOW_CHAIN_LIMITS. */
+  chainLimit?: number
+  /** A chain into a skill this machine does not have: held back, or stepped over. */
+  missingSkill?: WorkflowMissingSkill
+  /**
+   * Carry out the repository's actions (a Slack message once the PR is created). On unless
+   * the person turns it off: an action speaks through their own MCP servers, in their name,
+   * and a link into one asks first unless the admin made it automatic.
+   */
+  runActions?: boolean
+}
+
+/** What an absent field means. Five in a row is more than the default flow ever chains, and a loop never gets past it. */
+export const DEFAULT_WORKFLOW_SETTINGS: Required<WorkflowSettings> = { confirmChain: 'never', chainLimit: 5, missingSkill: 'stop', runActions: true }
+
+export function isValidWorkflowConfirmChain(value: unknown): value is WorkflowConfirmChain {
+  return typeof value === 'string' && (WORKFLOW_CONFIRM_CHAINS as readonly string[]).includes(value)
+}
+
+export function isValidWorkflowChainLimit(value: unknown): value is number {
+  return typeof value === 'number' && (WORKFLOW_CHAIN_LIMITS as readonly number[]).includes(value)
+}
+
+export function isValidWorkflowMissingSkill(value: unknown): value is WorkflowMissingSkill {
+  return typeof value === 'string' && (WORKFLOW_MISSING_SKILLS as readonly string[]).includes(value)
+}
+
+/** Every field resolved: the stored value when valid, the default otherwise. */
+export function resolveWorkflowSettings(settings: WorkflowSettings | undefined): Required<WorkflowSettings> {
+  return {
+    confirmChain: isValidWorkflowConfirmChain(settings?.confirmChain) ? settings.confirmChain : DEFAULT_WORKFLOW_SETTINGS.confirmChain,
+    chainLimit: isValidWorkflowChainLimit(settings?.chainLimit) ? settings.chainLimit : DEFAULT_WORKFLOW_SETTINGS.chainLimit,
+    missingSkill: isValidWorkflowMissingSkill(settings?.missingSkill) ? settings.missingSkill : DEFAULT_WORKFLOW_SETTINGS.missingSkill,
+    runActions: typeof settings?.runActions === 'boolean' ? settings.runActions : DEFAULT_WORKFLOW_SETTINGS.runActions,
+  }
+}
+
+/** The languages Settings → Code & reviews previews a palette in (main/code-sample.ts). */
+export const CODE_SAMPLE_LANGUAGES = [
+  { id: 'ts', label: 'TypeScript' },
+  { id: 'py', label: 'Python' },
+  { id: 'go', label: 'Go' },
+  { id: 'rs', label: 'Rust' },
+] as const
+
+export type CodeSampleLanguage = (typeof CODE_SAMPLE_LANGUAGES)[number]['id']
+
+/**
+ * A sample highlighted in the palette in force, ready for `CodeView`. `highlightedHtml`
+ * is null when shiki failed, in which case CodeView falls back to the plain text.
+ */
+export interface CodeSample {
+  content: string
+  highlightedHtml: string | null
+  /** The shiki theme it was painted in — what the renderer keys its request on. */
+  shikiTheme: string
 }
 
 /**
@@ -1494,20 +2105,47 @@ export interface Config {
    */
   syncClaudeTheme?: boolean
   /**
-   * Which appearance the file preview's syntax highlighting is painted in.
-   * Absent = DEFAULT_CODE_THEME_MODE, i.e. follow `theme`. Follows the account
-   * for the same reason the theme does — it is a reading preference, not a
-   * property of the screen.
+   * The palette code is highlighted in — a family, whose variant the theme picks. Absent =
+   * DEFAULT_CODE_SYNTAX, the theme's own pairing. Follows the account for the same reason
+   * the theme does: it is a reading preference, not a property of the screen.
    */
-  codeTheme?: CodeThemeMode
+  codeSyntax?: CodeSyntaxChoice
+  /** Code's size in pixels. Absent = DEFAULT_CODE_FONT_SIZE. Follows the account too. */
+  codeFontSize?: number
+  /** Settings → Workflow. Absent fields = DEFAULT_WORKFLOW_SETTINGS. Follows the account. */
+  workflow?: WorkflowSettings
   splitEnabled?: boolean
   splitActive?: boolean
+  /** Where a new agent opens while the window is split. Absent = `focused`. */
+  splitNewAgentPane?: SplitNewAgentPane
   autoStartAtLogin?: boolean
   integrations?: {
     github: true
     atlassian?: boolean
   }
   spotlight?: SpotlightConfig
+  /**
+   * Where Quick Launch opens its agent: `first` (absent, what it always did), `match`
+   * (the repository whose keywords the prompt names), or a key of `repositories`. See
+   * quickLaunchRepo.ts.
+   */
+  quickLaunchRepo?: string
+  /** Start the agent without bringing the main window forward. Absent = false. */
+  quickLaunchBackground?: boolean
+  /** A launch mode for Quick Launch alone. Absent = the Agents page's `launchMode`. */
+  quickLaunchLaunchMode?: LaunchMode
+  /** Whether the title bar offers the quick settings sheet at all. Absent = on. */
+  quickSettingsEnabled?: boolean
+  /** The sheet's switches, in order. Absent = DEFAULT_QUICK_SETTINGS; empty is empty. */
+  quickSettingsItems?: QuickSettingId[]
+  /** The sidebar menu's pages, in order. Absent = SIDEBAR_PAGE_IDS; see sidebarPageOrder. */
+  sidebarOrder?: SidebarPageId[]
+  /** The pages the sidebar menu leaves out. Absent or empty = all shown. */
+  sidebarHidden?: SidebarPageId[]
+  /** The opt-in pages (SIDEBAR_OPT_IN_PAGES) the menu draws. Absent or empty = none. */
+  sidebarShown?: SidebarPageId[]
+  /** The sidebar drawn as icons only. Absent = false, the wide column. */
+  sidebarCompact?: boolean
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and
@@ -1516,6 +2154,19 @@ export interface Config {
    * start is a property of the person, not of the machine.
    */
   defaultAgentType?: AgentType
+  /**
+   * The Claude model a NEW agent is launched on, passed to the CLI as `--model`. Absent =
+   * never chosen, and no flag is passed: the CLI's own default applies, i.e. whatever
+   * `/model` is set to in Claude Code. The legal values are not a list this app ships —
+   * they are what the installed CLI offers (see `claude:listModels`), so this is only
+   * checked for being a model NAME (`isValidModelName`), never against an enum.
+   */
+  defaultModel?: string
+  /**
+   * Whether archiving an agent (⌘W, the title bar's button) asks first. Absent = on,
+   * which is what it always did; only an explicit false archives at once.
+   */
+  confirmAgentArchive?: boolean
   /**
    * How the left sidebar orders its agents. Absent = never chosen, and the app
    * applies `recent` — the order the list has always had. Follows the account
@@ -1537,6 +2188,21 @@ export interface Config {
    * can survive the process being killed.
    */
   tasksRepo?: string
+  /**
+   * The repository the Plans list is narrowed to — a `public.repositories` id, NOT a key
+   * of `repositories` above: a plan is bound to the cloud row its spec resolved to.
+   *
+   * Absent = all repositories, which is both the default view and what an id that no
+   * longer resolves falls back to. That is why it is not validated on the way in: the
+   * legal values are the uuids of the repositories this account can currently see, and
+   * they change whenever one is added, shared or dropped. See
+   * supabase/migrations/20260911110000_user_settings_plans_repo.sql.
+   *
+   * Follows the account like `tasksRepo`, and for the same stronger reason: the app
+   * keeps no local config file at all, so this is the only place a chosen filter can
+   * survive the process being killed.
+   */
+  plansRepo?: string
   usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
   usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
   agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar
@@ -1548,6 +2214,30 @@ export interface Config {
   // aggregate is open to any member regardless of this flag, and the `agents`
   // table syncs regardless too (that is what powers the live Team view).
   usageLogsEnabled?: boolean
+  /**
+   * Whether a NEWLY created agent shows the right-hand info panel.
+   *
+   * ON by default, so absent = never touched = open, and every gate tests
+   * `=== false`. It is the fallback the renderer resolves `Agent.infoSidebarOpen`
+   * against, which means it also governs every agent created before that field
+   * existed — and stops governing an agent the moment its own panel is toggled.
+   */
+  infoSidebarOnCreate?: boolean
+  /**
+   * How an agent nobody has switched is shown: its `Agent.displayMode` wins. Absent
+   * reads as `terminal`, which is what every agent was before the chat view existed.
+   */
+  defaultDisplayMode?: AgentDisplayMode
+  /**
+   * Whether the chat view keeps the prompt of the turn being read pinned at its top.
+   * ON by default, so absent = never touched = pinned, and the gate tests `!== false`.
+   */
+  chatStickyPrompt?: boolean
+  /** See CHAT_SEND_KEYS and its siblings. Absent = the first value of each list. */
+  chatSendKey?: ChatSendKey
+  chatToolDetail?: ChatToolDetail
+  chatDiffs?: ChatDiffDisplay
+  chatTimestamps?: ChatTimestamps
   /**
    * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
    * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an
@@ -1622,20 +2312,15 @@ export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
  *  apart from 'account' because a connection is a credential on THIS machine
  *  rather than part of who the user is. 'claude-code' gathers everything about
  *  the Claude Code CLI itself — the account it runs as, its launch mode, and its
- *  rate/spend usage. 'application' is the app itself: how this machine is set up,
- *  plus every feature toggle. */
-export type SettingsTab =
-  | 'account'
-  | 'connections'
-  | 'organization'
-  | 'repositories'
-  | 'application'
-  | 'claude-code'
-  | 'notifications'
-  | 'appearance'
-  | 'language'
-  | 'shortcuts'
-  | 'about'
+ *  rate/spend usage. What the app itself looks like and does — the theme, the
+ *  language, the notifications, the feature toggles, the machine's setup — has no tab
+ *  any more: the quick settings sheet under the title bar holds everything that fits
+ *  in a tile, and the panel it opens beside itself holds the rest. */
+// `SettingsTab` was here. The settings window is ONE page now — the repository list
+// and a detail page per repository — so there is no tab to name. What used to be the
+// other six tabs hangs off the title bar: the quick settings sheet and its panel hold
+// what the app does, the account sheet and its panel hold who it is signed in as.
+// See `AccountPanelTab` in renderer/components/AccountSettingsPanel.tsx.
 
 /**
  * A menu item the main process cannot act on alone.
@@ -1644,7 +2329,7 @@ export type SettingsTab =
  * agent" are renderer state — so these four travel over IPC and are replayed
  * against the store, exactly as the tray already does with its own commands.
  */
-export type MenuCommand = 'new-agent' | 'tasks' | 'skills' | 'team' | 'account'
+export type MenuCommand = 'new-agent' | 'tasks' | 'skills' | 'plans' | 'account'
 
 /** Signed-in cloud user identity (subset of the Supabase session). */
 export interface CloudUser {
@@ -1659,6 +2344,67 @@ export interface AuthStatus {
   user?: CloudUser
 }
 
+/**
+ * One device or browser signed in to the account, as the Security & Access page lists it
+ * (`list_account_sessions`). `userAgent` is what the client sent when it signed in, raw:
+ * `sessionAgent.ts` turns it into a name. Dates are ISO strings.
+ */
+/** Where an IP address roughly is (`main/cloud/ipLocation`). The country as an ISO code. */
+export interface IpLocation {
+  city: string | null
+  countryCode: string | null
+}
+
+export interface AccountSession {
+  id: string
+  userAgent: string | null
+  ip: string | null
+  /** Looked up from `ip`; null when it could not be, or the address is private. */
+  location: IpLocation | null
+  createdAt: string | null
+  lastUsedAt: string | null
+  isCurrent: boolean
+}
+
+/**
+ * The account facts the Account tab's card draws that are not in `AuthStatus` — read
+ * once, together, because they come off one row.
+ *
+ * ONE CALL AND NOT THREE. The card needs the handle and the password date, and both
+ * live on the caller's `profiles` row; two channels would be two round trips to read
+ * one row, and they could disagree with each other by however long the second took.
+ * The photo is NOT here, deliberately: those are bytes, they travel on their own
+ * channel, and they are shared with two surfaces this card knows nothing about (see
+ * `renderer/hooks/useAvatar`).
+ *
+ * EVERY FIELD IS NULLABLE AND NULL IS A STATE, a different one per field:
+ *
+ *   * `username` — no handle picked. The card falls back to the email address.
+ *   * `passwordChangedAt` — no change RECORDED, which is weaker than "never changed":
+ *     the column postdates most accounts, so a password changed last year reads as
+ *     null forever. The card says only what that supports.
+ *   * `accountCreatedAt` — the session could not be read. It is the FALLBACK date the
+ *     password line falls back to, so its absence simply removes the line.
+ *   * `avatarUpdatedAt` — no photo, or its date could not be read. The photo BYTES do
+ *     not travel with this (see above); only the date the object was last written.
+ *
+ * `avatarUpdatedAt` IS THE ONE FIELD NOT RECORDED BY THIS APP. It is Storage's own
+ * `updated_at` on the object, which makes it ground truth rather than a column someone
+ * has to remember to write: it cannot drift from the photo because it IS the photo's
+ * row. `passwordChangedAt` would be the same kind of fact if GoTrue kept one, and the
+ * reason it is a column of ours is precisely that GoTrue does not.
+ *
+ * Every date is an ISO 8601 string and not a `Date`: they cross the preload bridge, and
+ * structured clone would survive a Date while every other date in this app's IPC is a
+ * string. The renderer formats them with the active locale.
+ */
+export interface AccountSettings {
+  username: string | null
+  passwordChangedAt: string | null
+  accountCreatedAt: string | null
+  avatarUpdatedAt: string | null
+}
+
 export interface Org {
   id: string
   name: string
@@ -1671,6 +2417,15 @@ export interface Member {
   email?: string
   role: MembershipRole
   createdAt?: string
+  /**
+   * Storage object path of this member's photo, absent when they have none. A PATH and
+   * never the bytes: the `avatars` bucket is private, so this is only useful to the main
+   * process — which is exactly the point. It rides along on the roster (a short string,
+   * free) so a caller that does draw faces can decide WHICH photos to download without
+   * issuing the roster RPC a second time; the base64 itself stays on its own channel,
+   * for the reason `listMemberAvatars` gives.
+   */
+  avatarPath?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -1772,6 +2527,16 @@ export interface PlanSession {
   orgId?: string
   /** `agents.id` uuid of the agent that planned. Null once that agent is archived. */
   agentId?: string
+  /**
+   * The plan's short human id — `#7` — sequential within its organization, or within
+   * its owner when it has none. Assigned by the database, never by the app: see the
+   * 20260912100000 migration, which also explains the one case where it moves.
+   *
+   * Optional ONLY for a row written before that migration, or read through a projection
+   * that does not select it (`PlanTicketOrigin`). Everything that draws a badge from it
+   * renders nothing when it is absent, rather than inventing a number.
+   */
+  number?: number
   /** Spec filename minus its `spec-` prefix and `.md` suffix. */
   slug: string
   /** sha256 of the spec's absolute path. See specKeyFor in main/store/plan-sync.ts. */
@@ -1781,6 +2546,16 @@ export interface PlanSession {
   idea?: string
   /** The spec markdown. Absent on a session whose spec was never written. */
   spec?: string
+  /**
+   * Whether the spec file was PAST THE UPLOADER'S CEILING, and its content therefore
+   * never sent (`MAX_SPEC_BYTES`, main/store/spec-file.ts).
+   *
+   * The other half of an absent `spec`, and the reason it is a column rather than
+   * something the detail view could work out: the two silences look identical from
+   * here — no markdown — and only the machine that read the file knows which it is.
+   * Non-optional because the column is `not null default false`, so every row answers.
+   */
+  specOversize: boolean
   status: string
   /**
    * When the spec CONTENT was last uploaded — not when the row last changed.
@@ -1790,6 +2565,34 @@ export interface PlanSession {
   specSyncedAt?: string
   createdAt?: string
   updatedAt?: string
+  /**
+   * Who besides the author may see and edit the plan (20260924090000). `personal` for every
+   * plan created since that migration (the column's default); `org` on every row written
+   * before it, which the migration backfilled.
+   */
+  editPolicy: PlanEditPolicy
+  /**
+   * Whether THE READER may edit this plan, and may change who else can — asked of the
+   * database (`viewer_can_edit` / `viewer_can_manage`, computed columns) rather than worked
+   * out here from the roster, so the page offers exactly what the UPDATE policy would let
+   * through. False when the read predates the columns: offering nothing is the safe miss.
+   */
+  viewerCanEdit: boolean
+  viewerCanManage: boolean
+}
+
+/**
+ * Who besides its author may see and edit a plan. `personal`: nobody, the organization does
+ * not even see it (the default for a new plan, and only the author may set or leave it).
+ * Otherwise the whole organization reads it, and edits it as the word says: every member,
+ * its admins only, or its admins and the members invited one by one (`plan_collaborators`).
+ * See 20260924090000. In the order the picker lists them.
+ */
+export const PLAN_EDIT_POLICIES = ['personal', 'org', 'admins', 'invited'] as const
+export type PlanEditPolicy = (typeof PLAN_EDIT_POLICIES)[number]
+
+export function isPlanEditPolicy(value: unknown): value is PlanEditPolicy {
+  return typeof value === 'string' && (PLAN_EDIT_POLICIES as readonly string[]).includes(value)
 }
 
 /**
@@ -1809,6 +2612,85 @@ export interface PlanTicket {
 }
 
 /**
+ * One ticket as it comes BACK out of `public.plan_tickets` — the detail view's shape,
+ * and deliberately not `PlanTicket` above.
+ *
+ * The two look alike and are not the same object. `PlanTicket` is what the SKILL sends:
+ * a ticket it has just filed, so its `url` and its `kind` are known, and there is no
+ * session id because the row does not exist yet (the store resolves it from
+ * `(owner_id, spec_key)` at write time). This one is what an org member READS: the
+ * session id is the whole point of it, every text column is nullable because a row may
+ * have been written by another version of the app, and `kind` has already been narrowed
+ * from the free text the column holds.
+ *
+ * THAT NARROWING HAPPENS IN `main/cloud/plans.ts`, not in the renderer module that
+ * groups these. Same division as `PlanSession.status` and for the same reason: the cloud
+ * read is where a row becomes a typed object in this app, and the ported renderer module
+ * (`renderer/utils/planRows.ts`) diverges from its webapp original precisely by not
+ * doing row mapping. A story whose `kind` is a word this build has never heard of reads
+ * as a story — the leaf — because calling it an epic would invent a parent for others.
+ */
+export interface PlanTicketRead {
+  sessionId: string
+  /** Tracker id — "PROJ-12" on Jira, "#194" on GitHub. The row's identity with the session. */
+  key: string
+  /** Absent when the tracker returned a key but no browse link. Checked again before it is linked. */
+  url?: string
+  title?: string
+  kind: 'epic' | 'story'
+  /** The epic this story hangs under, by `key`. Absent on an epic or a lone story. */
+  parentKey?: string
+  /** What the tree is ordered by, so the stories read in the order they were filed. */
+  createdAt?: string
+}
+
+/**
+ * The plan a ticket CAME OUT OF, as the ticket's own page names it.
+ *
+ * The four naming fields and nothing else. `id` is what the deep link opens the Plans
+ * page on, and the other three are exactly what `planLabel` needs: a plan is called by
+ * its title, falling back to its slug and then to its spec key, and the ticket page must
+ * call it what the list calls it. Sending a resolved string instead would have put a
+ * second copy of that fallback chain in the main process, free to answer differently
+ * from the one the list uses.
+ *
+ * `null` from the read when no plan filed this ticket — much the commonest answer, since
+ * most tickets were filed by hand.
+ */
+export type PlanTicketOrigin = Pick<PlanSession, 'id' | 'title' | 'slug' | 'specKey'>
+
+/**
+ * One plan ticket's state AS ITS TRACKER REPORTS IT RIGHT NOW, never as `plan_tickets`
+ * remembers it.
+ *
+ * The column does not exist, and adding one would be the wrong fix: a plan is filed once
+ * and then the tickets live their own life — closed, moved through a sprint, reopened —
+ * so a status written at creation time would be a number that was true for an afternoon
+ * and misleading ever after. This is read live, batched, when the plan's page opens.
+ *
+ * DISCRIMINATED BY TRACKER for `TaskSelection`'s reason: GitHub has two states and Jira
+ * has as many as the site defines, coloured by a CATEGORY rather than by a name. Folding
+ * them into one string would make every renderer re-derive which it was looking at, and
+ * the two pills are already drawn by two different components.
+ */
+export type PlanTicketState =
+  | { tracker: 'github'; state: 'OPEN' | 'CLOSED' }
+  | { tracker: 'jira'; name: string; category: JiraStatusCategory }
+
+/**
+ * Every state one plan's tickets are in, by the key `plan_tickets` holds — `#412`,
+ * `PROJ-1234`, exactly as the row spells it, so the renderer looks a row up by the
+ * string it already has.
+ *
+ * A KEY THAT IS ABSENT IS NOT A FAILURE AND NOT A CLOSED TICKET: it is "no answer",
+ * which is the honest state for a repository this machine has not configured, a tracker
+ * it has no credential for, a ticket deleted since, and a read that failed. All four
+ * render identically — the row simply carries no pill — which is why they are one state
+ * here rather than an error union nothing would branch on.
+ */
+export type PlanTicketStates = Record<string, PlanTicketState>
+
+/**
  * A spec upload. The store resolves everything else — the slug, the spec key, the
  * repository, the title and the status — from `specPath` and from the agent, so a
  * caller (and the offline spool) only has to carry these.
@@ -1824,6 +2706,18 @@ export interface PlanSpecInput {
    * spec was written. An absent spec leaves the stored one untouched.
    */
   spec?: string
+  /**
+   * Whether the file was read and found too large — the one refusal worth recording
+   * rather than swallowing. Sent `true` with no `spec` beside it, and `false` on every
+   * successful read, so a spec cut back under the ceiling clears the flag.
+   *
+   * OPTIONAL, and it has to be: three callers build an input without consulting a file
+   * at all (`savePlanTickets`, the outbox's session creation, `recordPlanSession`), and
+   * a required boolean would make them assert something they did not measure. Absent
+   * means "this write has no opinion", which the store turns into an omitted column —
+   * see `planSessionRow`.
+   */
+  specOversize?: boolean
 }
 
 /** The tickets of ONE planning session, identified the same way as a spec upload. */
@@ -1832,6 +2726,630 @@ export interface PlanTicketsInput {
   specPath: string
   tickets: PlanTicket[]
 }
+
+/**
+ * A repository as the Plans list needs it: the name a card prints, and the id the
+ * filter matches sessions on. Nothing else — this is not `RepositoryConfig`, which is
+ * keyed locally and knows about paths, while a plan is bound to the CLOUD row's uuid.
+ */
+export interface PlanRepoRef {
+  id: string
+  name: string
+}
+
+/**
+ * Everything the Plans page renders, unaggregated — the read `plans:list` answers with.
+ *
+ * Unaggregated on purpose: assembling the cards is `renderer/utils/planRows.ts`'s job,
+ * so the sort, the filter and the empty states stay view concerns that can be tested
+ * without a Supabase client. Same division as the webapp's `lib/planSessions.ts` /
+ * `lib/planSessionRows.ts`.
+ *
+ * NO ORG FILTER is applied anywhere on the way here: RLS on `plan_sessions` already
+ * returns exactly what the reader may see — their own sessions, plus every session on a
+ * repository shared with one of their organizations.
+ */
+export interface PlanOverview {
+  sessions: PlanSession[]
+  /**
+   * The session each ticket belongs to, one id per ticket — the counts on the rows,
+   * tallied by `buildPlanCards`. A bare id and nothing around it: the list prints a
+   * NUMBER, so pulling a few hundred hydrated ticket rows across the bridge to render
+   * thirty of them would be paying for a column nothing shows.
+   */
+  ticketSessionIds: string[]
+  /**
+   * The session each COMMENT belongs to, one id per comment — the same shape and the same
+   * reason as the tickets above, for the second count a row carries.
+   *
+   * REPLIES ARE IN IT. What the row says is how much has been said about the plan, and an
+   * answer to a comment is something that was said; threading it is the detail page's job.
+   */
+  commentSessionIds: string[]
+  repos: PlanRepoRef[]
+  /** owner id → email, so a session shows a readable author. */
+  emailByOwner: Record<string, string>
+  /**
+   * owner id → `data:` URL of that person's photo, for the face beside their address.
+   *
+   * ONLY the owners that actually appear in `sessions`, never the full rosters: these
+   * are tens of kilobytes of base64 each, and shipping a whole organization's photos to
+   * render a list of thirty rows is the cost `listMemberAvatars` exists to avoid.
+   * Someone with no photo is simply absent, and the row draws the generic icon.
+   */
+  avatarByOwner: Record<string, string>
+  /**
+   * Whether the reader belongs to an organization at all — the difference between "nobody
+   * has planned anything yet" and "there is nowhere for a plan to come from", which is
+   * the only thing the page's empty state cannot work out from the sessions themselves.
+   *
+   * Answered here because `listPlanSessions` lists the organizations anyway, for the
+   * rosters. The page asking the org hook instead would re-run that list and add a roster
+   * and an invitations read per org, for one boolean.
+   */
+  hasOrg: boolean
+  /**
+   * Whether the session read came back AT its cap, and therefore may be missing older
+   * sessions.
+   *
+   * The read is ordered newest-first and limited (`cloud/plans.ts`), because PostgREST
+   * stops at its own row ceiling anyway and an unordered read that hits it returns an
+   * arbitrary subset. What this flag buys is that the page can SAY so — a list silently
+   * missing its tail reads exactly like a complete one.
+   */
+  truncated: boolean
+  /**
+   * Whether any of the reads behind this overview errored.
+   *
+   * NOT the same thing as an empty overview, which is why it is a field and not an
+   * inference from the rows. Cloud off or signed out returns nothing and `failed: false`:
+   * there is nowhere to read from, the page says "no organization", and that is the
+   * honest reading of it. A dropped connection or a refused query returns nothing and
+   * `failed: true`, and every empty state the page could otherwise draw over it — no
+   * plan, no organization, an unknown repository, a count of zero — would be a claim
+   * about the world it has no evidence for. The page shows an error and offers the read
+   * again instead.
+   */
+  failed: boolean
+}
+
+/**
+ * ONE plan, as the detail sub-page reads it — the answer to `plans:detail`.
+ *
+ * THE SESSION AND ITS TICKETS, AND NOTHING ELSE. No repository, no author, no photo, and
+ * that is a decision about where the header comes from: the renderer already holds the
+ * `PlanCard` of the row that was clicked, with the repository name, the address and the
+ * face already resolved. Re-reading them here would cost a `listMembers` per
+ * organization plus an avatar download on every open, to produce a header that can only
+ * ever agree with the one the list already drew — or, if a roster answered differently
+ * this time, DISAGREE with the row the reader just pointed at.
+ *
+ * What the list does NOT have is exactly what is here: the spec markdown, which the list
+ * read deliberately leaves out of its columns, and the tickets themselves rather than a
+ * count of them.
+ *
+ * `session: null` is "no such plan", which is also what "not yours" looks like — RLS
+ * answers both with an empty result and the page says that much and no more. It is a
+ * different thing from `failed`, exactly as on the overview: one is an answer, the other
+ * is the absence of one.
+ */
+export interface PlanDetail {
+  session: PlanSession | null
+  tickets: PlanTicketRead[]
+  /**
+   * The user ids invited to edit the plan (`plan_collaborators`), whatever its policy: the
+   * rows only grant anything under `invited`, but they are kept across a switch away and
+   * back. Empty on a plan with none; NULL on a read that could not list them, which the
+   * managers' panel says rather than drawing "nobody is invited". Either way the list is
+   * decoration for that panel, never what decides who may write.
+   */
+  collaborators: string[] | null
+  failed: boolean
+}
+
+/**
+ * What the renderer sends to save an edited spec — `plans:updateSpec`.
+ *
+ * `expectedUpdatedAt` IS THE ROW'S `updated_at` EXACTLY AS THE DETAIL READ RETURNED IT: the
+ * raw string, never parsed. It is the conflict guard — the save only matches a row still
+ * carrying that value — and Postgres stores microseconds where a JS `Date` keeps
+ * milliseconds, so a value that went through `new Date(…)` on the way back would never
+ * match and every save would report a conflict.
+ *
+ * No owner and no spec key: the main process reads both off the row itself. Which file on
+ * this machine gets rewritten is not something the renderer may choose.
+ */
+export interface PlanSpecUpdate {
+  id: string
+  spec: string
+  expectedUpdatedAt: string
+}
+
+/**
+ * Why a saved spec did NOT also rewrite the `.magic/spec-*.md` on this machine.
+ *
+ *  * `not_owner`  — somebody else's plan: their file is on their disk, not here.
+ *  * `no_file`    — mine, but no agent on this machine points at it (another laptop, an
+ *                   archived agent, a cleaned worktree). The cloud copy is the edit.
+ *  * `diverged`   — the local file no longer holds the spec the editor was opened on:
+ *                   there is local work the cloud has not seen, and it is kept.
+ *  * `error`      — the write itself failed (permissions, a disk error).
+ *
+ * Only `diverged` and `error` are worth telling the reader about; the first two are the
+ * ordinary answer for most plans.
+ */
+export type PlanSpecFileSkip = 'not_owner' | 'no_file' | 'diverged' | 'error'
+
+/**
+ * What came of saving an edited spec.
+ *
+ *  * `saved`    — the cloud row holds the new spec. `updatedAt` is the row's new raw
+ *                 value, and `fileWritten` says whether this machine's spec file followed.
+ *  * `conflict` — the row changed between opening the editor and saving. NOTHING was
+ *                 written, cloud or file; the draft is the reader's to keep or drop.
+ *  * `denied`   — the database refused (not a member any more, the plan went personal,
+ *                 the plan is gone).
+ *  * `failed`   — no answer: offline, signed out, a spec past `MAX_SPEC_BYTES`, a bad
+ *                 argument. Never queued for later — an edit replayed behind the reader's
+ *                 back could not be checked against the row it was written for.
+ */
+export type PlanSpecUpdateResult =
+  | { status: 'saved'; updatedAt: string; fileWritten: boolean; fileSkipReason?: PlanSpecFileSkip }
+  | { status: 'conflict' }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * Where a plan's spec file is on THIS machine, for the one thing that needs a path the
+ * cloud does not carry: launching `/magic:plan-change` on it.
+ *
+ *  * `ok`         — `path` is the spec file, on disk right now; `repoPath` is the root of
+ *                   the configured repository it lives in, where the new agent opens.
+ *  * `not_owner`  — somebody else's plan: their file is on their disk, not here.
+ *  * `no_file`    — mine, but no spec file with this plan's key exists here (another
+ *                   laptop, a deleted file, a repository no longer bound to a folder).
+ *  * `failed`     — the plan could not be read, so nothing is known either way.
+ */
+export type PlanLocalSpec =
+  | { ok: true; path: string; repoPath: string }
+  | { ok: false; reason: 'not_owner' | 'no_file' | 'failed' }
+
+/**
+ * Where a comment is attached, in line numbers — the shape `plan_comments.anchor`
+ * stores as jsonb.
+ *
+ * A STRUCTURAL MIRROR of `renderer/utils/commentAnchors.ts`'s `LineRange`, declared
+ * here rather than imported from it, and the duplication is the lesser of the two
+ * evils: `commentAnchors` is a RENDERER module and this file is read by the main
+ * process, which must not reach across that line for a three-field record. The two
+ * are structurally identical, so the renderer assigns one to the other without a
+ * cast; a field added to one and not the other is a compile error at the first call
+ * site that does.
+ *
+ * Null for every comment the app writes today. Markdown comments are anchored to a
+ * QUOTE — the prose react-markdown paints carries no mapping back to the file's
+ * lines — so `anchor: null` plus a quote is what a plan comment is. The column exists
+ * because a diff-anchored plan comment is the obvious next thing to want, and adding
+ * the field later would mean a migration on a table that already holds rows.
+ */
+export interface PlanCommentAnchor {
+  side: 'new' | 'old'
+  startLine: number
+  endLine: number
+}
+
+/**
+ * Whether a value is exactly one of those — the ONE test, for every side of the bridge.
+ *
+ * BESIDE THE TYPE AND NOT IN EITHER CALLER, because there are two of them and they want
+ * the same answer for opposite reasons: `ipc/plans-handlers.ts` refuses a create whose
+ * anchor is not one of these, and `cloud/planComments.ts` narrows what came back out of a
+ * jsonb column. Two spellings stood in those two files for a revision and had already
+ * disagreed about `1.5` — the handler rejected it and the reader passed it through — which
+ * is exactly the drift a shared predicate exists to stop. Integers, because the fields are
+ * LINE NUMBERS.
+ *
+ * Checked field by field rather than cast: `anchor` is jsonb, so what comes back is
+ * `unknown` and could be anything a future writer put there, and a malformed anchor read
+ * as a `LineRange` would send `rangeCovers` arithmetic on `undefined`. Refusing it leaves
+ * the comment quote-anchored, which is what every comment the app writes today already is.
+ *
+ * This file is the right home for the reason it is the right home for the type: it is the
+ * one module the main process, the preload bridge and the renderer all read, and it
+ * imports nothing — so a test may load it without pulling in `@supabase/supabase-js`.
+ */
+export function isPlanCommentAnchor(value: unknown): value is PlanCommentAnchor {
+  if (typeof value !== 'object' || value === null) return false
+  const { side, startLine, endLine } = value as Record<string, unknown>
+  return (side === 'new' || side === 'old')
+    && Number.isInteger(startLine) && Number.isInteger(endLine)
+}
+
+/**
+ * One comment on a plan's spec, as `public.plan_comments` holds it.
+ *
+ * camelCase from snake_case, the way `PlanSession` is, and mapped in exactly one
+ * place (`main/cloud/planComments.ts`). The renderer never sees a row.
+ *
+ * `quote` IS THE ANCHOR. `locateQuote` looks for it in whatever text the spec
+ * currently renders as, and answering `null` is what makes the comment ORPHANED —
+ * which is a state the page draws, never a reason to drop the row. See
+ * `renderer/utils/planComments.ts`.
+ */
+export interface PlanComment {
+  id: string
+  sessionId: string
+  authorId: string
+  /**
+   * The comment this one replies to, or undefined for the head of a thread.
+   *
+   * `on delete set null` in the table rather than a cascade, deliberately: deleting
+   * your own comment must not silently take a colleague's replies with it. A reply
+   * whose parent has gone is promoted to a thread of its own — see `buildPlanCommentThreads`.
+   */
+  parentId?: string
+  anchor: PlanCommentAnchor | null
+  quote: string
+  body: string
+  /** Set by nothing yet; the column is there so resolving a thread needs no migration. */
+  resolvedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * Every comment on ONE plan, with just enough about their authors to draw them.
+ *
+ * THE AUTHORS TRAVEL WITH THE COMMENTS, unlike the plan detail read — which
+ * deliberately carries neither, because the header is drawn from the row the reader
+ * clicked. There is no row behind a comment: the reader has never seen these people
+ * on this page, and a uuid is not an attribution. The two maps are the same pair
+ * `PlanOverview` carries and are built by the same `fetchAuthors`, so a colleague is
+ * named and pictured identically in the list and in the thread.
+ *
+ * `failed` for the reason every other cloud read here carries one: a read that
+ * errored has no comments, and so does a plan nobody has commented on. Drawing "no
+ * comments yet" over a dropped connection is a claim about a colleague's silence
+ * that nothing here has evidence for.
+ */
+export interface PlanCommentsRead {
+  comments: PlanComment[]
+  /** author id → email, so a comment shows a readable author. See `planAuthor`. */
+  emailByAuthor: Record<string, string>
+  /** author id → `data:` URL of their photo. Absent for anyone who has none. */
+  avatarByAuthor: Record<string, string>
+  /**
+   * The plan has MORE comments than this read brought back, and the ones missing are the
+   * most recent. The list is capped and ordered oldest-first — a thread whose head was
+   * dropped would have every reply promoted to a thread of its own — so what falls off is
+   * the end of the conversation, which is exactly the part a reader would otherwise assume
+   * was never written. Drawn as a line under the spec; never a reason to hide the comments
+   * that did come back.
+   */
+  truncated: boolean
+  failed: boolean
+}
+
+/**
+ * One colleague who has a plan open right now, as the plan's presence channel reports them
+ * (#306). The three fields are EVERYTHING the channel carries: no name, no photo. A photo is
+ * a `data:` URL tens of kilobytes long, and presence is re-sent to every reader on every
+ * join; the renderer resolves the face from what it already holds (the org's member
+ * avatars, the comments' authors) and falls back to an initial.
+ */
+export interface PlanPresenceMember {
+  userId: string
+  email: string
+  /**
+   * The handle they picked (`profiles.username`), or null when they have none. Carried by
+   * presence because it is the only way a reader can learn it: `profiles_select` lets a
+   * user read their own row and nobody else's. Each reader sends their own. Absent from an
+   * older build's payload, which reads as null.
+   */
+  username: string | null
+  /** When they opened the plan, ISO. Orders the stack: the first to arrive comes first. */
+  joinedAt: string
+}
+
+/**
+ * Who else is on a plan, for ONE plan. `sessionId` travels with the list so a late event
+ * about the plan the reader just left cannot land on the one they opened next. The reader
+ * themselves is never in `members`: the main process removes them.
+ */
+export interface PlanPresence {
+  sessionId: string
+  members: PlanPresenceMember[]
+}
+
+/**
+ * Something moved on the open plan, and the page should read it again. PAYLOAD-BLIND on
+ * purpose: the row is not forwarded, the renderer re-reads through the same channel it
+ * opened the plan with, so a live update and a reopen can never draw two different things.
+ *
+ * `spec` is a change to the session row (its spec, its status, who may edit it); `comments`
+ * a comment written, edited or deleted.
+ */
+export interface PlanLiveChange {
+  sessionId: string
+  kind: 'spec' | 'comments'
+}
+
+/** What a view hands over to create a comment: everything the database does not mint. */
+export interface NewPlanComment {
+  sessionId: string
+  /** Undefined for the head of a thread, the parent's id for a reply. */
+  parentId?: string
+  anchor: PlanCommentAnchor | null
+  quote: string
+  body: string
+}
+
+/**
+ * An external link pinned to a plan — the Figma file, the Notion page, the Claude artifact
+ * the plan is about. A ROW OF ITS OWN in `plan_links`, never a line of the spec: the spec is
+ * the agent's document and is rewritten by the next upload. See 20260923110000.
+ *
+ * `kind` is FREE TEXT, the way `plan_sessions.status` is: the tools the app knows are listed
+ * in `renderer/utils/externalLinks.ts`, and a kind a newer build wrote draws as a plain link.
+ */
+export interface PlanLink {
+  id: string
+  sessionId: string
+  authorId: string
+  url: string
+  kind: string
+  title?: string
+  createdAt?: string
+}
+
+/** What adding a link sends. The author is not in it: the main process signs the row. */
+export interface NewPlanLink {
+  sessionId: string
+  url: string
+  kind: string
+  title?: string
+}
+
+/**
+ * One plan's links, with their authors resolved the way the comments' are. `failed` is a
+ * read that did not happen, not a plan with no links — the page says one and not the other.
+ */
+export interface PlanLinksRead {
+  links: PlanLink[]
+  emailByAuthor: Record<string, string>
+  failed: boolean
+}
+
+/**
+ * Who changed a plan's spec: by hand in the app, or through a Claude agent. The table says
+ * `human` and `agent`, and a hand edit never names an agent. See 20260923120000.
+ */
+export type PlanRevisionSource = 'human' | 'agent'
+
+/**
+ * One revision of a plan's spec, WITHOUT its text: the history lists dozens of them and
+ * each carries a full copy of a spec of up to 1 MiB. The text is only read to diff two of
+ * them (`PlanRevisionDiff`).
+ *
+ * Every save that changes the spec is its own revision since 20260923140000. Revisions
+ * written before it may hold a run of saves folded together, which is why there are two
+ * dates: `createdAt` is when the run began, `updatedAt` its latest save — and the one the
+ * timeline is ordered by.
+ */
+export interface PlanRevision {
+  id: string
+  /** Absent once the author's account is deleted: the change stays, the name goes. */
+  authorId?: string
+  source: PlanRevisionSource
+  /**
+   * The agent's name when the revision was recorded — a snapshot, since the agent may be
+   * archived since or unreadable to this reader. Absent for a hand edit, and for an agent
+   * revision on a session whose agent was already gone.
+   */
+  agentName?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * A link pinned to a plan or taken off it, with the link as it was — a removed link has no
+ * row in `plan_links` any more, so the event is all that is left of it. See 20260923130000.
+ */
+export interface PlanLinkEvent {
+  id: string
+  linkId: string
+  action: 'added' | 'removed'
+  url: string
+  kind: string
+  title?: string
+  /** Absent once the actor's account is deleted. */
+  actorId?: string
+  createdAt: string
+}
+
+/**
+ * The statuses a plan can be given. The planner agent sets the first two on its own; the
+ * last three only a person sets, from the plan's page: `in_progress` while the plan is
+ * being implemented, then `done` or `abandoned`. A status set by hand is held against
+ * the agent's later uploads, and every change is recorded — see 20260923150000.
+ */
+export const PLAN_STATUSES = ['planning', 'planned', 'in_progress', 'done', 'abandoned'] as const
+export type PlanStatus = (typeof PLAN_STATUSES)[number]
+
+/**
+ * What the workflow editor starts from (`config:getRepositoryWorkflowOverlay`): the
+ * repository's stored overlay, and the revision of the row it came from (null: no row,
+ * the default flow). The revision goes back with the save, so a flow someone else
+ * changed in the meantime is not overwritten.
+ */
+export interface RepositoryWorkflowOverlay {
+  overlay: WorkflowOverlay
+  revision: string | null
+}
+
+/**
+ * One change to a repository's workflow or to its /magic:start settings, as the audit
+ * trigger recorded it (`settings_events`, 20260801110000 and 20260930090000). `before` and
+ * `after` are the raw jsonb: the stored overlay (null when there was no row, the default
+ * flow) or the `start` column. Untrusted: the renderer parses them before drawing anything.
+ */
+export interface WorkflowHistoryEvent {
+  id: string
+  scope: 'workflow' | 'start'
+  before: unknown
+  after: unknown
+  /** Absent once the actor's account is deleted, or for a change made outside the app. */
+  actorId?: string
+  occurredAt: string
+}
+
+/**
+ * A repository's workflow history (`config:getRepositoryWorkflowHistory`), newest first,
+ * with its people resolved the way a plan history's are. `truncated`: the oldest events
+ * were not read. `failed`: the read did not happen, not a flow nobody changed.
+ */
+export interface WorkflowHistoryRead {
+  events: WorkflowHistoryEvent[]
+  emailByAuthor: Record<string, string>
+  avatarByAuthor: Record<string, string>
+  truncated: boolean
+  failed: boolean
+}
+
+export const EMPTY_WORKFLOW_HISTORY: WorkflowHistoryRead = {
+  events: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, failed: false,
+}
+
+/**
+ * What saving a repository's workflow came to (`config:saveRepositoryWorkflow`).
+ *  - saved:    stored, and served from now on. `workflow` is what the skills now get,
+ *              `overlay` what the editor keeps editing (null when it went back to the
+ *              default flow, which is also what an empty overlay saves as), `revision`
+ *              the one the next save is based on.
+ *  - invalid:  refused before any write; `problems` says why, step by step.
+ *  - denied:   the backend refused it: only the repository's owner, or an admin of its
+ *              organization, may edit its workflow.
+ *  - conflict: someone else saved this workflow since the editor read it. Nothing was
+ *              written; the editor keeps its draft and offers to reload theirs.
+ *  - failed:   no answer (offline, a repository without a cloud id yet): nothing changed.
+ */
+export type RepositoryWorkflowSaveResult =
+  | { status: 'saved'; workflow: ResolvedWorkflow; overlay: WorkflowOverlay | null; revision: string | null }
+  | { status: 'invalid'; problems: WorkflowProblem[] }
+  | { status: 'denied' }
+  | { status: 'conflict' }
+  | { status: 'failed'; message: string }
+
+/**
+ * How far a repository's copy of a skill has reached its members
+ * (`skills:repoSkillStatus`, see main/skill-share-status.ts):
+ *  - missing:     the repository has no such skill or command
+ *  - uncommitted: in the checkout, untracked or changed since HEAD
+ *  - unpushed:    committed, not on `origin/<branch>` as last fetched, or different there
+ *  - shared:      on `origin/<branch>`, as it is at HEAD
+ *  - unknown:     the repository has no local folder (or no git) on this machine
+ * `branch` is the remote development branch looked at, when one resolved.
+ */
+export type SkillShareStatus = 'missing' | 'uncommitted' | 'unpushed' | 'shared' | 'unknown'
+
+export interface SkillShareResult {
+  status: SkillShareStatus
+  branch?: string
+}
+
+/**
+ * A repository's workflow changed (`workflow:changed`): saved from this app, or from
+ * elsewhere and reached us over Realtime. `name` is its config key, or null when the
+ * repository is no longer in the config. The payload names the repository only: read
+ * the workflow again.
+ */
+export interface WorkflowChange {
+  repoId: string
+  name: string | null
+}
+
+/** What the database made of a status change. */
+export type PlanStatusUpdateResult =
+  | { status: 'saved'; updatedAt: string }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * What the database made of a change of edit policy. The write moves the row's
+ * `updated_at`, like a status change, so the new value comes back for the spec editor's
+ * conflict guard. `denied` is a reader who may not manage the plan (42501, or no row).
+ */
+export type PlanEditPolicyUpdateResult = PlanStatusUpdateResult
+
+/** What the database made of inviting a member to edit a plan, or of removing them. */
+export type PlanCollaboratorWriteResult =
+  | { status: 'saved' }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * A plan's status changed: from what, to what, by whom, and whether by hand or by the
+ * planner agent. Written by a trigger on `plan_sessions` (20260923150000). `from`/`to` are
+ * the column's free text, so a word this build does not know can arrive here.
+ */
+export interface PlanStatusEvent {
+  id: string
+  from?: string
+  to: string
+  source: PlanRevisionSource
+  /** Absent once the actor's account is deleted. */
+  actorId?: string
+  createdAt: string
+}
+
+/**
+ * One plan's history: its spec revisions, its link events and its status changes, with their people resolved
+ * the way the comments' are. Two lists rather than one merged timeline, because they are two
+ * tables with two caps; the page interleaves them by date.
+ *
+ * `truncated` is any list reaching its cap — the OLDEST entries are the ones missing.
+ * `failed` is a read that did not happen, not a plan with no history.
+ */
+export interface PlanHistoryRead {
+  revisions: PlanRevision[]
+  linkEvents: PlanLinkEvent[]
+  statusEvents: PlanStatusEvent[]
+  emailByAuthor: Record<string, string>
+  avatarByAuthor: Record<string, string>
+  truncated: boolean
+  /**
+   * Revisions older than the last one in `revisions` exist but were not read. The oldest
+   * revision shown is then NOT the first one there is, and must not be diffed against nothing.
+   */
+  olderRevisions: boolean
+  failed: boolean
+}
+
+/** A plan with no history, or no plan at all. Spread with `failed: true` for a read that failed. */
+export const EMPTY_PLAN_HISTORY: PlanHistoryRead = {
+  revisions: [], linkEvents: [], statusEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false,
+}
+
+/**
+ * The difference between two revisions of a spec, ready for `CodeView`: the NEWER text,
+ * highlighted, with the lines the older one had and it does not injected as removed rows —
+ * the shape a changed file's preview has. See `plans:history:diff`.
+ *
+ * `failed` covers everything that is not a diff: a revision not visible or gone, the read
+ * refused, the highlighter unavailable. The page says one thing for all of them.
+ */
+export type PlanRevisionDiff =
+  | {
+      failed: false
+      /** The newer revision's text. */
+      content: string
+      highlightedHtml: string | null
+      /** The changed regions alone, when there is something to collapse. As `FilePreviewResult`'s. */
+      changesOnlyHtml?: string
+      additions: number
+      deletions: number
+    }
+  | { failed: true }
 
 // ---------------------------------------------------------------------------
 // Cloud: usage logs & org stats. One aggregated snapshot is written per session at
@@ -2058,12 +3576,18 @@ export interface OrgSharedConfig {
      *  the DB function projects the whole `commit` object, so a team's protection
      *  rule reaches its members rather than being re-decided per machine. */
     allowOnProtectedBranch?: boolean
+    /** See RepositoryConfig['commit']. Inherited the same way. */
+    pushAfterCommit?: boolean
   }
   pullRequest?: {
     autoLinkTickets?: boolean
     watchCI?: boolean
     testAccounts?: string        // 'off' | 'reference' | 'inline'
     testAccountsSource?: string
+    templateCheckboxes?: string  // 'never' | 'type' | 'all'
+    bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
+    hideIrrelevantSections?: boolean
+    draft?: boolean
   }
   repoKeywords?: Record<string, string[]>
 }
@@ -2280,7 +3804,14 @@ export interface PrerequisiteStatus {
   docsUrl: string | null
 }
 
-export type McpServerId = 'atlassian' | 'github'
+/**
+ * `atlassian` and `github` back an integration and are provisioned on their own; `slack` is
+ * OPTIONAL, added only when the user asks (the workflow's Slack actions use it).
+ */
+export type McpServerId = 'atlassian' | 'github' | 'slack'
+
+/** The servers no integration requires: shown with their health, never repaired behind the user's back. */
+export const OPTIONAL_MCP_SERVER_IDS: readonly McpServerId[] = ['slack']
 
 export interface McpServerStatus {
   id: McpServerId
@@ -2296,10 +3827,63 @@ export interface McpServerStatus {
   command?: string | null
 }
 
+/**
+ * One server as `claude mcp list` reports it, after it asked each one for its health.
+ *
+ * - `connected`  — answered.
+ * - `needs-auth` — registered, but the user has not signed in yet (`/mcp` in a session).
+ * - `failed`     — registered and unreachable; `detail` says why.
+ * - `unknown`    — a line this build does not know how to read.
+ */
+export interface McpServerHealth {
+  /** As the CLI prints it: `atlassian`, or `claude.ai Slack` for a connector. */
+  name: string
+  /** `claude-ai`: a connector of the user's claude.ai account, which Claude Code exposes in every session. */
+  source: 'claude-code' | 'claude-ai'
+  /** The URL, or the command of a stdio server. */
+  target: string
+  state: 'connected' | 'needs-auth' | 'failed' | 'unknown'
+  detail?: string
+}
+
+/** The last health check, kept until the next one: the check costs seconds. */
+export interface McpHealthReport {
+  /** Epoch ms. */
+  checkedAt: number
+  /** False when `claude mcp list` could not run at all (no CLI, timeout): `servers` is then empty. */
+  ok: boolean
+  servers: McpServerHealth[]
+}
+
+/**
+ * A server as the Connections tab shows it: what the registry says, and what the last
+ * health check said about it or about a claude.ai connector to the same service.
+ */
+export interface McpServerState {
+  id: McpServerId
+  /** An enabled integration needs it (Atlassian, GitHub): the app adds it at launch, and never offers to take it off. */
+  required: boolean
+  status: McpServerStatus
+  /** The health of the server Claude Code will actually use for it, or null before any check. */
+  health: McpServerHealth | null
+}
+
+/** What the Connections tab's CLI row found of `gh`, the GitHub MCP server's sign-in. */
+export interface GhCliStatus {
+  checkedAt: number
+  installed: boolean
+  /** `2.62.0`, or null when absent or unreadable. */
+  version: string | null
+  /** `gh auth status` passes for github.com: `gh auth token` has a token to hand the MCP server. */
+  loggedIn: boolean
+  account: string | null
+}
+
 export interface SetupStatus {
   prerequisites: PrerequisiteStatus[]
   /** Whether Homebrew is available, i.e. whether one-click installs are offered. */
   homebrew: boolean
+  /** The servers an integration needs. The optional ones are not here: see McpServerState. */
   mcpServers: McpServerStatus[]
   integrations: { github: boolean; atlassian: boolean }
   /** False until the user has been asked once — drives the first-run wizard. */
@@ -2388,6 +3972,20 @@ export interface ScriptTerminalInfo {
 export interface TrayQuestionOption {
   label: string
   description?: string
+  /** What picking it would produce (a PR body, a snippet), markdown: the TUI shows it beside the options. */
+  preview?: string
+}
+
+/**
+ * One of the questions of an `AskUserQuestion` call, which may carry several.
+ * `prompt` is the tool's own `question` text, verbatim: it is the key an answer is
+ * filed under (see `TrayAnswerChoice` `answers`).
+ */
+export interface TrayQuestionItem {
+  prompt: string
+  header?: string
+  options: TrayQuestionOption[]
+  multiSelect?: boolean
 }
 
 /**
@@ -2422,6 +4020,15 @@ export interface TrayQuestion {
   preview?: string
   receivedAt: number
   unsupported?: boolean
+  /** Every question of an `ask`, the first one included (`prompt` and `options` repeat it). */
+  questions?: TrayQuestionItem[]
+  /**
+   * The app holds the agent's AskUserQuestion hook open: Claude Code shows no dialog of
+   * its own, and the answer goes back through the hook instead of being typed into the
+   * TUI. Every form is answerable then — several questions, a free-text answer. See
+   * main/questions/pending-questions.ts.
+   */
+  held?: boolean
 }
 
 /**
@@ -2437,6 +4044,11 @@ export type TrayAnswerChoice =
   | { kind: 'option'; index: number }
   | { kind: 'options'; indexes: number[] }
   | { kind: 'deny' }
+  /**
+   * One answer per question of a held `ask`, in order: an option's label, several
+   * labels joined by ", " (Claude Code's own spelling for a multiSelect), or free text.
+   */
+  | { kind: 'answers'; answers: string[] }
 
 /**
  * Outcome of `tray:answerQuestion`. `ok: false` always means nothing at all was
@@ -2511,8 +4123,10 @@ export type ChangedFileStatus = 'modified' | 'added' | 'deleted' | 'renamed' | '
  * dependency being pointed the wrong way.
  *
  * `additions`/`deletions` are the repository's own count, not a measurement of the
- * rendered document: an untracked file arrives as 0/0 because git has nothing to diff
- * it against, which is why every reader of these two has to treat "both zero" as "no
+ * rendered document. An untracked file has no diff for git to count, so its additions
+ * are counted from the file itself — every line of it is new — and its deletions are 0.
+ * Both still arrive as 0 where there is nothing countable (a binary file, one too large
+ * to read on the poll), so every reader of these two has to treat "both zero" as "no
  * figure to show" rather than as "nothing changed".
  */
 export interface ChangedFile {

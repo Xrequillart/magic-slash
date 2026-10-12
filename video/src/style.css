@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+/* The shared components inherit the app's body: Cera Pro at the app's line height. */
+.app-root {
+  font-family: 'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A rendered frame is a still, so nothing may run on the browser's clock. Transitions
+   are off, and every CSS animation (a spinner, the working wave) is paused and set to
+   where it would be at --film-t seconds: a paused animation with a negative delay
+   shows that instant, which keeps it moving on the film's clock, frame for frame. */
+.app-root *,
+.app-root *::before,
+.app-root *::after {
+  transition: none !important;
+  animation-play-state: paused !important;
+  animation-delay: calc(var(--film-t, 0) * -1s) !important;
+}

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot } from 'lucide-react'
+import { Bot } from '@ds/desktop/icons'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
-import type { InitialPromptMode, LaunchMetadata } from '../../../types'
-import { TerminalView } from '../../components/TerminalView'
+import { DEFAULT_SPLIT_NEW_AGENT_PANE, type InitialPromptMode, type LaunchMetadata } from '../../../types'
+import { AgentPane } from '../../components/AgentPane'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -43,7 +43,7 @@ export interface NewTerminalDetail {
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
-  const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
+  const { toggleInfoSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const t = useT()
   const [isCreating, setIsCreating] = useState(false)
   // Dev only: the debug menu pins the "no agents" screen while sessions are
@@ -72,7 +72,7 @@ export function TerminalsPage() {
         showToast(
           t(invalid.length > 1 ? 'terminals.invalidRepos.other' : 'terminals.invalidRepos.one', { count: invalid.length }),
           'error',
-          { actions: [{ label: t('terminals.openSettings'), onClick: () => openSettingsModal('repositories') }] },
+          { actions: [{ label: t('terminals.openSettings'), onClick: () => openSettingsModal() }] },
         )
         return true
       }
@@ -126,6 +126,17 @@ export function TerminalsPage() {
     return () => window.removeEventListener('debug:empty-state', handleDebugEmptyState)
   }, [])
 
+  // Where a new agent opens while the window is split: Settings → Split view. Outside
+  // the split there is one pane, so every setting reads as left. ONE place for the rule,
+  // because the sidebar's +, ⌘N and the File menu all arrive through the two listeners
+  // below and must not disagree about it.
+  const splitNewAgentPane = useStore((s) => s.config?.splitNewAgentPane) ?? DEFAULT_SPLIT_NEW_AGENT_PANE
+  const newAgentPane = (): 'left' | 'right' => {
+    if (!isSplitMode) return 'left'
+    if (splitNewAgentPane === 'left' || splitNewAgentPane === 'right') return splitNewAgentPane
+    return focusedPane === 'secondary' ? 'right' : 'left'
+  }
+
   // Listen for new terminal event from sidebar
   useEffect(() => {
     const handleNewTerminal = (event: Event) => {
@@ -134,12 +145,12 @@ export function TerminalsPage() {
       // `createTerminal` takes both, so either still means "a new agent, at the
       // default, with nothing to say to it".
       const detail = (event as CustomEvent<NewTerminalDetail | null>).detail
-      createTerminal(detail, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
+      createTerminal(detail, newAgentPane())
     }
 
     window.addEventListener('new-terminal', handleNewTerminal)
     return () => window.removeEventListener('new-terminal', handleNewTerminal)
-  }, [terminals.length, isCreating, isSplitMode, focusedPane])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane, splitNewAgentPane])
 
   // Listen for Command+N keyboard shortcut
   useEffect(() => {
@@ -147,13 +158,13 @@ export function TerminalsPage() {
       // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
-        createTerminal(null, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
+        createTerminal(null, newAgentPane())
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, isCreating, isSplitMode, focusedPane])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane, splitNewAgentPane])
 
   // Listen for Command+Arrow to switch between agents (within current zone in split mode)
   useEffect(() => {
@@ -202,14 +213,14 @@ export function TerminalsPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
         e.preventDefault()
         if (terminals.length > 0) {
-          toggleRightSidebar('info')
+          toggleInfoSidebar()
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, toggleRightSidebar])
+  }, [terminals.length, toggleInfoSidebar])
 
   // Listen for Command+D to duplicate the active agent
   useEffect(() => {
@@ -330,7 +341,7 @@ export function TerminalsPage() {
             >
               {focusedPane === 'primary' && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
               {primaryTerminals.map((terminal) => (
-                <TerminalView
+                <AgentPane
                   key={terminal.id}
                   terminal={terminal}
                   isVisible={terminal.id === activeTerminalId}
@@ -348,7 +359,7 @@ export function TerminalsPage() {
               {focusedPane === 'secondary' && secondaryTerminals.length > 0 && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
               {secondaryTerminals.length > 0 ? (
                 secondaryTerminals.map((terminal) => (
-                  <TerminalView
+                  <AgentPane
                     key={`split-${terminal.id}`}
                     terminal={terminal}
                     isVisible={terminal.id === splitTerminalId}
@@ -377,7 +388,7 @@ export function TerminalsPage() {
           /* Single pane mode */
           <>
             {terminals.map((terminal) => (
-              <TerminalView
+              <AgentPane
                 key={terminal.id}
                 terminal={terminal}
                 isVisible={terminal.id === activeTerminalId}

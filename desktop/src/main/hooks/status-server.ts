@@ -50,6 +50,8 @@ type StateCallback = (terminalId: string, state: string) => void
 type MetadataCallback = (terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => void
 type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
+/** Around an agent's Bash call: the hook's stdin, raw. `before` is awaited, the command waits on it. */
+type CommandDiffCallback = (phase: 'before' | 'after', terminalId: string, body: string) => Promise<void>
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
 type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
 /**
@@ -57,8 +59,16 @@ type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
  * unparsed so the parsing (and its failure modes) live with the question store.
  */
 type QuestionCallback = (terminalId: string, body: string) => void
+/**
+ * The AskUserQuestion hook, which waits on the answer: what it resolves to is the
+ * hook's output, or null for none (Claude Code then shows its own dialog). See
+ * holdAsk in main/questions/pending-questions.ts.
+ */
+type AskCallback = (terminalId: string, body: string) => Promise<string | null>
 /** The agent is no longer blocked — see the clear hooks in claude-hooks-config. */
 type ClearQuestionCallback = (terminalId: string) => void
+/** Whether the `claude` whose hook reported (its pid) is the agent's own. */
+type ReporterCheck = (terminalId: string, pid: number) => boolean
 /** terminalId is undefined for sessions started outside the app (no agent). */
 type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Read-back providers: unlike the callbacks above (terminal → app writes), these let a
@@ -66,6 +76,34 @@ type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Loosely typed on purpose — the values are just JSON-serialized to the response.
 type ConfigProvider = () => unknown
 type AgentProvider = (terminalId: string) => unknown
+/**
+ * `path` is the skill's working directory (a repo or one of its worktrees) and
+ * decides the repository, hence the flow; `skill` (`magic-commit`) picks the node
+ * the answer is centred on. Either may be missing — the provider decides what that
+ * means (see main/index.ts: the default flow, no node).
+ */
+type WorkflowProvider = (path: string | null, skill: string | null) => unknown
+/**
+ * What follows a magic skill once it is done: the lines to show and the one skill to
+ * chain into, for the `outcome` its own table picked (`failed` with `reason` when it
+ * stopped on an error). Same `path` and `skill` as WorkflowProvider. See
+ * workflow/next.ts for the rules, main/index.ts for the lookup.
+ */
+type WorkflowNextProvider = (path: string | null, skill: string | null, outcome: string, reason: string) => unknown
+/**
+ * One action of the flow the calling skill's repository follows, by its node id
+ * (`action:a1`): what the hidden `magic-action` skill carries out. Same `path` as
+ * WorkflowProvider; null when the repository has no such action. See workflow/actions.ts.
+ */
+type WorkflowActionProvider = (path: string | null, id: string) => unknown
+/**
+ * The workflow context of a CUSTOM skill the model just invoked (#333), or null for
+ * anything else: a magic skill (it asks `/workflow/next` itself), a skill in no flow, a
+ * path matching no repository. `cwd` is the session's working directory, `skill` the
+ * name the Skill tool was called with (`check-types`, `plugin:foo`). See
+ * workflow/skillContext.ts for the text, main/index.ts for the lookup.
+ */
+type CustomSkillContextProvider = (cwd: string, skill: string) => string | null
 /**
  * `path` is the working directory the skill is in (a repo or one of its
  * worktrees) and is the reliable identifier; `repo` is the legacy name, kept for
@@ -124,13 +162,20 @@ let stateCallback: StateCallback | null = null
 let metadataCallback: MetadataCallback | null = null
 let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
+let commandDiffCallback: CommandDiffCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
 let questionCallback: QuestionCallback | null = null
+let askCallback: AskCallback | null = null
 let clearQuestionCallback: ClearQuestionCallback | null = null
+let reporterCheck: ReporterCheck | null = null
 let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
+let workflowProvider: WorkflowProvider | null = null
+let workflowNextProvider: WorkflowNextProvider | null = null
+let workflowActionProvider: WorkflowActionProvider | null = null
+let customSkillContextProvider: CustomSkillContextProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
 let specPathCallback: SpecPathCallback | null = null
@@ -151,6 +196,31 @@ const lastSeenSpecPaths = new Map<string, string>()
 
 export function getServerPort(): number {
   return serverPort
+}
+
+export function setReporterCheck(check: ReporterCheck) {
+  reporterCheck = check
+}
+
+/**
+ * The routes Claude Code's own hooks and statusline call, each with the pid of the
+ * `claude` running them (`$PPID`, see claude-hooks-config.ts).
+ *
+ * WHY: the terminal id comes from the environment, and every process the agent starts
+ * inherits it, a `claude` the agent runs itself included (a test, a script, a subagent
+ * run by hand). Its hooks then report under the agent's id: its transcript replaces
+ * the agent's in the chat, its turns set the agent's state. Only the agent's own
+ * `claude` is listened to; a report without a pid (hooks written by an older release)
+ * still is, as before.
+ */
+const AGENT_HOOK_ROUTES = new Set(['/usage', '/status', '/question', '/question/ask', '/question/clear', '/command-diff/before', '/command-diff/after'])
+
+function fromAnotherClaude(url: URL): boolean {
+  const terminalId = url.searchParams.get('id')
+  const pid = Number(url.searchParams.get('pid'))
+  if (!terminalId || !reporterCheck || !AGENT_HOOK_ROUTES.has(url.pathname)) return false
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  return !reporterCheck(terminalId, pid)
 }
 
 export function setStateCallback(callback: StateCallback) {
@@ -181,6 +251,10 @@ export function setJiraCallbackHandler(callback: JiraCallbackHandler) {
   jiraCallbackHandler = callback
 }
 
+export function setCommandDiffCallback(callback: CommandDiffCallback) {
+  commandDiffCallback = callback
+}
+
 export function setCommandStartCallback(callback: CommandStartCallback) {
   commandStartCallback = callback
 }
@@ -199,6 +273,10 @@ export function setUsageCallback(callback: UsageCallback) {
 
 export function setQuestionCallback(callback: QuestionCallback) {
   questionCallback = callback
+}
+
+export function setAskCallback(callback: AskCallback) {
+  askCallback = callback
 }
 
 export function setClearQuestionCallback(callback: ClearQuestionCallback) {
@@ -243,11 +321,115 @@ export function setAgentProvider(provider: AgentProvider) {
   agentProvider = provider
 }
 
+export function setWorkflowProvider(provider: WorkflowProvider) {
+  workflowProvider = provider
+}
+
+export function setWorkflowNextProvider(provider: WorkflowNextProvider) {
+  workflowNextProvider = provider
+}
+
+export function setWorkflowActionProvider(provider: WorkflowActionProvider) {
+  workflowActionProvider = provider
+}
+
+export function setCustomSkillContextProvider(provider: CustomSkillContextProvider) {
+  customSkillContextProvider = provider
+}
+
+/** Told the `cwd` of every prompt the user sends: what starts the workflow's chain count again (chainCounter.ts). */
+let userPromptListener: ((cwd: string) => void) | null = null
+
+export function setUserPromptListener(listener: (cwd: string) => void) {
+  userPromptListener = listener
+}
+
+/**
+ * The context `POST /workflow/context` injects for the Skill tool payload in `body`,
+ * or null when it injects nothing.
+ *
+ * Every failure is a null, and deliberately a silent one: the caller is a hook on the
+ * critical path of a skill that is starting, and the only useful thing to do with a
+ * body it cannot read is to leave that skill exactly as it would have run without the
+ * app. Nothing here logs, and not only because there is nothing to act on: the body
+ * names a skill that may be the user's employer's own, and a log line is a place it
+ * would outlive the request.
+ */
+/** The hook events that hand a custom skill its context, and so the one the answer names. */
+type SkillContextEvent = 'PostToolUse' | 'UserPromptSubmit'
+
+/**
+ * The skill a hook's stdin is about, and the event it came from.
+ *
+ * Two ways in. The model invoking the skill: a PostToolUse on the Skill tool, whose
+ * `tool_input.skill` is the bare name. The user typing it: a UserPromptSubmit whose
+ * `prompt` OPENS on the command (`/check-types`, `/plugin:foo args`). Claude Code
+ * expands a typed command itself, without the Skill tool, so without this second way
+ * a custom skill run by hand would end on nothing, whatever its outcomes and links.
+ * A prompt that only mentions a command further in is discussing it, not running it.
+ */
+function skillOfHookInput(payload: unknown): { cwd: string; skill: string; event: SkillContextEvent } | null {
+  const { cwd, hook_event_name: eventName, tool_input: input, prompt } = (payload ?? {}) as {
+    cwd?: unknown; hook_event_name?: unknown; tool_input?: { skill?: unknown } | null; prompt?: unknown
+  }
+  if (typeof cwd !== 'string' || !cwd) return null
+  if (eventName === 'UserPromptSubmit') {
+    if (typeof prompt !== 'string') return null
+    const typed = prompt.match(/^\s*\/([A-Za-z0-9][A-Za-z0-9:_-]*)(?=\s|$)/)
+    return typed ? { cwd, skill: typed[1], event: 'UserPromptSubmit' } : null
+  }
+  const raw = input?.skill
+  if (typeof raw !== 'string') return null
+  // Claude Code passes the bare name (`check-types`, `plugin:foo`); a leading slash is
+  // what a model copying a command line would add, and never part of a node's skill.
+  const skill = raw.trim().replace(/^\/+/, '')
+  return skill ? { cwd, skill, event: 'PostToolUse' } : null
+}
+
+function customSkillContextFor(body: string): { context: string; event: SkillContextEvent } | null {
+  if (!customSkillContextProvider) return null
+  let payload: unknown
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    return null
+  }
+  // Every prompt, a command or not, reaches this route through the UserPromptSubmit hook.
+  const { cwd, hook_event_name: eventName } = (payload ?? {}) as { cwd?: unknown; hook_event_name?: unknown }
+  if (eventName === 'UserPromptSubmit' && typeof cwd === 'string' && cwd) {
+    try { userPromptListener?.(cwd) } catch { /* never in the way of the skill */ }
+  }
+  const found = skillOfHookInput(payload)
+  if (!found) return null
+  try {
+    const context = customSkillContextProvider(found.cwd, found.skill)
+    return context ? { context, event: found.event } : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Answer a read-only route with what its provider returns, as JSON. No provider
+ * (a nullish answer) or a throwing one both answer 200 with `fallback`,
+ * so a skill reading the route never has to tell those apart.
+ */
+function sendProvided(res: http.ServerResponse, route: string, fallback: unknown, provide: () => unknown) {
+  let payload = JSON.stringify(fallback)
+  try {
+    payload = JSON.stringify(provide() ?? fallback)
+  } catch (e) {
+    console.error(`[StatusServer] ${route} provider failed:`, e)
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json' })
+  res.end(payload)
+}
+
 export function setWorktreeFilesWriter(writer: WorktreeFilesWriter) {
   worktreeFilesWriter = writer
 }
 
-// Read the full request body (used by the POST /usage and POST /question routes)
+// Read the full request body (used by the POST /usage, /question and /workflow/context routes)
 function readRequestBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
@@ -305,6 +487,8 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
     fiveHourResetsAt: numOrUndef(fiveHour.resets_at),
     sevenDayPercent: numOrUndef(sevenDay.used_percentage),
     sevenDayResetsAt: numOrUndef(sevenDay.resets_at),
+    transcriptPath: typeof data?.transcript_path === 'string' && data.transcript_path ? data.transcript_path : undefined,
+    version: typeof data?.version === 'string' && data.version ? data.version : undefined,
   }
 }
 
@@ -424,6 +608,15 @@ export function startStatusServer(): Promise<number> {
       try {
         const url = new URL(req.url, `http://localhost:${serverPort}`)
 
+        // Answered as if heard, and dropped. Empty for /question/ask: the nested
+        // `claude` then shows its own dialog, as it would outside the app.
+        if (fromAnotherClaude(url)) {
+          req.resume()
+          res.writeHead(200)
+          res.end(url.pathname === '/question/ask' ? '' : 'OK')
+          return
+        }
+
         if (url.pathname === '/usage') {
           // Statusline usage report — carries cost/context/model as a raw JSON body (POST).
           const terminalId = url.searchParams.get('id')
@@ -482,6 +675,28 @@ export function startStatusServer(): Promise<number> {
             .finally(() => {
               res.writeHead(200)
               res.end('OK')
+            })
+          return
+        } else if (url.pathname === '/question/ask') {
+          // The AskUserQuestion hook, which prints what this answers: the answer when
+          // the app holds the question (the chat answers it), nothing otherwise. The
+          // request may stay open as long as a person takes to answer, by design.
+          //
+          // Never fails loudly either: whatever goes wrong answers an empty 200, and
+          // an empty answer is Claude Code showing its own dialog, as without the app.
+          const terminalId = url.searchParams.get('id')
+          readRequestBody(req)
+            .then(async (body) => {
+              if (!terminalId || terminalId.startsWith('sidebar-') || !body || !askCallback) return ''
+              return (await askCallback(terminalId, body)) ?? ''
+            })
+            .catch((e) => {
+              console.error('[Questions] Failed to handle an ask:', e)
+              return ''
+            })
+            .then((output) => {
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(output)
             })
           return
         } else if (url.pathname === '/question/clear') {
@@ -634,6 +849,33 @@ export function startStatusServer(): Promise<number> {
 
           res.writeHead(200)
           res.end('OK')
+        } else if (url.pathname === '/command-diff/before' || url.pathname === '/command-diff/after') {
+          // Around an agent's Bash call, for the chat's diff of what it changed. Before is
+          // answered once the tree is written, since the command waits on it; after at once.
+          // Never fails loudly: whatever goes wrong is a command shown without its diff.
+          const terminalId = url.searchParams.get('id')
+          const phase = url.pathname.endsWith('before') ? 'before' : 'after'
+          const done = () => {
+            res.writeHead(200)
+            res.end('OK')
+          }
+          readRequestBody(req)
+            .then((body) => {
+              if (!terminalId || terminalId.startsWith('sidebar-') || !body || !commandDiffCallback) return
+              const measured = commandDiffCallback(phase, terminalId, body)
+              if (phase === 'after') {
+                done()
+                return measured.then(() => undefined)
+              }
+              return measured
+            })
+            .catch((e) => {
+              console.error('[CommandDiff] Failed to measure a command:', e)
+            })
+            .finally(() => {
+              if (!res.headersSent) done()
+            })
+          return
         } else if (url.pathname === '/command/start') {
           const terminalId = url.searchParams.get('id')
           const command = url.searchParams.get('cmd')
@@ -780,25 +1022,64 @@ export function startStatusServer(): Promise<number> {
         } else if (url.pathname === '/config') {
           // Read-only: the current config from the app's in-memory cache (hydrated from the
           // cloud store). Lets skills read the live config instead of a stale local config.json.
-          let payload = '{}'
-          try {
-            if (configProvider) payload = JSON.stringify(configProvider() ?? {})
-          } catch (e) {
-            console.error('[StatusServer] /config provider failed:', e)
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(payload)
+          sendProvided(res, '/config', {}, () => configProvider?.())
         } else if (url.pathname === '/agent') {
           // Read-only: the agent/task metadata for a given terminal id (terminalId === agent.id).
           const terminalId = url.searchParams.get('id')
-          let payload = 'null'
-          try {
-            if (terminalId && agentProvider) payload = JSON.stringify(agentProvider(terminalId) ?? null)
-          } catch (e) {
-            console.error('[StatusServer] /agent provider failed:', e)
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(payload)
+          sendProvided(res, '/agent', null, () => (terminalId ? agentProvider?.(terminalId) : null))
+        } else if (url.pathname === '/workflow/context') {
+          // The PostToolUse hook on the Skill tool, and the UserPromptSubmit one for a
+          // command typed by hand, POST their stdin here, and whatever
+          // this answers IS the hook's stdout, which Claude Code parses as the hook's
+          // JSON (see getCustomSkillContextHookConfig in claude-hooks-config.ts). Two
+          // answers only: 200 with the hook JSON carrying a custom skill's workflow
+          // context, or 204 with no body for everything else. An empty stdout is a
+          // hook that had nothing to say; anything else that is not the hook JSON
+          // (sendProvided's `null`, an "OK") would be a malformed hook output shown in
+          // every session, for every skill, magic or not.
+          //
+          // No telemetry, no usage and no skill callback here: the body names a skill
+          // that is not necessarily ours, and this route only answers with it.
+          // An oversized or aborted body is nothing to inject, and nothing worth logging.
+          readRequestBody(req)
+            .then(customSkillContextFor, () => null)
+            .then((found) => {
+              if (!found) {
+                res.writeHead(204)
+                res.end()
+                return
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ hookSpecificOutput: { hookEventName: found.event, additionalContext: found.context } }))
+            })
+          return
+        } else if (url.pathname === '/workflow') {
+          // Read-only: the workflow the calling skill's repository follows, centred on
+          // that skill's node, so it can compute its next steps (#328). `null` when no
+          // provider answers — a skill reading that keeps its built-in closing text.
+          const path = url.searchParams.get('path')
+          const skill = url.searchParams.get('skill')
+          sendProvided(res, '/workflow', null, () => workflowProvider?.(path, skill))
+        } else if (url.pathname === '/workflow/next') {
+          // Read-only: what the calling skill shows and chains into, now that it ended on
+          // `outcome`. An empty `outcome` is a custom step that ended on none of its own:
+          // only the links taken whatever the outcome apply. Nothing to show (no provider,
+          // no outcome at all, a throwing provider) is the empty answer, which leaves the
+          // skill on its own closing text.
+          const path = url.searchParams.get('path')
+          const skill = url.searchParams.get('skill')
+          const outcome = url.searchParams.get('outcome')
+          const reason = url.searchParams.get('reason') ?? ''
+          sendProvided(res, '/workflow/next', { lines: [], chain: null, actions: [] }, () =>
+            (outcome !== null ? workflowNextProvider?.(path, skill, outcome, reason) : null))
+        } else if (url.pathname === '/workflow/action') {
+          // Read-only: one action of the repository's flow, for `magic-action` to carry out.
+          // Read from here rather than handed over by the calling skill, so the admin's words
+          // reach the agent as they were saved. `null` when there is no such action, which
+          // the skill reads as nothing to do.
+          const path = url.searchParams.get('path')
+          const id = url.searchParams.get('id')
+          sendProvided(res, '/workflow/action', null, () => (id ? workflowActionProvider?.(path, id) : null))
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.

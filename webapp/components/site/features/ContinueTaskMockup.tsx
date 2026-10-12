@@ -22,7 +22,7 @@ import { GithubIcon } from '../icons'
  *
  * What IS real is the capability — `/magic:continue` picks a ticket back up wherever it
  * was left, by you or by a colleague — and the button says that in the words a reader of
- * a marketing page can act on, where "start an agent" would need the app's vocabulary
+ * a showcase page can act on, where "start an agent" would need the app's vocabulary
  * first. So it is drawn in the SITE's own white button dress rather than an invented one:
  * `bg-white`, `border-hairline`, `shadow-button`, `rounded-button`, which is exactly what
  * `BUTTON_VARIANTS.secondary` in `components/ui.tsx` is made of. It reads as this site's

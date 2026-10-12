@@ -21,7 +21,7 @@ import {
  * the control. Same behaviour, same state, two sets of classes — which is why this is
  * one component with a `variant` rather than two files that would drift.
  *
- * IN TAILWIND now, where the two dresses used to be four `marketing.css` class prefixes
+ * IN TAILWIND now, where the two dresses used to be four `showcase.css` class prefixes
  * (`header-lang-*` / `footer-lang-*`). The stylesheet is gone from these routes, so the
  * dresses are two entries in the map below and the behaviour above them is untouched.
  * The footer sits on a dark plate, which is the whole reason the variants differ at all:

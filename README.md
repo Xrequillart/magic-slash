@@ -2,14 +2,14 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-readme-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-readme-light.svg">
-    <img src=".github/assets/logo-readme-light.svg" alt="Magic Slash" height="80">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-light.svg">
+    <img src=".github/assets/logo-light.svg" alt="Magic Slash" height="128">
   </picture>
 </p>
 
 <p align="center">
-  Desktop app with 8 Claude Code skills to automate your entire dev cycle — from an idea to a merged PR.
+  Desktop app with 9 Claude Code skills to automate your entire dev cycle — from an idea to a merged PR.
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
     <img src="https://img.shields.io/github/v/release/xrequillart/magic-slash" alt="Release">
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/xrequillart/magic-slash" alt="License">
+    <img src="https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue" alt="License: PolyForm Shield 1.0.0">
   </a>
   <a href="https://github.com/xrequillart/magic-slash/stargazers">
     <img src="https://img.shields.io/github/stars/xrequillart/magic-slash" alt="Stars">
@@ -29,22 +29,24 @@
 
 ## Skills
 
-| Skill             | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `/magic:plan`     | Turn an idea into a spec and tracker tickets      |
-| `/magic:start`    | Start a task from a Jira ticket or GitHub issue   |
-| `/magic:continue` | Resume work on an existing ticket                 |
-| `/magic:commit`   | Create an atomic commit with conventional message |
-| `/magic:pr`       | Push, create PR and update Jira                   |
-| `/magic:review`   | Review a Pull Request (self or external)          |
-| `/magic:resolve`  | Address review comments and force-push fixes      |
-| `/magic:done`     | Finalize after PR merge (transition Jira to Done) |
+| Skill                | Description                                        |
+| -------------------- | -------------------------------------------------- |
+| `/magic:plan`        | Turn an idea into a spec and tracker tickets       |
+| `/magic:plan-change` | Rework a plan and update the tickets it filed      |
+| `/magic:start`       | Start a task from a Jira ticket or GitHub issue    |
+| `/magic:continue`    | Resume work on an existing ticket                  |
+| `/magic:commit`      | Create an atomic commit with conventional message  |
+| `/magic:pr`          | Push, create PR and update Jira                    |
+| `/magic:review`      | Review a Pull Request (self or external)           |
+| `/magic:resolve`     | Address review comments and force-push fixes       |
+| `/magic:done`        | Finalize after PR merge (transition Jira to Done)  |
 
 > Type `/magic:` to quickly find all commands.
 
 You can also invoke skills using natural language:
 
 - "j'ai une idée" or "I have an idea" → `/magic:plan`
+- "modifier le plan" or "change the plan" → `/magic:plan-change`
 - "démarre PROJ-123" or "work on PROJ-123" → `/magic:start`
 - "je reprends PROJ-123" or "continue PROJ-123" → `/magic:continue`
 - "je suis prêt à committer" or "ready to commit" → `/magic:commit`
@@ -79,7 +81,7 @@ provide. Settings → Application → Machine setup reports the same thing at an
 2. Asks where your tickets live (Jira + GitHub, or GitHub only)
 3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
-4. Installs the 8 skills into `~/.claude/skills/`
+4. Installs the 9 skills into `~/.claude/skills/`
 5. Configures Claude Code's hooks, statusline and permission allowlist — the statusline wrapper is what feeds the usage card, and it relays your own statusline if you have one
 6. Checks your prerequisites and reports what is missing
 
@@ -164,6 +166,22 @@ One Next.js deployment on Vercel answers on three hosts:
 
 > **Note:** Use this when the ticket does not exist yet. Once it does, `/magic:start` is what picks
 > it up — `/magic:plan` runs before it in the cycle, never instead of it.
+
+### /magic:plan-change - Rework a plan and its tickets
+
+```bash
+/magic:plan-change /path/to/repo/.magic/spec-sso-login-20260922-101500.md "split the SSO story per provider"
+```
+
+1. Reads the spec `/magic:plan` wrote and the tickets it filed, as they are in the tracker now
+2. Reworks the spec in place, and records why in a `## Change log` section
+3. Proposes a diff: tickets to update, stories to add under the epic, tickets to close
+4. Waits for your approval, and flags any ticket someone is already working on
+5. Applies it: edits the tickets, files the new stories under the existing epic, closes the dropped ones as not planned
+
+> **Note:** It never files the plan again. A plan with no ticket yet is `/magic:plan`'s. In the
+> desktop app, the plan's page has a **Rework the plan** button that opens an agent with the command
+> and the spec path typed in, for you to add the change and send.
 
 ### /magic:start - Start a task
 
@@ -367,7 +385,7 @@ edit by hand:
 
 ```json
 {
-  "version": "0.91.1",
+  "version": "0.118.4",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
@@ -395,7 +413,11 @@ edit by hand:
         "autoLinkTickets": true,
         "watchCI": true,
         "testAccounts": "off",
-        "testAccountsSource": ""
+        "testAccountsSource": "",
+        "templateCheckboxes": "never",
+        "bodyVerbosity": "concise",
+        "hideIrrelevantSections": true,
+        "draft": false
       },
       "issues": {
         "commentOnPR": true,
@@ -466,10 +488,20 @@ folder path stays yours:
 | `watchCI`            | After creating the PR, watch the checks, auto-fix failures, address review feedback, and add the preview URL to the test scenarios (off: local-only scenarios) | `true`  |
 | `testAccounts`       | `off` (never mention), `reference` (state where the accounts live), or `inline` (paste the credentials) | `off`   |
 | `testAccountsSource` | Explicit file path or project skill name holding the accounts (auto-detected when empty)                | `""`    |
+| `templateCheckboxes` | Which boxes of the repository's PR template `/magic:pr` may tick: `never`, `type` (one box in the "Type of Change" group), or `all` | `never` |
+| `bodyVerbosity`      | How long the PR body `/magic:pr` writes may be: `concise`, `normal`, or `detailed` | `concise` |
+| `hideIrrelevantSections` | Leave out the sections of the repository's PR template that the change does not touch (browsers on a backend-only change, data model on a front-only one) | `true` |
+| `draft`              | Open the pull request as a draft instead of ready for review (the CI watch does not run on a draft) | `false` |
 
 When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should log in with to the "How to test" prerequisites of the PR body, and `/magic:start` reports it in its final summary. The accounts are looked up in this order, stopping at the first hit: `testAccountsSource`, a project-local skill under the project's `.claude/skills/`, then documented files (`TESTING.md`, `docs/test*account*`, the test section of `CONTRIBUTING.md`). If nothing is found, the PR says so — no account is ever invented.
 
 > A PR description is readable by anyone with access to the repository, and by everyone on a public one. `reference` is therefore safe everywhere, while `inline` is ignored on public repos and falls back to `reference`. No mode ever reads `.env*` files, `secrets/`, keychains, or git-ignored files as a source.
+
+`templateCheckboxes` decides how much of a repository's own PR template checklist `/magic:pr` is allowed to tick. With `never`, the default, every line the template ships as `- [ ]` comes out of the PR still empty: the checklist is the reviewer's, and a list the author's agent has already ticked tells the reviewer nothing. `type` opens a single exception, the categorisation group ("Type of Change", "Type de changement", "Change type"), where exactly one box may be ticked because it only restates what the PR is; any other heading falls back to `never`. `all` restores the earlier behaviour, where the agent ticks the boxes it considers verified. The setting is ignored on a repository with no template of its own, as the built-in PR templates carry no checkboxes to begin with.
+
+`bodyVerbosity` decides how much `/magic:pr` writes into the pull request body. With `concise`, the default, the body is bullets rather than paragraphs: a summary of one or two sentences, three to seven one-line bullets grouped by intent, and a test scenario of two to five one-line steps — roughly one screen, which is what a reviewer reads before they start skimming. The commit list is not repeated, since it is already a tab on the PR. `normal` keeps the same skeleton with room for the reasoning behind each bullet, and `detailed` lifts the caps for teams whose PR is the archive of the decision. The setting governs a repository's own PR template exactly as it governs the built-in one: the template decides which sections exist, `bodyVerbosity` decides how much goes into each.
+
+`hideIrrelevantSections` lets `/magic:pr` leave out the parts of a repository's own PR template that the change has nothing to say about. A backend-only PR comes out without the "Browsers tested" or "Mobile / tablet breakpoints" sections, a front-only one without "Data model" or "Permissions". The section is gone, heading included, rather than kept with an "N/A". The summary, the changes, the testing section, the type-of-change group and the linked issues always stay, and a section `/magic:pr` cannot pin to a single surface is kept. Set it to `false` to keep every section of the template, each one that does not apply saying so in a line.
 
 When `watchCI` finishes and the project publishes a per-PR preview deployment (Vercel, Amplify, Netlify...), `/magic:pr` adds that deployment's URL to the "How to test" prerequisites **and turns the routes named in the test steps into clickable links against it** (`/admin/dashboard` becomes `[/admin/dashboard](https://<preview>/admin/dashboard)`), so the reviewer tests this PR's actual deployed code instead of rebuilding locally — silently skipped when no such preview exists. File paths are never linked, and when the head commit moves the links follow the new deployment; when no preview can be named they revert to plain paths. When one commit deploys several previews (a monorepo with one app per project), it asks which one to write, once per PR. With `watchCI` off, nothing waits for the deployment, so the URL is never looked up and the test scenarios stay local-only.
 
@@ -563,8 +595,11 @@ magic-slash/
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
 │   └── package.json
-├── skills/                        # Claude Code skills (8 skills)
+├── skills/                        # Claude Code skills (9 skills)
 │   ├── magic-plan/               # Turn an idea into an epic and its stories
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-plan-change/        # Rework a plan and update its tickets
 │   │   ├── SKILL.md
 │   │   └── references/
 │   ├── magic-start/              # Start a task
@@ -586,7 +621,7 @@ magic-slash/
 │   ├── magic-done/SKILL.md       # Finalize after merge
 │   └── evals/                    # Eval set and results
 ├── webapp/                # Next.js app — public site + web product (Vercel)
-│   ├── app/(marketing)/   # magic-slash.io — landing, features, FAQ, changelog, story
+│   ├── app/(showcase)/   # magic-slash.io — landing, features, FAQ, changelog, story
 │   ├── app/dashboard/     # app.magic-slash.io
 │   ├── app/admin/         # app.magic-slash.io/admin — back-office
 │   ├── app/invite/        # invite.magic-slash.io — invitation funnel
@@ -599,7 +634,7 @@ magic-slash/
 ├── CHANGELOG.md          # Version history
 ├── CODE_OF_CONDUCT.md    # Community guidelines
 ├── CONTRIBUTING.md       # Contribution guide
-├── LICENSE               # MIT License
+├── LICENSE               # PolyForm Shield License 1.0.0
 ├── README.md             # This file
 ├── SECURITY.md           # Security policy
 ├── commitlint.config.js  # Commit message linting
@@ -657,7 +692,13 @@ Magic Slash is built with and for:
 
 ## License
 
-MIT - See [LICENSE](LICENSE) for details.
+[PolyForm Shield License 1.0.0](LICENSE) - the source is public and you may read it, change
+it, and use it for any purpose, including commercially and inside a company. The single
+restriction is the noncompete: you may not use it to provide a product that competes with
+Magic Slash. See [LICENSE](LICENSE) for the terms that govern.
+
+Versions up to and including v0.91.3 were published under the MIT license and stay available
+under it.
 
 ---
 

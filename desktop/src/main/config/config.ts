@@ -48,6 +48,7 @@ function applySetting<T extends Record<string, unknown>>(
 const isOneOf = (allowed: readonly string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
 const isBool = (v: unknown) => typeof v === 'boolean'
 const isString = (v: unknown) => typeof v === 'string'
+const isIntIn = (min: number, max: number) => (v: unknown) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max
 const isStringArray = (v: unknown) => Array.isArray(v) && v.every((item) => typeof item === 'string')
 
 /**
@@ -237,6 +238,8 @@ function persistRepoIdentity(name: string): void {
       commit: repo.commit,
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
+      review: repo.review,
+      start: repo.start,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -451,6 +454,8 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       commit: repo.commit,
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
+      review: repo.review,
+      start: repo.start,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -548,7 +553,7 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
 
   // 'ticket' and 'spec' must be listed or their selects in Settings appear to work
   // and never persist — the whitelist drops an unknown key in silence.
-  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion', 'ticket', 'spec']
+  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion', 'ticket', 'spec', 'review']
   const validValues = ['en', 'fr', null]
 
   config.repositories[name].languages = config.repositories[name].languages || {}
@@ -586,6 +591,7 @@ export function updateRepositoryCommitSettings(name: string, settings: SettingsI
   applySetting(commit, 'coAuthor', settings.coAuthor, isBool)
   applySetting(commit, 'includeTicketId', settings.includeTicketId, isBool)
   applySetting(commit, 'allowOnProtectedBranch', settings.allowOnProtectedBranch, isBool)
+  applySetting(commit, 'pushAfterCommit', settings.pushAfterCommit, isBool)
 
   if (Object.keys(commit).length === 0) {
     delete config.repositories[name].commit
@@ -621,6 +627,52 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
   return config
 }
 
+export function updateRepositoryStartSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['start']>>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const start = config.repositories[name].start = config.repositories[name].start || {}
+
+  applySetting(start, 'exploration', settings.exploration, isOneOf(['auto', 'always', 'never']))
+  applySetting(start, 'plan', settings.plan, isBool)
+  applySetting(start, 'planReview', settings.planReview, isBool)
+  applySetting(start, 'planApproval', settings.planApproval, isBool)
+  applySetting(start, 'execution', settings.execution, isOneOf(['auto', 'solo', 'multi']))
+  applySetting(start, 'simplify', settings.simplify, isBool)
+  applySetting(start, 'criticIterations', settings.criticIterations, isIntIn(0, 5))
+  applySetting(start, 'criticMinScore', settings.criticMinScore, isIntIn(1, 10))
+
+  if (Object.keys(start).length === 0) {
+    delete config.repositories[name].start
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return config
+}
+
+export function updateRepositoryReviewSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['review']>>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const review = config.repositories[name].review = config.repositories[name].review || {}
+
+  applySetting(review, 'confidenceScore', settings.confidenceScore, isBool)
+  applySetting(review, 'mode', settings.mode, isOneOf(['ask', 'post']))
+
+  if (Object.keys(review).length === 0) {
+    delete config.repositories[name].review
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return config
+}
+
 export function updateRepositoryPullRequestSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['pullRequest']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
@@ -633,6 +685,10 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
   applySetting(pullRequest, 'watchCI', settings.watchCI, isBool)
   applySetting(pullRequest, 'testAccounts', settings.testAccounts, isOneOf(['off', 'reference', 'inline']))
   applySetting(pullRequest, 'testAccountsSource', settings.testAccountsSource, isString, ['', null])
+  applySetting(pullRequest, 'templateCheckboxes', settings.templateCheckboxes, isOneOf(['never', 'type', 'all']))
+  applySetting(pullRequest, 'bodyVerbosity', settings.bodyVerbosity, isOneOf(['concise', 'normal', 'detailed']))
+  applySetting(pullRequest, 'hideIrrelevantSections', settings.hideIrrelevantSections, isBool)
+  applySetting(pullRequest, 'draft', settings.draft, isBool)
 
   if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest
@@ -888,7 +944,7 @@ export function updateSplitActive(active: boolean): Config {
 /**
  * Store the chosen appearance. The cloud is the reference (the theme follows the
  * user from machine to machine); the main process separately mirrors it locally
- * so the next launch can paint before the config has hydrated — see main/theme.ts.
+ * so the next launch can paint before the config has hydrated — see main/appearance.ts.
  */
 export function updateTheme(theme: ThemeId): Config {
   const config = readConfig()
@@ -955,6 +1011,29 @@ export function updateTasksRepo(configKey: string): Config {
 }
 
 /**
+ * Remember which repository the Plans list is narrowed to. Written on every change of
+ * the filter, which is the only way it ever changes.
+ *
+ * A `public.repositories` id rather than a config key, unlike `updateTasksRepo` above: a
+ * plan belongs to the cloud repository row its spec resolved to, and that uuid is what
+ * the list filters on. Stored AS GIVEN for the same two reasons — the renderer picks
+ * from repositories that actually have a plan on screen, so it cannot offer an id that
+ * was not there, and an id can stop resolving later (the repository is dropped, or
+ * unshared) which no validation at write time could prevent.
+ *
+ * An empty string is not refused here but MEANS something, which is the difference from
+ * the board: it clears the key, and an absent key is "all repositories" — the list's
+ * default and the state a reader who clears the filter expects to come back to.
+ */
+export function updatePlansRepo(repoId: string): Config {
+  const config = readConfig()
+  if (repoId) config.plansRepo = repoId
+  else delete config.plansRepo
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle activity recording. ON by default: the app writes its three event tables
  * (usage, activity, skills) unless this is explicitly false. Reading the org
  * aggregate is unaffected by this flag.
@@ -962,6 +1041,18 @@ export function updateTasksRepo(configKey: string): Config {
 export function updateUsageLogsEnabled(enabled: boolean): Config {
   const config = readConfig()
   config.usageLogsEnabled = enabled
+  writeConfig(config)
+  return config
+}
+
+/**
+ * Whether a new agent opens with its info panel showing. ON by default, like the
+ * flag above, so only an explicit false closes it. Per-agent decisions outlive
+ * this: it is only ever the fallback for an agent nobody has toggled.
+ */
+export function updateInfoSidebarOnCreate(open: boolean): Config {
+  const config = readConfig()
+  config.infoSidebarOnCreate = open
   writeConfig(config)
   return config
 }

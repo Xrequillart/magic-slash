@@ -6,8 +6,11 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  reviewSummary,
   shortGitHubTarget,
+  startSummary,
   type PlanSummaryInput,
+  type StartSummaryInput,
   type SkillSummary,
 } from './skillSummary'
 
@@ -176,6 +179,10 @@ describe('prSummary', () => {
     testAccountsSource: '',
     commentOnPR: true,
     watchCI: true,
+    templateCheckboxes: 'never',
+    bodyVerbosity: 'concise',
+    hideIrrelevantSections: true,
+    draft: false,
   }
 
   it('names the tracker the ticket lives in', () => {
@@ -205,6 +212,47 @@ describe('prSummary', () => {
     expect(inline.steps[2].key).toBe('repo.pr.step.accountsInline')
     expect(inline.tail).toEqual([
       { key: 'repo.pr.tail.accountsSource', vars: { source: 'docs/accounts.md' } },
+    ])
+  })
+
+  it('mentions the template checkboxes only when the setting departs from never', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, templateCheckboxes: 'type' }).tail).toEqual([
+      { key: 'repo.pr.tail.checkboxesType' },
+    ])
+    expect(prSummary({ ...PR, templateCheckboxes: 'all' }).tail).toEqual([
+      { key: 'repo.pr.tail.checkboxesAll' },
+    ])
+    // An org-shared block is copied without re-validation and a stored row can be
+    // edited outside the app, so a value that is not a mode does reach here. It reads
+    // as 'never', which is no line at all — never a line naming the unknown value.
+    expect(prSummary({ ...PR, templateCheckboxes: 'everything' }).tail).toEqual([])
+    expect(prSummary({ ...PR, templateCheckboxes: '' }).tail).toEqual([])
+  })
+
+  it('mentions the body length only when the setting departs from concise', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, bodyVerbosity: 'normal' }).tail).toEqual([
+      { key: 'repo.pr.tail.bodyNormal' },
+    ])
+    expect(prSummary({ ...PR, bodyVerbosity: 'detailed' }).tail).toEqual([
+      { key: 'repo.pr.tail.bodyDetailed' },
+    ])
+    // Same reasoning as the checkbox modes above: an unknown value reaches here and
+    // reads as the default, which is no line rather than a line naming it.
+    expect(prSummary({ ...PR, bodyVerbosity: 'verbose' }).tail).toEqual([])
+    expect(prSummary({ ...PR, bodyVerbosity: '' }).tail).toEqual([])
+  })
+
+  it('mentions the draft only when the PR opens as one', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, draft: true }).tail).toEqual([{ key: 'repo.pr.tail.draft' }])
+  })
+
+  it('mentions the template sections only when every one of them is kept', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, hideIrrelevantSections: false }).tail).toEqual([
+      { key: 'repo.pr.tail.keepAllSections' },
     ])
   })
 })
@@ -274,9 +322,84 @@ describe('resolveSummary', () => {
   })
 })
 
+describe('reviewSummary', () => {
+  it('reads the score and the posting mode off the two settings', () => {
+    expect(reviewSummary({ confidenceScore: true, mode: 'ask' }).steps.map((s) => s.key)).toEqual([
+      'repo.review.step.read',
+      'repo.review.step.scoreOn',
+      'repo.review.step.modeAsk',
+    ])
+    expect(reviewSummary({ confidenceScore: false, mode: 'post' }).steps.map((s) => s.key)).toEqual([
+      'repo.review.step.read',
+      'repo.review.step.scoreOff',
+      'repo.review.step.modePost',
+    ])
+  })
+
+  it('reads an unknown mode as ask, the one that posts nothing without you', () => {
+    expect(reviewSummary({ confidenceScore: true, mode: 'wild' }).steps[2].key).toBe('repo.review.step.modeAsk')
+  })
+})
+
+const START: StartSummaryInput = {
+  exploration: 'auto',
+  plan: true,
+  planReview: true,
+  planApproval: true,
+  execution: 'auto',
+  simplify: true,
+  criticIterations: 3,
+  criticMinScore: 8,
+}
+
+describe('startSummary', () => {
+  it('walks the default run, from exploration to the critic', () => {
+    const summary = startSummary(START)
+    expect(keys(summary)).toEqual([
+      'repo.start.step.exploreAuto',
+      'repo.start.step.planReviewed',
+      'repo.start.step.approvalOn',
+      'repo.start.step.executionAuto',
+      'repo.start.step.simplify',
+      'repo.start.step.criticLoop',
+    ])
+    expect(summary.steps.at(-1)?.vars).toEqual({ iterations: '3', score: '8' })
+  })
+
+  it('says one line in place of the plan, its review, its approval and the dispatcher', () => {
+    expect(keys(startSummary({ ...START, plan: false, execution: 'multi' }))).toEqual([
+      'repo.start.step.exploreAuto',
+      'repo.start.step.noPlan',
+      'repo.start.step.simplify',
+      'repo.start.step.criticLoop',
+    ])
+  })
+
+  it('drops the simplify line when the pass is off', () => {
+    expect(keys(startSummary({ ...START, simplify: false }))).not.toContain('repo.start.step.simplify')
+  })
+
+  it('tells a critic that only scores from one that sends the work back', () => {
+    expect(startSummary({ ...START, criticIterations: 0 }).steps.at(-1)).toEqual({ key: 'repo.start.step.criticScoreOnly' })
+    expect(startSummary({ ...START, criticIterations: 1, criticMinScore: 7 }).steps.at(-1)).toEqual({
+      key: 'repo.start.step.criticOnce',
+      vars: { score: '7' },
+    })
+  })
+
+  it('reads unknown modes as auto', () => {
+    const summary = startSummary({ ...START, exploration: 'wild', execution: 'wild' })
+    expect(keys(summary)).toContain('repo.start.step.exploreAuto')
+    expect(keys(summary)).toContain('repo.start.step.executionAuto')
+  })
+})
+
 describe('every line a setting can produce', () => {
   /** Every summary reachable by flipping one setting at a time, and then all of them. */
   const ALL: SkillSummary[] = [
+    ...[true, false].flatMap((confidenceScore) =>
+      ['ask', 'post'].map((mode) => reviewSummary({ confidenceScore, mode })),
+    ),
     ...['jira', 'github', 'ask', 'wild'].flatMap((tracker) =>
       [true, false].map((duplicateCheck) =>
         planSummary({ ...PLAN, tracker, duplicateCheck, jiraProject: '', githubTarget: '' }),
@@ -303,18 +426,45 @@ describe('every line a setting can produce', () => {
     ),
     ...['off', 'reference', 'inline'].flatMap((testAccounts) =>
       ['jira', 'github'].flatMap((trackerMode) =>
-        [true, false].map((watchCI) =>
-          prSummary({
-            trackerMode,
-            autoLinkTickets: watchCI,
-            testAccounts,
-            testAccountsSource: 'docs/accounts.md',
-            commentOnPR: watchCI,
-            watchCI,
-          }),
+        ['never', 'type', 'all'].flatMap((templateCheckboxes) =>
+          ['concise', 'normal', 'detailed'].flatMap((bodyVerbosity) =>
+            [true, false].map((watchCI) =>
+              prSummary({
+                trackerMode,
+                autoLinkTickets: watchCI,
+                testAccounts,
+                testAccountsSource: 'docs/accounts.md',
+                commentOnPR: watchCI,
+                watchCI,
+                templateCheckboxes,
+                bodyVerbosity,
+                hideIrrelevantSections: watchCI,
+                draft: !watchCI,
+              }),
+            ),
+          ),
         ),
       ),
     ),
+    ...['auto', 'always', 'never'].flatMap((exploration) =>
+      ['auto', 'solo', 'multi'].flatMap((execution) =>
+        [true, false].flatMap((flag) =>
+          [0, 1, 3].map((criticIterations) =>
+            startSummary({
+              exploration,
+              plan: flag,
+              planReview: flag,
+              planApproval: !flag,
+              execution,
+              simplify: flag,
+              criticIterations,
+              criticMinScore: 8,
+            }),
+          ),
+        ),
+      ),
+    ),
+    startSummary({ ...START, planReview: false, planApproval: false }),
     ...['new', 'amend', 'ask'].flatMap((commitMode) =>
       [true, false].flatMap((useCommitConfig) =>
         [true, false].flatMap((replyToComments) =>

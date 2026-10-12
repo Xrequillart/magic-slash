@@ -10,11 +10,12 @@ import {
   SIDEBAR_TOUR,
   STATUS_STEP_TITLE,
   TASKS_POINTS,
+  PLANS_POINTS,
   pick,
 } from './desktopPage'
 import { FEATURE_FAMILIES, isLiteralTitle } from './features'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 
 /**
  * What `/desktop` says under its hero, pinned from the root suite — the shape
@@ -22,8 +23,8 @@ import { marketingFr } from './i18n/marketing/fr'
  * be compiled here, so the data they render is what gets checked.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -31,7 +32,7 @@ const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta
 function everyKey(): string[] {
   const keys: string[] = [STATUS_STEP_TITLE]
   for (const band of Object.values(DESKTOP_BANDS)) keys.push(band.title, band.subtitle)
-  for (const point of [...TASKS_POINTS, ...AGENTS_POINTS]) keys.push(point.label)
+  for (const point of [...PLANS_POINTS, ...TASKS_POINTS, ...AGENTS_POINTS]) keys.push(point.label)
   for (const fact of AROUND_FACTS) {
     if (!isLiteralTitle(fact.title)) keys.push(fact.title)
     keys.push(fact.description)
@@ -68,7 +69,7 @@ describe('the /desktop bands', () => {
     for (const band of Object.values(DESKTOP_BANDS)) {
       expect(Object.keys(band).sort()).toEqual(['subtitle', 'title'])
     }
-    expect(Object.keys(marketingEn).filter((key) => /^site\.desktopPage\..*Eyebrow$/.test(key))).toEqual([])
+    expect(Object.keys(showcaseEn).filter((key) => /^site\.desktopPage\..*Eyebrow$/.test(key))).toEqual([])
   })
 
   it('shows no em dash anywhere on the page, in either language', () => {
@@ -77,10 +78,14 @@ describe('the /desktop bands', () => {
     // every key the page reaches, the rows borrowed from `/features` included, and the
     // legend the Tasks window carries under itself.
     const legend = [
-      'site.tasksCard.legendFiltersDesc',
-      'site.tasksCard.legendFieldsDesc',
-      'site.tasksCard.legendAvailableDesc',
+      'site.tasksCard.legendColumnsDesc',
+      'site.tasksCard.legendStartDesc',
       'site.tasksCard.legendTrackersDesc',
+      'site.tasksCard.legendFieldsDesc',
+      'site.planCard.legendSharedDesc',
+      'site.planCard.legendStatusDesc',
+      'site.planCard.legendSpecDesc',
+      'site.planCard.legendFilterDesc',
     ]
     for (const key of [...everyKey(), ...legend]) {
       expect(site(key), `en.${key}`).not.toContain('—')
@@ -89,6 +94,7 @@ describe('the /desktop bands', () => {
   })
 
   it('makes three claims under each split band', () => {
+    expect(PLANS_POINTS).toHaveLength(3)
     expect(TASKS_POINTS).toHaveLength(3)
     expect(AGENTS_POINTS).toHaveLength(3)
   })
@@ -228,7 +234,7 @@ describe('the /desktop bands', () => {
     const routing = readFileSync(webapp('./hostRouting.ts'), 'utf8')
     expect(routing, `${path} in PUBLIC_PATHS`).toContain(`'${path}',`)
 
-    expect(existsSync(webapp(`../app/(marketing)${path}/page.tsx`))).toBe(true)
+    expect(existsSync(webapp(`../app/(showcase)${path}/page.tsx`))).toBe(true)
 
     expect(FEATURE_FAMILIES.map((family) => family.anchor)).toContain(anchor)
   })

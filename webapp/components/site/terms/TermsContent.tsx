@@ -2,7 +2,6 @@
 
 import { useT } from '@/lib/i18n/useLanguage'
 import { PAGE_CHROME, SECTIONS } from '@/lib/termsPage'
-import { Bloom } from '../home/HeroSection'
 import { HomeSection } from '../home/Shell'
 import { RichText } from '../RichText'
 import { LICENSE_URL, NEW_ISSUE_URL } from '../links'
@@ -13,14 +12,15 @@ import { LICENSE_URL, NEW_ISSUE_URL } from '../links'
  *
  * ── IT IS NOT THE LICENCE, AND SAYS SO ──────────────────────────────────────────────
  *
- * The code is MIT and `LICENSE` in the repository is the licence. This page NAMES that
+ * The code is under PolyForm Shield 1.0.0 and `LICENSE` in the repository is the licence.
+ * This page NAMES that
  * file and links to it rather than restating its terms, because a second, prettier copy
  * of a licence is a second copy to keep in step with the one that actually governs, and
  * the two would eventually disagree in front of the person relying on them. What is left
  * for this page is everything the licence does not cover: the hosted account, the
  * services you connect it to, and who is responsible for what the agent does.
  *
- * SO THERE IS NO EULA HERE EITHER. The desktop app is the same MIT code, installed.
+ * SO THERE IS NO EULA HERE EITHER. The desktop app is the same licensed code, installed.
  *
  * ── SOURCED, LIKE `/privacy` ────────────────────────────────────────────────────────
  *
@@ -62,11 +62,7 @@ export function TermsContent() {
 
   return (
     <div className="bg-white">
-      <HomeSection
-        padding="hero"
-        backdrop={<Bloom fadeTo="to-white" />}
-        className="bg-gradient-to-b from-softblue to-white"
-      >
+      <HomeSection padding="hero">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
             {t(PAGE_CHROME.title)}

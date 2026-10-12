@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import defaultColors from 'tailwindcss/colors'
 
 // Light theme matching the /docs landing page: soft-blue canvas, black text,
 // Cera Pro (display) + Avenir (body), indigo/brand-blue accents.
@@ -11,7 +12,59 @@ import type { Config } from 'tailwindcss'
 //
 // Namespaced so nothing leaks into the user pages by autocomplete, and so the two
 // can be retuned independently.
-const BRAND = '#393BFF'
+/**
+ * THE BLUE, AS A TEN-STOP LADDER — the site's one chromatic family, and the only place
+ * any of its values is written.
+ *
+ * It replaced an indigo (`brand` was #393BFF, `accent` #6366F1). That was not a retune
+ * of a hue: it was two hand-picked blues plus two deeps derived from them by eye, and
+ * every one of the four had to be reasoned about separately whenever one moved. A ramp
+ * removes that — the four tokens below are now four STOPS of one thing, so "a step
+ * deeper" is a number rather than a colour somebody has to invent.
+ *
+ * ONE HUE ON EVERY RUNG, which is what makes it a ladder rather than a set: every stop
+ * is hue 211 at 98-100% saturation, and only the lightness moves (90 is 10%, 5 is 97%).
+ * The indigo family it replaced held that property too (hue 239 throughout) and it is
+ * the property to preserve if these values are ever re-tuned — the tone gradients below
+ * read as one colour lit from two depths precisely because their stops share a hue.
+ *
+ * NUMBERED BY LIGHTNESS THE WAY THE SOURCE PALETTE NUMBERS THEM: 90 is the darkest and 5
+ * the palest, which is the inverse of Tailwind's own 50→900 convention. Kept as given
+ * rather than flipped to match Tailwind, because these keys are how the palette is
+ * spoken about outside this file, and a scale that reads backwards from its own
+ * reference is worse than one that reads backwards from Tailwind's.
+ */
+const BLUE = Object.freeze({
+  90: '#001832',
+  80: '#013165',
+  70: '#004997',
+  60: '#0062ca',
+  50: '#007afc',
+  40: '#3195ff',
+  30: '#64afff',
+  20: '#98caff',
+  10: '#cbe4ff',
+  5: '#eff7ff',
+})
+
+/**
+ * THE COMMITTING BLUE: the fill of the primary button, and the colour of a name that
+ * matters (the organisation on the invitation page).
+ *
+ * `50`, THE STOP THE PALETTE CALLS ITS BASE, at the owner's request and against the
+ * measurement. It shipped on `60` first, chosen by contrast rather than by number: a
+ * primary button is white text on this fill at 14-16px, which WCAG AA holds to 4.5:1, and
+ * `60` gives 5.83 where `50` gives 4.05. The owner saw both rendered and picked the
+ * brighter one.
+ *
+ * SO THE BUTTON IS BELOW AA FOR NORMAL TEXT, and this is the line that records it. It
+ * clears the 3:1 AA asks of LARGE text, which the `lg` rung's 18px label meets on the
+ * pages whose CTA is the page; the `md` rung's 14px label does not. Moving back is one
+ * character here.
+ *
+ * IT IS ALSO `ACCENT` NOW — see the note there.
+ */
+const BRAND = BLUE[50]
 
 // The page's own black.
 //
@@ -81,23 +134,14 @@ const strikeAt = (at: number) => ({
 // only the spinner leaves both sets of strokes visible through each other for the whole
 // crossfade — a smudge, not a transition. Each has to carry its own opacity.
 //
-// `at` is the percentage of the shared loop where the check resolves; the swap takes 4%
-// of it. Both end on the settled state, so `motion-reduce:animate-none` shows a passed
-// check rather than a frozen spinner — see the note on `statusIn` below for why the
-// stagger lives in these percentages and not in an `animation-delay`.
-const ciSettled = (at: number) => ({
-  '0%': { opacity: '0' },
-  [`${at}%`]: { opacity: '0' },
-  [`${at + 4}%`]: { opacity: '1' },
-  '100%': { opacity: '1' },
-})
-
-const ciPending = (at: number) => ({
-  '0%': { opacity: '1' },
-  [`${at}%`]: { opacity: '1' },
-  [`${at + 4}%`]: { opacity: '0' },
-  '100%': { opacity: '0' },
-})
+// `ciSettled` AND `ciPending` WERE HERE, six keyframes' worth, and they went when the
+// card that used them started drawing the real components. `PRWatchCardMockup` renders
+// `PullRequestCard` and `CollapsibleLine` from `design-system/desktop/` now, and a React
+// component's state cannot be driven by a CSS animation — so the three checks settle on
+// beats read off the same 8s clock by `useLoopStep`, at the 30/48/66% these keyframes
+// used. The trick they needed went with them: two stroked glyphs stacked in one slot,
+// each carrying its own opacity, because a stroked shape has a transparent middle and
+// fading one left both sets of strokes showing through each other.
 
 const statusIn = (hidden: number, shown: number) => ({
   '0%': { opacity: '0', translate: '0 0.25rem' },
@@ -158,7 +202,7 @@ const statusIn = (hidden: number, shown: number) => ({
 // and passes no name: it is the traced picture, and the anchor does not move.
 //
 // EVERY ILLUSTRATION ON THE SITE IS ON ONE OF THESE, which is worth knowing before
-// retuning any of them. `bg-tone-*` is not only the marketing cards' ground: it is the
+// retuning any of them. `bg-tone-*` is not only the showcase cards' ground: it is the
 // plate behind every mockup on `/features` and on the homepage — `SplitViewMockup`,
 // `AgentsSidebarMockup`, `TasksModalMockup`, `RepoCardMockup` and a dozen more all sit on
 // `mist`, `sky` or `indigo`. So these six blooms are what a drawing of the app is
@@ -171,10 +215,14 @@ const statusIn = (hidden: number, shown: number) => ({
 // itself, which at full saturation would end the card brighter than the page it sits on.
 //
 // THE THREE BRAND-HUE DEPTHS ARE A LADDER, and it is worth reading as one: `brand` at
-// hsl(239, 100%, 61%), `INDIGO_DEEP` at 45%, `BRAND_DEEP` at 26%. Same hue on all three,
+// hsl(211, 100%, 40%), `INDIGO_DEEP` at 30%, `BRAND_DEEP` at 20%. Same hue on all three,
 // so they are one colour at three depths rather than three blues, and each rung is far
 // enough from its neighbour to be a decision somebody could defend.
-const BRAND_DEEP = '#1B1C6B'
+//
+// They are three rungs of `BLUE` now rather than three hand-tuned hexes, which is what
+// makes that paragraph a fact about the file instead of a promise about it: the ladder
+// property used to depend on whoever moved a value next checking the other two.
+const BRAND_DEEP = BLUE[80]
 
 // `accent`, and `indigo`'s quiet stop.
 //
@@ -182,7 +230,17 @@ const BRAND_DEEP = '#1B1C6B'
 // `tone-indigo`. That pairing is the reason it needs a name — the tone is "the accent,
 // lit" and the day somebody retunes the accent without it the card becomes a blue the
 // palette no longer contains.
-const ACCENT = '#6366F1'
+//
+// IT IS THE SAME STOP AS `BRAND` since the owner moved the primary to `50`, and that is
+// worth naming rather than leaving to be discovered. The palette note further down still
+// says `accent` is "one step off `brand` and never a fill you press"; the first half of
+// that stopped being true. Nothing breaks — the two names still mean different things and
+// are spent in different places — but the page can no longer SHOW the difference, so a
+// CTA wearing `accent` by mistake is invisible to the eye that used to catch it.
+//
+// Separating them again is one character: `BLUE[60]` here makes the accent the deeper of
+// the two, which also reads better as link text (5.83 against white, against 4.05).
+const ACCENT = BLUE[50]
 
 // `indigo`'s deep stop, and the one value in the blue family that is neither `brand` nor
 // a shade of the page.
@@ -195,12 +253,12 @@ const ACCENT = '#6366F1'
 // gives the tone eighteen points of travel — the same weight `midnight` carries — while
 // still being unmistakably the brand blue rather than a navy.
 //
-// SATURATION SITS AT 92% AND NOT `brand`'s 100%, which is the one number here that was
-// chosen by eye rather than solved for. At full saturation this deep is very nearly pure
-// blue, and `cooled()` swings the second lamp off it into something electric; eight
-// points back is the difference between a card that reads as lit and one that reads as a
-// screensaver.
-const INDIGO_DEEP = '#090DDC'
+// SATURATION USED TO SIT AT 92% AND NOT `brand`'s 100% — a number chosen by eye, because
+// at full saturation the old indigo deep was very nearly pure blue and `cooled()` swung
+// the second lamp off it into something electric. That adjustment is gone with the hue it
+// was correcting: this family IS a blue, so there is nothing for it to tip over into, and
+// the stop is `70` at the ramp's own saturation like every other rung.
+const INDIGO_DEEP = BLUE[70]
 
 // The palest tone's two stops.
 //
@@ -353,7 +411,7 @@ const MARKS = {
  * loads its config, on eight colours, and what is required of it is that
  * `toHex(...toHsl(c))` gives `c` back. It is NOT a colour-science conversion: the round
  * trip is through sRGB HSL, so "13 degrees" is 13 degrees of the hue wheel the rest of
- * this file already thinks in (`#393BFF` is 239, `#F9A96A` is 27), not of a perceptual
+ * this file already thinks in (`#007AFC` is 211, `#F9A96A` is 27), not of a perceptual
  * space. A perceptual swing would be the better instrument and it would also mean a
  * colour library in the build, for one derived value on eight grounds.
  *
@@ -747,7 +805,8 @@ const TONES = {
   'tone-mint': mesh(MINT_LIGHT, MINT_DEEP, 'mint'),
   /**
    * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
-   * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
+   * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop —
+   * and, since the owner asked for it, `/magic:resolve` as well.
    * The grid now opens warm and closes green, which says the shape of the thing before a
    * word of the copy is read — and it is a fact about the command, not about its
    * position, so reordering the eight leaves it where it belongs.
@@ -824,11 +883,48 @@ const PLATES = {
 }
 
 const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: [
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    // The shared components, rendered live by `/design-system`. Their class names are
+    // literals for exactly this scanner to find — see `design-system/README.md` — and
+    // the tokens they name are declared below.
+    //
+    // THE SOURCE FOLDERS BY NAME, never `design-system/**`: that folder holds an
+    // `npm install` of its own now, and the wider glob had Tailwind walking four
+    // thousand lucide files on every build. It says so itself, in a warning, which is
+    // the only reason this was caught rather than merely paid for.
+    '../design-system/desktop/**/*.{ts,tsx}',
+    '../design-system/webapp/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
-        ink: INK,
+        /**
+         * The desktop's fixed paper and ink — its sign-in card, and `WhatsNewDialog`'s
+         * cover. Declared here for the same reason `release-mesh` is: those are DESKTOP
+         * surfaces, `/design-system` renders them live on this side, and the two halves
+         * of `design-system/` share no tokens. See the long note in
+         * `desktop/tailwind.config.cjs` for why two surfaces in a themed app are printed
+         * on a fixed ground.
+         */
+        'release-paper': '#FFFFFF',
+        'release-ink': 'rgb(10 10 11 / <alpha-value>)',
+        /**
+         * The page's black — and, on `/design-system` only, the DESKTOP app's
+         * primary text instead.
+         *
+         * A variable with a FALLBACK rather than a flat `INK`, and the fallback is
+         * `INK`'s own channels: nothing on the public site sets `--c-ink`, so every
+         * `text-ink` on every showcase page resolves to #0A0A0A exactly as before.
+         * The design-system page writes the desktop's theme variables onto its
+         * preview ground, and inside that one subtree the shared components' own
+         * `text-ink` becomes the near-white those dark grounds need.
+         *
+         * Bare channels and not a hex, because `text-ink/70` is used on the site and
+         * `var(--x, #0A0A0A)` cannot take an alpha modifier.
+         */
+        ink: `rgb(var(--c-ink, 10 10 10) / <alpha-value>)`,
         muted: '#52525b',
         softblue: '#D9E8FF',
         // `softblue`'s green counterpart, for the one page whose opening is green rather
@@ -891,14 +987,14 @@ const config: Config = {
         // This reversed once, and the note is kept in that shape on purpose so the
         // next reader does not have to guess which way round it went.
         //
-        // `brand` (#393BFF) is the fill of the `primary` button — `BUTTON_VARIANTS`
+        // `brand` (#007AFC) is the fill of the `primary` button — `BUTTON_VARIANTS`
         // in `components/ui.tsx`, the single definition. For one iteration of this
         // scale it was banned from every CTA and the primary button was white; that
         // white recipe is still here, as `secondary`, and the ban is lifted. So a
         // blue button in the signed-in product is now the INTENDED primary action,
         // not the regression this note used to call it.
         //
-        // `accent` (#6366f1 / #818cf8) did NOT come along. It stays non-CTA: it is
+        // `accent` (#007afc / #3195ff) did NOT come along. It stays non-CTA: it is
         // the selected-state and focus-ring blue, one step off `brand` and never a
         // fill you press. Two blues doing one job is how a palette stops meaning
         // anything — if a CTA is wearing `accent`, that is the bug.
@@ -955,11 +1051,93 @@ const config: Config = {
         // allowed; now that `brand` is the CTA fill, the list above is no longer an
         // exemption to justify but simply an inventory of where blue means state,
         // measurement or decoration instead of action.
+        // A VARIABLE WITH A FALLBACK, for the reason `ink` is one: the shared
+        // components write `bg-accent/20` — and on `/design-system` that has to be the
+        // DESKTOP's accent, not this site's. Nothing outside a theme ground sets
+        // `--c-accent`, so the fallback is what every showcase page actually resolves
+        // to, and it is `BLUE[50]` / `BLUE[40]`: this site's accent, one rung lighter
+        // than `brand` and its hover one lighter again.
+        //
+        // THE FALLBACKS USED TO BE THE DESKTOP'S OWN (#6366F1 / #818cf8, copied out of
+        // `themes.ts`), which made the two sides accidentally identical and read as
+        // though the variable were merely restating its default. They are the SITE's
+        // values now and the desktop's are not: two products, two palettes, and the
+        // variable is the seam between them rather than a formality.
+        //
+        // Bare channels rather than the hexes, because `text-accent/70` is used on the
+        // site and `var(--x, #007afc)` cannot take an alpha modifier. They are `BLUE[50]`
+        // and `BLUE[40]` written out — the one place in this file a stop is respelled,
+        // and only because the CSS syntax leaves no way to interpolate one.
         accent: {
-          DEFAULT: ACCENT,
-          hover: '#818cf8',
+          DEFAULT: `rgb(var(--c-accent, 0 122 252) / <alpha-value>)`,
+          hover: `rgb(var(--c-accent-hover, 49 149 255) / <alpha-value>)`,
         },
-        brand: BRAND,
+        /**
+         * The whole ladder, so a page can reach for a rung without respelling a hex.
+         *
+         * `DEFAULT` is what `bg-brand` and `text-brand` have always meant — the
+         * committing blue — so every existing call site is untouched; `bg-brand-10`,
+         * `text-brand-80` and the rest are new.
+         */
+        /**
+         * THE COLOUR CARDS' FLAT GROUNDS — one per tone, and a SEPARATE family from the
+         * `tone-*` washes in `backgroundImage`.
+         *
+         * `ToneCard` used to wear the wash itself (`bg-tone-sky` and the rest). It does
+         * not any more: the cards are flat, bordered and lifted now, at the owner's
+         * request. The washes stay exactly where they were and are still worn by the
+         * PLATES — the grounds a mockup is photographed against on `/features` and the
+         * homepage — which is why this is a second family rather than an edit to the
+         * first. Two jobs, two sets of values; a card and a plate simply stopped wanting
+         * the same thing.
+         *
+         * A SEPARATE NAMESPACE ALSO BECAUSE THE FIRST ONE IS TAKEN: a `backgroundColor`
+         * and a `backgroundImage` both called `tone-sky` would emit two `.bg-tone-sky`
+         * rules, and which one an element got would be decided by stylesheet order.
+         *
+         * EACH VALUE IS THE LIGHT STOP OF THAT TONE'S OWN GRADIENT — except the two blue
+         * ones, which are ramp stops now; see the note on them below.
+         *
+         * SIX AND NOT EIGHT: `indigo` and `midnight` were here and are not any more. They
+         * were the two DARK card grounds, the owner removed them, and their washes stay
+         * in `backgroundImage` because the plates still wear those — which is the whole
+         * reason these are a separate family. A card ground with no card is just a hex
+         * nobody can find a use for.
+         */
+        card: {
+          // THE TWO BLUE CARDS TAKE RAMP STOPS, not their tones' own light ends. `mist`
+          // was `MIST_LIGHT` (#F7FAFF) and `sky` was `SKY_LIGHT` (#E2EEFC): both predate
+          // the blue ramp and neither is on it, so the site's two blue cards were the two
+          // surfaces wearing a blue the charter does not contain. `blue5` and `blue10` are
+          // what they were reaching for.
+          //
+          // IT COSTS THE CARD/PLATE PAIRING, and that is the one thing to know. The other
+          // four grounds here are still the light stop of their own `tone-*` wash, so a
+          // card and the plate a mockup sits on are the same colour. These two are not any
+          // more: `tone-mist` and `tone-sky` still open on the old values, because the
+          // plates were not part of what the owner asked to move. Moving them is two lines
+          // — `MIST_LIGHT` and `SKY_LIGHT` — and it would shift every mockup ground on the
+          // site, which is why it is a separate decision rather than a tidy-up.
+          mist: BLUE[5],
+          sky: BLUE[10],
+          mint: MINT_LIGHT,
+          amber: AMBER_LIGHT,
+          rose: ROSE_LIGHT,
+          lemon: LEMON_LIGHT,
+        },
+        brand: {
+          DEFAULT: BRAND,
+          5: BLUE[5],
+          10: BLUE[10],
+          20: BLUE[20],
+          30: BLUE[30],
+          40: BLUE[40],
+          50: BLUE[50],
+          60: BLUE[60],
+          70: BLUE[70],
+          80: BLUE[80],
+          90: BLUE[90],
+        },
         regie: {
           // A deeper tint of the app's own blue than the user canvas (#F4F7FE), so
           // white panels floating on it read as cards rather than as page. Between
@@ -978,7 +1156,13 @@ const config: Config = {
           dim: '#5a6684',
           // Row hover and the tinted fills. Kept as a token rather than a
           // `bg-brand/[0.04]` at each site so every hover in the console matches.
-          tint: 'rgba(57, 59, 255, 0.05)',
+          //
+          // `brand`'s own channels at 5% — 0 122 252, which is `BLUE[50]`. It has had to
+          // be found by hand twice: once when the palette changed hue, once when the
+          // primary moved a rung. That is the argument for `rgb(… / <alpha-value>)`
+          // everywhere it is possible; here it is not, because this is a flat value a
+          // call site takes as `bg-regie-tint` with no modifier to carry the alpha.
+          tint: 'rgba(0, 122, 252, 0.05)',
           rail: BRAND,
         },
         // macOS'S NOTIFICATION BANNER, sampled from a real one, for the drawing beside
@@ -1038,20 +1222,91 @@ const config: Config = {
           /** `text-icon-muted`: decoration — the pencil beside an editable field. */
           muted: '#65656A',
         },
-        purple: '#a855f7',
-        green: '#22c55e',
-        red: '#ef4444',
-        yellow: '#eab308',
-        // TWO MORE OF THE APP'S TONES, for the two info-sidebar cards on `/features`.
-        // `orange` is the context gauge between 40% and 70%, and that turn is the
-        // picture; `blue` is the "in review" status pill. Both are `themes.ts`'s values.
-        // Nothing outside a mockup may reach for them.
-        orange: '#f97316',
-        blue: '#3b82f6',
-        // Two more for the status table under the ticket card: `planned`/`committed` wear
-        // cyan, `review addressed` teal. `themes.ts`'s values, like the two above.
-        cyan: '#22d3ee',
-        teal: '#2dd4bf',
+        // THE APP'S TONES. Hardcoded here for the `/features` mockups, and now also
+        // what the shared components in `design-system/desktop/` resolve against when
+        // `/design-system` renders them — those spell `bg-green/10` and `text-orange`
+        // literally, so this config has to answer to the names or they render untinted.
+        //
+        // A VARIABLE WITH A FALLBACK, and the fallback is each one's own former value
+        // in channels — which is `themes.ts`'s `dark` theme, where they were copied from
+        // in the first place. Nothing on the public site sets `--c-*`, so every mockup
+        // resolves to the exact hex it did before; the design-system page writes a
+        // theme's variables onto its preview ground and inside that subtree alone these
+        // follow it. The mockups could be pointed at the same switch one day, which is
+        // the second reason for the form.
+        //
+        // EACH SPREADS TAILWIND'S OWN SCALE. A bare `red: '#ef4444'` does not add a
+        // default to the red family, it REPLACES the family — `red-50` through `red-950`
+        // stop existing, silently. That is why `text-red-400` in `DesktopHero` has never
+        // painted anything: the class was not in the stylesheet at all. Spreading the
+        // scale keeps `red-400` and gives `text-red` a value, so both spellings work.
+        purple: { ...defaultColors.purple, DEFAULT: 'rgb(var(--c-purple, 168 85 247) / <alpha-value>)' },
+        green: { ...defaultColors.green, DEFAULT: 'rgb(var(--c-green, 34 197 94) / <alpha-value>)' },
+        red: { ...defaultColors.red, DEFAULT: 'rgb(var(--c-red, 239 68 68) / <alpha-value>)' },
+        yellow: { ...defaultColors.yellow, DEFAULT: 'rgb(var(--c-yellow, 234 179 8) / <alpha-value>)' },
+        // `orange` is the context gauge between 40% and 70% on `/features`, and that turn
+        // is the picture; `blue` is the "in review" status pill.
+        orange: { ...defaultColors.orange, DEFAULT: 'rgb(var(--c-orange, 249 115 22) / <alpha-value>)' },
+        blue: { ...defaultColors.blue, DEFAULT: 'rgb(var(--c-blue, 59 130 246) / <alpha-value>)' },
+        // The status table under the ticket card: `planned`/`committed` wear cyan,
+        // `review addressed` teal.
+        cyan: { ...defaultColors.cyan, DEFAULT: 'rgb(var(--c-cyan, 34 211 238) / <alpha-value>)' },
+        teal: { ...defaultColors.teal, DEFAULT: 'rgb(var(--c-teal, 45 212 191) / <alpha-value>)' },
+
+        // THE REST OF THE DESKTOP'S ROLES, for the shared components in
+        // `design-system/desktop/`. The tones above were already here for the
+        // `/features` mockups; these were not, and their absence was invisible in the
+        // worst way — Tailwind cannot emit a class for a colour it has never heard of,
+        // so `text-icon` and `text-text-secondary` were simply MISSING from the
+        // stylesheet and every `Icon` and every secondary `Text` on `/design-system`
+        // fell through to whatever colour it inherited. They looked like components
+        // that ignored the theme; they were components whose colour did not exist.
+        //
+        // NO FALLBACKS, unlike the tones above. Those had a value to preserve because
+        // the public site paints with them; nothing outside a theme ground uses these,
+        // so inventing a default would be inventing a colour. Unset, the declaration
+        // is invalid and dropped — which is the right answer for a class used only
+        // where `--c-*` is defined.
+        //
+        // Two shapes, mirroring `desktop/tailwind.config.cjs`: bare `R G B` channels
+        // wrapped for `<alpha-value>` where opacity modifiers are used, and complete
+        // colours for surfaces and lines, whose translucency is part of the design and
+        // differs per theme.
+        'text-secondary': 'rgb(var(--c-text-secondary) / <alpha-value>)',
+        // The OPAQUE divider, `border-border`, and the last of the desktop's roles to
+        // arrive here — for the same reason as the rest, one step later: nothing shared
+        // spelled it until `SidebarInfo` took the add-a-repository box in from its three
+        // callers. The site drew that box with a hardcoded `appline`, which is this
+        // colour on the dark theme and the wrong one on the other five.
+        border: 'rgb(var(--c-border) / <alpha-value>)',
+        'on-brand': 'rgb(var(--c-on-brand) / <alpha-value>)',
+        icon: {
+          DEFAULT: 'rgb(var(--c-icon) / <alpha-value>)',
+          muted: 'rgb(var(--c-icon-muted) / <alpha-value>)',
+        },
+        // `bg` and not `appbg`, even though `bg-bg` reads oddly: a shared component
+        // writes the desktop's own class names, so a webapp token under a different
+        // name would simply not answer to them. `text-bg` is what a solid green
+        // button's label wears, so it follows the window and reads on the dark themes
+        // and the light ones alike.
+        bg: {
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          secondary: 'rgb(var(--c-bg-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-bg-tertiary) / <alpha-value>)',
+        },
+        surface: {
+          subtle: 'var(--c-surface-subtle)',
+          DEFAULT: 'var(--c-surface)',
+          strong: 'var(--c-surface-strong)',
+          sunken: 'var(--c-surface-sunken)',
+          'sunken-soft': 'var(--c-surface-sunken-soft)',
+        },
+        line: {
+          subtle: 'var(--c-line-subtle)',
+          field: 'var(--c-line-field)',
+          DEFAULT: 'var(--c-line)',
+          strong: 'var(--c-line-strong)',
+        },
         // THE APP'S THREE BACKGROUNDS AND ITS BORDER, `themes.ts`'s dark values, for the
         // menus and pills the repository and PR cards on `/features` reproduce. Solid,
         // for the reason `appink` is: a menu floats over a card over a panel, and an
@@ -1071,7 +1326,28 @@ const config: Config = {
       // declarations and their comments, and a second copy here is the copy that would
       // go stale. Two objects and not one merged constant, because they are two
       // different KINDS of ground — see the note on `PLATES`.
-      backgroundImage: { ...TONES, ...PLATES, ...MARKS },
+      backgroundImage: {
+        ...TONES,
+        ...PLATES,
+        ...MARKS,
+        /**
+         * `tone-sky` UNDER A SECOND NAME, for the desktop's sign-in screen.
+         *
+         * That screen is a DESKTOP surface: it asks for `bg-release-mesh`, and the
+         * desktop's own config declares it as the pasted output of `mesh(SKY_LIGHT,
+         * SKY_DEEP)` — the two halves of `design-system/` share nothing, so neither can
+         * import the other's ground. `/design-system` draws the card that sits on it
+         * here, so this side needs the name too, and on this side it can be the CALL
+         * rather than a copy of its output.
+         *
+         * OUTSIDE `TONES` on purpose. That object is the card palette — eight grounds a
+         * `ToneCard` may be given, each held to an ink pairing by
+         * `lib/designTokens.test.ts` — and this is one component's backdrop under an
+         * alias. Adding it there would put a ninth tone in a picker nobody should reach
+         * for it from.
+         */
+        'release-mesh': mesh(SKY_LIGHT, SKY_DEEP),
+      },
       // The elevation scale. Four rungs, deliberately few: a white-on-white
       // interface separates things by space and by a whisper of a shadow, and a
       // seven-step ramp only invites two neighbouring surfaces to differ by an
@@ -1081,6 +1357,24 @@ const config: Config = {
       // arbitrary `shadow-[0_1px_2px_…]` at a call site is the failure this scale
       // exists to prevent, and `lib/designTokens.test.ts` fails the build on one.
       boxShadow: {
+        /**
+         * THE GLASS CARD'S LIFT — wide, soft and barely there.
+         *
+         * css.glass's own fourth ingredient, and the one that keeps a translucent card
+         * from reading as a hole cut in the ground behind it: a blurred plate with no
+         * shadow has no thickness, so the blur looks like a property of the background
+         * rather than of an object in front of it.
+         *
+         * BLACK AND NOT THE TINT the buttons above use. Those sit on this site's own
+         * canvas and take a shadow mixed from it; this one sits on a fixed light mesh
+         * that belongs to neither app's palette, and a tinted lift under it would be the
+         * canvas showing through an object that is not on the canvas.
+         *
+         * Declared HERE rather than written as an arbitrary value, which
+         * `lib/designTokens.test.ts` enforces and is right to: a shadow spelled at a call
+         * site is a shadow nobody can find when the next card wants the same one.
+         */
+        glass: '0 4px 30px rgba(0, 0, 0, 0.12)',
         // The primary button at rest. Two layers because one cannot do both jobs:
         // the 1px contact shadow gives the white face an edge to sit on, the wide
         // soft one lifts it off the card. Small numbers on purpose — a button that
@@ -1215,7 +1509,7 @@ const config: Config = {
       // (that one is a component with its own breakpoint map and centring behaviour,
       // and shadowing the name would make `max-w-container` read as a reference to it)
       // and not `page` because `/admin` is full-bleed on purpose — see the `regie`
-      // note above. This is the width of the MARKETING column specifically.
+      // note above. This is the width of the SHOWCASE column specifically.
       //
       // The signed-in product does not use it: its pages are on `max-w-*` sizes from
       // Tailwind's own scale, tuned per page, and nothing here changes them.
@@ -1371,31 +1665,20 @@ const config: Config = {
         // Three checks resolving in order over an 8s loop, at 30%, 48% and 66% — a
         // beat and a half apart, because CI jobs do not finish together and three
         // ticks landing at once would read as a progress bar reaching the end.
-        'ci-pending-1': ciPending(30),
-        'ci-settled-1': ciSettled(30),
-        'ci-pending-2': ciPending(48),
-        'ci-settled-2': ciSettled(48),
-        'ci-pending-3': ciPending(66),
-        'ci-settled-3': ciSettled(66),
         // ── The `/features` Agents sidebar ───────────────────────────────────────
         //
         // TWO ANIMATIONS LIFTED FROM THE APP'S OWN `index.css`, keyframe for keyframe,
         // because the sidebar drawing beside them is a reproduction and a state that
         // moves differently there is a state the reader will not recognise.
         //
-        // `wave-bar` is `WaveLoader`: three parallel bars scaled on the Y axis, the
-        // middle one tallest, 1.2s, with the three copies 0.15s apart. The stagger is an
-        // `animation-delay` at the call site rather than three keyframes here, exactly as
-        // the app does it.
-        'wave-bar': {
-          '0%, 100%': { transform: 'scaleY(1)' },
-          '35%': { transform: 'scaleY(0.55)' },
-          '70%': { transform: 'scaleY(1.1)' },
-        },
+        // `wave-bar` WAS HERE, and it drew a hand-built copy of the app's wave loader
+        // inside the repository drawing. That drawing renders `ScriptCard` now, which
+        // brings `Loader` with it — the design system had had the shape for a while, and
+        // the keyframe was the site keeping a second one in step by hand.
         /**
          * ── THE SHARE GRAPH'S THREE BEATS ──────────────────────────────────────
          *
-         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 9s
+         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 6s
          * loop, and the product owner wrote the running order: "1 personne à gauche => le
          * plan qui s'écrit en live => le plan qui se partage à deux autres personnes avec
          * l'animation des points". Three keyframes, one per beat, and they share a period
@@ -1555,45 +1838,17 @@ const config: Config = {
         // that answers you is the one you pressed FOR, so it wants to arrive; going back is
         // an undo and can take its time. The owner liked the off exactly as it was, so only
         // the on moved.
-        'switch-knob': {
-          // `cubic-bezier(.32,1.4,.55,1)` overshoots slightly on arrival, which is the
-          // difference between a knob that slides and one that is thrown. Declared INSIDE
-          // the keyframe, as `timeline-run` does: a function on the shorthand would apply
-          // to every segment, including the two long rests where there is nothing to ease.
-          '0%, 16%': { transform: 'translateX(0)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
-          '19%, 60%': { transform: 'translateX(3rem)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
-          '65%, 100%': { transform: 'translateX(0)' },
-        },
-        // 3rem IS NOT A GUESS: the track is `w-28` (112px) with `p-2` (8px a side), so its
-        // inside measures 96px and the knob is `h-12 w-12`. 96 − 48 = 48 = 3rem. The three
-        // numbers have to agree, which is why they are written out here as well as at the
-        // call site.
-        'switch-track': {
-          // OFF is ink at 12% — the switch's own off state on a light ground, not a grey
-          // token, because it has to sit on the card's gradient without picking a fight
-          // with it. ON is `brand`, the same blue the primary button is filled with.
-          //
-          // THE SAME BEATS AS THE KNOB, to the percent. A track still turning after the
-          // knob has arrived is a switch with a lag in it.
-          '0%, 16%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
-          '19%, 60%': { backgroundColor: BRAND },
-          '65%, 100%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
-        },
-        // The pointer: it ARRIVES from the card's lower right, presses, backs off a little
-        // while the switch answers, comes back to press again, then leaves the way it came.
-        // It does NOT travel with the knob — a cursor that follows the thing it just
-        // switched is a DRAG, which is not how a switch is operated — so the two presses
-        // land on the same spot and the knob moves under a hand that stays put.
+        // `switch-knob` AND `switch-track` WERE HERE, and they went when the card that
+        // used them started drawing the real component. `MakeItYoursArt` renders
+        // `Switch` from `design-system/desktop/` now, so the knob's travel and the
+        // track's two colours are the component's business — and the 3rem translate
+        // that had to be kept in agreement with a `w-28` track by hand, with nothing
+        // to catch it when the two disagreed, is gone with them.
         //
-        // IT MOVED FOR ONE ROUND ONLY WITH THE PRESS, a dip in place, and the owner asked
-        // for it to move ("tu peux le faire bouger le cursor"). The travel is in glyph
-        // widths (`4.5em`-ish at the size the card draws it) so it scales with the arrow.
-        //
-        // THE PRESS HAS TO BEGIN BEFORE THE KNOB MOVES, or the cursor is reacting to the
-        // switch instead of causing it. It goes down at 14% and the knob leaves at 16%;
-        // down at 59% and the knob leaves at 60%. Two percent is ~96ms, which is about the
-        // gap between a real click landing and a real switch answering it. The two glides
-        // (4%→11%, 46%→56%) are what `ease-in-out` on the shorthand shapes.
+        // `switch-cursor` STAYS: the pointer is the card's own drawing and has nothing
+        // to do with the control it presses. Its beats are still the contract between
+        // the two — it goes down at 14% and at 59%, and the card flips `checked` at
+        // 16% and 60% from a timer reading the same 4.8s cycle.
         'switch-cursor': {
           '0%, 4%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
           '6%': { opacity: '1' },
@@ -1678,98 +1933,6 @@ const config: Config = {
           '0%, 34%': { opacity: '1' },
           '39%, 100%': { opacity: '0' },
         },
-        /**
-         * THE HERO'S MARK — the Claude Code pixel figure at the centre of the orbit
-         * (`components/site/home/HeroSection.tsx`). Three things it does, on three
-         * keyframe sets, because they run on three different elements and clocks:
-         *
-         *   • `hero-hop`: the whole figure. One hop in a 7s loop, and the loop is mostly
-         *     stillness — the figure squats (scaleY .9) for a beat, leaves the ground for
-         *     ~.3s, lands with a small squash and settles. Everything from 22% on is rest,
-         *     so the hop reads as a thing it DOES now and then rather than a bounce it is
-         *     stuck in. `transform-origin` is set to the bottom edge at the call site.
-         *   • `hero-wink`: ONE eye, scaled shut and open again. The eye is a white rect on
-         *     the orange body, so `scaleY(.1)` on it is a lid coming down. It closes twice
-         *     quickly around 60% of a 5s loop — a wink and not a blink, because one eye
-         *     — and the two loops (7s and 5s) drift against each other so the hop and the
-         *     wink almost never land together.
-         *   • `hero-flinch`: on click, once. The figure jerks back 6° and 4px, then
-         *     overshoots forward and settles — the "Aïe" the bubble says, drawn.
-         *   • `hero-ouch`: the bubble itself, once. A pixel bubble should not ease in: it
-         *     pops from .6 to 1.06 to 1 in three hard steps (`steps(1)` on the shorthand),
-         *     so it appears frame by frame the way the figure it belongs to was drawn.
-         */
-        'hero-hop': {
-          '0%, 6%': { transform: 'translateY(0) scaleY(1)' },
-          '9%': { transform: 'translateY(0) scaleY(0.9)' },
-          '13%': { transform: 'translateY(-16px) scaleY(1.06)' },
-          '17%': { transform: 'translateY(0) scaleY(0.94)' },
-          '20%': { transform: 'translateY(0) scaleY(1.02)' },
-          '22%, 100%': { transform: 'translateY(0) scaleY(1)' },
-        },
-        'hero-wink': {
-          '0%, 58%': { transform: 'scaleY(1)' },
-          '61%': { transform: 'scaleY(0.1)' },
-          '64%': { transform: 'scaleY(1)' },
-          '67%': { transform: 'scaleY(0.1)' },
-          '70%, 100%': { transform: 'scaleY(1)' },
-        },
-        'hero-flinch': {
-          '0%': { transform: 'rotate(0) translateY(0)' },
-          '25%': { transform: 'rotate(-6deg) translateY(4px)' },
-          '60%': { transform: 'rotate(3deg) translateY(-2px)' },
-          '100%': { transform: 'rotate(0) translateY(0)' },
-        },
-        'hero-ouch': {
-          '0%': { opacity: '0', transform: 'scale(0.6)' },
-          '34%': { opacity: '1', transform: 'scale(1.06)' },
-          '67%, 100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        /**
-         * THE REST OF THE FIGURE'S REPERTOIRE, added when the owner asked for more than a
-         * flinch ("lorsqu'on spam click sur lui il dit Arrêtez !!!"). One idle loop and
-         * three click moods — `ClaudeFigure` in `HeroSection.tsx` says which click count
-         * earns which:
-         *
-         *   • `hero-look`: both eyes together, an 11s idle loop. They glance right, hold,
-         *     glance left, hold, come back — the holds are most of the cycle, so it reads
-         *     as looking at something rather than as eyes rolling. Runs on the `<g>` that
-         *     holds the eyes; the wink runs on one eye inside it, so the two compose.
-         *   • `hero-shake`: the head-shake "no", five swings of 6px in .45s, once per
-         *     click. Third and fourth clicks.
-         *   • `hero-sulk`: the figure turns its back — `scaleX(-1)` — with a small hop on
-         *     the way round, and STAYS turned (`forwards`) until the mood is over. Fifth to
-         *     seventh clicks.
-         *   • `hero-dance`: it gives up and dances, `infinite` for as long as the mood
-         *     lasts: a bounce with a tilt each way and a half-turn in the middle, 1.2s a
-         *     bar. Eighth click and beyond.
-         */
-        'hero-look': {
-          '0%, 18%': { transform: 'translateX(0)' },
-          '22%, 40%': { transform: 'translateX(0.6px)' },
-          '44%, 62%': { transform: 'translateX(-0.6px)' },
-          '66%, 100%': { transform: 'translateX(0)' },
-        },
-        'hero-shake': {
-          '0%, 100%': { transform: 'translateX(0)' },
-          '20%': { transform: 'translateX(-6px)' },
-          '40%': { transform: 'translateX(6px)' },
-          '60%': { transform: 'translateX(-5px)' },
-          '80%': { transform: 'translateX(4px)' },
-        },
-        'hero-sulk': {
-          '0%': { transform: 'scaleX(1) translateY(0)' },
-          '50%': { transform: 'scaleX(0) translateY(-10px)' },
-          '100%': { transform: 'scaleX(-1) translateY(0)' },
-        },
-        'hero-dance': {
-          '0%, 100%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
-          '20%': { transform: 'translateY(-14px) rotate(-10deg) scaleX(1)' },
-          '40%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
-          '50%': { transform: 'translateY(-8px) rotate(0) scaleX(-1)' },
-          '60%': { transform: 'translateY(0) rotate(0) scaleX(-1)' },
-          '80%': { transform: 'translateY(-14px) rotate(10deg) scaleX(-1)' },
-        },
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -1852,31 +2015,25 @@ const config: Config = {
         // keyframes. Same discipline as the five status lines above, and for the same
         // reason — a delay on an `infinite` animation applies to the first iteration
         // only, so delayed siblings drift out of phase for ever.
-        'ci-pending-1': 'ci-pending-1 8s linear infinite',
-        'ci-settled-1': 'ci-settled-1 8s linear infinite',
-        'ci-pending-2': 'ci-pending-2 8s linear infinite',
-        'ci-settled-2': 'ci-settled-2 8s linear infinite',
-        'ci-pending-3': 'ci-pending-3 8s linear infinite',
-        'ci-settled-3': 'ci-settled-3 8s linear infinite',
         // The sidebar's two states. The wave's stagger is a delay at the call site, so
         // one animation serves all three bars.
-        'wave-bar': 'wave-bar 1.2s ease-in-out infinite',
         // THE SHARE GRAPH'S THREE BEATS, and the 9s has to be IDENTICAL across all three:
         // they are one story told by three keyframes, and a period that differed by even a
         // tenth would have the beats drift out of order over a minute of watching. See the
         // keyframes above for the running order.
         //
-        // 9s BECAUSE THE MIDDLE BEAT SETS IT. Four rules writing on at ~0.4s apart, each
-        // taking ~1s to draw, is 2.5s of writing before anything can be shared; the
-        // arrival and the two runs out want about a second each, and the sheet has to stand
-        // finished long enough to be read as finished. Faster and it is a flicker.
+        // 6s, DOWN FROM 9s at the owner's request ("augmenter la vitesse"). Everything was
+        // scaled by the same 2/3 — the period here and the staggers in `OrgArt.tsx` — so
+        // each delay is the same FRACTION of the loop as before and the headroom sums in
+        // the keyframes above still hold. The 9s was chosen as the floor below which the
+        // writing reads as a flicker; the owner judged it slow in front of the page.
         //
         // `linear` ON THE TWO DOT BEATS, because the curve's own shape is the only easing
         // they want — a dot easing in and out along a bezier reads as hesitant. `ease-out`
         // on the writing, where a pen slowing as it finishes a line is exactly right.
-        'plan-arrive': 'plan-arrive 9s linear infinite',
-        'plan-write': 'plan-write 9s ease-out infinite',
-        'plan-share': 'plan-share 9s linear infinite',
+        'plan-arrive': 'plan-arrive 6s linear infinite',
+        'plan-write': 'plan-write 6s ease-out infinite',
+        'plan-share': 'plan-share 6s linear infinite',
         // The done checklist: 400ms between ticks means a 5s loop and 8% steps.
         'done-1': 'done-1 5s linear infinite',
         'done-2': 'done-2 5s linear infinite',
@@ -1901,8 +2058,6 @@ const config: Config = {
         // main". Worth recording because it was not a bug: it worked, and a card that
         // repaints itself twice every five seconds is simply louder than a grid of five
         // wants. The switch is the thing that moves; the card holds still around it.
-        'switch-knob': 'switch-knob 4.8s linear infinite',
-        'switch-track': 'switch-track 4.8s linear infinite',
         'switch-cursor': 'switch-cursor 4.8s ease-in-out infinite',
         // The secrets table's two rows: one 7s loop, no delay on either, the order in
         // the keyframes.
@@ -1919,23 +2074,6 @@ const config: Config = {
         'secret-reveal-3': 'secret-reveal-3 7s ease-in infinite',
         'secret-reveal-4': 'secret-reveal-4 7s ease-in infinite',
         'secret-reveal-5': 'secret-reveal-5 7s ease-in infinite',
-        // The hero's mark: see the four keyframe sets above. The hop and the wink are
-        // `infinite` on periods that share no divisor (7s, 5s), so they beat against
-        // each other for 35s before repeating an alignment. The two one-shots are
-        // `forwards` and mounted on click — the element appears with the animation on
-        // it, so there is nothing to restart.
-        'hero-hop': 'hero-hop 7s ease-in-out infinite',
-        'hero-wink': 'hero-wink 5s linear infinite',
-        'hero-flinch': 'hero-flinch 0.45s ease-out forwards',
-        'hero-ouch': 'hero-ouch 0.3s steps(1, end) forwards',
-        // The repertoire: see the keyframes. `hero-look` is a third idle period (11s)
-        // sharing no divisor with the hop's 7s or the wink's 5s. The three moods are
-        // mounted with their class when the click count reaches them, and keyed on the
-        // count so each click replays the one-shots from their first frame.
-        'hero-look': 'hero-look 11s ease-in-out infinite',
-        'hero-shake': 'hero-shake 0.45s ease-in-out forwards',
-        'hero-sulk': 'hero-sulk 0.5s ease-in-out forwards',
-        'hero-dance': 'hero-dance 1.2s ease-in-out infinite',
       },
     },
   },

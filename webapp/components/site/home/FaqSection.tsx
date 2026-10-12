@@ -10,7 +10,7 @@ import { RichText } from '../RichText'
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
- * The last band before the ask: five questions, and a way to the other six.
+ * The last band before the ask: five questions, and a way to the other ten.
  *
  * ── WHY IT IS HERE, AND WHY HERE SPECIFICALLY ───────────────────────────────────────
  *
@@ -54,7 +54,7 @@ import { HomeHeading, HomeSection } from './Shell'
  * not use it: five collapsed plates are a list you take in at a glance, and one of them
  * hanging open makes the right column taller than the left for a reason the reader
  * cannot see. It also picks a question on their behalf, which is exactly what a band
- * showing five out of eleven should avoid.
+ * showing five out of fifteen should avoid.
  *
  * ONE ROW AT A TIME, and this band IS an accordion — which is the opposite of `/faq`,
  * and the opposite of what shipped here first. It went out with every row owning its own
@@ -93,7 +93,7 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * NO `id` ON THE BAND EITHER, which is the homepage's standing rule: every nav row that
  * names this page names a ROUTE, and the page publishes no same-page anchor. See
- * `app/(marketing)/page.tsx`. A `#faq` here would be the first, and it would compete
+ * `app/(showcase)/page.tsx`. A `#faq` here would be the first, and it would compete
  * with `/faq` in the header for the same word.
  */
 export function FaqSection() {

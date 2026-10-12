@@ -1,6 +1,10 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AvatarSourceResult } from '../avatar'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
+import type { UsernameCheckResult, UsernameSaveResult } from '../username'
+import type { ResolvedWorkflow } from '../workflow/model'
+import type { WorkflowOverlay } from '../workflow/overlay'
+import type { ChatSendKey, ChatToolDetail, ChatDiffDisplay, ChatTimestamps } from '../types'
+import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -40,6 +44,11 @@ const configApi = {
   updateRepositoryResolveSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['resolve']>>) =>
     ipcRenderer.invoke('config:updateRepositoryResolveSettings', { name, settings }),
 
+  updateRepositoryStartSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['start']>>) =>
+    ipcRenderer.invoke('config:updateRepositoryStartSettings', { name, settings }),
+  updateRepositoryReviewSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['review']>>) =>
+    ipcRenderer.invoke('config:updateRepositoryReviewSettings', { name, settings }),
+
   updateRepositoryPullRequestSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) =>
     ipcRenderer.invoke('config:updateRepositoryPullRequestSettings', { name, settings }),
 
@@ -64,8 +73,14 @@ const configApi = {
   setSyncClaudeTheme: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSyncClaudeTheme', { enabled }),
 
-  setCodeTheme: (mode: CodeThemeMode): Promise<{ config: Config }> =>
-    ipcRenderer.invoke('config:setCodeTheme', { mode }),
+  setCodeSyntax: (choice: CodeSyntaxChoice): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setCodeSyntax', { choice }),
+
+  setCodeFontSize: (size: number): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setCodeFontSize', { size }),
+
+  codeSample: (language: CodeSampleLanguage): Promise<CodeSample> =>
+    ipcRenderer.invoke('config:codeSample', { language }),
 
   setUsageCardEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
@@ -81,6 +96,35 @@ const configApi = {
     ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
   setPlanSyncEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setPlanSyncEnabled', { enabled }),
+  setInfoSidebarOnCreate: (open: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setInfoSidebarOnCreate', { open }),
+  setDefaultModel: (model: string | null): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setDefaultModel', { model }),
+  setConfirmAgentArchive: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setConfirmAgentArchive', { enabled }),
+  setWorkflowSettings: (patch: WorkflowSettings): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setWorkflowSettings', patch),
+  listClaudeModels: (): Promise<ClaudeModelOption[]> => ipcRenderer.invoke('claude:listModels'),
+  getClaudeEmojiCompletion: (terminalId?: string): Promise<boolean> =>
+    ipcRenderer.invoke('claude:getEmojiCompletion', { terminalId }),
+  setClaudeEmojiCompletion: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('claude:setEmojiCompletion', { enabled }),
+  setQuickLaunch: (patch: { repo?: string; background?: boolean; launchMode?: LaunchMode | null }): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setQuickLaunch', patch),
+  setQuickSettings: (patch: { enabled?: boolean; items?: QuickSettingId[] }): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setQuickSettings', patch),
+  setSidebarPages: (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; shown?: SidebarPageId[]; compact?: boolean }): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setSidebarPages', patch),
+  setDefaultDisplayMode: (mode: AgentDisplayMode): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setDefaultDisplayMode', { mode }),
+  setChatStickyPrompt: (sticky: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setChatStickyPrompt', { sticky }),
+
+  setChatSettings: (patch: { sendKey?: ChatSendKey; toolDetail?: ChatToolDetail; diffs?: ChatDiffDisplay; timestamps?: ChatTimestamps }): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setChatSettings', patch),
+
+  setSplitNewAgentPane: (pane: SplitNewAgentPane): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setSplitNewAgentPane', { pane }),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDailyDigestEnabled', { enabled }),
 
@@ -104,6 +148,11 @@ const configApi = {
 
   updateTasksRepo: (configKey: string): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:updateTasksRepo', { configKey }),
+
+  // The Plans list's repository filter, as a `public.repositories` id. An empty string
+  // clears it, which is the list's "all repositories" default.
+  updatePlansRepo: (repoId: string): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:updatePlansRepo', { repoId }),
 
   updateTheme: (theme: ThemeId) =>
     ipcRenderer.invoke('config:updateTheme', { theme }),
@@ -137,6 +186,41 @@ const configApi = {
 
   getGitHubAuthStatus: (): Promise<GitHubAuthStatus> =>
     ipcRenderer.invoke('config:getGitHubAuthStatus'),
+
+  /** The flow this repository's skills follow (its own, or the default), for the Workflow tab. */
+  getRepositoryWorkflow: (name: string): Promise<ResolvedWorkflow> =>
+    ipcRenderer.invoke('config:getRepositoryWorkflow', { name }),
+
+  /**
+   * What the workflow editor edits: only the steps and link kinds added to the default,
+   * with the revision of the row they came from (hand it back to saveRepositoryWorkflow).
+   */
+  getRepositoryWorkflowOverlay: (name: string): Promise<RepositoryWorkflowOverlay> =>
+    ipcRenderer.invoke('config:getRepositoryWorkflowOverlay', { name }),
+
+  /**
+   * Who changed the repository's workflow or its /magic:start settings, and when, newest
+   * first. READ ONLY: the database's audit trigger writes it, nothing here can.
+   */
+  getRepositoryWorkflowHistory: (name: string): Promise<WorkflowHistoryRead> =>
+    ipcRenderer.invoke('config:getRepositoryWorkflowHistory', { name }),
+
+  /**
+   * Save the repository's workflow. An empty overlay puts it back on the default flow.
+   * `expectedRevision` is the revision the draft was based on: `conflict` when someone
+   * else saved since. `denied` is the backend refusing: only its owner or an org admin
+   * may edit it.
+   */
+  saveRepositoryWorkflow: (name: string, overlay: WorkflowOverlay, expectedRevision: string | null): Promise<RepositoryWorkflowSaveResult> =>
+    ipcRenderer.invoke('config:saveRepositoryWorkflow', { name, overlay, expectedRevision }),
+
+  // A repository's workflow changed, saved from any window or from elsewhere (Realtime).
+  // The payload names the repository only: read its workflow again.
+  onWorkflowChanged: (callback: (change: WorkflowChange) => void) => {
+    const listener = (_event: IpcRendererEvent, change: WorkflowChange) => callback(change)
+    ipcRenderer.on('workflow:changed', listener)
+    return () => ipcRenderer.removeListener('workflow:changed', listener)
+  },
 
   setIntegration: (name: 'atlassian', enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setIntegration', { name, enabled }),
@@ -188,8 +272,8 @@ const terminalApi = {
   // `metadata` is the identity the caller already knows — which ticket the agent is
   // on and what to call it — set at creation rather than patched in afterwards, so
   // the agent is never briefly a nameless "Claude 3" attached to nothing.
-  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode, metadata?: LaunchMetadata) =>
-    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode, metadata }),
+  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode, metadata?: LaunchMetadata, launchMode?: LaunchMode) =>
+    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode, metadata, launchMode }),
 
   // `Promise<boolean>` spelled out rather than left to `invoke`'s `any`: the answer is
   // load-bearing for a caller that destroys state once the write has landed, and an
@@ -230,8 +314,65 @@ const terminalApi = {
   updateSplitPane: (id: string, pane: 'left' | 'right') =>
     ipcRenderer.invoke('terminal:updateSplitPane', { id, pane }),
 
+  updateInfoSidebar: (id: string, open: boolean) =>
+    ipcRenderer.invoke('terminal:updateInfoSidebar', { id, open }),
+
   relaunchInCwd: (id: string): Promise<string | null> =>
     ipcRenderer.invoke('terminal:relaunchInCwd', { id }),
+
+  listSessions: (id: string): Promise<ClaudeSessionEntry[]> =>
+    ipcRenderer.invoke('terminal:listSessions', { id }),
+
+  resumeSession: (id: string, transcriptPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:resumeSession', { id, transcriptPath }),
+
+  newSession: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:newSession', { id }),
+
+  contextSessions: (id: string): Promise<number> =>
+    ipcRenderer.invoke('terminal:contextSessions', { id }),
+
+  writeContextDigest: (id: string): Promise<{ path: string; count: number } | null> =>
+    ipcRenderer.invoke('terminal:writeContextDigest', { id }),
+
+  updateDisplayMode: (id: string, mode: AgentDisplayMode) =>
+    ipcRenderer.invoke('terminal:updateDisplayMode', { id, mode }),
+
+  // A fenced block of the chat, as shiki HTML in `theme`, or null to draw it plain.
+  highlightCode: (code: string, lang: string | undefined, theme: string): Promise<string | null> =>
+    ipcRenderer.invoke('code:highlight', { code, lang, theme }),
+
+  // The question the agent is blocked on, if any. Answered through `tray.answerQuestion`.
+  getQuestion: (id: string): Promise<TrayQuestion | null> =>
+    ipcRenderer.invoke('terminal:getQuestion', { id }),
+
+  onQuestion: (callback: (data: { id: string; question: TrayQuestion | null }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; question: TrayQuestion | null }) => callback(data)
+    ipcRenderer.on('terminal:question', listener)
+    return () => ipcRenderer.removeListener('terminal:question', listener)
+  },
+
+  // The same, as coloured tokens per line, for the chat's diff cards.
+  highlightLines: (code: string, lang: string | undefined, theme: string): Promise<Array<Array<{ content: string; color?: string; fontStyle?: number }>> | null> =>
+    ipcRenderer.invoke('code:highlightLines', { code, lang, theme }),
+
+  // Attachments for a chat message, as paths (see main/chat/attachments.ts).
+  pickChatFiles: (): Promise<string[]> => ipcRenderer.invoke('chat:pickFiles'),
+  savePastedImage: (bytes: Uint8Array, mime: string): Promise<string | null> =>
+    ipcRenderer.invoke('chat:savePastedImage', { bytes, mime }),
+
+  // Escape from the chat: answers the prompt Claude Code took back, if it took one.
+  interrupt: (id: string): Promise<string | null> =>
+    ipcRenderer.invoke('terminal:interrupt', { id }),
+
+  getChat: (id: string): Promise<ChatSnapshot> =>
+    ipcRenderer.invoke('terminal:getChat', { id }),
+
+  onChat: (callback: (data: { id: string } & ChatSnapshot) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string } & ChatSnapshot) => callback(data)
+    ipcRenderer.on('terminal:chat', listener)
+    return () => ipcRenderer.removeListener('terminal:chat', listener)
+  },
 
   // Event listeners
   onData: (callback: (data: { id: string; data: string }) => void) => {
@@ -409,6 +550,19 @@ const skillsApi = {
     ipcRenderer.invoke('skills:import'),
   listRepoSkills: () => ipcRenderer.invoke('skills:listRepoSkills'),
   getRepoSkill: (filePath: string) => ipcRenderer.invoke('skills:getRepoSkill', { filePath }),
+  listingEntries: () => ipcRenderer.invoke('skills:listingEntries'),
+  /**
+   * How far the repo's copy of `<skill>` (`.claude/skills/<dir>` or `.claude/commands/<rel>.md`)
+   * has reached its members: missing, uncommitted, unpushed (to `origin/<branch>`), shared,
+   * or unknown when the repo has no folder on this machine.
+   */
+  repoSkillStatus: (repoName: string, skill: string): Promise<SkillShareResult> =>
+    ipcRenderer.invoke('skills:repoSkillStatus', { repoName, skill }),
+  /** Whether `~/.claude` has the skill (folder or command), i.e. whether copyToRepo has something to copy. */
+  homeHasSkill: (skill: string): Promise<boolean> => ipcRenderer.invoke('skills:homeHasSkill', { skill }),
+  /** Copy the personal skill or command into the repo's `.claude/`. Rejects with the reason. */
+  copyToRepo: (repoName: string, skill: string): Promise<{ success: true; path: string }> =>
+    ipcRenderer.invoke('skills:copyToRepo', { repoName, skill }),
 }
 
 // Scripts API
@@ -502,7 +656,7 @@ const shellApi = {
 
 // Update status type
 export type UpdateStatus =
-  | { type: 'checking' }
+  | { type: 'checking'; manual?: boolean }
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
@@ -522,10 +676,10 @@ const updaterApi = {
    */
   getStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updater:getStatus'),
   getVersion: (): Promise<string> => ipcRenderer.invoke('updater:getVersion'),
-  getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
+  getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string; releaseDate?: string } | null> =>
     ipcRenderer.invoke('updater:getPendingWhatsNew'),
   clearPendingWhatsNew: (): Promise<void> => ipcRenderer.invoke('updater:clearPendingWhatsNew'),
-  getReleaseNotes: (version: string): Promise<string | null> =>
+  getReleaseNotes: (version: string): Promise<{ releaseNotes: string; releaseDate?: string } | null> =>
     ipcRenderer.invoke('updater:getReleaseNotes', version),
   onStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: IpcRendererEvent, status: UpdateStatus) => callback(status)
@@ -585,6 +739,35 @@ const profileApi = {
   get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
 
+  // The HANDLE. Not part of the profile the two calls above move around either: it
+  // is an account field, it is UNIQUE across every user, and `profile:save` must
+  // never carry it — that write rebuilds every optional column, so a handle riding
+  // along would be cleared by the next profile edit.
+
+  /**
+   * What the account card reads on mount: the handle, when the password last changed,
+   * and when the account was created. One channel for the three, because the first two
+   * are two columns of one row.
+   */
+  getAccountSettings: (): Promise<AccountSettings> => ipcRenderer.invoke('profile:getAccountSettings'),
+  /**
+   * Is this one free? For the hint under the field, on every keystroke.
+   *
+   * ADVISORY — it answers for the instant it ran and reserves nothing. A `false`
+   * from `setUsername` is the only authoritative answer, because the unique index is
+   * what decides. Main judges the SHAPE without a round trip, so a half-typed handle
+   * costs nothing.
+   */
+  checkUsername: (raw: string): Promise<UsernameCheckResult> =>
+    ipcRenderer.invoke('profile:checkUsername', raw),
+  /**
+   * Claim it. Refusals come back as reason CODES the caller maps to a message key —
+   * `taken` among them, which is a result and not an error: the user answers it by
+   * typing a different handle.
+   */
+  setUsername: (raw: string): Promise<UsernameSaveResult> =>
+    ipcRenderer.invoke('profile:setUsername', raw),
+
   // The profile photo. It is NOT part of the profile the two calls above move
   // around: the bytes live in a private Supabase Storage bucket the main process
   // alone can reach, and `profile:save` must never carry the avatar or a profile
@@ -616,11 +799,17 @@ const profileApi = {
    * A write is a blob then a pointer, so a failure of the second happens with the
    * first already done and whatever is on screen is no longer true. An ABSENT
    * `avatar` means main could not find out either — refetch rather than assume.
+   *
+   * `reason: 'offline'` is the OTHER kind of `ok: false`, and it carries neither an
+   * `error` nor an `avatar` because neither exists: there was no session, so nothing
+   * was attempted and the stored photo is untouched. Do not resync on it — the value
+   * a signed-out read returns is `null`, and adopting it would blank a face that is
+   * still on the server.
    */
-  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+  setAvatar: (dataUrl: string): Promise<AvatarWriteResult> =>
     ipcRenderer.invoke('profile:setAvatar', dataUrl),
-  /** Delete the photo, blob and pointer. Same `avatar` resync contract on failure. */
-  removeAvatar: (): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+  /** Delete the photo, blob and pointer. Same result contract as setAvatar. */
+  removeAvatar: (): Promise<AvatarWriteResult> =>
     ipcRenderer.invoke('profile:removeAvatar'),
 }
 
@@ -632,6 +821,11 @@ const setupApi = {
     ipcRenderer.invoke('setup:provisionMcp', { id }),
   removeMcp: (id: McpServerId): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('setup:removeMcp', { id }),
+  getMcpServers: (): Promise<{ servers: McpServerState[]; report: McpHealthReport | null }> =>
+    ipcRenderer.invoke('setup:getMcpServers'),
+  checkMcpHealth: (): Promise<{ servers: McpServerState[]; report: McpHealthReport }> =>
+    ipcRenderer.invoke('setup:checkMcpHealth'),
+  checkGhCli: (): Promise<GhCliStatus> => ipcRenderer.invoke('setup:checkGhCli'),
   installPrerequisite: (id: PrerequisiteId): Promise<{ ok: boolean; output: string; error?: string }> =>
     ipcRenderer.invoke('setup:installPrerequisite', { id }),
   reinstallSkills: (): Promise<{ updated: string[]; errors: string[] }> =>
@@ -676,6 +870,9 @@ const authApi = {
   confirmEmailChange: (newEmail: string, code: string): Promise<AuthStatus> =>
     ipcRenderer.invoke('auth:confirmEmailChange', { newEmail, code }),
   deleteAccount: (): Promise<AuthStatus> => ipcRenderer.invoke('auth:deleteAccount'),
+  listSessions: (): Promise<AccountSession[]> => ipcRenderer.invoke('auth:listSessions'),
+  revokeSession: (sessionId: string): Promise<void> => ipcRenderer.invoke('auth:revokeSession', { sessionId }),
+  revokeOtherSessions: (): Promise<void> => ipcRenderer.invoke('auth:revokeOtherSessions'),
   onStatusChanged: (callback: (status: AuthStatus) => void) => {
     const listener = (_event: IpcRendererEvent, status: AuthStatus) => callback(status)
     ipcRenderer.on('auth:statusChanged', listener)
@@ -710,7 +907,8 @@ const jiraApi = {
 // Tasks API — the open GitHub issues of every GitHub-tracked repository.
 // One call, no subscription: the page reads on open and on an explicit reload.
 const tasksApi = {
-  listOpenIssues: (): Promise<TasksSnapshot> => ipcRenderer.invoke('tasks:listOpenIssues'),
+  listOpenIssues: (configKey: string | null): Promise<TasksSnapshot> =>
+    ipcRenderer.invoke('tasks:listOpenIssues', { configKey }),
   // The other half of ONE issue, read when the detail panel opens on it. Keyed by
   // the repository's config key rather than by owner/repo or a URL: the main
   // process owns the parsing, and the renderer has no business naming a host.
@@ -721,6 +919,166 @@ const tasksApi = {
   // APIs, need different credentials, and fail into two different named unions.
   getJiraIssueDetail: (configKey: string, key: string): Promise<JiraTaskIssueDetail | JiraTaskStatusError> =>
     ipcRenderer.invoke('tasks:getJiraIssueDetail', { configKey, key }),
+  // The sprint search, for the tickets the board's per-column budgets could not reach.
+  // Called on a debounced keystroke and ONLY while some column reported itself short —
+  // an untruncated board holds every ticket it has, so its search box is already exact.
+  searchSprint: (configKey: string, query: string): Promise<{ issues: JiraTaskIssue[] } | JiraTaskStatusError> =>
+    ipcRenderer.invoke('tasks:searchSprint', { configKey, query }),
+  // Several tickets' CURRENT state, off their trackers, in one call per tracker — what
+  // a plan's page decorates its ticket tree with. Keyed and answered by the string the
+  // caller sent (`#412`, `PROJ-1234`), which is how `plan_tickets` spells a key.
+  //
+  // The one read here with NO error union, and that is the contract rather than an
+  // omission: every failure — no credential, an unconfigured repository, a ticket
+  // deleted since — renders as a row without a pill, so they are one absent entry. See
+  // `PlanTicketStates`.
+  ticketStatuses: (configKey: string, keys: string[]): Promise<PlanTicketStates> =>
+    ipcRenderer.invoke('tasks:ticketStatuses', { configKey, keys }),
+}
+
+// Plans API — every `/magic:plan` session the reader may see: their own, plus their
+// teammates' on the repositories their organizations share.
+//
+// THE LIST has no subscription: it reads when the page opens, and again when the reader
+// asks it to after a read that failed — the Retry button of the page's error state.
+// ONE OPEN PLAN is live (`live` below, #306): `plan_sessions` and `plan_comments` are
+// published since 20260929110000, and the main process joins that plan's channels for
+// the page, which is what keeps the socket on that side of the bridge.
+const plansApi = {
+  list: (): Promise<PlanOverview> => ipcRenderer.invoke('plans:list'),
+  // ONE plan, with the spec markdown the list leaves out and the tickets it created.
+  // Read on opening a row, and from the cloud row rather than from any file: a
+  // colleague's `.magic/spec-*.md` only exists on their machine, so the stored copy is
+  // the only one this app can reach. `id` is the uuid the list handed over.
+  detail: (id: string): Promise<PlanDetail> => ipcRenderer.invoke('plans:detail', id),
+  // The reverse lookup: the plan a ticket came out of, or null — which is what most
+  // tickets answer, since most were filed by hand. Takes the repositories as CLOUD
+  // uuids rather than config keys, because that is what `plan_sessions.repo_id` is (and
+  // several, since one ticket's card can stand for several), plus the ticket key in
+  // every spelling the caller's rows might use (`#412` and `412` are the same ticket;
+  // see skills/magic-plan §7.2 against the table's own comment).
+  forTicket: (repoIds: string[], keys: string[]): Promise<PlanTicketOrigin | null> =>
+    ipcRenderer.invoke('plans:forTicket', { repoIds, keys }),
+  // The comments on one plan's spec, and the three ways of changing them. The FIRST
+  // WRITES in this API, which is otherwise a reader of what the main process uploaded.
+  //
+  // Nothing here says who may do what: `plan_comments`' RLS policies decide, and the
+  // handlers behind these channels check the SHAPE of their arguments and nothing more.
+  // A write that the policies refuse comes back `false`, which is also what a dropped
+  // connection answers — the two are one state to the caller, whose next move is the
+  // same either way.
+  //
+  // EVERY WRITE IS FOLLOWED BY A REFETCH, on the renderer's side (`usePlanComments`).
+  // A reply a colleague posts while the plan is open arrives through `live.onChanged`,
+  // which is a nudge to run that same read again: the rows never travel over it.
+  comments: {
+    // `sessionId` is the uuid the detail read handed over. Answers an unfailed empty
+    // set for a plan that does not exist or is not visible, exactly as `detail` answers
+    // a null session: RLS spells both the same way.
+    list: (sessionId: string): Promise<PlanCommentsRead> =>
+      ipcRenderer.invoke('plans:comments:list', sessionId),
+    // The author is NOT a parameter: the main process signs the row off the stored
+    // session, because the insert policy tests `author_id = auth.uid()` and a value
+    // chosen by the renderer could only ever be right by accident.
+    create: (input: NewPlanComment): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:create', input),
+    // The body alone. A comment cannot be moved to another passage or another thread —
+    // there is no interface for either, and the patch that reaches PostgREST lists one
+    // column.
+    update: (id: string, body: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:update', { id, body }),
+    // The replies under it survive: `parent_id` is `on delete set null`, so deleting
+    // your own comment never takes a colleague's answer with it.
+    remove: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:delete', id),
+  },
+  // The external links pinned to a plan — Figma, Notion, a Claude artifact. Rows of their
+  // own in `plan_links`, never part of the spec. The same contract as `comments`: the
+  // policies decide who may do what, a refused write answers `false`, and every write is
+  // followed by a refetch (`usePlanLinks`).
+  links: {
+    list: (sessionId: string): Promise<PlanLinksRead> =>
+      ipcRenderer.invoke('plans:links:list', sessionId),
+    // http(s) only; the handler and the table both refuse anything else.
+    create: (input: NewPlanLink): Promise<boolean> =>
+      ipcRenderer.invoke('plans:links:create', input),
+    remove: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:links:delete', id),
+  },
+  // The plan's history: who changed its spec, when, by hand or through which Claude agent,
+  // and every link pinned or removed. READ ONLY — revisions are recorded by the main process
+  // after each save, link events by the database — so there is nothing here to write with.
+  history: {
+    list: (sessionId: string): Promise<PlanHistoryRead> =>
+      ipcRenderer.invoke('plans:history:list', sessionId),
+    // Two revision ids, never two texts: main reads both under the reader's own access and
+    // answers the newer one highlighted, the older one's lines injected as removed rows.
+    // `fromRevisionId` null diffs the plan's first revision against nothing.
+    diff: (fromRevisionId: string | null, toRevisionId: string): Promise<PlanRevisionDiff> =>
+      ipcRenderer.invoke('plans:history:diff', { fromRevisionId, toRevisionId }),
+  },
+  // Save a spec edited in the app — mine or a colleague's, when the plan is on a
+  // repository our organization shares. The cloud row is written first, and this
+  // machine's `.magic/spec-*.md` follows only when the plan is mine AND the file holds
+  // nothing the cloud lacks; `fileWritten` says which.
+  //
+  // `expectedUpdatedAt` is the session's `updatedAt` EXACTLY as `detail` returned it —
+  // the raw string, never through a `Date`. It is the conflict guard: a plan changed
+  // since the editor opened answers `conflict` and nothing is overwritten. Nothing is
+  // queued either: offline is `failed`, and the draft is the caller's to keep.
+  updateSpec: (input: PlanSpecUpdate): Promise<PlanSpecUpdateResult> =>
+    ipcRenderer.invoke('plans:updateSpec', input),
+  // Where this plan's `.magic/spec-*.md` is on THIS machine, and the repository root it
+  // lives in, so the page can open `/magic:plan-change` on it. Only the author's plan can
+  // answer `ok`: a colleague's file is on their disk (`not_owner`), and one of mine made
+  // on another laptop or since deleted is `no_file`.
+  localSpec: (id: string): Promise<PlanLocalSpec> => ipcRenderer.invoke('plans:localSpec', id),
+  // Set the plan's status by hand — the author or a member of its organization. The
+  // database holds it against the agent's later uploads and records the change in the
+  // history. `updatedAt` is the row's new one, for the spec editor's conflict guard.
+  updateStatus: (input: { id: string; status: PlanStatus }): Promise<PlanStatusUpdateResult> =>
+    ipcRenderer.invoke('plans:updateStatus', input),
+  // Who besides the author may see and edit the plan: nobody (personal), the whole
+  // organization, its admins, or the members invited to. Only the author or an org admin may
+  // change it, and only the author may make it personal or share it again (the database
+  // refuses anyone else); `updatedAt` is the row's new one, as for a status change.
+  setEditPolicy: (input: { id: string; policy: PlanEditPolicy }): Promise<PlanEditPolicyUpdateResult> =>
+    ipcRenderer.invoke('plans:setEditPolicy', input),
+  // Invite a member of the plan's organization (or, on a personal repository, of one of the
+  // author's organizations) to edit it, or take the invitation back (the
+  // member may also remove their own). Followed by a detail refetch on the renderer's side.
+  addCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
+    ipcRenderer.invoke('plans:addCollaborator', input),
+  removeCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
+    ipcRenderer.invoke('plans:removeCollaborator', input),
+  // THE OPEN PLAN, LIVE (#306). `open` when the page shows a plan and `close` when it
+  // leaves it; one plan at a time, and opening another replaces it. The main process joins
+  // the plan's channels and relays what they say:
+  //  - `onPresence`: who else has this plan open, the reader excluded — `{ userId, email,
+  //    joinedAt }` each, no photo (the page resolves faces from what it already holds);
+  //  - `onChanged`: the spec or the comments moved, read them again. Never the rows;
+  //  - `onStatus`: the channels' health, `null` when no plan is open.
+  // Every event names its plan, so a late one about the plan just left can be ignored.
+  live: {
+    open: (sessionId: string): Promise<boolean> => ipcRenderer.invoke('plans:live:open', sessionId),
+    close: (sessionId: string): Promise<void> => ipcRenderer.invoke('plans:live:close', sessionId),
+    getStatus: (): Promise<RealtimeStatus | null> => ipcRenderer.invoke('plans:live:status'),
+    onPresence: (callback: (presence: PlanPresence) => void) => {
+      const listener = (_event: IpcRendererEvent, presence: PlanPresence) => callback(presence)
+      ipcRenderer.on('plans:live:presence', listener)
+      return () => ipcRenderer.removeListener('plans:live:presence', listener)
+    },
+    onChanged: (callback: (change: PlanLiveChange) => void) => {
+      const listener = (_event: IpcRendererEvent, change: PlanLiveChange) => callback(change)
+      ipcRenderer.on('plans:live:changed', listener)
+      return () => ipcRenderer.removeListener('plans:live:changed', listener)
+    },
+    onStatus: (callback: (status: RealtimeStatus | null) => void) => {
+      const listener = (_event: IpcRendererEvent, status: RealtimeStatus | null) => callback(status)
+      ipcRenderer.on('plans:live:status', listener)
+      return () => ipcRenderer.removeListener('plans:live:status', listener)
+    },
+  },
 }
 
 // Org API (organization membership + invitations + multi-org management)
@@ -728,8 +1086,13 @@ const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
   // orgId omitted → the active org.
   members: (orgId?: string): Promise<Member[]> => ipcRenderer.invoke('org:members', { orgId }),
+  // One org's roster AND whether the read happened: `ok: false` is a failed read, never
+  // "nobody here". The plan access panel's invite menu reads it.
+  membersRead: (orgId: string): Promise<{ members: Member[]; ok: boolean }> =>
+    ipcRenderer.invoke('org:membersRead', { orgId }),
   // The members' photos, keyed by user id, as `data:image/webp;base64,…` strings —
-  // the bucket is private, so bytes travel rather than URLs (see AccountAvatar).
+  // the bucket is private and its only web-facing form is a signed URL that expires, so
+  // bytes travel rather than URLs. `OrgPage` is the one surface that draws them.
   // A member with no photo has no key; the renderer draws the generic icon.
   memberAvatars: (orgId?: string): Promise<Record<string, string>> =>
     ipcRenderer.invoke('org:memberAvatars', { orgId }),
@@ -788,18 +1151,22 @@ const orgApi = {
 
 // Expose APIs to renderer
 /**
- * Appearance. `initial` is handed over as a launch argument by the main process
- * (see main/theme.ts) rather than fetched, so the renderer can paint the right
- * theme on its first frame instead of flashing the default and correcting.
+ * Appearance. `initial` is read synchronously from the main process rather than
+ * fetched, so the renderer can paint the right theme on its first frame instead of
+ * flashing the default and correcting. Asked on every load, not frozen into the
+ * window's launch arguments: a reload must paint the theme in force NOW, or it
+ * diverges from the main process (see `currentAppearance` in main/appearance.ts).
  */
-function launchArgument(name: string): string | null {
-  const prefix = `--magic-${name}=`
-  const arg = process.argv.find((a) => a.startsWith(prefix))
-  return arg ? arg.slice(prefix.length) : null
+function currentAppearance(): { theme?: string; zoom?: number; language?: string } {
+  try {
+    return ipcRenderer.sendSync('appearance:current') ?? {}
+  } catch {
+    return {}
+  }
 }
 
 const themeApi = {
-  initial: (): string | null => launchArgument('theme'),
+  initial: (): string | null => currentAppearance().theme ?? null,
 
   onChanged: (callback: (theme: ThemeId) => void) => {
     const listener = (_event: IpcRendererEvent, theme: ThemeId) => callback(theme)
@@ -815,7 +1182,7 @@ const themeApi = {
  * there is no `set` here.
  */
 const languageApi = {
-  initial: (): string | null => launchArgument('language'),
+  initial: (): string | null => currentAppearance().language ?? null,
 
   onChanged: (callback: (language: LanguageId) => void) => {
     const listener = (_event: IpcRendererEvent, language: LanguageId) => callback(language)
@@ -830,9 +1197,8 @@ const languageApi = {
  */
 const zoomApi = {
   initial: (): number | null => {
-    const raw = launchArgument('zoom')
-    const value = raw === null ? NaN : Number(raw)
-    return Number.isFinite(value) ? value : null
+    const value = currentAppearance().zoom
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
   },
 
   set: (zoom: number): Promise<number> => ipcRenderer.invoke('appearance:setZoom', { zoom }),
@@ -865,6 +1231,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   auth: authApi,
   jira: jiraApi,
   org: orgApi,
+  plans: plansApi,
   tasks: tasksApi,
   connectivity: connectivityApi,
   theme: themeApi,
@@ -896,6 +1263,7 @@ declare global {
       auth: typeof authApi
       jira: typeof jiraApi
       org: typeof orgApi
+      plans: typeof plansApi
       tasks: typeof tasksApi
       connectivity: typeof connectivityApi
       theme: typeof themeApi

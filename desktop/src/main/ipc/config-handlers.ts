@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execFileSync } from 'child_process'
-import { codeToHtml } from 'shiki'
+import { codeToHtml, codeToTokens } from 'shiki'
 import {
   readConfig,
   writeConfig,
@@ -14,6 +14,8 @@ import {
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
   updateRepositoryResolveSettings,
+  updateRepositoryReviewSettings,
+  updateRepositoryStartSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryJiraSettings,
@@ -21,11 +23,13 @@ import {
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
   updateSplitEnabled,
+  updateInfoSidebarOnCreate,
   updateSplitActive,
   updateLaunchMode,
   updateDefaultAgentType,
   updateAgentSort,
   updateTasksRepo,
+  updatePlansRepo,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -38,11 +42,17 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  AGENT_SORT_MODES, codeAppearance, DEFAULT_CODE_THEME_MODE, isValidAgentSort,
-  isValidCodeThemeMode, isValidLanguage, isValidTheme,
-  type Config, type FilePreviewResult, type ChangedLines,
+  AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
+  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme,
+  isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps,
+  type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
+  isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, type WorkflowSettings,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
+import { CODE_SAMPLES } from '../code-sample'
+import { listClaudeModels } from '../claude-models'
+import { readEmojiCompletion, writeEmojiCompletion } from '../claude-emoji-completion'
+import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
   validateRepoPath,
@@ -64,6 +74,11 @@ import {
   getLastCommand
 } from '../config/command-history'
 import { ensureHydrated } from '../store/hydrate'
+import { hydrateWorkflows, overlayForRepo, revisionForRepo, setWorkflow, workflowForRepo } from '../workflow/workflows'
+import { notifyWorkflowsChanged } from '../workflow/notify'
+import { listWorkflowHistory } from '../cloud/workflowHistory'
+import { EMPTY_OVERLAY, cleanOverlay, isOverlay, problems, sameOverlay } from '../../workflow/overlay'
+import { getStore, isStoreConflict, isStoreForbidden } from '../store/Store'
 import {
   computeVisibleRanges, countShikiRows, numberShikiLines, renderRows, splitShikiLines, ROW_MARKER,
 } from './hunkView'
@@ -197,11 +212,113 @@ const KNOWN_LANGS = new Set([
  * invariant with that failure mode should not be held by a comment at each call site.
  * Un-numbered shiki output has no name in this module as a result.
  */
-async function highlightNumbered(text: string, mimeHint: string, shikiTheme: string): Promise<string | null> {
+export async function highlightNumbered(text: string, mimeHint: string, shikiTheme: string): Promise<string | null> {
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
   const raw = await codeToHtml(text, { lang, theme: shikiTheme }).catch(() => null)
   return raw ? numberShikiLines(raw) : null
 }
+
+/** Longer than this is not a snippet, and the chat shows it plain. */
+const MAX_SNIPPET = 100_000
+
+/**
+ * A fenced block from the chat view, highlighted, or `null` to draw it plain.
+ *
+ * The language is whatever followed the fence, so it is tried as given (shiki knows
+ * `typescript`, `shell`, `python`…) and falls back to plain text when shiki does not
+ * know it. Shiki escapes the code, which is what makes its HTML safe to inject.
+ */
+export async function highlightSnippet(code: unknown, lang: unknown, shikiTheme: unknown): Promise<string | null> {
+  if (typeof code !== 'string' || code.length > MAX_SNIPPET || typeof shikiTheme !== 'string') return null
+  const wanted = typeof lang === 'string' && /^[a-z0-9+#._-]{1,24}$/i.test(lang) ? lang.toLowerCase() : 'text'
+  return (
+    (await codeToHtml(code, { lang: wanted, theme: shikiTheme }).catch(() => null)) ??
+    (await codeToHtml(code, { lang: 'text', theme: shikiTheme }).catch(() => null))
+  )
+}
+
+/**
+ * Code as coloured tokens, one array per line, or `null` to draw it plain: what the
+ * chat's diff card paints its lines with. Tokens rather than HTML, because the card
+ * lays the lines out itself (a marker and a ground per line), and data needs no
+ * `innerHTML` at all. The language is the file's extension, tried as given.
+ */
+export async function highlightLines(
+  code: unknown, lang: unknown, shikiTheme: unknown,
+): Promise<Array<Array<{ content: string; color?: string; fontStyle?: number }>> | null> {
+  if (typeof code !== 'string' || code.length > MAX_SNIPPET || typeof shikiTheme !== 'string') return null
+  const wanted = typeof lang === 'string' && /^[a-z0-9+#._-]{1,24}$/i.test(lang) ? lang.toLowerCase() : 'text'
+  const run = (l: string) => codeToTokens(code, { lang: l as 'text', theme: shikiTheme })
+  const result = await run(wanted).catch(() => run('text')).catch(() => null)
+  return result ? result.tokens.map((line) => line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle }))) : null
+}
+
+/**
+ * A numbered document with a unified diff laid over it: the removed lines injected as rows,
+ * the added ones marked, and — when there is something to collapse — the changed regions
+ * alone as a second rendering.
+ *
+ * Shared by the file preview (against `git diff HEAD`) and the plan history (against the
+ * line diff `store/specDiff.ts` computes between two revisions), so the two draw one diff
+ * the one way `CodeView` reads.
+ *
+ * The collapse is attempted in its own `try`: a throw there can only cost the changes-only
+ * view, never the full one the panel falls back to.
+ */
+export function annotateAgainstDiff(
+  numbered: string,
+  diffOut: string,
+): { highlightedHtml: string; changesOnlyHtml?: string; changedLines: ChangedLines } {
+  const diff = parseDiff(diffOut)
+  // Read the positions out BEFORE annotating. `annotateShikiHtml` drains
+  // `removedBeforeLines` as it walks the document — it deletes each entry once it
+  // has emitted the row — so afterwards there is nothing left to report.
+  const changedLines: ChangedLines = {
+    added: [...diff.addedNewLines].sort((a, b) => a - b),
+    removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
+  }
+  // The file's own length, taken from the row count rather than from
+  // `content.split('\n')`: a file ending in a newline gives shiki one extra
+  // empty row, and the two numbers then disagree by one for the rest of the
+  // computation — which is enough to lose the last line of the last region.
+  const totalLines = countShikiRows(numbered)
+  const annotated = annotateShikiHtml(numbered, diff, 'normal')
+
+  let changesOnlyHtml: string | undefined
+  try {
+    const ranges = computeVisibleRanges(
+      [...changedLines.added, ...changedLines.removedBefore],
+      totalLines,
+      DIFF_CONTEXT_LINES,
+    )
+    // `null` means the regions already cover the file — a change on every line,
+    // or a file short enough that the context reaches both ends. Emitting a
+    // second copy of the same document would be pure IPC weight, and the absence
+    // is also what tells the header there is no toggle to offer.
+    if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
+  } catch { /* the full rendering stands on its own */ }
+  return { highlightedHtml: annotated, changesOnlyHtml, changedLines }
+}
+
+/** The `name` of a `{ name }` payload, checked at the boundary. */
+function repoNameOf(payload: unknown, what: string): string {
+  const name = payload && typeof payload === 'object' ? (payload as { name?: unknown }).name : undefined
+  if (typeof name !== 'string') {
+    throw new Error(`Invalid ${what} repository: expected a config key, got ${typeof name}.`)
+  }
+  return name
+}
+
+/** The cloud id of the repository at config key `name`, or null. `hasOwn`: see below. */
+function repoIdOf(name: string): string | null {
+  const repositories = readConfig().repositories
+  return Object.hasOwn(repositories, name) ? repositories[name].id ?? null : null
+}
+
+/**
+ * Just the overlay's own fields, so nothing else a caller put on the object reaches
+ * the database. Shape already checked by isOverlay.
+ */
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
 
@@ -295,6 +412,18 @@ export function setupConfigHandlers() {
     return { config }
   })
 
+  // Update repository review settings
+  // Update repository start settings
+  ipcMain.handle('config:updateRepositoryStartSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryStartSettings(name, settings)
+    return { config }
+  })
+
+  ipcMain.handle('config:updateRepositoryReviewSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryReviewSettings(name, settings)
+    return { config }
+  })
+
   // Update repository pull request settings
   ipcMain.handle('config:updateRepositoryPullRequestSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryPullRequestSettings(name, settings)
@@ -345,15 +474,39 @@ export function setupConfigHandlers() {
     return { config }
   })
 
-  // Which appearance the file preview's syntax highlighting is painted in. Nothing
-  // to re-apply: the highlighting is produced per read, and the renderer keys its
-  // cache on the resolved appearance, so the next read of a file already on screen
-  // comes back in the new one.
-  ipcMain.handle('config:setCodeTheme', async (_event, { mode }: { mode: unknown }) => {
+  // Which palette family code is highlighted in. Nothing to re-apply: the highlighting
+  // is produced per read, and the renderer keys its cache on the resolved shiki theme,
+  // so the next read of a file already on screen comes back in the new one.
+  ipcMain.handle('config:setCodeSyntax', async (_event, { choice }: { choice: unknown }) => {
     const config = readConfig()
-    config.codeTheme = isValidCodeThemeMode(mode) ? mode : DEFAULT_CODE_THEME_MODE
+    config.codeSyntax = isValidCodeSyntax(choice) ? choice : DEFAULT_CODE_SYNTAX
     writeConfig(config)
     return { config }
+  })
+
+  // The size code is set in. Drawn by the renderer alone (CodeView), so a write is all.
+  ipcMain.handle('config:setCodeFontSize', async (_event, { size }: { size: unknown }) => {
+    const config = readConfig()
+    config.codeFontSize = isValidCodeFontSize(size) ? size : DEFAULT_CODE_FONT_SIZE
+    writeConfig(config)
+    return { config }
+  })
+
+  // The palette preview in Settings → Code & reviews: a sample file with a small change
+  // over it, highlighted and annotated by the very functions the file preview goes
+  // through, so what the settings page shows is what a diff will look like.
+  ipcMain.handle('code:highlight', async (_event, { code, lang, theme }) => highlightSnippet(code, lang, theme))
+  ipcMain.handle('code:highlightLines', async (_event, { code, lang, theme }) => highlightLines(code, lang, theme))
+
+  ipcMain.handle('config:codeSample', async (_event, { language }: { language: unknown }): Promise<CodeSample> => {
+    const lang = typeof language === 'string' && Object.hasOwn(CODE_SAMPLES, language)
+      ? (language as keyof typeof CODE_SAMPLES)
+      : 'ts'
+    const { before, after } = CODE_SAMPLES[lang]
+    const shikiTheme = previewShikiTheme()
+    const numbered = await highlightNumbered(after, lang, shikiTheme)
+    const highlightedHtml = numbered ? annotateAgainstDiff(numbered, unifiedSpecDiff(before, after).diff).highlightedHtml : null
+    return { content: after, highlightedHtml, shikiTheme }
   })
 
   // Show/hide the Claude usage card in the left sidebar
@@ -430,6 +583,186 @@ export function setupConfigHandlers() {
   // Update split active setting (single/dual view mode)
   ipcMain.handle('config:updateSplitActive', async (_event, { active }) => {
     const config = updateSplitActive(active)
+    return { config }
+  })
+
+  // Whether a new agent opens with its info panel showing
+  ipcMain.handle('config:setInfoSidebarOnCreate', async (_event, { open }) => {
+    if (typeof open !== 'boolean') throw new Error('Invalid infoSidebarOnCreate value: must be a boolean')
+    const config = updateInfoSidebarOnCreate(open)
+    return { config }
+  })
+
+  // The model a new agent is launched on. `null` clears it: no `--model`, the CLI's own
+  // default. Read at spawn time (pty/terminal-manager.ts), so agents already running keep
+  // the model they started on.
+  ipcMain.handle('config:setDefaultModel', async (_event, { model }: { model: unknown }) => {
+    if (model !== null && !isValidModelName(model)) throw new Error('Invalid model name')
+    const config = readConfig()
+    if (model === null) delete config.defaultModel
+    else config.defaultModel = model
+    writeConfig(config)
+    return { config }
+  })
+
+  // What the installed CLI's `/model` offers, for the default-model picker. An empty list
+  // means no `claude` on this machine; a rejection, that it did not answer in time.
+  ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  // Claude Code's `:emoji:` typeahead, in its own settings rather than the app's (see
+  // claude-emoji-completion.ts). The read for one agent's session is in terminal-handlers,
+  // which may reach the PTYs; this file may not (its tests run without node-pty).
+  ipcMain.handle('claude:setEmojiCompletion', (_event, { enabled }: { enabled: unknown }) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid emojiCompletionEnabled value: must be a boolean')
+    writeEmojiCompletion(enabled)
+    return readEmojiCompletion()
+  })
+
+  // How an agent nobody has switched is shown. A fallback only: see Agent.displayMode.
+  ipcMain.handle('config:setDefaultDisplayMode', async (_event, { mode }: { mode: unknown }) => {
+    if (!isValidDisplayMode(mode)) throw new Error('Invalid defaultDisplayMode value')
+    const config = readConfig()
+    config.defaultDisplayMode = mode
+    writeConfig(config)
+    return { config }
+  })
+
+  // Whether the chat view pins the prompt of the turn being read. See Config.chatStickyPrompt.
+  ipcMain.handle('config:setChatStickyPrompt', async (_event, { sticky }: { sticky: unknown }) => {
+    if (typeof sticky !== 'boolean') throw new Error('Invalid chatStickyPrompt value: must be a boolean')
+    const config = readConfig()
+    config.chatStickyPrompt = sticky
+    writeConfig(config)
+    return { config }
+  })
+
+  // The chat view's own settings, any of them alone. See CHAT_SEND_KEYS in types.ts.
+  ipcMain.handle('config:setChatSettings', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid chat settings')
+    const { sendKey, toolDetail, diffs, timestamps } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (sendKey !== undefined) {
+      if (!isValidChatSendKey(sendKey)) throw new Error('Invalid chatSendKey value')
+      config.chatSendKey = sendKey
+    }
+    if (toolDetail !== undefined) {
+      if (!isValidChatToolDetail(toolDetail)) throw new Error('Invalid chatToolDetail value')
+      config.chatToolDetail = toolDetail
+    }
+    if (diffs !== undefined) {
+      if (!isValidChatDiffDisplay(diffs)) throw new Error('Invalid chatDiffs value')
+      config.chatDiffs = diffs
+    }
+    if (timestamps !== undefined) {
+      if (!isValidChatTimestamps(timestamps)) throw new Error('Invalid chatTimestamps value')
+      config.chatTimestamps = timestamps
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  ipcMain.handle('config:setSplitNewAgentPane', async (_event, { pane }: { pane: unknown }) => {
+    if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')
+    const config = readConfig()
+    config.splitNewAgentPane = pane
+    writeConfig(config)
+    return { config }
+  })
+
+  // Quick Launch's three settings, in one channel: they are one page's and nothing else
+  // reads them apart. `null` on the mode goes back to the Agents page's launch mode.
+  ipcMain.handle('config:setQuickLaunch', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid Quick Launch settings')
+    const { repo, background, launchMode } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (repo !== undefined) {
+      if (!isValidQuickLaunchRepo(repo)) throw new Error('Invalid Quick Launch repository')
+      config.quickLaunchRepo = repo
+    }
+    if (background !== undefined) {
+      if (typeof background !== 'boolean') throw new Error('Invalid Quick Launch background value')
+      config.quickLaunchBackground = background
+    }
+    if (launchMode !== undefined) {
+      if (launchMode === null) delete config.quickLaunchLaunchMode
+      else if (isValidLaunchMode(launchMode)) config.quickLaunchLaunchMode = launchMode
+      else throw new Error('Invalid Quick Launch launch mode')
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  // The quick settings sheet: whether the title bar offers it, and which switches it
+  // carries in which order. Either may come alone.
+  ipcMain.handle('config:setQuickSettings', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid quick settings')
+    const { enabled, items } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (enabled !== undefined) {
+      if (typeof enabled !== 'boolean') throw new Error('Invalid quick settings enabled value')
+      config.quickSettingsEnabled = enabled
+    }
+    if (items !== undefined) {
+      const cleaned = cleanQuickSettings(items)
+      if (!cleaned) throw new Error('Invalid quick settings items')
+      config.quickSettingsItems = cleaned
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  // The sidebar: which pages its menu draws, in which order, and whether it is drawn as
+  // icons only. Any of them may come alone.
+  ipcMain.handle('config:setSidebarPages', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid sidebar pages')
+    const { order, hidden, shown, compact } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (order !== undefined) {
+      const cleaned = cleanSidebarPages(order)
+      if (!cleaned) throw new Error('Invalid sidebar order')
+      config.sidebarOrder = cleaned
+    }
+    if (hidden !== undefined) {
+      const cleaned = cleanSidebarPages(hidden)
+      if (!cleaned) throw new Error('Invalid sidebar hidden pages')
+      config.sidebarHidden = cleaned
+    }
+    if (shown !== undefined) {
+      const cleaned = cleanSidebarPages(shown)
+      if (!cleaned) throw new Error('Invalid sidebar shown pages')
+      config.sidebarShown = cleaned
+    }
+    if (compact !== undefined) {
+      if (typeof compact !== 'boolean') throw new Error('Invalid sidebar compact value')
+      config.sidebarCompact = compact
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  ipcMain.handle('config:setConfirmAgentArchive', async (_event, { enabled }: { enabled: unknown }) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid confirmAgentArchive value: must be a boolean')
+    const config = readConfig()
+    config.confirmAgentArchive = enabled
+    writeConfig(config)
+    return { config }
+  })
+
+  // Settings → Workflow: any of its fields, each checked against its own list.
+  ipcMain.handle('config:setWorkflowSettings', async (_event, patch: unknown) => {
+    const { confirmChain, chainLimit, missingSkill, runActions } = (patch ?? {}) as Record<string, unknown>
+    if (confirmChain !== undefined && !isValidWorkflowConfirmChain(confirmChain)) throw new Error(`Invalid workflow confirmChain: '${String(confirmChain)}'`)
+    if (chainLimit !== undefined && !isValidWorkflowChainLimit(chainLimit)) throw new Error(`Invalid workflow chainLimit: '${String(chainLimit)}'`)
+    if (missingSkill !== undefined && !isValidWorkflowMissingSkill(missingSkill)) throw new Error(`Invalid workflow missingSkill: '${String(missingSkill)}'`)
+    if (runActions !== undefined && typeof runActions !== 'boolean') throw new Error(`Invalid workflow runActions: '${String(runActions)}'`)
+    const config = readConfig()
+    const next: WorkflowSettings = { ...config.workflow }
+    if (confirmChain !== undefined) next.confirmChain = confirmChain
+    if (chainLimit !== undefined) next.chainLimit = chainLimit
+    if (missingSkill !== undefined) next.missingSkill = missingSkill
+    if (runActions !== undefined) next.runActions = runActions
+    config.workflow = next
+    writeConfig(config)
     return { config }
   })
 
@@ -512,11 +845,115 @@ export function setupConfigHandlers() {
     return { config }
   })
 
+  // Which repository the Plans list is narrowed to, as a `public.repositories` id. Not
+  // validated against anything, for the reason `updatePlansRepo` gives — the renderer
+  // picks from the repositories that actually have a plan on screen, and an id that
+  // stops resolving is the list's business (it falls back to all repositories) rather
+  // than this handler's. An empty string clears the filter.
+  ipcMain.handle('config:updatePlansRepo', async (_event, { repoId }: { repoId: string }) => {
+    if (typeof repoId !== 'string') {
+      throw new Error(`Invalid plans repository: expected a repository id, got ${typeof repoId}.`)
+    }
+    const config = updatePlansRepo(repoId)
+    return { config }
+  })
+
   // Toggle an integration flag (only atlassian is user-settable). Detection/
   // display only — no token is ever stored (see ticket #124 locked decisions).
   ipcMain.handle('config:setIntegration', async (_event, { name, enabled }: { name: 'atlassian'; enabled: boolean }) => {
     const config = setIntegration(name, enabled)
     return { config }
+  })
+
+  // The flow a repository's skills follow, for the Workflow tab of its settings. Read
+  // on the tab's mount, and again on `workflow:changed`, which is pushed whenever a
+  // flow moves: saved from here, or from elsewhere and reached us over Realtime.
+  //
+  // Keyed by NAME because that is what the renderer holds, and resolved to the id here
+  // because the workflows cache is keyed by id. A name matching no repository, or one
+  // without a cloud id yet, gets the default flow: the same answer `GET /workflow`
+  // gives a skill running there. The payload's TYPE is checked here, which the erased
+  // annotation cannot do: a malformed call is rejected at the boundary rather than
+  // answered with the default flow. `hasOwn` keeps a key like `constructor` from
+  // resolving through the prototype.
+  ipcMain.handle('config:getRepositoryWorkflow', async (_event, payload: unknown) => {
+    const name = repoNameOf(payload, 'workflow')
+    await ensureHydrated()
+    return workflowForRepo(repoIdOf(name))
+  })
+
+  // What the editor starts from: the repository's stored overlay, only what was ADDED
+  // to the default flow (workflow/overlay.ts), upgraded to v2 if it was stored as v1. The empty overlay for a repository on
+  // the default flow, or one with an unusable definition (which is served the default).
+  // With the revision of its row, which the save hands back: an unusable row has one
+  // too, so the first save from the editor replaces it rather than colliding with it.
+  ipcMain.handle('config:getRepositoryWorkflowOverlay', async (_event, payload: unknown): Promise<RepositoryWorkflowOverlay> => {
+    const name = repoNameOf(payload, 'workflow')
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    return repoId
+      ? { overlay: overlayForRepo(repoId), revision: revisionForRepo(repoId) }
+      : { overlay: EMPTY_OVERLAY, revision: null }
+  })
+
+  // Who changed the repository's workflow, or its /magic:start settings, and when:
+  // `settings_events`, read under the reader's own RLS. READ ONLY, like the plans'
+  // history: the audit trigger writes it, never the app. A repository with no cloud id
+  // has no history yet, which is an empty one, not a failure.
+  ipcMain.handle('config:getRepositoryWorkflowHistory', async (_event, payload: unknown): Promise<WorkflowHistoryRead> => {
+    const name = repoNameOf(payload, 'workflow history')
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    return repoId ? listWorkflowHistory(repoId) : EMPTY_WORKFLOW_HISTORY
+  })
+
+  // Save a repository's workflow from the editor. Judged here with the rules the
+  // loader applies (problems), so the database never holds a flow this build would
+  // then refuse to serve; an overlay that adds nothing deletes the row instead, which
+  // is the default flow. Who may save is the database's call (RLS: the owner, or an
+  // admin of the repo's org), answered as `denied` so the editor can say so.
+  //
+  // OPTIMISTIC: `expectedRevision` is the revision the editor's draft was based on, and
+  // the store writes only if the row is still at it. Otherwise `conflict`, and nothing
+  // is written: two admins saving at once, the second learns of the first instead of
+  // erasing it. The cache is reloaded before answering, so the editor's Reload reads
+  // the winning version even if its Realtime echo has not arrived yet.
+  //
+  // On success the cache is updated at once (setWorkflow, the loader's own judge) and
+  // every window told, without waiting for this write's Realtime echo, whose reload
+  // then finds nothing new. A malformed call is rejected at the boundary, like the
+  // read above; an overlay that is well formed but wrong is `invalid`.
+  ipcMain.handle('config:saveRepositoryWorkflow', async (_event, payload: unknown): Promise<RepositoryWorkflowSaveResult> => {
+    const name = repoNameOf(payload, 'workflow')
+    const raw = (payload as { overlay?: unknown }).overlay
+    if (!isOverlay(raw)) throw new Error('Invalid workflow: not an overlay.')
+    const expectedRevision = (payload as { expectedRevision?: unknown }).expectedRevision
+    if (expectedRevision !== null && typeof expectedRevision !== 'string') throw new Error('Invalid workflow: not a revision.')
+    const found = problems(raw)
+    if (found.length > 0) return { status: 'invalid', problems: found }
+
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    // A repository without a cloud id has no row to hang a flow on (yet).
+    if (!repoId) return { status: 'failed', message: `Repository "${name}" is not in the cloud yet.` }
+
+    const clean = cleanOverlay(raw)
+    const overlay = sameOverlay(clean, EMPTY_OVERLAY) ? null : clean
+    let revision: string | null
+    try {
+      revision = await getStore().saveRepositoryWorkflow(repoId, overlay, expectedRevision)
+    } catch (error) {
+      if (isStoreForbidden(error)) return { status: 'denied' }
+      if (isStoreConflict(error)) {
+        notifyWorkflowsChanged(await hydrateWorkflows())
+        return { status: 'conflict' }
+      }
+      console.error('[workflow] save failed:', error)
+      return { status: 'failed', message: error instanceof Error ? error.message : String(error) }
+    }
+    setWorkflow(repoId, overlay, revision)
+    notifyWorkflowsChanged([repoId])
+    return { status: 'saved', workflow: workflowForRepo(repoId), overlay, revision }
   })
 
   // GitHub CLI auth status for DISPLAY only (`gh auth status`). No token stored.
@@ -601,26 +1038,20 @@ export function setupConfigHandlers() {
   )
 }
 
-/**
- * The shiki theme a preview is highlighted with.
- *
- * GitHub's own pair, because the diff chrome CodeView draws over the result (the
- * +/- rails, the gutter) is GitHub's palette too — mixing a third highlighter's
- * colours in would put two different greens on the same added line.
- */
-const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
+/** What `readFileForPreview` paints in when a caller does not say — the tests. */
+const FALLBACK_SHIKI_THEME = 'github-dark'
 
 /**
- * Which of the two to use right now: the app's theme, unless the reader pinned an
- * appearance in Settings → Appearance.
+ * The shiki theme a preview is highlighted with: the reader's palette family in the
+ * variant the app's theme calls for — see `codeSyntaxTheme`.
  *
  * Resolved HERE rather than inside `readFileForPreview`, which stays a pure
  * function of its arguments — it is the one part of this file with a test suite,
  * and reading process-wide state from it would mean stubbing the config and the
  * native theme to read a file off disk.
  */
-function previewShikiTheme(): string {
-  return SHIKI_THEMES[codeAppearance(currentTheme(), readConfig().codeTheme)]
+export function previewShikiTheme(): string {
+  return codeSyntaxTheme(currentTheme(), readConfig().codeSyntax)
 }
 
 /** Is `child` the directory itself, or something beneath it? Plain string containment. */
@@ -637,7 +1068,7 @@ export async function readFileForPreview(
   repoPath: string,
   filePath: string,
   status?: string,
-  shikiTheme: string = SHIKI_THEMES.dark,
+  shikiTheme: string = FALLBACK_SHIKI_THEME,
 ): Promise<FilePreviewResult> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)
@@ -781,34 +1212,10 @@ export async function readFileForPreview(
     } else if (status === 'modified' || status === 'renamed') {
       try {
         const diffOut = execFileSync('git', ['diff', 'HEAD', '--', filePath], { cwd: repoPath }).toString()
-        const diff = parseDiff(diffOut)
-        // Read the positions out BEFORE annotating. `annotateShikiHtml` drains
-        // `removedBeforeLines` as it walks the document — it deletes each entry once it
-        // has emitted the row — so afterwards there is nothing left to report.
-        changedLines = {
-          added: [...diff.addedNewLines].sort((a, b) => a - b),
-          removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
-        }
-        // The file's own length, taken from the row count rather than from
-        // `content.split('\n')`: a file ending in a newline gives shiki one extra
-        // empty row, and the two numbers then disagree by one for the rest of the
-        // computation — which is enough to lose the last line of the last region.
-        const totalLines = countShikiRows(numbered)
-        const annotated = annotateShikiHtml(numbered, diff, 'normal')
-        // Assigned before the collapse is attempted, so a throw below can only cost
-        // the changes-only view, never the full one the panel falls back to.
-        highlightedHtml = annotated
-
-        const ranges = computeVisibleRanges(
-          [...changedLines.added, ...changedLines.removedBefore],
-          totalLines,
-          DIFF_CONTEXT_LINES,
-        )
-        // `null` means the regions already cover the file — a change on every line,
-        // or a file short enough that the context reaches both ends. Emitting a
-        // second copy of the same document would be pure IPC weight, and the absence
-        // is also what tells the header there is no toggle to offer.
-        if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
+        const view = annotateAgainstDiff(numbered, diffOut)
+        highlightedHtml = view.highlightedHtml
+        changedLines = view.changedLines
+        changesOnlyHtml = view.changesOnlyHtml
       } catch { /* leave unhighlighted on error */ }
     }
   }

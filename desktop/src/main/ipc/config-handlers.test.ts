@@ -26,6 +26,8 @@ vi.mock('../config/config', () => ({
   updateRepositoryLanguages: vi.fn(),
   updateRepositoryCommitSettings: vi.fn(),
   updateRepositoryResolveSettings: vi.fn(),
+  updateRepositoryReviewSettings: vi.fn(),
+  updateRepositoryStartSettings: vi.fn(),
   updateRepositoryPullRequestSettings: vi.fn(),
   updateRepositoryIssuesSettings: vi.fn(),
   updateRepositoryBranchSettings: vi.fn(),
@@ -67,6 +69,19 @@ vi.mock('shiki', () => ({
   codeToHtml: vi.fn().mockResolvedValue('<pre><code><span class="line">mocked</span></code></pre>'),
 }))
 
+// The model list asks the installed CLI through the Agent SDK, a desktop-only dependency:
+// the suite runs on the ROOT node_modules, where it is not installed, so importing the
+// real module fails to resolve before a single test runs. Nothing here exercises it.
+vi.mock('../claude-models', () => ({
+  listClaudeModels: vi.fn().mockResolvedValue([]),
+}))
+
+// Reaches the Supabase client, which the root suite does not install (CI runs on the root
+// node_modules only): the module would fail to resolve before a single test ran.
+vi.mock('../cloud/workflowHistory', () => ({
+  listWorkflowHistory: vi.fn(),
+}))
+
 // Mutable reference for execFileSync so individual tests can override it
 const mockExecFileSync: Mock<() => Buffer> = vi.fn()
 
@@ -76,6 +91,7 @@ vi.mock('child_process', () => ({
 
 import { codeToHtml } from 'shiki'
 import { annotateShikiHtml, parseDiff, readFileForPreview } from './config-handlers'
+import { unifiedSpecDiff } from '../store/specDiff'
 import { numberShikiLines } from './hunkView'
 
 const mockCodeToHtml = vi.mocked(codeToHtml)
@@ -332,6 +348,14 @@ describe('readFileForPreview', () => {
 // numbering spaces are kept apart. A regression here is silent: the highlighting
 // still works, the wrong numbers just appear beside it.
 describe('parseDiff', () => {
+  it('reads the diff the plan history computes between two revisions', () => {
+    // `store/specDiff.ts` writes one hunk over the whole text; the rows it marks have to be
+    // the NEW text's, and a removed line has to keep its number in the old one.
+    const diff = parseDiff(unifiedSpecDiff('a\nb\nc', 'a\nB\nc\nd').diff)
+    expect([...diff.addedNewLines].sort()).toEqual([2, 4])
+    expect(diff.removedBeforeLines.get(2)).toEqual([{ text: 'b', oldLine: 2 }])
+  })
+
   it('numbers a removed line in the OLD file, which is the only number it ever had', () => {
     const diff = parseDiff(['@@ -10,4 +10,3 @@', ' a', '-gone', '-also gone', ' b'].join('\n'))
     expect(diff.removedBeforeLines.get(11)).toEqual([

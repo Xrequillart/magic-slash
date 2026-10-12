@@ -1,0 +1,85 @@
+{
+  "fps": 30,
+  "chapters": [
+    {
+      "id": "hook",
+      "length": 240
+    },
+    {
+      "id": "plan",
+      "length": 430,
+      "number": "01",
+      "title": "Describe it.",
+      "label": "Describe it",
+      "command": "/magic:plan",
+      "line": "Claude turns an idea into a spec you review."
+    },
+    {
+      "id": "tickets",
+      "length": 260,
+      "number": "02",
+      "title": "Plan it.",
+      "label": "Plan it",
+      "command": "/magic:plan",
+      "line": "The epic and its stories, filed in Jira."
+    },
+    {
+      "id": "start",
+      "length": 480,
+      "number": "03",
+      "title": "Start it.",
+      "label": "Start it",
+      "command": "/magic:start",
+      "line": "One click: a branch, a worktree, a plan. Then code."
+    },
+    {
+      "id": "commit",
+      "length": 180,
+      "number": "04",
+      "title": "Commit it.",
+      "label": "Commit it",
+      "command": "/magic:commit",
+      "line": "Atomic commits, conventional messages."
+    },
+    {
+      "id": "workflow",
+      "length": 480,
+      "number": "05",
+      "title": "Make it yours.",
+      "label": "Your workflow",
+      "command": "Workflow",
+      "line": "Each repository chains its steps its own way."
+    },
+    {
+      "id": "ship",
+      "length": 330,
+      "number": "06",
+      "title": "Ship it.",
+      "label": "Ship it",
+      "command": "/magic:pr",
+      "line": "Your workflow takes it from commit to PR."
+    },
+    {
+      "id": "resolve",
+      "length": 420,
+      "number": "07",
+      "title": "Resolve it.",
+      "label": "Resolve it",
+      "command": "/magic:resolve",
+      "line": "Review comments fixed, pushed and answered."
+    },
+    {
+      "id": "close",
+      "length": 300,
+      "number": "08",
+      "title": "Close it.",
+      "label": "Close it",
+      "command": "/magic:done",
+      "line": "Merged, ticket done, worktree cleaned."
+    },
+    {
+      "id": "outro",
+      "length": 210
+    }
+  ]
+}

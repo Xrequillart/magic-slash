@@ -29,9 +29,11 @@ export const DEFAULTS = {
   // `?? true` in AppearancePage: an unreadable transcript would read as a bug
   // rather than as a feature nobody switched on.
   syncClaudeTheme: true,
-  // NULL means never chosen; the desktop resolves that to 'auto', i.e. the file
-  // preview highlights code in the appearance of the theme in use.
-  codeTheme: 'auto',
+  // NULL means never chosen; the desktop resolves that to 'auto', i.e. the family
+  // each theme is paired with (THEME_CODE_SYNTAX in desktop/src/types.ts).
+  codeSyntax: 'auto',
+  // `text-xs`, the size the preview always used.
+  codeFontSize: 12,
   language: 'en',
   usageCardEnabled: true,
   // `=== true` in SidebarUsageCard / the agent card, so anything else is expanded.
@@ -52,7 +54,10 @@ export const DEFAULTS = {
   notificationPrReview: true,
   notificationPrChangesRequested: true,
   dailyDigestEnabled: false,
-  splitEnabled: false,
+  // The store's initial state, and now the whole of the split view: the
+  // `split_enabled` permission that used to sit in front of it is gone.
+  // desktop/src/renderer/store/index.ts
+  splitActive: false,
   // The `?? true` the Application tab reads it with, in
   // desktop/src/renderer/pages/Config/index.tsx.
   spotlightEnabled: true,
@@ -62,27 +67,56 @@ export const DEFAULTS = {
   launchMode: 'default',
   // NULL means never chosen; the desktop resolves that to 'coder'.
   defaultAgentType: 'coder',
+  // NULL = no `--model`: the CLI's own default. Shown as that phrase, not as a model id.
+  defaultModel: 'Claude Code default',
+  // `=== false` in App.tsx: anything else still asks.
+  confirmAgentArchive: true,
+  // NULL = the pane with the keyboard, what the split always did.
+  splitNewAgentPane: 'focused',
+  // NULL = the terminal, what an agent always showed.
+  defaultDisplayMode: 'terminal',
+  // NULL = the first repository, what Quick Launch always did.
+  quickLaunchRepo: 'first',
+  quickLaunchBackground: false,
+  // NULL = the account's launch mode.
+  quickLaunchLaunchMode: 'Same as launch mode',
+  quickSettingsEnabled: true,
+  // NULL = the five the sheet carried before it could be arranged.
+  quickSettingsItems: 'notifications, quick-launch, usage-card, agent-context, split-view',
+  // NULL = the order the menu always had; a page missing from a stored list keeps its place.
+  sidebarOrder: 'plans, tasks, skills, repositories, settings, account',
+  // NULL = every page shown.
+  sidebarHidden: 'none',
+  // NULL = no opt-in page (settings, account) on the menu.
+  sidebarShown: 'none',
+  sidebarCompact: false,
 } as const
 
 /**
- * All 26 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 27 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
  * Extends the 21 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
- * two camelCase lists that must silently agree. The 5 added below are the ones
+ * two camelCase lists that must silently agree. The 6 added below are the ones
  * `UserSettings` deliberately omits: per-machine properties, transient view state,
  * and one desktop-window preference with no web control — all of which the
  * back-office reports precisely because it cannot edit them.
  */
 export interface AdminUserSettings extends UserSettings {
-  splitActive: boolean | null
+  splitEnabled: boolean | null
   spotlightShortcut: string | null
   autoStartAtLogin: boolean | null
   atlassianIntegrationEnabled: boolean | null
   agentSort: string | null
+  infoSidebarOnCreate: boolean | null
+  chatStickyPrompt: boolean | null
+  chatSendKey: string | null
+  chatToolDetail: string | null
+  chatDiffs: string | null
+  chatTimestamps: string | null
 }
 
 /**
@@ -92,13 +126,15 @@ export interface AdminUserSettings extends UserSettings {
  *
  * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty-one are
  * the ones the webapp itself can edit, and their defaults are already documented
- * there. The five below are the admin-only columns, each verified against the line in
+ * there. The six below are the admin-only columns, each verified against the line in
  * the desktop app that resolves the unset value — cited, because a default invented
  * here would be a confident lie in the one tool used to answer "why is it behaving
  * like that":
  *
- *  * splitActive — the store's initial state.
- *    desktop/src/renderer/store/index.ts
+ *  * splitEnabled — DEAD, and reported anyway. The app used to need it on TOP of
+ *    split_active before it would show two panes; that second switch is gone and
+ *    nothing writes this column any more, so what it holds is whatever the user
+ *    last left it at. False is what a row that predates the column would read as.
  *  * spotlightShortcut — the `?? 'Control+Space'` the Application tab reads with.
  *    desktop/src/renderer/pages/Config/index.tsx
  *  * autoStartAtLogin — applied only when set, and the OS default for a freshly
@@ -108,14 +144,25 @@ export interface AdminUserSettings extends UserSettings {
  *    Stated as false on that basis and not on a `??` somewhere.
  *  * agentSort — DEFAULT_AGENT_SORT, the value the sidebar's sort control and its
  *    ordering hook both read an absent column as. desktop/src/types.ts
+ *  * infoSidebarOnCreate — the `!== false` that `selectInfoSidebarOpen` resolves an
+ *    undecided agent with, i.e. the panel opens. desktop/src/renderer/store/index.ts
+ *  * chatStickyPrompt — the `!== false` the chat view reads it with, i.e. pinned.
+ *    desktop/src/renderer/components/AgentPane.tsx
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
-  splitActive: false,
+  splitEnabled: false,
   spotlightShortcut: 'Control+Space',
   autoStartAtLogin: false,
   atlassianIntegrationEnabled: false,
   agentSort: 'recent',
+  infoSidebarOnCreate: true,
+  chatStickyPrompt: true,
+  // The first value of each list in desktop/src/types.ts (CHAT_SEND_KEYS and siblings).
+  chatSendKey: 'enter',
+  chatToolDetail: 'all',
+  chatDiffs: 'collapsed',
+  chatTimestamps: 'never',
 }
 
 export interface SettingGroup {
@@ -125,7 +172,7 @@ export interface SettingGroup {
 }
 
 /**
- * The twenty-six settings, grouped by FEATURE, in reading order. Also the field
+ * The twenty-seven settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
  * The groups and their titles are the desktop app's own sections, verbatim and in its
@@ -151,7 +198,8 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'theme', label: 'Theme' },
       { field: 'language', label: 'Interface language' },
       { field: 'syncClaudeTheme', label: 'Sync Claude Code theme' },
-      { field: 'codeTheme', label: 'Syntax highlighting' },
+      { field: 'codeSyntax', label: 'Code theme' },
+      { field: 'codeFontSize', label: 'Code font size' },
     ],
   },
   {
@@ -159,14 +207,28 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [{ field: 'launchMode', label: 'Claude Code launch' }],
   },
   {
-    title: 'Default agent type',
-    fields: [{ field: 'defaultAgentType', label: 'New agent is a' }],
-  },
-  {
     // The sidebar's own control, not a settings section — there is no box in the app
     // to borrow a title from, so this one is named after what it orders.
     title: 'Agent list',
     fields: [{ field: 'agentSort', label: 'Sorted by' }],
+  },
+  {
+    // "New agents" is the desktop's own section header, and it now holds both halves:
+    // the type used to sit on the Claude Code tab, which is about the CLI itself, and
+    // moved here beside the panel a new agent opens with.
+    title: 'New agents',
+    fields: [
+      { field: 'defaultAgentType', label: 'New agent is a' },
+      { field: 'defaultModel', label: 'Model' },
+      { field: 'confirmAgentArchive', label: 'Confirm before archiving' },
+      { field: 'infoSidebarOnCreate', label: 'Info panel open' },
+      { field: 'defaultDisplayMode', label: 'Shown as' },
+      { field: 'chatStickyPrompt', label: 'Prompt pinned in the chat' },
+      { field: 'chatSendKey', label: 'Chat send key' },
+      { field: 'chatToolDetail', label: 'Chat tool calls' },
+      { field: 'chatDiffs', label: 'Chat diffs' },
+      { field: 'chatTimestamps', label: 'Chat timestamps' },
+    ],
   },
   {
     title: 'Usage card',
@@ -201,8 +263,11 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {
     title: 'Split View',
     fields: [
-      { field: 'splitEnabled', label: 'Enabled' },
-      { field: 'splitActive', label: 'Currently active' },
+      { field: 'splitActive', label: 'Enabled' },
+      { field: 'splitNewAgentPane', label: 'New agents open in' },
+      // Kept in the report, not in the app: see SETTING_DEFAULTS on why a dead
+      // column is still worth showing an operator.
+      { field: 'splitEnabled', label: 'Enabled (legacy, unused)' },
     ],
   },
   {
@@ -210,6 +275,25 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'spotlightEnabled', label: 'Enabled' },
       { field: 'spotlightShortcut', label: 'Shortcut' },
+      { field: 'quickLaunchRepo', label: 'Repository' },
+      { field: 'quickLaunchBackground', label: 'Stay in the background' },
+      { field: 'quickLaunchLaunchMode', label: 'Launch mode' },
+    ],
+  },
+  {
+    title: 'Quick settings',
+    fields: [
+      { field: 'quickSettingsEnabled', label: 'Enabled' },
+      { field: 'quickSettingsItems', label: 'Switches, in order' },
+    ],
+  },
+  {
+    title: 'Sidebar',
+    fields: [
+      { field: 'sidebarOrder', label: 'Pages, in order' },
+      { field: 'sidebarHidden', label: 'Hidden pages' },
+      { field: 'sidebarShown', label: 'Opt-in pages shown' },
+      { field: 'sidebarCompact', label: 'Icons only' },
     ],
   },
   {

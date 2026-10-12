@@ -2,7 +2,7 @@ import type { MessageKey } from './i18n'
 
 /**
  * What `/privacy` is made of: its chrome, and the seven headed sections it renders in
- * order. The SENTENCES are in `lib/i18n/marketing/{en,fr}.ts`; this is the list of keys
+ * order. The SENTENCES are in `lib/i18n/showcase/{en,fr}.ts`; this is the list of keys
  * that says which of them the page actually reads, and in what order.
  *
  * A MODULE RATHER THAN AN ARRAY INSIDE `PrivacyContent.tsx`, which is where it lived,
@@ -24,7 +24,7 @@ import type { MessageKey } from './i18n'
  * it would fail to RESOLVE it, which reads as a broken suite instead of a broken module.
  *
  * WHAT IS NOT IN HERE IS THE PAGE'S RULE, because a rule is not data:
- * `components/site/privacy/PrivacyContent.tsx` and `app/(marketing)/privacy/page.tsx`
+ * `components/site/privacy/PrivacyContent.tsx` and `app/(showcase)/privacy/page.tsx`
  * both carry it at length, and the short version is that every claim on that page must
  * be sourced from code in this repository. Nothing in this file can check that. What it
  * can check is the cheaper failure underneath it: that the claim is on screen at all.

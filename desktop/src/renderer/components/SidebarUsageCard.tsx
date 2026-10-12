@@ -1,66 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, User } from 'lucide-react'
 import { useStore } from '../store'
-import { gaugeColors, formatReset } from './agent-info-sidebar/LimitGauge'
+import type { UsageClaudeCodeCardProps, UsageLimit } from '@ds/desktop'
+import { LIMIT_THRESHOLDS, formatReset } from './agent-info-sidebar/LimitGauge'
 import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
 
-// "session ▬▬ 89%" gauge for the collapsed card. Both gauges share one row, so
-// each takes half of it: label and percent are shrink-0 and the bar absorbs
-// whatever is left — it goes very small on a narrow sidebar, by design.
-function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
-  const pct = Math.min(100, Math.max(0, percent))
-  const colors = gaugeColors(pct)
-  return (
-    <div className="flex items-center gap-1 flex-1 min-w-0">
-      <span className="shrink-0 text-[10px] text-text-secondary/60">{label}</span>
-      <div className="h-1 flex-1 min-w-[8px] rounded-full bg-surface overflow-hidden">
-        <div
-          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className={`shrink-0 text-[10px] font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
-    </div>
-  )
-}
-
-// Full-width horizontal progress bar for one rate limit.
-function UsageBar({ label, percent, resetsAt, now }: {
-  label: string
-  percent: number
-  resetsAt?: number
-  now: number
-}) {
-  const t = useT()
-  const pct = Math.min(100, Math.max(0, percent))
-  const colors = gaugeColors(pct)
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="text-text-secondary/60">{label}</span>
-        <span className="flex items-center gap-1.5">
-          {typeof resetsAt === 'number' && (
-            <span className="text-text-secondary/35">{formatReset(resetsAt, now, t)}</span>
-          )}
-          <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
-        </span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
-        <div
-          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-// Compact Claude usage card pinned to the bottom of the left sidebar. Shows the
-// connected account and the two account-level rate limits (Session 5h / Weekly
-// 7d) as horizontal progress bars — no cost/tokens here. Collapsible to percent
-// pills via the header button. Visibility and collapsed state are persisted config.
-export function SidebarUsageCard() {
+/**
+ * The Claude usage card, pinned to the foot of the left sidebar.
+ *
+ * A HOOK AND NOT A COMPONENT, because `Sidebar` draws the card itself now: what it wants
+ * handed to it is props. A component here would be a second card inside a column that
+ * already knows where this one goes.
+ *
+ * IT TAKES `enabled` FOR THAT REASON, and it is not a nicety. As a component it was simply
+ * not MOUNTED when the reader had switched the card off, so neither of its effects existed.
+ * A hook has to be called unconditionally — React's rule — so without this flag the account
+ * fetch and the 30s countdown both kept running behind a card nobody was looking at. Same
+ * shape as `usePlanSpec`, which subscribes to nothing while its sidebar is closed.
+ *
+ * WHAT IS LEFT IN THIS FILE is where the numbers come from: the account-level rate
+ * limits are global — identical across agents — so the card reads the most recently
+ * reported usage that actually carries them, rather than any one agent's. The bars,
+ * the chip, the collapsed line and the one control are `UsageClaudeCodeCard`.
+ *
+ * THE COLLAPSED STATE IS PERSISTED CONFIG, which is why it lives here and is handed
+ * down: a card holding its own copy would fight the one that survives a restart.
+ *
+ * The countdown is formatted HERE, for the reason the component's note gives — "2h14"
+ * needs a translator and a clock, and neither is on the far side of the alias.
+ */
+export function useSidebarUsageCard({ enabled }: { enabled: boolean }): UsageClaudeCodeCardProps {
   const { terminals, config, setConfig } = useStore()
   const t = useT()
   const minimized = config?.usageCardMinimized === true
@@ -80,90 +49,67 @@ export function SidebarUsageCard() {
 
   const [account, setAccount] = useState<ClaudeAccount | null>(null)
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
     window.electronAPI.usage.getAccount().then((a) => { if (!cancelled) setAccount(a) })
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
-  // Refresh every 30s so the reset countdowns stay fresh.
+  // Refresh every 30s so the reset countdowns stay fresh — and only while the card is on
+  // screen: a timer waking the whole column every 30s to restamp a countdown nobody can
+  // read is the cost this hook has that the component it replaced did not.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
+    if (!enabled) return
     const id = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(id)
-  }, [])
+  }, [enabled])
 
   const toggleMinimized = async () => {
     const result = await window.electronAPI.config.setUsageCardMinimized(!minimized)
     setConfig(result.config)
   }
 
-  const hasFive = typeof accountUsage?.fiveHourPercent === 'number'
-  const hasSeven = typeof accountUsage?.sevenDayPercent === 'number'
-  const hasGauges = hasFive || hasSeven
+  const accountLabel = account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')
 
-  return (
-    <div className="mx-2 mb-2 bg-surface-subtle border border-line-subtle rounded-lg px-2 py-1.5">
-      {minimized ? (
-        <div className="flex items-center justify-between gap-1.5">
-          {hasGauges ? (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {hasFive && <UsageMiniBar label={t('usage.sessionShort')} percent={accountUsage!.fiveHourPercent!} />}
-              {hasSeven && <UsageMiniBar label={t('usage.weeklyShort')} percent={accountUsage!.sevenDayPercent!} />}
-            </div>
-          ) : (
-            <span className="text-[10px] text-text-secondary/40">{t('usage.noData')}</span>
-          )}
-          <button
-            onClick={toggleMinimized}
-            title={t('usage.expand')}
-            className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between mb-2 gap-2">
-            <span className="flex items-center gap-1.5 text-[11px] text-icon min-w-0">
-              <User className="w-3 h-3 shrink-0" />
-              <span className="truncate">
-                {account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')}
-              </span>
-            </span>
-            <button
-              onClick={toggleMinimized}
-              title={t('usage.minimize')}
-              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-          </div>
-          {hasGauges ? (
-            <div className="space-y-2">
-              {hasFive && (
-                <UsageBar
-                  label={t('usage.session')}
-                  percent={accountUsage!.fiveHourPercent!}
-                  resetsAt={accountUsage!.fiveHourResetsAt}
-                  now={now}
-                />
-              )}
-              {hasSeven && (
-                <UsageBar
-                  label={t('usage.weekly')}
-                  percent={accountUsage!.sevenDayPercent!}
-                  resetsAt={accountUsage!.sevenDayResetsAt}
-                  now={now}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="text-[10px] text-text-secondary/40 text-center py-1.5 leading-snug">
-              {t('usage.noDataHint')}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
+  // Formatted here rather than in the component: a countdown needs a translator and a
+  // clock, and `now` ticks every 30s so the strings stay honest.
+  const limits: UsageLimit[] = []
+  if (typeof accountUsage?.fiveHourPercent === 'number') {
+    limits.push({
+      id: 'session',
+      label: t('usage.session'),
+      shortLabel: t('usage.sessionShort'),
+      percent: accountUsage.fiveHourPercent,
+      reset: typeof accountUsage.fiveHourResetsAt === 'number'
+        ? formatReset(accountUsage.fiveHourResetsAt, now, t)
+        : undefined,
+    })
+  }
+  if (typeof accountUsage?.sevenDayPercent === 'number') {
+    limits.push({
+      id: 'weekly',
+      label: t('usage.weekly'),
+      shortLabel: t('usage.weeklyShort'),
+      percent: accountUsage.sevenDayPercent,
+      reset: typeof accountUsage.sevenDayResetsAt === 'number'
+        ? formatReset(accountUsage.sevenDayResetsAt, now, t)
+        : undefined,
+    })
+  }
+
+  return {
+    // 8px from the window's foot, the column's own side padding: it is the last thing in
+    // the sidebar, so it sits in the corner the same distance from both edges.
+    className: 'mx-2 mb-2',
+    account: accountLabel,
+    limits,
+    thresholds: LIMIT_THRESHOLDS,
+    collapsed: minimized,
+    onToggle: toggleMinimized,
+    expandLabel: t('usage.expand'),
+    collapseLabel: t('usage.minimize'),
+    emptyLabel: t('usage.noData'),
+    emptyHint: t('usage.noDataHint'),
+  }
 }

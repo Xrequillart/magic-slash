@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Invitation, Member, MembershipRole } from '../../types'
 import { useStore } from '../store'
+import { useAuth } from './useAuth'
 
 /**
  * Organization state (active org, org list, members, invitations) + the member-
@@ -155,4 +156,55 @@ export function useOrg() {
     leaveOrg,
     archiveOrg,
   }
+}
+
+/**
+ * Hydrate the store's organization list, for the views that READ it without being
+ * the page that manages it.
+ *
+ * `orgs` is global state, but it used to be filled only as a side effect of mounting
+ * a page that called `useOrg()` — the account's Organization tab, a repository's
+ * detail. That held while the settings modal opened on the account tab, which mounted
+ * one of them every time; the day settings opened straight onto the repository list,
+ * nothing fetched the list any more and every TEAM repository vanished from that page,
+ * because it groups by `orgs` and `orgs` was still `[]`.
+ *
+ * So the fetch belongs at the top of the app, once, rather than hanging off whichever
+ * page happened to need it first. It re-runs when the signed-in state changes: signing
+ * in has to bring the orgs in, and signing out has to clear them.
+ *
+ * The roster reads stay in `useOrg` — members and invitations are one round trip per
+ * org and only the pages that draw them should pay for that.
+ */
+export function useOrgList(): void {
+  const { status } = useAuth()
+  const setActiveOrg = useStore((s) => s.setActiveOrg)
+  const setOrgs = useStore((s) => s.setOrgs)
+
+  const signedIn = status.enabled && status.loggedIn
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const [current, list] = await Promise.all([
+          window.electronAPI.org.current(),
+          window.electronAPI.org.list(),
+        ])
+        if (cancelled) return
+        setActiveOrg(current)
+        setOrgs(list)
+      } catch {
+        if (cancelled) return
+        setActiveOrg(null)
+        setOrgs([])
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [signedIn, setActiveOrg, setOrgs])
 }

@@ -1,4 +1,7 @@
 import * as pty from 'node-pty'
+import { forgetClaudeProcess, markClaudeExited, markClaudeStarted, resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
+import { ChatTranscript } from '../chat/transcript'
+import { DIGEST_SESSIONS, digestSessions } from '../chat/session-digest'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -14,7 +17,9 @@ import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
-import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
+import { cwdForTranscript, readSessionTitle, sessionIdOf, withSession } from './resume-session'
+import type { ClaudeSessionEntry, TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
+import { isValidModelName } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -116,6 +121,54 @@ export function updateTerminalStateFromHook(terminalId: string, state: string) {
   }
 }
 
+/**
+ * Escape stopped this agent's turn (the transcript says so, see ChatTranscript): it is
+ * idle again. Claude Code fires no Stop hook on an interrupt, so without this the agent
+ * stays `working` until its next prompt, and the chat says Claude is at work while the
+ * terminal waits for input.
+ *
+ * Answers whether it did. Only a turn that was under way when the interrupt was written: one begun after it (a
+ * prompt sent straight away) is not the one that was stopped.
+ */
+export function settleInterruptedTurn(terminalId: string, at: number): boolean {
+  const terminal = terminals.get(terminalId)
+  // `waiting` too: Escape on a permission prompt refuses it and stops the turn the same way.
+  if (!terminal || (terminal.state !== 'working' && terminal.state !== 'waiting')) return false
+  if (at < (lastActivityTime.get(terminalId) ?? 0)) return false
+  updateTerminalStateFromHook(terminalId, 'idle')
+  return true
+}
+
+/** The verdicts of `isAgentClaude`, by terminal and pid: a process does not change parents. */
+const claudeVerdicts = new Map<string, boolean>()
+
+/**
+ * Whether `pid`, the `claude` a hook reported from, is this agent's own rather than one
+ * it started (see AGENT_HOOK_ROUTES in status-server.ts). The agent's is the PTY's
+ * process itself (the shell `exec`s it) or, in a shell terminal where `claude` was
+ * typed, a child of it. A `claude` the agent ran is further down: the agent's Bash tool
+ * starts a shell, which starts it.
+ */
+export function isAgentClaude(terminalId: string, pid: number): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return true
+  const own = terminal.pty.pid
+  if (pid === own) return true
+  const key = `${terminalId}:${pid}`
+  let verdict = claudeVerdicts.get(key)
+  if (verdict === undefined) {
+    try {
+      verdict = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf-8', timeout: 1000 }).trim()) === own
+    } catch {
+      // Gone already, or no `ps`: nothing to tell it apart by, so it is listened to as before.
+      verdict = true
+    }
+    if (claudeVerdicts.size > 500) claudeVerdicts.clear()
+    claudeVerdicts.set(key, verdict)
+  }
+  return verdict
+}
+
 // Get the default shell for the current platform
 function getDefaultShell(): string {
   if (process.platform === 'win32') {
@@ -173,9 +226,14 @@ export interface Terminal {
    *  object — more than one entry means a /model switch happened mid-session and
    *  the end-of-session snapshot describes only the last model. */
   modelIds?: Set<string>
-  /** Replaces the running Claude Code with a fresh one in a given directory.
-   *  Only set for agents (launchClaude), not for plain shells. */
-  respawn?: (cwd: string, notice?: string) => void
+  /** Transcripts of the sessions this agent has replaced. A Claude Code being killed
+   *  can still have a statusLine report in flight, and it must not put back the
+   *  session the respawn just dropped. */
+  retiredTranscripts?: Set<string>
+  /** Replaces the running Claude Code with a fresh one in a given directory, or with
+   *  the session `resumeId` names. Only set for agents (launchClaude), not for plain
+   *  shells. */
+  respawn?: (cwd: string, notice?: string, resumeId?: string) => void
 }
 
 const terminals = new Map<string, Terminal>()
@@ -386,13 +444,51 @@ export function killTerminal(id: string): void {
       for (const d of disposables) d.dispose()
       ptyDisposables.delete(id)
     }
-    terminal.pty.kill()
+    killPty(terminal.pty)
     terminals.delete(id)
     displayBuffers.delete(id)
     lastActivityTime.delete(id)
     restartTrackers.delete(id)
     clearPendingQuestion(id)
+    unwatchTranscript(id)
+    forgetClaudeProcess(id)
   }
+}
+
+/** How long a PTY's processes get to leave on their own before they are killed outright. */
+const KILL_GRACE_MS = 3_000
+
+/**
+ * ENDS A PTY AND EVERYTHING IN IT, not just its shell.
+ *
+ * `pty.kill()` sends SIGHUP to the shell the PTY runs, and that was all: a `claude` that
+ * did not take the hint was left behind, adopted by launchd, still writing to a terminal
+ * nobody reads, and one was found spinning a core for eight hours on a session a live
+ * agent had resumed since. node-pty makes the shell a session leader, so its pid is the
+ * group of everything it started: the group gets SIGTERM now, and SIGKILL once
+ * `KILL_GRACE_MS` has passed if anything in it is still there.
+ */
+function killPty(ptyProcess: pty.IPty): void {
+  const group = ptyProcess.pid
+  try {
+    ptyProcess.kill()
+  } catch {
+    // Already gone.
+  }
+  // Never a group this is not sure of: `process.kill(-0)` would signal the app's own.
+  if (!Number.isInteger(group) || group <= 1) return
+  const signal = (sig: NodeJS.Signals | 0) => {
+    try {
+      process.kill(-group, sig)
+      return true
+    } catch {
+      return false
+    }
+  }
+  if (!signal('SIGTERM')) return
+  setTimeout(() => {
+    if (signal(0)) signal('SIGKILL')
+  }, KILL_GRACE_MS).unref()
 }
 
 export function getTerminal(id: string): Terminal | undefined {
@@ -444,7 +540,7 @@ export function cleanupAllTerminals(): void {
       if (disposables) {
         for (const d of disposables) d.dispose()
       }
-      terminal.pty.kill()
+      killPty(terminal.pty)
     } catch (e) {
       console.error(`Error killing terminal ${id}:`, e)
     }
@@ -478,7 +574,8 @@ export function launchClaude(
   initialRepositories?: string[],
   initialPrompt?: string,
   launchModeOverride?: LaunchMode,
-  initialPromptMode: InitialPromptMode = 'run'
+  initialPromptMode: InitialPromptMode = 'run',
+  resumeSessionId?: string
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -497,6 +594,17 @@ export function launchClaude(
   // into the input box once the TUI is up. See `InitialPromptMode`.
   let pendingPrompt = initialPromptMode === 'run' ? (initialPrompt || null) : null
   let pendingDraft = initialPromptMode === 'draft' ? (initialPrompt || null) : null
+  // The session to pick up, on the first spawn only (`restoreAgents`). Any later spawn
+  // is a respawn, and a respawn means a fresh Claude Code — see `respawnInCwd`.
+  let pendingResume = resumeSessionId || null
+
+  // The model is read ONCE, when the agent is created, unlike the launch mode and the
+  // theme below: an agent that restarts after a crash must come back on the model it was
+  // started on, not on whatever Settings → Agents says now. Absent means no flag, so the
+  // CLI's own default (`/model`) applies. Validated again here because the value came
+  // through the cloud; quoted for the reason `modeFlag` is.
+  const defaultModel = readConfig().defaultModel
+  const modelFlag = isValidModelName(defaultModel) ? ` --model ${shQuote(defaultModel)}` : ''
 
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
@@ -526,10 +634,12 @@ export function launchClaude(
      * next caller to build a prompt gets it for free, and a filter would have to
      * enumerate shell metacharacters correctly forever.
      */
+    const resumeFlag = pendingResume ? ` --resume ${shQuote(pendingResume)}` : ''
     const claudeCmd = pendingPrompt
-      ? `claude${modeFlag}${themeFlag} ${shQuote(pendingPrompt)}`
-      : `claude${modeFlag}${themeFlag}`
+      ? `claude${modeFlag}${modelFlag}${themeFlag} ${shQuote(pendingPrompt)}`
+      : `claude${modeFlag}${modelFlag}${themeFlag}${resumeFlag}`
     pendingPrompt = null
+    pendingResume = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',
       cols,
@@ -549,6 +659,9 @@ export function launchClaude(
         ...(innerStatusLine ? { MAGIC_SLASH_INNER_STATUSLINE: innerStatusLine } : {}),
       }
     })
+    // Every spawn, the first and each restart: the background agents of the process
+    // before this one died with it (see `liveBackground`).
+    markClaudeStarted(id)
 
     ptyStartTime = Date.now()
 
@@ -620,6 +733,8 @@ export function launchClaude(
       // restarted Claude Code has no memory of the prompt either, so keystrokes aimed
       // at it would land in a fresh session.
       clearPendingQuestion(id)
+      // Its background agents went with it, whether or not a restart follows.
+      markClaudeExited(id)
 
       // Check if this was an intentional kill
       if (intentionallyKilled.has(id)) {
@@ -640,7 +755,7 @@ export function launchClaude(
 
       if (tracker.count > MAX_RESTARTS) {
         // Too many restarts — stop and show error
-        const errorMsg = '\x1b[2J\x1b[H\x1b[31m--- Claude Code crashed too many times. Please restart the agent manually. ---\x1b[0m\r\n\r\n'
+        const errorMsg = '\x1b[2J\x1b[H\x1b[31m--- Claude Code crashed too many times. Please restart the session manually. ---\x1b[0m\r\n\r\n'
         onData(errorMsg)
         displayBuffers.delete(id)
         const previousStateBeforeError = terminal.state
@@ -700,11 +815,15 @@ export function launchClaude(
    * the old listeners are disposed BEFORE the kill, or the dying PTY's own exit
    * handler fires and cascades into a second, competing restart.
    */
-  const respawnInCwd = (targetCwd: string, notice?: string) => {
+  const respawnInCwd = (targetCwd: string, notice?: string, resumeId?: string) => {
     // Nothing can answer a question whose process is about to be replaced. The
     // crash path has already done this from its exit handler; the deliberate
     // relaunch has no exit handler left to run, and needs it done here.
     clearPendingQuestion(id)
+
+    // The session being replaced is not the one to resume at the next launch: the new
+    // Claude Code reports its own as soon as it has one.
+    forgetSession(terminal)
 
     if (notice) {
       onData(notice)
@@ -718,12 +837,16 @@ export function launchClaude(
 
     // Kill the old PTY process
     try {
-      terminal.pty.kill()
+      killPty(terminal.pty)
     } catch {
       // Already dead, ignore
     }
 
     const previousState = terminal.state
+    pendingResume = resumeId ?? null
+    // A fresh session starts on an empty chat. A resumed one keeps the old conversation
+    // on screen, behind the renderer's loader, until its own arrives.
+    if (!resumeId) resetTranscript(id)
     terminal.pty = createPtyProcess(targetCwd, terminal.cols, terminal.rows)
     terminal.cwd = targetCwd
     terminal.state = 'idle'
@@ -782,8 +905,9 @@ export function launchClaude(
     // conversation it starts is just as real as a typed one, and just as lost on
     // a relaunch — even though no keystroke ever reached the PTY. True of a `draft`
     // too, and for a plainer reason: a relaunch would wipe the text out of the input
-    // box, along with whatever the person had added to it.
-    hasUserInput: Boolean(initialPrompt),
+    // box, along with whatever the person had added to it. And true of a resumed
+    // session, which holds the whole conversation it was quit on.
+    hasUserInput: Boolean(initialPrompt) || Boolean(resumeSessionId),
     respawn: respawnInCwd
   }
 
@@ -828,6 +952,213 @@ export function updateTerminalUsageFromHook(terminalId: string, usage: TerminalU
   if (usage.modelId) {
     if (!terminal.modelIds) terminal.modelIds = new Set()
     terminal.modelIds.add(usage.modelId)
+  }
+
+  // The one field of a report that IS persisted, and only when it changes: a new session
+  // (the first report, a `/clear`) is rare, the report itself is not. Into the history
+  // whatever happens to it next; as the session to resume only if the app has not just
+  // walked away from it.
+  const transcript = usage.transcriptPath
+  if (!transcript) return
+  const patch: Partial<TerminalMetadata> = {}
+  // Into the history only once written: Claude Code reports the path from its first
+  // statusline, before anyone has typed a word, and every launch of an agent nobody spoke
+  // to would leave an empty, unresumable row behind. The next report records it.
+  const sessions = fs.existsSync(transcript) ? withSession(terminal.metadata.claudeSessions, transcript, Date.now()) : null
+  if (sessions) patch.claudeSessions = sessions
+  if (transcript !== terminal.metadata.claudeTranscriptPath && !terminal.retiredTranscripts?.has(transcript)) {
+    patch.claudeTranscriptPath = transcript
+  }
+  if (Object.keys(patch).length === 0) return
+  terminal.metadata = { ...terminal.metadata, ...patch }
+  try {
+    updateAgentMetadata(terminalId, patch)
+  } catch (e) {
+    console.error('[updateTerminalUsageFromHook] Failed to persist the session transcript:', e)
+  }
+}
+
+/** The directories an agent's sessions may have been started in, most likely first. */
+function sessionCwds(terminal: Terminal): string[] {
+  return [terminal.cwd, ...terminal.repositories.map(expandPath), terminal.launchDir]
+}
+
+/**
+ * The agent's sessions for the title bar's history, newest first by when the agent MET
+ * them, not by their last write: resuming an old session must not move it to the top,
+ * or the list reshuffles under the person using it. The session it was restored on
+ * before the history existed counts too.
+ */
+export async function listTerminalSessions(terminalId: string): Promise<ClaudeSessionEntry[]> {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return []
+  const { claudeSessions, claudeTranscriptPath, usage } = terminal.metadata
+  const current = usage?.transcriptPath ?? claudeTranscriptPath
+  const refs = (claudeTranscriptPath && withSession(claudeSessions, claudeTranscriptPath, terminal.createdAt.getTime())) || claudeSessions || []
+  const cwds = sessionCwds(terminal)
+
+  const entries = await Promise.all(refs.map(async (ref): Promise<ClaudeSessionEntry> => {
+    let lastActiveAt: number | undefined
+    try {
+      lastActiveAt = (await fs.promises.stat(ref.transcriptPath)).mtimeMs
+    } catch {
+      // Not on this machine, or not written yet.
+    }
+    const available = lastActiveAt !== undefined && Boolean(sessionIdOf(ref.transcriptPath)) && Boolean(cwdForTranscript(ref.transcriptPath, cwds))
+    return {
+      transcriptPath: ref.transcriptPath,
+      title: lastActiveAt !== undefined ? await readSessionTitle(ref.transcriptPath) : undefined,
+      startedAt: ref.startedAt,
+      lastActiveAt,
+      current: ref.transcriptPath === current,
+      available,
+    }
+  }))
+  // No file here: a session never written to (recorded before the history waited for the
+  // file), or one written on another machine. Neither has a title or can be resumed here,
+  // and the first kind filled the menu with blank rows.
+  return entries.filter((e) => e.lastActiveAt !== undefined).sort((a, b) => b.startedAt - a.startedAt)
+}
+
+/**
+ * The agent's EARLIER conversations on this machine: every session it recorded whose file
+ * is here and holds something, but the one the chat shows now. Newest first.
+ */
+function earlierSessions(terminal: Terminal): { transcriptPath: string; startedAt: number }[] {
+  const { claudeSessions, claudeTranscriptPath } = terminal.metadata
+  const refs = (claudeTranscriptPath && withSession(claudeSessions, claudeTranscriptPath, terminal.createdAt.getTime())) || claudeSessions || []
+  const watched = watchedTranscript(terminal.id)
+  return refs
+    .filter((ref) => ref.transcriptPath !== watched)
+    .filter((ref) => {
+      try {
+        return fs.statSync(ref.transcriptPath).size > 0
+      } catch {
+        return false
+      }
+    })
+    .sort((a, b) => b.startedAt - a.startedAt)
+}
+
+/**
+ * How many earlier conversations a new session's chat may offer as context (see
+ * `chat/session-digest.ts`), capped at what the digest takes. Zero hides the offer.
+ */
+export function countContextSessions(terminalId: string): number {
+  const terminal = terminals.get(terminalId)
+  return terminal ? Math.min(earlierSessions(terminal).length, DIGEST_SESSIONS) : 0
+}
+
+/** Where the digests are written: beside the chat's pasted images, in the OS temp dir. */
+const DIGEST_DIR = path.join(os.tmpdir(), 'magic-slash-chat')
+
+/**
+ * Writes the digest of the agent's earlier conversations to a file and answers its path
+ * and how many conversations it covers, or null when none has a prompt in it. The chat
+ * hands the path to Claude Code as an `@` mention, which attaches the file to the prompt:
+ * no tool call, so no permission asked for a file outside the repository.
+ */
+export async function writeContextDigest(terminalId: string): Promise<{ path: string; count: number } | null> {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return null
+  const sessions = await Promise.all(earlierSessions(terminal).slice(0, DIGEST_SESSIONS * 2).map(async (ref) => {
+    const transcript = new ChatTranscript()
+    try {
+      const content = await fs.promises.readFile(ref.transcriptPath, 'utf8')
+      for (const line of content.split('\n')) if (line) transcript.push(line)
+    } catch {
+      // Gone since it was counted: it simply has nothing to say.
+    }
+    return { title: await readSessionTitle(ref.transcriptPath), startedAt: ref.startedAt, entries: transcript.entries }
+  }))
+  const digest = digestSessions(sessions)
+  if (!digest) return null
+  const count = Math.min(sessions.filter((s) => s.entries.some((e) => e.kind === 'user')).length, DIGEST_SESSIONS)
+  try {
+    fs.mkdirSync(DIGEST_DIR, { recursive: true, mode: 0o700 })
+    const file = path.join(DIGEST_DIR, `context-${terminalId.replace(/[^a-zA-Z0-9-]/g, '')}-${Date.now()}.md`)
+    fs.writeFileSync(file, digest, { mode: 0o600 })
+    return { path: file, count }
+  } catch (e) {
+    console.error(`[writeContextDigest] Failed for terminal ${terminalId}:`, e)
+    return null
+  }
+}
+
+/**
+ * Replaces the agent's Claude Code with one resumed on a session from its history.
+ * Only a session the agent has recorded: the path comes from the renderer, and the
+ * history is what says it is one of this agent's. Returns false when it cannot be done.
+ */
+export function resumeTerminalSession(terminalId: string, transcriptPath: string): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal || !terminal.respawn) return false
+  const known = terminal.metadata.claudeSessions?.some((s) => s.transcriptPath === transcriptPath)
+    || terminal.metadata.claudeTranscriptPath === transcriptPath
+  const id = sessionIdOf(transcriptPath)
+  const cwd = cwdForTranscript(transcriptPath, sessionCwds(terminal))
+  if (!known || !id || !cwd || !fs.existsSync(transcriptPath)) return false
+
+  try {
+    terminal.respawn(cwd, `\x1b[2J\x1b[H\x1b[33m--- Resuming a Claude Code session ---\x1b[0m\r\n\r\n`, id)
+  } catch (e) {
+    console.error(`[resumeTerminalSession] Failed for terminal ${terminalId}:`, e)
+    return false
+  }
+
+  // The respawn retired the session it left; this one is the agent's again, even if it
+  // was left on purpose earlier, and it is the one to come back to after a quit.
+  terminal.retiredTranscripts?.delete(transcriptPath)
+  // Shown at once, as at launch: the chat need not wait for the statusLine to name it.
+  watchTranscript(terminalId, transcriptPath)
+  terminal.metadata = { ...terminal.metadata, claudeTranscriptPath: transcriptPath }
+  try {
+    updateAgentMetadata(terminalId, { claudeTranscriptPath: transcriptPath })
+  } catch (e) {
+    console.error(`[resumeTerminalSession] Failed to persist for terminal ${terminalId}:`, e)
+  }
+  terminal.hasUserInput = true
+  restartTrackers.delete(terminalId)
+  return true
+}
+
+/**
+ * Replaces the agent's Claude Code with a fresh one, in the directory it runs in now.
+ * The conversation it leaves stays in the history, to be resumed from there.
+ */
+export function newTerminalSession(terminalId: string): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal || !terminal.respawn) return false
+
+  try {
+    terminal.respawn(terminal.cwd, `\x1b[2J\x1b[H\x1b[33m--- Starting a new Claude Code session ---\x1b[0m\r\n\r\n`)
+  } catch (e) {
+    console.error(`[newTerminalSession] Failed for terminal ${terminalId}:`, e)
+    return false
+  }
+
+  // Nobody has spoken to the new process yet, and a deliberate restart is not a crash.
+  terminal.hasUserInput = false
+  restartTrackers.delete(terminalId)
+  return true
+}
+
+/**
+ * Drops the session an agent would resume at the next launch. Called when the app
+ * replaces its Claude Code with a fresh one: that conversation was left on purpose.
+ */
+function forgetSession(terminal: Terminal): void {
+  const current = terminal.metadata.claudeTranscriptPath ?? terminal.metadata.usage?.transcriptPath
+  if (current) {
+    if (!terminal.retiredTranscripts) terminal.retiredTranscripts = new Set()
+    terminal.retiredTranscripts.add(current)
+  }
+  if (!terminal.metadata.claudeTranscriptPath) return
+  terminal.metadata = mergeMetadata(terminal.metadata, { claudeTranscriptPath: undefined })
+  try {
+    updateAgentMetadata(terminal.id, { claudeTranscriptPath: undefined })
+  } catch (e) {
+    console.error(`[forgetSession] Failed for terminal ${terminal.id}:`, e)
   }
 }
 

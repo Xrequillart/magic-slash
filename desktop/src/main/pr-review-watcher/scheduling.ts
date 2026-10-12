@@ -128,6 +128,8 @@ export function nextBackoff(attempt: number, retryAtMs?: number, now: number = D
  *    identical, and the card now names the individual checks, so without their
  *    identity in here it would keep listing the one that recovered and never show
  *    the one that broke.
+ *  - `latestFeedbackAt` is what the review notification fires on, so a new comment
+ *    that happened to leave every count above unchanged must still get through.
  *
  * The rule this encodes: everything derived from the snapshot and shown to the
  * user belongs in the key, or it can be silently withheld from them.
@@ -145,6 +147,8 @@ export function snapshotKey(
     reviewers?: string[]
     /** One `name:state` per check on the head commit. */
     checkStates?: string[]
+    /** Epoch ms of the newest feedback by someone else — it drives the notification. */
+    latestFeedbackAt?: number
   },
 ): string {
   const c = checks ? `${checks.total}/${checks.passed}/${checks.failed}/${checks.running}/${checks.skipped}` : ''
@@ -156,6 +160,7 @@ export function snapshotKey(
       String(extras.mergeable),
       (extras.reviewers ?? []).join(','),
       (extras.checkStates ?? []).join(','),
+      String(extras.latestFeedbackAt ?? ''),
     ].join('/')
     : ''
   return `${headSha}|${updatedAt}|${rollupState ?? ''}|${c}|${m}|${e}`

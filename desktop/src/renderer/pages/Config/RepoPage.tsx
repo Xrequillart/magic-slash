@@ -1,19 +1,52 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
-  Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
-  ClipboardList, FolderGit2, type LucideIcon
-} from 'lucide-react'
+  Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen, Upload, Github, Jira,
+  Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow, Pencil,
+} from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
+import { useIsFullScreen } from '../../hooks/useIsFullScreen'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
-import { PROJECT_COLORS, getProjectColorMap } from '../../utils/projectColors'
-import { useT, type MessageKey } from '../../i18n'
-import { Switch } from '../../components/Switch'
-import { LanguageSelect } from '../../components/LanguageSelect'
-import { TabStrip } from '../../components/TabStrip'
+import { getProjectColorMap } from '../../utils/projectColors'
+import { RepoColorPicker } from './RepoColorPicker'
+import { nextWorkflowStepColor } from '@ds/desktop/palette'
+import { useT, type MessageKey, type Translate } from '../../i18n'
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  Loader,
+  RepoPageHeader,
+  RepositorySelector,
+  SectionHeader,
+  SettingsCard,
+  SkillIntro as DsSkillIntro,
+  TabStrip,
+  Text,
+  WorkflowCanvas,
+  WorkflowEditor,
+  skillIcon,
+  workflowCardWidths,
+  workflowPositions,
+  type IconComponent,
+  type SelectOption,
+  type SettingsCardRow,
+  type WorkflowCanvasLabels,
+  type WorkflowCanvasSelection,
+  type WorkflowEditorBanner,
+  type WorkflowEditorHistory,
+  type WorkflowEditorLabels,
+  type WorkflowHistoryItem,
+  type WorkflowInspectorIntro,
+  type WorkflowInspectorSettings,
+  type WorkflowInspectorTarget,
+  type WorkflowProblemItem,
+} from '@ds/desktop'
+import { LANGUAGES } from '../../languages'
 import { TabSweep } from '../../components/TabSweep'
 import {
   COMMIT_FORMAT_LABELS,
@@ -22,16 +55,39 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  startSummary,
+  reviewSummary,
   type SkillSummary,
 } from '../../utils/skillSummary'
-import { BTN, INPUT, SELECT } from '../../theme/controls'
+import { SELECT_WIDTH } from '../../theme/controls'
 import {
   PLAN_SPLITTING_MODES,
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
   type PlanSettingsInput,
+  type SkillShareResult,
 } from '../../../types'
-import { resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
+import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
+import type { ResolvedWorkflow } from '../../../workflow/model'
+import {
+  EMPTY_OVERLAY, addLink, addStep, canRemoveStep, cleanOverlay, composeWorkflow, customNodeId, isBuiltInNodeId, isCustomNodeId, isLiveDefaultLink, isLinkIntoStart, moveNode,
+  removeNode, restoreStep, addFrame, frameNodeId, isFrameNodeId, moveNodes, removeFrame, setFrame, FRAME_MIN_SIZE,
+  addSticky, isStickyNodeId, nextStickyId, removeSticky, setSticky, stickyNodeId, STICKY_MIN_SIZE, STICKY_SIZE,
+  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
+  addNote, isNoteNodeId, nextFrameId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
+  copyCard, pasteCard, unreachableSteps, type WorkflowClip, type WorkflowOverlay, type WorkflowProblem,
+  actionNodeId, addAction, isActionNodeId, nextActionId, removeAction, setAction,
+} from '../../../workflow/overlay'
+import { ACTION_VARIABLES } from '../../../workflow/actions'
+import type { ListingEntry } from '../../hooks/useSkills'
+import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
+import { buildWorkflowHistory, skillOfNode, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
+import { planAuthor } from '../../utils/planRows'
+import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
+import { useModalExit } from '../../hooks/useModalExit'
+import {
+  folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, skillOutcomes, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+} from './workflowCanvasData'
 
 interface RepoPageProps {
   repoName: string
@@ -56,34 +112,30 @@ interface RepoPageProps {
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
 type RepoTab =
-  | 'general' | 'repository' | 'tickets' | 'languages'
-  | 'plan' | 'commit' | 'pr' | 'resolve'
+  | 'general' | 'repository' | 'tickets' | 'workflow'
+  | 'annex'
 
-const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
+const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: IconComponent }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
   // `repo.tab.*` family: a tab and the thing it holds have one name, so there is
   // nowhere for two spellings of it to drift apart — and no second string to forget
   // to translate. Danger is the exception: its section is headed "Danger Zone",
   // which is a warning, where a pill wants one word.
   { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
-  // Repository before Tickets, and both before Languages: the first three tabs are
-  // the repo itself — what it is, where its code lives, where its tickets go — and
-  // the strip reads as that list before it turns to how the skills behave.
+  // Repository before Tickets: the first three tabs are the repo itself, what it is,
+  // where its code lives, where its tickets go, before the strip turns to the skills.
+  //
+  // There is no Languages tab: each language is set where it is used, on the skill that
+  // writes in it (the workflow editor's inspector), and the discussion language, which
+  // every skill speaks, on General.
   { id: 'repository', labelKey: 'repo.repository.section', icon: GitBranch },
   { id: 'tickets', labelKey: 'repo.tickets.section', icon: Ticket },
-  { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
-  // One tab per skill rather than one "Skills" tab holding four sections: each of
-  // these is a workflow with its own vocabulary, and stacking them made the tab that
-  // held them longer than the five others put together.
-  //
-  // In workflow order, which is also the order the skills run in: an idea becomes
-  // tickets, tickets become commits, commits become a pull request, and the review
-  // comments a repo resolves only exist once that pull request does — so Resolve comes
-  // after PR, not before it.
-  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
-  { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
-  { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
-  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
+  // The workflow holds the cycle skills' settings now: each one's are read and changed
+  // on its step, in the workflow editor's inspector (`stepSettings`), not in a tab.
+  { id: 'workflow', labelKey: 'repo.workflow.section', icon: Workflow },
+  // The side skills, entered from wherever the user is rather than as steps of the cycle,
+  // have no step to hang their settings from: they share this tab. Review, for now.
+  { id: 'annex', labelKey: 'repo.annex.section', icon: Puzzle },
 ]
 
 /**
@@ -111,6 +163,12 @@ const TRACKER_MODE_LABELS: Record<(typeof TRACKER_MODES)[number], MessageKey> = 
   jira: 'repo.tracker.modeJira',
 }
 
+/** Each tracker's own mark, before its name in the picker and on its trigger. */
+const TRACKER_MODE_ICONS: Record<(typeof TRACKER_MODES)[number], IconComponent> = {
+  github: Github,
+  jira: Jira,
+}
+
 
 
 const PLAN_SPLITTING_LABELS: Record<(typeof PLAN_SPLITTING_MODES)[number], MessageKey> = {
@@ -126,48 +184,12 @@ const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_F
 }
 
 /**
- * One label-plus-help row with its control on the right — the shape every setting
- * in this page wears. Module scope, not inside RepoPage like LangSelect below: a
- * component redeclared each render is a new type each render, so React would
- * remount it and the text fields inside would lose focus on every keystroke.
- */
-function SettingRow({ label, description, align = 'start', icon: Icon, children }: {
-  label: string
-  description: string
-  align?: 'start' | 'center'
-  /**
-   * Marks what KIND of setting this is, before the label says which one. For the
-   * guard rails: a padlock on "Commits on main branches" says the row is a safety,
-   * which neither its name nor its switch could say on their own. Most rows have
-   * none — an icon on every row is decoration, and stops meaning anything.
-   */
-  icon?: LucideIcon
-  children: React.ReactNode
-}) {
-  // Written out rather than interpolated: Tailwind only emits classes it can see
-  // as whole strings in the source.
-  const items = align === 'center' ? 'items-center' : 'items-start'
-  return (
-    <div className={`flex ${items} justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0`}>
-      <div className="flex-1">
-        <label className="flex items-center gap-1.5 text-sm font-medium mb-0.5">
-          {Icon && <Icon className="w-3.5 h-3.5 text-text-secondary/50 shrink-0" />}
-          {label}
-        </label>
-        <p className="text-xs text-text-secondary/50">{description}</p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-/**
  * What the skill a tab configures actually DOES, at the top of that tab.
  *
  * The settings alone never said it: "How much to split" and "Acceptance criteria" are
  * knobs on a run whose shape you had to already know — that /magic:plan brainstorms
- * first, writes a spec, and creates nothing until you approve it. Four tabs out of
- * eight configure a skill rather than the repository, and those four get this.
+ * first, writes a spec, and creates nothing until you approve it. Five tabs out of
+ * nine configure a skill rather than the repository, and those five get this.
  *
  * DESCRIBES THIS REPOSITORY, not the skill in general: the steps are composed from the
  * settings below by `utils/skillSummary`, so a repo filing GitHub issues reads "one
@@ -181,129 +203,225 @@ function SettingRow({ label, description, align = 'start', icon: Icon, children 
  * id, labels) trail below as short phrases instead of taking a step of their own.
  */
 const SKILL_INTROS = {
-  plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
-  commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
-  pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
-  resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
-} satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
+  plan: { command: '/magic:plan', icon: skillIcon('magic-plan'), lead: 'repo.plan.intro' },
+  start: { command: '/magic:start', icon: skillIcon('magic-start'), lead: 'repo.start.intro' },
+  commit: { command: '/magic:commit', icon: skillIcon('magic-commit'), lead: 'repo.commit.intro' },
+  pr: { command: '/magic:pr', icon: skillIcon('magic-pr'), lead: 'repo.pr.intro' },
+  review: { command: '/magic:review', icon: skillIcon('magic-review'), lead: 'repo.review.intro' },
+  resolve: { command: '/magic:resolve', icon: skillIcon('magic-resolve'), lead: 'repo.resolve.intro' },
+} satisfies Record<string, { command: string; icon: IconComponent; lead: MessageKey }>
 
 function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summary: SkillSummary }) {
   const t = useT()
-  const { command, icon: Icon, lead } = SKILL_INTROS[skill]
+  const { command, icon, lead } = SKILL_INTROS[skill]
   return (
-    <div className="mb-6 flex items-start gap-3 bg-surface-subtle border border-line-subtle rounded-xl px-4 py-3.5">
-      {/* The tab's own icon, so the block reads as belonging to the tab you just picked
-          rather than as a notice about something else. */}
-      <Icon className="w-4 h-4 text-text-secondary/40 shrink-0 mt-0.5" />
-      <div className="min-w-0">
-        <code className="inline-block text-xs font-mono bg-surface-strong text-ink px-1.5 py-0.5 rounded">{command}</code>
-        <p className="text-xs text-text-secondary mt-1.5">{t(lead)}</p>
-        {/* Numbered, because these steps happen in this order — the run reads top to
-            bottom, and the ticket creation at the end is what the spec approval above
-            it gates. */}
-        <ol className="mt-2 space-y-1">
-          {summary.steps.map((step, index) => (
-            <li key={step.key} className="flex gap-2 text-[11px] text-text-secondary/70">
-              <span className="text-text-secondary/40 tabular-nums shrink-0">{index + 1}.</span>
-              <span>{t(step.key, step.vars)}</span>
-            </li>
-          ))}
-        </ol>
-        {summary.tail.length > 0 && (
-          /* The flags, as one dim line under the steps. The leading "+" is what makes
-             it read as things ADDED to the run rather than as a step of its own. */
-          <p className="mt-2 text-[11px] text-text-secondary/50">
-            + {summary.tail.map((flag) => t(flag.key, flag.vars)).join(' · ')}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/** Native select over a closed value list, with its label map. */
-function EnumSelect<T extends string>({ value, values, labels, onChange }: {
-  value: string
-  values: readonly T[]
-  labels: Record<T, MessageKey>
-  onChange: (value: string) => void
-}) {
-  const t = useT()
-  return (
-    <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${SELECT} w-52`}>
-        {values.map((v) => (
-          <option key={v} value={v}>{t(labels[v])}</option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-    </div>
+    <DsSkillIntro
+      command={command}
+      icon={icon}
+      // Every string is resolved HERE, which is the split `SkillIntro` is built on: the
+      // shape is the design system's, the sentences are composed from this repository's
+      // own settings by `utils/skillSummary` and could not be anywhere else.
+      steps={summary.steps.map((step) => t(step.key, step.vars))}
+      flags={summary.tail.map((flag) => t(flag.key, flag.vars))}
+    >
+      {t(lead)}
+    </DsSkillIntro>
   )
 }
 
 /**
- * Editable list of short strings shown as removable chips. Twin of the webapp's
- * ChipList (webapp/components/SettingRow.tsx), down to `inputId`: the id is a
- * prop precisely so two lists can coexist on this page without colliding.
+ * A picker over a closed value list, with its label map — as a `SettingRow` CONTROL and
+ * no longer as markup.
+ *
+ * `Select`'s drawing, where every one of these was a native `<select>` and the nine that
+ * were written out row by row are this. What it adds is the pairing a settings row
+ * actually wants: the values, and the message key each one is called by, so no call site
+ * spells an `<option>` at all.
+ *
+ * A FUNCTION RETURNING A DESCRIPTOR, because that is what `SettingsCard` takes. It was a
+ * component, which meant every row it ended had to be markup too — one JSX control was
+ * enough to keep a whole card hand-built.
  */
-function ChipList({ items, onChange, placeholder, inputId }: {
-  items: string[]
-  onChange: (items: string[]) => void
-  placeholder: string
-  inputId: string
-}) {
-  const t = useT()
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const add = () => {
-    const input = inputRef.current
-    const value = input?.value.trim()
-    if (!input || !value || items.includes(value)) return
-    onChange([...items, value])
-    input.value = ''
+function enumControl<T extends string>(
+  t: Translate,
+  value: string,
+  values: readonly T[],
+  labels: Record<T, MessageKey>,
+  onChange: (value: string) => void,
+  /** The control's accessible name — the row's own label. Translated. */
+  ariaLabel: string,
+) {
+  return {
+    kind: 'select' as const,
+    value,
+    options: values.map((v) => ({ value: v, label: t(labels[v]) })),
+    onChange,
+    width: SELECT_WIDTH,
+    ariaLabel,
   }
+}
 
-  return (
-    <>
-      {items.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {items.map((item) => (
-            <span
-              key={item}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
-            >
-              {item}
-              <button
-                onClick={() => onChange(items.filter((i) => i !== item))}
-                aria-label={t('common.remove')}
-                className="text-text-secondary hover:text-red transition-colors"
-              >
-                &times;
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          id={inputId}
-          placeholder={placeholder}
-          className={`${INPUT} flex-1`}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
-            e.preventDefault()
-            add()
-          }}
-        />
-        <button onClick={add} className={BTN}>
-          <Plus className="w-3 h-3" />
-          {t('common.add')}
-        </button>
-      </div>
-    </>
-  )
+/** `enumControl`'s select, each option wearing its value's glyph. */
+function withIcons<T extends string>(control: ReturnType<typeof enumControl<T>>, icons: Record<T, IconComponent>) {
+  return { ...control, options: control.options.map((option) => ({ ...option, icon: icons[option.value as T] })) }
+}
+
+/**
+ * The value lists this page picks from, and what each entry is called.
+ *
+ * Message KEYS and not labels, for the reason every catalogue in this app gives:
+ * module scope is evaluated once at import, so a `t()` here would pin the list to
+ * whatever language the app booted in.
+ */
+const COMMIT_STYLES = ['single-line', 'multi-line'] as const
+const COMMIT_STYLE_LABEL: Record<(typeof COMMIT_STYLES)[number], MessageKey> = {
+  'single-line': 'repo.commit.styleSingle',
+  'multi-line': 'repo.commit.styleMulti',
+}
+
+const COMMIT_FORMATS = ['conventional', 'angular', 'gitmoji', 'none'] as const
+const COMMIT_FORMAT_LABEL: Record<(typeof COMMIT_FORMATS)[number], MessageKey> = {
+  conventional: 'repo.commit.formatConventional',
+  angular: 'repo.commit.formatAngular',
+  gitmoji: 'repo.commit.formatGitmoji',
+  none: 'repo.commit.formatNone',
+}
+
+const TEST_ACCOUNT_MODES = ['off', 'reference', 'inline'] as const
+const TEST_ACCOUNT_LABEL: Record<(typeof TEST_ACCOUNT_MODES)[number], MessageKey> = {
+  off: 'repo.pr.testAccountsOff',
+  reference: 'repo.pr.testAccountsReference',
+  inline: 'repo.pr.testAccountsInline',
+}
+
+const TEMPLATE_CHECKBOX_MODES = ['never', 'type', 'all'] as const
+const TEMPLATE_CHECKBOX_LABEL: Record<(typeof TEMPLATE_CHECKBOX_MODES)[number], MessageKey> = {
+  never: 'repo.pr.templateCheckboxesNever',
+  type: 'repo.pr.templateCheckboxesType',
+  all: 'repo.pr.templateCheckboxesAll',
+}
+
+const BODY_VERBOSITY_MODES = ['concise', 'normal', 'detailed'] as const
+const BODY_VERBOSITY_LABEL: Record<(typeof BODY_VERBOSITY_MODES)[number], MessageKey> = {
+  concise: 'repo.pr.bodyVerbosityConcise',
+  normal: 'repo.pr.bodyVerbosityNormal',
+  detailed: 'repo.pr.bodyVerbosityDetailed',
+}
+
+const START_EXPLORATION_MODES = ['auto', 'always', 'never'] as const
+const START_EXPLORATION_LABEL: Record<(typeof START_EXPLORATION_MODES)[number], MessageKey> = {
+  auto: 'repo.start.explorationAuto',
+  always: 'repo.start.explorationAlways',
+  never: 'repo.start.explorationNever',
+}
+
+const START_EXECUTION_MODES = ['auto', 'solo', 'multi'] as const
+const START_EXECUTION_LABEL: Record<(typeof START_EXECUTION_MODES)[number], MessageKey> = {
+  auto: 'repo.start.executionAuto',
+  solo: 'repo.start.executionSolo',
+  multi: 'repo.start.executionMulti',
+}
+
+/** The critic's two numbers, and the range the write path accepts for each (config.ts). */
+const START_CRITIC_ITERATIONS = { min: 0, max: 5, fallback: 3 }
+const START_CRITIC_SCORE = { min: 1, max: 10, fallback: 8 }
+
+/** Each /magic:start setting's name, for the workflow history's lines. */
+const START_SETTING_LABEL: Record<StartSettingKey, MessageKey> = {
+  exploration: 'repo.start.exploration',
+  plan: 'repo.start.plan',
+  planReview: 'repo.start.planReview',
+  planApproval: 'repo.start.planApproval',
+  execution: 'repo.start.execution',
+  simplify: 'repo.start.simplify',
+  criticIterations: 'repo.start.criticIterations',
+  criticMinScore: 'repo.start.criticMinScore',
+}
+
+/** A start setting's value in words: on or off, the mode's label, or the number itself. */
+function startValueLabel(t: Translate, setting: StartSettingKey, value: StartSettingValue): string {
+  if (typeof value === 'boolean') return t(value ? 'repo.workflow.history.on' : 'repo.workflow.history.off')
+  if (typeof value === 'number') return String(value)
+  const labels: Record<string, MessageKey> = setting === 'exploration' ? START_EXPLORATION_LABEL : setting === 'execution' ? START_EXECUTION_LABEL : {}
+  return Object.hasOwn(labels, value) ? t(labels[value]) : value
+}
+
+/** One change of a workflow history entry, as the sentence the panel lists under it. */
+function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): string {
+  // A note's end is `note:<text>` (workflowHistory's `endOf`): it is named by what it says.
+  const name = (id: string) => (isNoteNodeId(id) ? `« ${id.slice('note:'.length)} »`
+    : isActionNodeId(id) ? `« ${id.slice('action:'.length)} »` : skillDisplayName(id))
+  const kind = (value: 'auto' | 'suggest') => t(value === 'auto' ? 'repo.workflow.inspector.auto' : 'repo.workflow.inspector.suggest')
+  switch (change.kind) {
+    case 'step-added': return t('repo.workflow.history.stepAdded', { step: name(change.node) })
+    case 'step-removed': return t('repo.workflow.history.stepRemoved', { step: name(change.node) })
+    case 'step-mode':
+      return t(change.mode === 'blocking' ? 'repo.workflow.history.stepBlocking' : 'repo.workflow.history.stepAdvisory', { step: name(change.node) })
+    case 'step-color': return t('repo.workflow.history.stepColor', { step: name(change.node) })
+    case 'step-outcomes':
+      return change.outcomes.length === 0
+        ? t('repo.workflow.history.stepNoOutcomes', { step: name(change.node) })
+        : t('repo.workflow.history.stepOutcomes', { step: name(change.node), outcomes: change.outcomes.join(', ') })
+    case 'step-enabled':
+      return t(change.enabled ? 'repo.workflow.history.stepOn' : 'repo.workflow.history.stepOff', { step: name(change.node) })
+    case 'link-added':
+      return t('repo.workflow.history.linkAdded', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
+    case 'link-removed': return t('repo.workflow.history.linkRemoved', { from: name(change.from), to: name(change.to) })
+    case 'link-kind': return t('repo.workflow.history.linkKind', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
+    case 'note-added': return t('repo.workflow.history.noteAdded', { note: change.text })
+    case 'note-removed': return t('repo.workflow.history.noteRemoved', { note: change.text })
+    case 'note-text': return t('repo.workflow.history.noteText', { before: change.before, after: change.after })
+    case 'action-added': return t('repo.workflow.history.actionAdded', { action: change.text })
+    case 'action-removed': return t('repo.workflow.history.actionRemoved', { action: change.text })
+    case 'action-changed': return t('repo.workflow.history.actionChanged', { before: change.before, after: change.after })
+    case 'sticky-added': return t('repo.workflow.history.stickyAdded')
+    case 'sticky-removed': return t('repo.workflow.history.stickyRemoved', { text: change.text || t('repo.workflow.sticky.empty') })
+    case 'sticky-text': return t('repo.workflow.history.stickyText', { text: change.text || t('repo.workflow.sticky.empty') })
+    case 'frame-added': return t('repo.workflow.history.frameAdded', { frame: change.title || t('repo.workflow.frame.untitled') })
+    case 'frame-removed': return t('repo.workflow.history.frameRemoved', { frame: change.title || t('repo.workflow.frame.untitled') })
+    case 'frame-title': return t('repo.workflow.history.frameTitle', { before: change.before || t('repo.workflow.frame.untitled'), after: change.after || t('repo.workflow.frame.untitled') })
+    case 'link-outcome':
+      return change.outcome === undefined
+        ? t('repo.workflow.history.linkAnyOutcome', { from: name(change.from), to: name(change.to) })
+        : t('repo.workflow.history.linkOutcome', { from: name(change.from), to: name(change.to), outcome: change.outcome })
+    case 'moved':
+      return change.count === 1
+        ? t('repo.workflow.history.moved.one')
+        : t('repo.workflow.history.moved.other', { count: change.count })
+    case 'unreadable': return t('repo.workflow.history.unreadable')
+    case 'start':
+      return t('repo.workflow.history.start', {
+        setting: t(START_SETTING_LABEL[change.setting]),
+        from: startValueLabel(t, change.setting, change.from),
+        to: startValueLabel(t, change.setting, change.to),
+      })
+  }
+}
+
+const REVIEW_MODES = ['ask', 'post'] as const
+const REVIEW_MODE_LABEL: Record<(typeof REVIEW_MODES)[number], MessageKey> = {
+  ask: 'repo.review.modeAsk',
+  post: 'repo.review.modePost',
+}
+
+const RESOLVE_COMMIT_MODES = ['new', 'amend', 'ask'] as const
+const RESOLVE_COMMIT_MODE_LABEL: Record<(typeof RESOLVE_COMMIT_MODES)[number], MessageKey> = {
+  new: 'repo.resolve.modeNew',
+  amend: 'repo.resolve.modeAmend',
+  ask: 'repo.resolve.modeAsk',
+}
+
+const RESOLVE_CONFIG_SOURCES = ['commit', 'custom'] as const
+const RESOLVE_CONFIG_SOURCE_LABEL: Record<(typeof RESOLVE_CONFIG_SOURCES)[number], MessageKey> = {
+  commit: 'repo.resolve.useCommitConfig',
+  custom: 'repo.resolve.customConfig',
+}
+
+const RESOLVE_VERBOSITIES = ['minimal', 'normal', 'detailed'] as const
+const RESOLVE_VERBOSITY_LABEL: Record<(typeof RESOLVE_VERBOSITIES)[number], MessageKey> = {
+  minimal: 'repo.resolve.verbosityMinimal',
+  normal: 'repo.resolve.verbosityNormal',
+  detailed: 'repo.resolve.verbosityDetailed',
 }
 
 /**
@@ -352,6 +470,1306 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
   return firstLine
 }
 
+/** What a step's inspector shows of its skill: what it does, then its settings. */
+interface WorkflowStepConfig {
+  intro?: WorkflowInspectorIntro
+  settings: WorkflowInspectorSettings[]
+}
+
+/**
+ * THE WORKFLOW TAB: the flow this repository's skills follow, drawn on the design
+ * system's canvas, and the full-screen editor its Edit button opens for whoever may
+ * change it (the repository's owner, or an admin of its organization: `readOnly` is
+ * RepoPage's, which mirrors RLS).
+ *
+ * THE TAB ONLY SHOWS. The canvas in the tab is read-only, with no minimap, and an Edit
+ * button under the section's description; everything that changes the flow happens in
+ * the editor, which covers the
+ * whole window (`WorkflowEditor`, in a fixed layer over the app and its settings
+ * overlay). A read-only member gets the same button, as Open, and the same editor with
+ * nothing to change: the inspector still says how each step and link runs.
+ *
+ * WHAT IS EDITED IS THE OVERLAY, not the flow: the steps, links, link kinds and card
+ * positions added to the default flow (workflow/overlay.ts). Two copies of it are kept,
+ * the one saved and the draft, and everything the editor draws is `composeWorkflow(draft)`,
+ * so the canvas shows the flow the skills would get if Save were pressed now.
+ * `problems(draft)`, the same judge the main process saves with, lists what stands in
+ * the way, and Save stays disabled until the list is empty and the draft differs from
+ * what is saved. Every edit is recorded, for ⌘Z and ⇧⌘Z; a reload forgets the history.
+ *
+ * CARDS STAY WHERE THEY WERE SEEN. A card without a stored position is laid out from the
+ * links, so an edit to the links would move the ones not yet placed: before such an
+ * edit (a step added or removed, a link drawn or removed, a card moved), every card is
+ * pinned at the place it is drawn at (`pinPositions`).
+ *
+ * LEAVING WITH UNSAVED EDITS ASKS FIRST, and leaving drops them: the tab always shows
+ * what is saved.
+ *
+ * PUSHED AS WELL AS ASKED FOR. Loaded on mount, and reloaded whenever the main process
+ * says this repository's workflow changed (`onWorkflowChanged`: a save from another
+ * window, or from a teammate over Realtime). A change that lands on unsaved edits does
+ * not clobber them: a banner says so and offers the reload. A change announced while
+ * our own save is in flight is looked at once the save has answered, never dropped.
+ *
+ * SAVED AGAINST A REVISION. The saved overlay comes with the revision of its row, and
+ * a save sends it back: when a teammate saved in the meantime the backend refuses
+ * (`conflict`), nothing is overwritten, and the draft stays until the editor reloads.
+ * The revision is also how the echo of our own save is told from a teammate's change:
+ * reading the workflow again after it finds the revision the save returned.
+ *
+ * A SKILL ONLY THE EDITOR HAS. A custom step runs a skill by name, and a skill (or a
+ * command) that lives only in the editor's `~/.claude` is missing for every teammate.
+ * After a save, the ones this save added are offered for a copy into the repository's
+ * `.claude`. A copy is not shared yet either: the card's warning follows it until it is
+ * committed and pushed (`skills:repoSkillStatus`), and so does a skill the editor
+ * created in the repository themselves. Recomputed on load, after every save and copy,
+ * and when the window comes back to the front, so a commit or a push made in a
+ * terminal clears it, and a declined copy does not quietly forget it.
+ *
+ * THE KEYBOARD, while the editor is open: ⌘Z / ⇧⌘Z, Delete for what is selected, ⌘C /
+ * ⌘V for a frame, a sticky note or an end note (a step is refused, in a toast: a skill
+ * runs once in a flow), and Escape to deselect, then to leave. Escape stops here, or the settings overlay under the
+ * editor would close with it (its listener is on `window`, this one on `document`).
+ *
+ * A component of its own, at module scope, because it owns a fetch and an editor's
+ * state: RepoPage's state is the repository's settings, and this is not one of them.
+ */
+/**
+ * The repository whose editor opens as soon as its page mounts: set by the editor's
+ * repository picker just before it navigates there. A switch is a new route, which
+ * remounts RepoPage on General with the editor closed; this is how the next page knows
+ * it was reached from an editor. Module scope because the two pages never coexist in
+ * one component; RepoPage clears it once it has read it.
+ */
+let reopenEditorFor: string | null = null
+
+function WorkflowPanel({
+  repoName,
+  repositories,
+  openEditor,
+  onEditorOpened,
+  readOnly,
+  stepSettings,
+  startVersion,
+}: {
+  repoName: string
+  /** Every configured repository, for the editor's picker. */
+  repositories: SelectOption[]
+  /**
+   * Mounted by a switch from another repository's editor: open this one's straight away.
+   * ONCE: read at mount, then handed back through `onEditorOpened`, so leaving the tab and
+   * coming back mounts the panel with its editor closed, as an Edit press left it.
+   */
+  openEditor: boolean
+  onEditorOpened: () => void
+  readOnly: boolean
+  /** A step's own settings, by the skill it runs, for the inspector. RepoPage's, which holds them. */
+  stepSettings: Readonly<Record<string, WorkflowStepConfig>>
+  /** The repository's /magic:start settings, serialised: the history reads again when they change. */
+  startVersion: string
+}) {
+  const t = useT()
+  const windowFullScreen = useIsFullScreen()
+  // null while loading. `saved` is what the backend holds, `source` whether it is the
+  // repository's own flow or the default (the header's hint).
+  const [loaded, setLoaded] = useState<
+    { saved: WorkflowOverlay; revision: string | null; source: ResolvedWorkflow['source'] } | 'error' | null
+  >(null)
+  const [draft, setDraft] = useState<WorkflowOverlay>(EMPTY_OVERLAY)
+  // The drafts before this one, and the ones undone since, for ⌘Z and ⇧⌘Z.
+  const [history, setHistory] = useState<{ past: WorkflowOverlay[]; future: WorkflowOverlay[] }>(EMPTY_HISTORY)
+  const [editing, setEditing] = useState(openEditor)
+  // The mount's answer, kept for the load effect: the prop goes false as soon as it is
+  // consumed, and that must not close the editor it just opened.
+  const openEditorRef = useRef(openEditor)
+  useEffect(() => {
+    if (openEditorRef.current) onEditorOpened()
+    // Once, at mount: the intent is consumed, not followed.
+  }, [])
+  // Unsaved edits ask before a switch as before a close: where the switch was going.
+  const [switchTo, setSwitchTo] = useState<string | null>(null)
+  const mountedFor = useRef(repoName)
+  // The editor is playing its way out: it unmounts once it says it has (`onLeft`).
+  const [leavingEditor, setLeavingEditor] = useState(false)
+  const [closePrompt, setClosePrompt] = useState(false)
+  const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
+  // What ⌘C copied, for ⌘V: the editor's own, never the system clipboard, which a card is
+  // not worth writing to. Each paste moves it onto the card it added.
+  const clipRef = useRef<WorkflowClip | null>(null)
+  const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
+  const [entries, setEntries] = useState<ListingEntry[]>([])
+  // The custom steps' skills teammates don't have yet, and how far each one got: in the
+  // editor's `~/.claude` only (`missing`), or in the checkout, not yet on the remote.
+  const [unshared, setUnshared] = useState<Record<string, SkillShareResult>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<
+    { kind: 'denied' } | { kind: 'conflict' } | { kind: 'failed'; message: string } | null
+  >(null)
+  // What the backend refused a save on. The same judge as `problems(draft)`, so this is
+  // a safety net for a build skew; it is dropped at the next edit.
+  const [refused, setRefused] = useState<WorkflowProblem[] | null>(null)
+  const [stale, setStale] = useState(false)
+  const [copyOffer, setCopyOffer] = useState<string[] | null>(null)
+  const [copying, setCopying] = useState(false)
+  // The history panel, in the inspector's place: opening one closes the other.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  // Duplicating the flow onto another repository: the picker, then, when that one has a
+  // flow of its own, the question whether to replace it.
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [duplicateTarget, setDuplicateTarget] = useState<{ name: string; revision: string | null } | null>(null)
+  const [duplicating, setDuplicating] = useState(false)
+  // Back to the default flow, once confirmed: saved at once, unsaved edits dropped with it.
+  const [resetPrompt, setResetPrompt] = useState(false)
+  const duplicateExit = useModalExit(duplicateOpen)
+
+  const saved = loaded && loaded !== 'error' ? loaded.saved : EMPTY_OVERLAY
+  const revision = loaded && loaded !== 'error' ? loaded.revision : null
+  // Read by the change listener, which is subscribed once per repository and would
+  // otherwise judge "unsaved edits" against the state of the render it was made in.
+  // `adopt` also sets the first two at once, for a change judged before the next render.
+  const savedRef = useRef(saved)
+  const revisionRef = useRef(revision)
+  const draftRef = useRef(draft)
+  const savingRef = useRef(false)
+  // A change announced while our save was in flight, to look at once it has answered.
+  const changedDuringSaveRef = useRef(false)
+  savedRef.current = saved
+  revisionRef.current = revision
+  draftRef.current = draft
+  // Bumped on every repository switch: an answer for the previous one is dropped.
+  const generation = useRef(0)
+
+  const fetchWorkflow = useCallback(async () => {
+    const [stored, resolved] = await Promise.all([
+      window.electronAPI.config.getRepositoryWorkflowOverlay(repoName),
+      window.electronAPI.config.getRepositoryWorkflow(repoName),
+    ])
+    return { overlay: stored.overlay, revision: stored.revision, source: resolved.source }
+  }, [repoName])
+
+  /**
+   * Where each of the overlay's folder skills stands for teammates, keeping the ones to
+   * warn about. Resolves to those only the editor's `~/.claude` has, the copy candidates.
+   * A skill nobody here has (not in `~/.claude`, not in the repository) is someone
+   * else's, and nothing this machine can say about it.
+   */
+  const refreshUnshared = useCallback(async (overlay: WorkflowOverlay): Promise<string[]> => {
+    const at = generation.current
+    const checks = await Promise.all(folderSkillsOf(overlay).map(async (skill): Promise<[string, SkillShareResult][]> => {
+      try {
+        const [home, share] = await Promise.all([
+          window.electronAPI.skills.homeHasSkill(skill),
+          window.electronAPI.skills.repoSkillStatus(repoName, skill),
+        ])
+        if (share.status === 'shared') return []
+        if ((share.status === 'missing' || share.status === 'unknown') && !home) return []
+        return [[skill, share]]
+      } catch {
+        return []
+      }
+    }))
+    const next = Object.fromEntries(checks.flat())
+    if (at === generation.current) setUnshared(next)
+    return Object.keys(next).filter((skill) => next[skill].status === 'missing')
+  }, [repoName])
+
+  const adopt = useCallback((
+    next: { overlay: WorkflowOverlay; revision: string | null; source: ResolvedWorkflow['source'] },
+  ) => {
+    savedRef.current = next.overlay
+    revisionRef.current = next.revision
+    setLoaded({ saved: next.overlay, revision: next.revision, source: next.source })
+    setDraft(next.overlay)
+    setHistory(EMPTY_HISTORY)
+    setRefused(null)
+    setStale(false)
+    // The version a conflict was about is now the one on screen.
+    setSaveError((was) => (was?.kind === 'conflict' ? null : was))
+    return refreshUnshared(next.overlay)
+  }, [refreshUnshared])
+
+  useEffect(() => {
+    const at = ++generation.current
+    setLoaded(null)
+    setSelected(null)
+    // Idempotent, so StrictMode's second run keeps it open.
+    setEditing(openEditorRef.current && repoName === mountedFor.current)
+    setLeavingEditor(false)
+    setClosePrompt(false)
+    setSaveError(null)
+    setUnshared({})
+    // An offer is about the previous repository's skills: accepting it here would copy
+    // them into this one.
+    setCopyOffer(null)
+    setCopying(false)
+    setDuplicateOpen(false)
+    setDuplicateTarget(null)
+    setResetPrompt(false)
+    changedDuringSaveRef.current = false
+    fetchWorkflow().then(
+      (next) => { if (at === generation.current) void adopt(next) },
+      (error) => {
+        console.error('Failed to load the repository workflow:', error)
+        if (at === generation.current) {
+          setLoaded('error')
+          // Nothing to edit: an editor left open would never draw, and never close.
+          setEditing(false)
+        }
+      },
+    )
+  }, [fetchWorkflow, adopt, repoName])
+
+  // A commit or a push made in a terminal changes the warnings without telling us: look
+  // again when the window comes back to the front. Debounced, as focus and visibility
+  // usually fire together.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const recheck = () => {
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(timer)
+      timer = setTimeout(() => { void refreshUnshared(savedRef.current) }, 300)
+    }
+    window.addEventListener('focus', recheck)
+    document.addEventListener('visibilitychange', recheck)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('focus', recheck)
+      document.removeEventListener('visibilitychange', recheck)
+    }
+  }, [refreshUnshared])
+
+  // The skills a step may run. Read once per repository: the Skills page is where they
+  // change, and leaving this tab for it remounts the panel on the way back.
+  useEffect(() => {
+    let live = true
+    window.electronAPI.skills.listingEntries().then(
+      (listing: { entries: ListingEntry[] }) => { if (live) setEntries(listing.entries) },
+      () => { /* no listing: the picker says there is nothing to add */ },
+    )
+    return () => { live = false }
+  }, [repoName])
+
+  /** Read the workflow again after a change was announced, and judge what came back. */
+  const followChange = useCallback(() => {
+    const at = generation.current
+    fetchWorkflow().then((next) => {
+      if (at !== generation.current) return
+      // The revision already held: nothing new, such as the echo of our own save.
+      if (next.revision === revisionRef.current) return
+      const dirty = !sameOverlay(draftRef.current, savedRef.current)
+      // Nothing of ours to lose, or it is what we drafted anyway: take it.
+      if (!dirty || sameOverlay(next.overlay, draftRef.current)) void adopt(next)
+      else if (sameOverlay(next.overlay, savedRef.current)) {
+        // Saved again as it was: the draft still edits the same flow, at its new revision.
+        revisionRef.current = next.revision
+        setLoaded({ saved: next.overlay, revision: next.revision, source: next.source })
+      } else setStale(true)
+    }, (error) => console.error('Failed to reload the repository workflow:', error))
+  }, [fetchWorkflow, adopt])
+  // The current repository's, for a save that settles after a switch: its own closure
+  // would read the previous repository's workflow into this panel.
+  const followChangeRef = useRef(followChange)
+  followChangeRef.current = followChange
+
+  useEffect(() => {
+    const off = window.electronAPI.config.onWorkflowChanged((change) => {
+      if (change.name !== repoName) return
+      // Our own save answers first; what changed is looked at once it has (save's
+      // `finally`), when the revision it returned tells its echo from a teammate's save.
+      if (savingRef.current) {
+        changedDuringSaveRef.current = true
+        return
+      }
+      followChange()
+    })
+    return () => { off() }
+  }, [repoName, followChange])
+
+  const reload = () => {
+    const at = generation.current
+    fetchWorkflow().then(
+      (next) => { if (at === generation.current) void adopt(next) },
+      (error) => console.error('Failed to reload the repository workflow:', error),
+    )
+  }
+
+  const flow = useMemo(() => composeWorkflow(draft), [draft])
+  const found = useMemo(() => problems(draft), [draft])
+  const shown = useMemo(() => (found.length > 0 ? found : (refused ?? [])), [found, refused])
+  const unreachable = useMemo(() => unreachableSteps(draft), [draft])
+  const dirty = !sameOverlay(draft, saved)
+
+  const labelOf = (id: string) => {
+    const node = flow.nodes.find((n) => n.id === id)
+    if (node) return skillDisplayName(node.skill)
+    // A note is named by what it says.
+    const note = flow.notes?.find((n) => n.id === id)
+    if (note) return note.text ? `« ${note.text} »` : t('repo.workflow.note.empty')
+    // An action by where it posts, else by what it says.
+    const action = flow.actions?.find((a) => a.id === id)
+    if (action) return action.channel ? `Slack ${action.channel}` : t('repo.workflow.action.title')
+    return id
+  }
+  const skillOf = (id: string) => flow.nodes.find((n) => n.id === id)?.skill ?? id
+
+  const data = useMemo(() => {
+    const warningOf = ({ status, branch }: SkillShareResult): string => {
+      switch (status) {
+        case 'missing': return t('repo.workflow.warning.onlyHome')
+        case 'uncommitted': return t('repo.workflow.warning.uncommitted')
+        case 'unpushed': return branch
+          ? t('repo.workflow.warning.unpushed', { branch: `origin/${branch}` })
+          : t('repo.workflow.warning.unpushedNoRemote')
+        default: return t('repo.workflow.warning.noFolder')
+      }
+    }
+    const warnings: Record<string, string> = Object.fromEntries(
+      Object.entries(unshared).map(([skill, share]) => [customNodeId(skill), warningOf(share)]),
+    )
+    for (const id of unreachable) {
+      warnings[id] = warnings[id] ? `${t('repo.workflow.warning.unreachable')} ${warnings[id]}` : t('repo.workflow.warning.unreachable')
+    }
+    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft), emptyNote: t('repo.workflow.note.empty'), emptyAction: t('repo.workflow.action.empty') })
+  }, [flow, shown, unshared, unreachable, draft, t])
+
+  // The frames as the canvas draws them, by their node ids.
+  const frames = useMemo(
+    () => (draft.frames ?? []).map((frame) => ({ ...frame, id: frameNodeId(frame.id) })),
+    [draft.frames],
+  )
+
+  const stickies = useMemo(
+    () => (draft.stickies ?? []).map((sticky) => ({ ...sticky, id: stickyNodeId(sticky.id) })),
+    [draft.stickies],
+  )
+
+  // Where every card is drawn right now: what an edit to the links pins them at.
+  const drawn = useMemo(
+    () => workflowPositions(data.nodes, data.links, data.entry, draft.positions, workflowCardWidths(data.nodes, {
+      anyExit: t('repo.workflow.anyExit'), blocking: t('repo.workflow.blocking'), advisory: t('repo.workflow.advisory'),
+    })).positions,
+    [data, draft.positions, t],
+  )
+
+  const skills = useMemo(
+    () => skillOptions(entries, repoName, flow.nodes.map((node) => node.skill)),
+    [entries, repoName, flow],
+  )
+
+  const problemItems: WorkflowProblemItem[] = shown.map((problem, i) => {
+    switch (problem.code) {
+      case 'duplicate-skill':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.duplicate', { skill: problem.skill }) }
+      case 'auto-into-start':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
+      case 'empty-note':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.emptyNote') }
+      case 'empty-action':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.emptyAction') }
+      case 'start-disabled':
+        return { id: problem.code, nodeId: problem.nodeId, message: t('repo.workflow.problem.startDisabled') }
+      case 'self-link':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.selfLink', { step: labelOf(problem.nodeId) }) }
+      case 'duplicate-link':
+        return {
+          id: `${problem.code}-${problem.nodeId}-${problem.to}`,
+          nodeId: problem.nodeId,
+          message: t('repo.workflow.problem.duplicateLink', { from: labelOf(problem.nodeId), to: labelOf(problem.to) }),
+        }
+      default:
+        return { id: `${problem.code}-${i}`, message: t('repo.workflow.problem.invalid', { message: problem.message }) }
+    }
+  })
+
+  const focusOn = (id: string) => {
+    setSelected({ type: 'node', id })
+    setFocus((was) => ({ id, n: (was?.n ?? 0) + 1 }))
+  }
+
+  /**
+   * Every edit goes through here: it is recorded for undo, and a refusal is about the
+   * draft it was made on. A conflict is not, it is about the version under the draft,
+   * and only a reload settles it: it stays.
+   */
+  const edit = (next: WorkflowOverlay) => {
+    if (sameOverlay(next, draft)) return
+    setHistory((was) => ({ past: [...was.past, draft].slice(-HISTORY_LIMIT), future: [] }))
+    setDraft(next)
+    setRefused(null)
+    setSaveError((was) => (was?.kind === 'conflict' ? was : null))
+  }
+  /** An edit that changes what the layout is computed from: every card is pinned first. */
+  const reshape = (change: (pinned: WorkflowOverlay) => WorkflowOverlay) => edit(change(pinPositions(draft, drawn)))
+
+  const travel = (from: 'past' | 'future') => {
+    const stack = history[from]
+    if (stack.length === 0) return
+    const next = stack[stack.length - 1]
+    const to = from === 'past' ? 'future' : 'past'
+    setHistory({ ...history, [from]: stack.slice(0, -1), [to]: [...history[to], draft] } as typeof history)
+    setDraft(next)
+    setRefused(null)
+    setSelected(null)
+  }
+
+  const removeSelection = () => {
+    if (!selected) return
+    if (selected.type === 'node') {
+      if (isFrameNodeId(selected.id)) edit(removeFrame(draft, selected.id))
+      else if (isStickyNodeId(selected.id)) edit(removeSticky(draft, selected.id))
+      else if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
+      else if (isActionNodeId(selected.id)) reshape((pinned) => removeAction(pinned, selected.id))
+      else if (!canRemoveStep(selected.id)) return
+      else reshape((pinned) => removeNode(pinned, selected.id))
+    } else {
+      reshape((pinned) => removeLink(pinned, selected.from, selected.to, selected.outcome))
+    }
+    setSelected(null)
+  }
+
+  /** ⌘C: the selected card into the editor's clipboard. A step says why it cannot be copied. */
+  const copySelection = () => {
+    if (selected?.type !== 'node') return
+    const clip = copyCard(draft, selected.id, drawn[selected.id])
+    if (clip) clipRef.current = clip
+    else if (!isFrameNodeId(selected.id) && !isStickyNodeId(selected.id) && !isNoteNodeId(selected.id) && !isActionNodeId(selected.id)) {
+      showToast(t('repo.workflow.clipboard.stepRefused'), 'error')
+    }
+  }
+  /** ⌘V: a copy of the clipped card, selected. An end note is laid out with the cards, so they are pinned first. */
+  const paste = () => {
+    const clip = clipRef.current
+    if (!clip) return
+    const pasted = pasteCard(clip.type === 'note' || clip.type === 'action' ? pinPositions(draft, drawn) : draft, clip)
+    edit(pasted.overlay)
+    clipRef.current = pasted.clip
+    setSelected({ type: 'node', id: pasted.id })
+  }
+
+  const target: WorkflowInspectorTarget | null = (() => {
+    if (!selected) return null
+    if (selected.type === 'node' && isStickyNodeId(selected.id)) {
+      const sticky = stickies.find((one) => one.id === selected.id)
+      return sticky ? { type: 'sticky', sticky } : null
+    }
+    if (selected.type === 'node' && isFrameNodeId(selected.id)) {
+      const frame = frames.find((f) => f.id === selected.id)
+      return frame ? { type: 'frame', frame } : null
+    }
+    if (selected.type === 'node') {
+      const node = data.nodes.find((n) => n.id === selected.id)
+      if (!node) return null
+      // An end note: its text, its colour, Remove. Nothing about running.
+      if (node.note !== undefined) return { type: 'node', step: { ...node, label: t('repo.workflow.note.title'), note: node.note } }
+      // An action: where it posts, what it says, its colour, Remove. Whether it runs is the link's, and each member's.
+      if (node.action !== undefined) return { type: 'node', step: { ...node, label: t('repo.workflow.action.title'), action: node.action } }
+      const hints = stepHints(flow, node.id).map((hint) => t(
+        hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
+      ))
+      const config = stepSettings[node.skill]
+      const custom = isCustomNodeId(node.id)
+      const own = draft.steps.find((step) => customNodeId(step.skill) === node.id)
+      const declared = own?.outcomes ?? []
+      const detected = custom ? skillOutcomes(entries, repoName, node.skill) : undefined
+      const sameAsFile = !!detected && detected.length === declared.length && detected.every((o, i) => o === declared[i])
+      return {
+        type: 'node',
+        step: {
+          ...node,
+          description: custom ? skillDescription(entries, repoName, node.skill) : undefined,
+          outcomes: custom ? declared : undefined,
+          detectedOutcomes: detected && !sameAsFile ? detected : undefined,
+          // What removing an outcome costs: the links that leave on it.
+          outcomeLinks: custom ? Object.fromEntries(declared.map((outcome) => {
+            const count = flow.links.filter((link) => link.from === node.id && link.outcome === outcome).length
+            return [outcome, count === 0
+              ? t('repo.workflow.inspector.outcomesLinks.none')
+              : count === 1 ? t('repo.workflow.inspector.outcomesLinks.one') : t('repo.workflow.inspector.outcomesLinks.other', { count })]
+          })) : undefined,
+          hints: hints.length > 0 ? hints : undefined,
+          modeNote: isCustomNodeId(node.id) && !modeHasEffect(flow, node.id) ? t('repo.workflow.hint.modeNoEffect') : undefined,
+          settings: config?.settings,
+          intro: config?.intro,
+        },
+      }
+    }
+    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to && l.outcome === selected.outcome)
+    if (!link) return null
+    // Links leaving a custom step need no word: the protocol applies them like any other.
+    const intoStart = isLinkIntoStart(link)
+    const locked = isLiveDefaultLink(draft, link.from, link.to)
+    return {
+      type: 'link',
+      link: {
+        from: link.from,
+        to: link.to,
+        fromLabel: labelOf(link.from),
+        toLabel: labelOf(link.to),
+        kind: link.kind,
+        outcome: link.outcome,
+        // The outcomes its siblings (the other links between the same two steps) take: one each.
+        takenOutcomes: locked ? undefined : flow.links
+          .filter((l) => l !== link && l.from === link.from && l.to === link.to)
+          .map((l) => l.outcome ?? ''),
+        disabledKinds: intoStart ? ['auto'] : undefined,
+        locked,
+        outcomes: locked ? undefined : flow.nodes.find((n) => n.id === link.from)?.outcomes,
+        toNote: isNoteNodeId(link.to) || undefined,
+        toAction: isActionNodeId(link.to) || undefined,
+        hint: intoStart ? t('repo.workflow.hint.intoStart') : isActionNodeId(link.to) ? t('repo.workflow.action.linkHint') : undefined,
+      },
+    }
+  })()
+
+  /** Save `overlay` (the draft, unless a reset sends the empty one) as this repository's flow. */
+  const save = async (overlay: WorkflowOverlay = draft) => {
+    const previous = saved
+    // The write completes whatever happens meanwhile, but once the panel shows another
+    // repository its answer is not about what is on screen: adopted, it would put this
+    // repository's flow, banners and copy offer into that one's editor.
+    const at = generation.current
+    const current = () => at === generation.current
+    setSaving(true)
+    savingRef.current = true
+    setSaveError(null)
+    try {
+      const result = await window.electronAPI.config.saveRepositoryWorkflow(repoName, overlay, revisionRef.current)
+      if (!current()) return
+      switch (result.status) {
+        case 'saved': {
+          // null is the default flow, which the editor edits as an empty overlay.
+          const missing = adopt({
+            overlay: result.overlay ?? EMPTY_OVERLAY,
+            revision: result.revision,
+            source: result.workflow.source,
+          })
+          showToast(t('repo.workflow.saved'))
+          // Offered once, for the steps this save added: an older one already had its
+          // chance, and keeps its warning instead of a dialog at every save.
+          const added = (await missing).filter((skill) => !previous.steps.some((step) => step.skill === skill))
+          if (added.length > 0 && current()) setCopyOffer(added)
+          break
+        }
+        case 'invalid':
+          setRefused(result.problems)
+          break
+        case 'denied':
+          setSaveError({ kind: 'denied' })
+          break
+        // A teammate saved first. The draft stays; the banner offers their version.
+        case 'conflict':
+          setSaveError({ kind: 'conflict' })
+          break
+        case 'failed':
+          setSaveError({ kind: 'failed', message: result.message })
+          break
+      }
+    } catch (error) {
+      if (current()) setSaveError({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
+    } finally {
+      setSaving(false)
+      savingRef.current = false
+      // After a switch, a change held back meanwhile is the repository now on screen's.
+      if (changedDuringSaveRef.current) {
+        changedDuringSaveRef.current = false
+        followChangeRef.current()
+      }
+    }
+  }
+
+  const copyToRepo = async (list: string[]) => {
+    // As for a save: the copies complete, what they report is dropped after a switch.
+    const at = generation.current
+    const current = () => at === generation.current
+    setCopying(true)
+    const copied: string[] = []
+    for (const skill of list) {
+      try {
+        await window.electronAPI.skills.copyToRepo(repoName, skill)
+        copied.push(skill)
+      } catch (error) {
+        if (current()) showToast(t('repo.workflow.copy.failed', { skill, message: error instanceof Error ? error.message : String(error) }), 'error')
+      }
+    }
+    if (!current()) return
+    if (copied.length > 0) showToast(t('repo.workflow.copy.done', { skills: copied.join(', ') }))
+    setCopying(false)
+    setCopyOffer(null)
+    void refreshUnshared(savedRef.current)
+  }
+
+  /** To another repository's editor: its page, which opens it on mount. */
+  const goTo = (name: string) => {
+    reopenEditorFor = name
+    window.location.hash = `#/repo/${encodeURIComponent(name)}`
+  }
+  const switchRepository = (name: string) => {
+    if (name === repoName) return
+    if (dirty) {
+      setSwitchTo(name)
+      setClosePrompt(true)
+    } else goTo(name)
+  }
+  const keepEditing = () => {
+    setClosePrompt(false)
+    setSwitchTo(null)
+  }
+
+  /**
+   * Write the flow on screen (the draft, unsaved edits included: what is copied is what is
+   * seen) as `name`'s, against the revision its row was read at. The other repository's
+   * editor is not open, so nothing there is adopted: its own panel reads it on mount, and
+   * a window that has it open hears of it through `onWorkflowChanged`.
+   */
+  const duplicateTo = async (name: string, targetRevision: string | null) => {
+    setDuplicating(true)
+    try {
+      const result = await window.electronAPI.config.saveRepositoryWorkflow(name, cleanOverlay(draft), targetRevision)
+      switch (result.status) {
+        case 'saved':
+          showToast(t('repo.workflow.duplicate.done', { name }), 'success', {
+            actions: [{ label: t('repo.workflow.duplicate.open'), onClick: () => switchRepository(name) }],
+          })
+          break
+        case 'denied':
+          showToast(t('repo.workflow.duplicate.denied', { name }), 'error')
+          break
+        case 'conflict':
+          showToast(t('repo.workflow.duplicate.conflict', { name }), 'error')
+          break
+        case 'invalid':
+          showToast(t('repo.workflow.duplicate.invalid', { name }), 'error')
+          break
+        case 'failed':
+          showToast(t('repo.workflow.duplicate.failed', { name, message: result.message }), 'error')
+          break
+      }
+    } catch (error) {
+      showToast(t('repo.workflow.duplicate.failed', { name, message: error instanceof Error ? error.message : String(error) }), 'error')
+    } finally {
+      setDuplicating(false)
+      setDuplicateTarget(null)
+    }
+  }
+  /** A repository picked: replace its flow at once when it follows the default, ask first when it has its own. */
+  const pickDuplicateTarget = async (name: string) => {
+    setDuplicateOpen(false)
+    try {
+      const [stored, resolved] = await Promise.all([
+        window.electronAPI.config.getRepositoryWorkflowOverlay(name),
+        window.electronAPI.config.getRepositoryWorkflow(name),
+      ])
+      if (resolved.source === 'repository') setDuplicateTarget({ name, revision: stored.revision })
+      else void duplicateTo(name, stored.revision)
+    } catch (error) {
+      showToast(t('repo.workflow.duplicate.failed', { name, message: error instanceof Error ? error.message : String(error) }), 'error')
+    }
+  }
+  const openDuplicate = () => {
+    // A flow the backend would refuse is not worth copying: the problems say why.
+    if (shown.length > 0) {
+      showToast(t('repo.workflow.duplicate.hasProblems'), 'error')
+      return
+    }
+    setDuplicateOpen(true)
+  }
+
+  /** Out of the editor, the draft dropped: the tab shows what is saved. It plays its exit first. */
+  const leave = () => {
+    setClosePrompt(false)
+    if (switchTo) {
+      setSwitchTo(null)
+      goTo(switchTo)
+      return
+    }
+    setLeavingEditor(true)
+  }
+  const left = () => {
+    setEditing(false)
+    setLeavingEditor(false)
+    setSelected(null)
+    setDraft(savedRef.current)
+    setHistory(EMPTY_HISTORY)
+    setHistoryOpen(false)
+    setRefused(null)
+    setSaveError(null)
+    setStale(false)
+  }
+  const requestClose = () => (dirty ? setClosePrompt(true) : leave())
+
+  // The editor's keys. Re-bound on every render, which is what lets them read the draft
+  // as it is now; there is one listener at a time.
+  const keysRef = useRef<(event: KeyboardEvent) => void>(() => {})
+  keysRef.current = (event) => {
+    // The dialogs answer their own keys, and so do the menus and the fields.
+    if (closePrompt || copyOffer !== null || duplicateTarget !== null || resetPrompt || leavingEditor) return
+    // The repository picker answers nothing but Escape, which closes it.
+    if (duplicateOpen) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        setDuplicateOpen(false)
+      }
+      return
+    }
+    if (document.querySelector('[role="menu"], [role="listbox"]')) return
+    const el = event.target as HTMLElement | null
+    if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+    const mod = event.metaKey || event.ctrlKey
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      if (selected) setSelected(null)
+      else if (historyOpen) setHistoryOpen(false)
+      else requestClose()
+      return
+    }
+    if (readOnly) return
+    if (mod && event.key.toLowerCase() === 'z') {
+      event.preventDefault()
+      travel(event.shiftKey ? 'future' : 'past')
+    } else if (mod && event.key.toLowerCase() === 'y') {
+      event.preventDefault()
+      travel('future')
+    } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'c') {
+      // Text selected on the page is the user's to copy, not a card.
+      if (selected?.type !== 'node' || window.getSelection()?.toString()) return
+      event.preventDefault()
+      copySelection()
+    } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'v') {
+      if (!clipRef.current) return
+      event.preventDefault()
+      paste()
+    } else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
+      event.preventDefault()
+      removeSelection()
+    }
+  }
+  useEffect(() => {
+    if (!editing) return
+    const onKeyDown = (event: KeyboardEvent) => keysRef.current(event)
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [editing])
+
+  const source = loaded && loaded !== 'error' ? loaded.source : null
+  const sourceHint = source
+    ? (source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
+    : undefined
+  // Memoised so the canvas does not rebuild its nodes on every render of the page.
+  const labels = useMemo<WorkflowCanvasLabels>(() => ({
+    canvas: t('repo.workflow.canvas', { name: repoName }),
+    minimap: t('repo.workflow.minimap'),
+    auto: t('repo.workflow.auto'),
+    suggest: t('repo.workflow.suggest'),
+    anyExit: t('repo.workflow.anyExit'),
+    disable: t('repo.workflow.disable'),
+    hide: t('repo.workflow.hide'),
+    untitledFrame: t('repo.workflow.frame.untitled'),
+    stickyPlaceholder: t('repo.workflow.sticky.placeholder'),
+    enable: t('repo.workflow.enable'),
+    alwaysOn: t('repo.workflow.alwaysOn'),
+    off: t('repo.workflow.off'),
+    blocking: t('repo.workflow.blocking'),
+    advisory: t('repo.workflow.advisory'),
+  }), [t, repoName])
+  const sources = {
+    builtin: t('repo.workflow.source.builtin'),
+    custom: t('repo.workflow.source.custom'),
+    repo: t('repo.workflow.source.repo'),
+    plugin: t('repo.workflow.source.plugin'),
+  }
+  // Who changed the flow and its start settings, and when. Read as soon as the editor
+  // opens, since the button beside the picker says when the last change was, and again
+  // after a save of either: `revision` moves with the flow's row, `startVersion` with the
+  // repository's start column.
+  const changeLog = useWorkflowHistory(repoName, editing, `${revision ?? ''}|${startVersion}`)
+  // The relative dates move on while the editor stays open: "2 min ago" must not stick.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!editing) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [editing])
+  // A selection opens the inspector, which takes the history's place.
+  useEffect(() => {
+    if (selected) setHistoryOpen(false)
+  }, [selected])
+  const historyEntries = useMemo(
+    () => (changeLog.read && !changeLog.read.failed ? buildWorkflowHistory(changeLog.read.events) : []),
+    [changeLog.read],
+  )
+  const historyItems = useMemo<WorkflowHistoryItem[]>(() => {
+    const read = changeLog.read
+    if (!read || read.failed) return []
+    return historyEntries.map((entry) => ({
+      id: entry.id,
+      actor: entry.actorId ? planAuthor(entry.actorId, read.emailByAuthor) : t('plans.history.formerMember'),
+      avatar: { src: (entry.actorId && read.avatarByAuthor[entry.actorId]) || null, alt: '' },
+      action: t(entry.scope === 'start' ? 'repo.workflow.history.editedStart' : 'repo.workflow.history.editedWorkflow'),
+      date: t('relative.ago', { time: formatTimestamp(entry.at, now, t) }),
+      dateTitle: new Date(entry.at).toLocaleString(),
+      changes: entry.changes.map((change) => workflowChangeLabel(t, change)),
+    }))
+  }, [changeLog.read, historyEntries, now, t])
+  // The newest entry is the last change: the entries are newest first.
+  const lastChange = historyEntries[0]?.at
+  const historyProp: WorkflowEditorHistory = {
+    label: t('repo.workflow.history.button'),
+    detail: lastChange === undefined ? undefined : t('repo.workflow.history.updated', {
+      when: now - lastChange < 60_000 ? t('relative.justNow') : t('relative.ago', { time: formatTimestamp(lastChange, now, t) }),
+    }),
+    detailTitle: lastChange === undefined ? undefined : new Date(lastChange).toLocaleString(),
+    open: historyOpen,
+    onToggle: () => {
+      if (!historyOpen) setSelected(null)
+      setHistoryOpen(!historyOpen)
+    },
+    panel: {
+      state: changeLog.read === null ? 'loading' : changeLog.read.failed ? 'failed' : 'ready',
+      items: historyItems,
+      truncated: changeLog.read?.truncated ?? false,
+      onRetry: changeLog.retry,
+      labels: {
+        title: t('repo.workflow.history.title'),
+        close: t('common.close'),
+        loading: t('repo.workflow.history.loading'),
+        empty: t('repo.workflow.history.empty'),
+        failed: t('repo.workflow.history.failed'),
+        retry: t('common.retry'),
+        truncated: t('repo.workflow.history.truncated'),
+      },
+    },
+  }
+
+  const editorLabels: WorkflowEditorLabels = {
+    canvas: labels,
+    back: t('repo.workflow.editor.back'),
+    actions: t('repo.workflow.actions'),
+    picker: {
+      title: t('repo.workflow.picker.title'),
+      empty: t('repo.workflow.picker.empty'),
+      inWorkflow: t('repo.workflow.inWorkflow'),
+      sources,
+      note: t('repo.workflow.note.add'),
+      noteDescription: t('repo.workflow.note.addHint'),
+      action: t('repo.workflow.action.add'),
+      actionDescription: t('repo.workflow.action.addHint'),
+      skills: t('repo.workflow.picker.skills'),
+      skillsDescription: t('repo.workflow.picker.skillsHint'),
+      back: t('repo.workflow.picker.back'),
+    },
+    inspector: {
+      title: t('repo.workflow.inspector.title'),
+      empty: readOnly ? t('repo.workflow.inspector.emptyReadOnly') : t('repo.workflow.inspector.empty'),
+      mode: t('repo.workflow.inspector.mode'),
+      color: t('repo.workflow.inspector.color'),
+      kind: t('repo.workflow.inspector.kind'),
+      outcome: t('repo.workflow.inspector.outcome'),
+      linkFrom: t('repo.workflow.inspector.linkFrom'),
+      linkTo: t('repo.workflow.inspector.linkTo'),
+      blocking: t('repo.workflow.inspector.blocking'),
+      advisory: t('repo.workflow.inspector.advisory'),
+      auto: t('repo.workflow.inspector.auto'),
+      suggest: t('repo.workflow.inspector.suggest'),
+      remove: t('repo.workflow.inspector.remove'),
+      removeRow: t('repo.workflow.inspector.removeRow'),
+      removeHint: t('repo.workflow.inspector.removeHint'),
+      builtIn: t('repo.workflow.inspector.builtIn'),
+      hide: t('repo.workflow.hide'),
+      removeBuiltInHint: t('repo.workflow.inspector.removeBuiltInHint'),
+      disable: t('repo.workflow.disable'),
+      enable: t('repo.workflow.enable'),
+      alwaysOn: t('repo.workflow.alwaysOn'),
+      offHint: t('repo.workflow.inspector.offHint'),
+      removeLink: t('repo.workflow.inspector.removeLink'),
+      removeLinkRow: t('repo.workflow.inspector.removeLinkRow'),
+      removeLinkHint: t('repo.workflow.inspector.removeLinkHint'),
+      anyOutcome: t('repo.workflow.inspector.anyOutcome'),
+      defaultLink: t('repo.workflow.inspector.defaultLink'),
+      close: t('repo.workflow.inspector.close'),
+      settings: t('repo.workflow.inspector.settings'),
+      settingsHint: t('repo.workflow.inspector.settingsHint'),
+      outcomes: t('repo.workflow.inspector.outcomes'),
+      outcomesHint: t('repo.workflow.inspector.outcomesHint'),
+      outcomesTable: {
+        outcome: t('repo.workflow.inspector.outcomesColumn'),
+        links: t('repo.workflow.inspector.outcomesLinksColumn'),
+        empty: t('repo.workflow.inspector.outcomesEmpty'),
+        placeholder: t('repo.workflow.inspector.outcomesPlaceholder'),
+        add: t('repo.workflow.inspector.outcomesAdd'),
+        remove: t('repo.workflow.inspector.outcomesRemove'),
+        rules: t('repo.workflow.inspector.outcomesRules'),
+        rulesHint: t('repo.workflow.inspector.outcomesRulesHint', { max: OUTCOME_MAX_LENGTH }),
+      },
+      noteText: t('repo.workflow.note.text'),
+      notePlaceholder: t('repo.workflow.note.placeholder'),
+      noteHint: t('repo.workflow.note.hint'),
+      removeNoteRow: t('repo.workflow.note.removeRow'),
+      removeNoteHint: t('repo.workflow.note.removeHint'),
+      noteLink: t('repo.workflow.note.link'),
+      actionChannel: t('repo.workflow.action.channel'),
+      actionChannelPlaceholder: t('repo.workflow.action.channelPlaceholder'),
+      actionPrompt: t('repo.workflow.action.prompt'),
+      actionPromptPlaceholder: t('repo.workflow.action.promptPlaceholder'),
+      actionHint: t('repo.workflow.action.hint'),
+      actionVariables: t('repo.workflow.action.variables'),
+      actionVariablesHint: t('repo.workflow.action.variablesHint'),
+      removeActionRow: t('repo.workflow.action.removeRow'),
+      removeActionHint: t('repo.workflow.action.removeHint'),
+      actionAuto: t('repo.workflow.action.kindAuto'),
+      actionSuggest: t('repo.workflow.action.kindSuggest'),
+      frame: t('repo.workflow.frame.title'),
+      frameTitle: t('repo.workflow.frame.name'),
+      frameTitlePlaceholder: t('repo.workflow.frame.placeholder'),
+      frameBorder: t('repo.workflow.frame.border'),
+      frameBackground: t('repo.workflow.frame.background'),
+      removeFrameRow: t('repo.workflow.frame.removeRow'),
+      removeFrameHint: t('repo.workflow.frame.removeHint'),
+      sticky: t('repo.workflow.sticky.title'),
+      stickyHint: t('repo.workflow.sticky.hint'),
+      removeStickyRow: t('repo.workflow.sticky.removeRow'),
+      detectRow: t('repo.workflow.inspector.detectRow'),
+      detect: t('repo.workflow.inspector.detect'),
+      detectHint: t('repo.workflow.inspector.detectHint'),
+    },
+    dock: {
+      dock: t('repo.workflow.dock.label'),
+      add: t('repo.workflow.dock.add'),
+      tools: t('repo.workflow.dock.tools'),
+      frame: t('repo.workflow.frame.title'),
+      frameHint: t('repo.workflow.frame.addHint'),
+      sticky: t('repo.workflow.sticky.title'),
+      stickyHint: t('repo.workflow.sticky.addHint'),
+      undo: t('repo.workflow.dock.undo'),
+      redo: t('repo.workflow.dock.redo'),
+      zoomIn: t('repo.workflow.dock.zoomIn'),
+      zoomOut: t('repo.workflow.dock.zoomOut'),
+      fit: t('repo.workflow.dock.fit'),
+      problems: problemItems.length === 1
+        ? t('repo.workflow.problems.one')
+        : t('repo.workflow.problems.other', { count: problemItems.length }),
+      discard: t('repo.workflow.discard'),
+      save: t('common.save'),
+      close: t('repo.workflow.dock.close'),
+    },
+  }
+
+  const banners: WorkflowEditorBanner[] = []
+  if (saveError?.kind === 'conflict') {
+    banners.push({
+      id: 'conflict', variant: 'warning', message: t('repo.workflow.conflict'), hint: t('repo.workflow.conflictHint'),
+      action: { label: t('repo.workflow.reload'), onClick: reload },
+    })
+  } else if (stale) {
+    // The conflict banner already says it, with the same Reload.
+    banners.push({
+      id: 'stale', variant: 'info', message: t('repo.workflow.changedElsewhere'), hint: t('repo.workflow.changedElsewhereHint'),
+      action: { label: t('repo.workflow.reload'), onClick: reload },
+    })
+  }
+  if (saveError?.kind === 'denied') {
+    banners.push({ id: 'denied', variant: 'danger', message: t('repo.workflow.denied'), hint: t('repo.workflow.deniedHint') })
+  }
+  if (saveError?.kind === 'failed') {
+    banners.push({ id: 'failed', variant: 'danger', message: t('repo.workflow.saveFailed'), hint: saveError.message })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SectionHeader
+        icon={Workflow}
+        title={t('repo.workflow.section')}
+        hint={sourceHint}
+        description={[
+          t('repo.workflow.intro'),
+          readOnly ? t('repo.workflow.readOnlyHint') : t('repo.workflow.editHint'),
+          t('repo.workflow.navigation'),
+        ].join(' ')}
+        spacing="none"
+      />
+      {loaded && loaded !== 'error' && !editing && (
+        <div>
+          <Button tone="solid" size="sm" icon={Pencil} onClick={() => setEditing(true)}>
+            {readOnly ? t('repo.workflow.open') : t('repo.workflow.edit')}
+          </Button>
+        </div>
+      )}
+      {/* Reached from another repository's editor, whose layer is gone: the window stays
+          covered while this flow loads, rather than flashing the settings between the two. */}
+      {editing && !loaded && createPortal(<div className="fixed inset-0 z-[55] bg-bg" />, document.body)}
+      {loaded === 'error' ? (
+        <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
+      ) : loaded ? (
+        <>
+          {/* Read-only: what is saved; the Edit button above is the way into the editor. A fixed height, since the
+              canvas fills its box and a settings pane has none to give it. Not mounted while
+              the editor is open: a canvas listens for Space on the whole document. */}
+          {!editing && (
+            <WorkflowCanvas
+              nodes={data.nodes}
+              links={data.links}
+              entry={data.entry}
+              labels={labels}
+              positions={draft.positions}
+              frames={frames}
+              stickies={stickies}
+              className="h-[520px]"
+              // The wheel scrolls the settings page, not the canvas: dragging still pans.
+              scrollPans={false}
+              minimap={false}
+            />
+          )}
+          {editing && createPortal(
+            <div className="fixed inset-0 z-[55]">
+              <WorkflowEditor
+                title={t('repo.workflow.editor.title', { name: repoName })}
+                repositories={repositories.length > 1 ? {
+                  value: repoName,
+                  options: repositories,
+                  onChange: switchRepository,
+                  label: t('repo.workflow.editor.repository'),
+                } : undefined}
+                labels={editorLabels}
+                history={historyProp}
+                duplicate={repositories.length > 1 ? {
+                  label: t('repo.workflow.duplicate.button'),
+                  onClick: openDuplicate,
+                } : undefined}
+                reset={readOnly ? undefined : {
+                  label: t('repo.workflow.reset.button'),
+                  // Nothing saved but the default, and nothing drafted: nothing to reset.
+                  disabled: saving || (source !== 'repository' && sameOverlay(draft, EMPTY_OVERLAY)),
+                  onClick: () => setResetPrompt(true),
+                }}
+                nodes={data.nodes}
+                links={data.links}
+                entry={data.entry}
+                positions={draft.positions}
+                selected={selected}
+                onSelect={setSelected}
+                // A frame hands the cards it carried with it: one edit, one undo.
+                onMove={(id, position, carried) => reshape((pinned) => moveNodes(moveNode(pinned, id, position), carried ?? {}))}
+                frames={frames}
+                frameMinSize={FRAME_MIN_SIZE}
+                onResizeBox={(id, box) => edit(isStickyNodeId(id) ? setSticky(draft, id, box) : setFrame(draft, id, box))}
+                stickies={stickies}
+                stickyMinSize={STICKY_MIN_SIZE}
+                onAddSticky={(centre) => {
+                  const id = stickyNodeId(nextStickyId(draft))
+                  const color = nextWorkflowStepColor((draft.stickies ?? []).map((sticky) => sticky.color))
+                  edit(addSticky(draft, { x: centre.x - STICKY_SIZE.width / 2, y: centre.y - STICKY_SIZE.height / 2 }, color))
+                  setSelected({ type: 'node', id })
+                }}
+                onChangeStickyText={(id, text) => edit(setSticky(draft, id, { text }))}
+                onChangeSticky={(id, change) => edit(setSticky(draft, id, change))}
+                onAddFrame={(centre) => {
+                  const id = frameNodeId(nextFrameId(draft))
+                  const color = nextWorkflowStepColor((draft.frames ?? []).map((frame) => frame.border))
+                  const size = { width: 480, height: 300 }
+                  edit(addFrame(draft, { x: centre.x - size.width / 2, y: centre.y - size.height / 2, ...size }, color, color))
+                  setSelected({ type: 'node', id })
+                }}
+                onChangeFrame={(id, change) => edit(setFrame(draft, id, change))}
+                onConnect={(from, to, outcome) => {
+                  reshape((pinned) => addLink(pinned, from, to, outcome))
+                  setSelected({ type: 'link', from, to, outcome })
+                }}
+                focusRequest={focus}
+                target={target}
+                skills={skills}
+                onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
+                onRemove={(id) => {
+                  if (isFrameNodeId(id)) edit(removeFrame(draft, id))
+                  else if (isStickyNodeId(id)) edit(removeSticky(draft, id))
+                  else reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : isActionNodeId(id) ? removeAction(pinned, id) : removeNode(pinned, id)))
+                  setSelected(null)
+                }}
+                onChangeKind={(from, to, kind, outcome) => edit(setLinkKind(draft, from, to, kind, outcome))}
+                onChangeOutcome={(from, to, was, now) => {
+                  const next = setLinkOutcome(draft, from, to, was, now)
+                  edit(next)
+                  // The selection follows the link onto its new outcome.
+                  if (next !== draft) setSelected({ type: 'link', from, to, outcome: now })
+                }}
+                onChangeNoteText={(id, text) => edit(setNoteText(draft, id, text))}
+                onChangeAction={(id, change) => reshape((pinned) => setAction(pinned, id, change))}
+                actionVariables={ACTION_VARIABLES}
+                onRemoveLink={(from, to, outcome) => {
+                  reshape((pinned) => removeLink(pinned, from, to, outcome))
+                  setSelected(null)
+                }}
+                onToggle={(id, enabled) => {
+                  // A built-in step's eye takes it off the canvas; the dock's "+" puts it back.
+                  // One turned off by a build of before is turned back on like any other.
+                  if (enabled || !isBuiltInNodeId(id)) return edit(setStepEnabled(draft, id, enabled))
+                  reshape((pinned) => removeNode(pinned, id))
+                  if (selected?.type === 'node' && selected.id === id) setSelected(null)
+                }}
+                onChangeColor={(id, color) => edit(isNoteNodeId(id) ? setNoteColor(draft, id, color) : setStepColor(draft, skillOf(id), color))}
+                onChangeStepOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
+                validateStepOutcome={(value, outcomes) => {
+                  const problem = outcomeProblem(value, outcomes)
+                  return problem && t(`repo.workflow.inspector.outcomeError.${problem}`, { max: OUTCOME_MAX_LENGTH })
+                }}
+                onAdd={(skill, position) => {
+                  // A built-in step taken off comes back where the "+" puts a new one, unlinked.
+                  const builtIn = draft.removed?.find((id) => skillOfNode(id) === skill)
+                  if (builtIn) {
+                    reshape((pinned) => restoreStep(pinned, builtIn, position))
+                    setSelected({ type: 'node', id: builtIn })
+                    return
+                  }
+                  // Its own colour from the start: the first no other custom step wears.
+                  // Its outcomes from the start too, when its SKILL.md declares them.
+                  reshape((pinned) => addStep(
+                    pinned, skill, position, 'advisory', nextWorkflowStepColor(Object.values(stepColors(pinned))),
+                    skillOutcomes(entries, repoName, skill),
+                  ))
+                  setSelected({ type: 'node', id: customNodeId(skill) })
+                }}
+                onAddNote={(position) => {
+                  const id = noteNodeId(nextNoteId(draft))
+                  reshape((pinned) => addNote(pinned, position, '', nextWorkflowStepColor(Object.values(stepColors(pinned)))))
+                  setSelected({ type: 'node', id })
+                }}
+                onAddAction={(position) => {
+                  const id = actionNodeId(nextActionId(draft))
+                  reshape((pinned) => addAction(pinned, position, 'slack'))
+                  setSelected({ type: 'node', id })
+                }}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+                onUndo={() => travel('past')}
+                onRedo={() => travel('future')}
+                problems={problemItems}
+                onFocusProblem={focusOn}
+                dirty={dirty}
+                saving={saving}
+                canSave={shown.length === 0}
+                onSave={() => { void save() }}
+                onDiscard={() => edit(saved)}
+                onClose={requestClose}
+                banners={banners}
+                readOnly={readOnly}
+                leaving={leavingEditor}
+                onLeft={left}
+                trafficLightGutter={!windowFullScreen}
+              />
+            </div>,
+            document.body,
+          )}
+          <Modal
+            isOpen={closePrompt}
+            onClose={keepEditing}
+            title={switchTo ? t('repo.workflow.editor.switch.title', { name: switchTo }) : t('repo.workflow.editor.close.title')}
+            footer={
+              <>
+                <Button tone="ghost" onClick={keepEditing}>{t('repo.workflow.editor.close.keep')}</Button>
+                <Button tone="danger" onClick={leave}>{t('repo.workflow.editor.close.leave')}</Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.editor.close.body')}</Text>
+          </Modal>
+          <Modal
+            isOpen={copyOffer !== null}
+            onClose={() => setCopyOffer(null)}
+            title={t('repo.workflow.copy.title')}
+            footer={
+              <>
+                <Button tone="ghost" disabled={copying} onClick={() => setCopyOffer(null)}>
+                  {t('repo.workflow.copy.decline')}
+                </Button>
+                <Button tone="accent" busy={copying} onClick={() => copyOffer && copyToRepo(copyOffer)}>
+                  {t('repo.workflow.copy.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">
+              {copyOffer && copyOffer.length === 1
+                ? t('repo.workflow.copy.body.one', { skills: copyOffer.join(', ') })
+                : t('repo.workflow.copy.body.other', { skills: (copyOffer ?? []).join(', ') })}
+            </Text>
+            <Text size="sm" tone="secondary" className="mt-2 block">{t('repo.workflow.copy.commit')}</Text>
+          </Modal>
+          <Modal
+            isOpen={resetPrompt}
+            onClose={() => { if (!saving) setResetPrompt(false) }}
+            title={t('repo.workflow.reset.title', { name: repoName })}
+            footer={
+              <>
+                <Button tone="ghost" disabled={saving} onClick={() => setResetPrompt(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  tone="danger"
+                  busy={saving}
+                  onClick={async () => {
+                    setSelected(null)
+                    await save(EMPTY_OVERLAY)
+                    setResetPrompt(false)
+                  }}
+                >
+                  {t('repo.workflow.reset.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.reset.body')}</Text>
+          </Modal>
+          {duplicateExit.mounted && (
+            <RepositorySelector
+              title={t('repo.workflow.duplicate.title', { name: repoName })}
+              closeLabel={t('common.close')}
+              emptyLabel={t('repo.workflow.duplicate.empty')}
+              repos={repositories.filter((option) => option.value !== repoName).map((option) => ({
+                path: option.value,
+                name: option.label,
+                color: option.color,
+                attached: false,
+              }))}
+              onClose={() => setDuplicateOpen(false)}
+              onToggle={(name) => { void pickDuplicateTarget(name) }}
+              backdropClassName={duplicateExit.closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'}
+              className={duplicateExit.closing ? 'animate-modal-content-out' : 'animate-modal-content'}
+              onAnimationEnd={duplicateExit.onExitAnimationEnd}
+            />
+          )}
+          <Modal
+            isOpen={duplicateTarget !== null}
+            onClose={() => { if (!duplicating) setDuplicateTarget(null) }}
+            title={t('repo.workflow.duplicate.replace.title', { name: duplicateTarget?.name ?? '' })}
+            footer={
+              <>
+                <Button tone="ghost" disabled={duplicating} onClick={() => setDuplicateTarget(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button tone="danger" busy={duplicating} onClick={() => duplicateTarget && duplicateTo(duplicateTarget.name, duplicateTarget.revision)}>
+                  {t('repo.workflow.duplicate.replace.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.duplicate.replace.body', { name: duplicateTarget?.name ?? '', from: repoName })}</Text>
+          </Modal>
+        </>
+      ) : (
+        <div className="flex h-[520px] items-center justify-center">
+          <Loader variant="spin" label={t('repo.workflow.loading')} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Nothing to undo, nothing to redo. */
+const EMPTY_HISTORY: { past: WorkflowOverlay[]; future: WorkflowOverlay[] } = { past: [], future: [] }
+/** How many edits ⌘Z goes back through. */
+const HISTORY_LIMIT = 100
+
 export function RepoPage({ repoName }: RepoPageProps) {
   const {
     config,
@@ -363,6 +1781,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
+    updateRepositoryReviewSettings,
+    updateRepositoryStartSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryJiraSettings,
@@ -378,7 +1798,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const { orgs } = useOrg()
   const t = useT()
   const { status } = useAuth()
-  const [tab, setTab] = useState<RepoTab>('general')
+  // Reached from another repository's editor: straight back into this one's.
+  // Consumed by the Workflow tab as it opens the editor: a later visit to the tab is a
+  // visit, not a switch, and lands on the read-only canvas.
+  const [openEditor, setOpenEditor] = useState(() => reopenEditorFor === repoName)
+  useEffect(() => {
+    if (reopenEditorFor === repoName) reopenEditorFor = null
+  }, [repoName])
+  const [tab, setTab] = useState<RepoTab>(openEditor ? 'workflow' : 'general')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
@@ -391,6 +1818,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
     Object.keys(config?.repositories ?? {}),
     config?.repositories,
   )[repoName]
+  // The workflow editor's picker: every repository, by name, each in its own colour.
+  const repositoryOptions = useMemo<SelectOption[]>(
+    () => {
+      const colors = getProjectColorMap(Object.keys(config?.repositories ?? {}), config?.repositories)
+      return Object.keys(config?.repositories ?? {})
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ value: name, label: name, color: colors[name] }))
+    },
+    [config?.repositories],
+  )
   const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
   /**
@@ -602,6 +2039,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
+  const handleStartSettingChange = async (key: string, value: boolean | string | number) => {
+    try {
+      await updateRepositoryStartSettings(repoName, { [key]: value })
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
+  const handleReviewSettingChange = async (key: string, value: boolean | string) => {
+    try {
+      await updateRepositoryReviewSettings(repoName, { [key]: value })
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
   const handlePRSettingChange = async (key: string, value: boolean | string) => {
     try {
       if (typeof value === 'boolean') {
@@ -762,17 +2217,36 @@ export function RepoPage({ repoName }: RepoPageProps) {
   }
 
   if (!repo) {
+    // An `EmptyState`, which is what this is: a page with nothing on it, and the one way
+    // out of it. It was a centred paragraph with an anchor under it — the only link in
+    // the settings surface styled as a link rather than as a control.
     return (
-      <div className="text-center py-16">
-        <p className="text-lg mb-4">{t('repo.notFound')}</p>
-        <a href="#/" className="text-accent hover:underline">{t('repo.back')}</a>
-      </div>
+      <EmptyState
+        icon={FolderGit2}
+        actions={[{ id: 'back', label: t('repo.back'), icon: ArrowLeft, onClick: () => { window.location.hash = '#/' } }]}
+        className="mt-16"
+      >
+        {t('repo.notFound')}
+      </EmptyState>
     )
   }
 
   const repoLangs = repo.languages || {}
   const commitSettings = repo.commit || {}
   const resolveSettings = repo.resolve || {}
+  // /magic:start's, every one defaulting to what the skill did before it had settings.
+  const startSettings = repo.start || {}
+  const startExplorationVal = startSettings.exploration || 'auto'
+  const startPlanVal = startSettings.plan !== undefined ? startSettings.plan : true
+  const startPlanReviewVal = startSettings.planReview !== undefined ? startSettings.planReview : true
+  const startPlanApprovalVal = startSettings.planApproval !== undefined ? startSettings.planApproval : true
+  const startExecutionVal = startSettings.execution || 'auto'
+  const startSimplifyVal = startSettings.simplify !== undefined ? startSettings.simplify : true
+  const startIterationsVal = startSettings.criticIterations ?? START_CRITIC_ITERATIONS.fallback
+  const startMinScoreVal = startSettings.criticMinScore ?? START_CRITIC_SCORE.fallback
+  const reviewSettings = repo.review || {}
+  const reviewConfidenceScoreVal = reviewSettings.confidenceScore !== undefined ? reviewSettings.confidenceScore : true
+  const reviewModeVal = reviewSettings.mode === 'post' ? 'post' : 'ask'
   const prSettings = repo.pullRequest || {}
   const issuesSettings = repo.issues || {}
   const planSettings = repo.plan || {}
@@ -785,6 +2259,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // Absent means permitted — the same fallback the skill applies, so an untouched
   // repo reads the same on both sides.
   const allowOnProtectedBranchVal = commitSettings.allowOnProtectedBranch !== undefined ? commitSettings.allowOnProtectedBranch : true
+  // Absent means off, as the skill reads it: a push is never started by default.
+  const pushAfterCommitVal = commitSettings.pushAfterCommit === true
   const resolveCommitModeVal = resolveSettings.commitMode || 'new'
   const resolveUseCommitConfigVal = resolveSettings.useCommitConfig !== undefined ? resolveSettings.useCommitConfig : true
   const resolveStyleVal = resolveSettings.style || 'single-line'
@@ -796,6 +2272,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const watchCIVal = prSettings.watchCI !== undefined ? prSettings.watchCI : true
   const testAccountsVal = prSettings.testAccounts || 'off'
   const testAccountsSourceVal = prSettings.testAccountsSource || ''
+  // Read-time fallback on purpose: the key is kept OUT of DEFAULT_REPOSITORY_FIELDS so
+  // that "absent" stays absent and an org-shared value can still fill it in. Matched
+  // against the mode list rather than merely defaulted: an org-shared block is copied
+  // without re-validation and a Supabase row can be edited outside the app, so a value
+  // that is not a mode does reach here, and it reads as `never` like everywhere else.
+  const templateCheckboxesVal =
+    TEMPLATE_CHECKBOX_MODES.find((mode) => mode === prSettings.templateCheckboxes) ?? 'never'
+  // Matched the same way, and for the same reasons, as the line above.
+  const bodyVerbosityVal =
+    BODY_VERBOSITY_MODES.find((mode) => mode === prSettings.bodyVerbosity) ?? 'concise'
+  // Only the literal `false` turns it off, the way the skill reads it.
+  const hideIrrelevantSectionsVal = prSettings.hideIrrelevantSections !== false
+  // And only the literal `true` turns this one on.
+  const draftVal = prSettings.draft === true
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
   // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
@@ -827,23 +2317,58 @@ export function RepoPage({ repoName }: RepoPageProps) {
    * when unset, so reading `repoLangs.ticket` alone would show English above a
    * repo whose tickets are written in French. Callers with a plain key omit it.
    */
-  const LangSelect = ({ langKey, label, description, resolvedValue }: { langKey: string; label: string; description?: string; resolvedValue?: string }) => {
-    const currentVal = resolvedValue || (repoLangs as any)[langKey] || 'en'
+  /**
+   * A row that is a name, a help line and a switch — the shape this page holds twenty of.
+   *
+   * Named because the alternative is twenty copies of the same six-line object, and the
+   * one thing that varies between them (which handler the change goes to) is the only
+   * thing worth reading at the call site.
+   */
+  const switchRow = (
+    id: string,
+    label: string,
+    hint: string,
+    checked: boolean,
+    onChange: (next: boolean) => void,
+  ): SettingsCardRow => ({
+    id,
+    label,
+    hint,
+    disabled: readOnly,
+    control: { kind: 'switch' as const, checked, onChange, label },
+  })
 
-    return (
-      <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-        <div className="flex-1">
-          <label className="block text-sm font-medium mb-0.5">{label}</label>
-          {description && <p className="text-xs text-text-secondary/50">{description}</p>}
-        </div>
-        <LanguageSelect
-          value={currentVal}
-          disabled={readOnly}
-          onChange={(next) => handleLanguageChange(langKey, next)}
-        />
-      </div>
-    )
-  }
+  const languageControl = (value: string, onChange: (next: string) => void, ariaLabel: string) => ({
+    kind: 'select' as const,
+    // THE LIST IS `LANGUAGES`, the one `LanguageSelect` reads — and the fallback with it:
+    // a stored value this build does not know resolves to the first entry rather than
+    // leaving the trigger blank.
+    value: LANGUAGES.some((language) => language.value === value) ? value : LANGUAGES[0].value,
+    options: LANGUAGES,
+    onChange,
+    ariaLabel,
+    width: SELECT_WIDTH,
+  })
+
+  /**
+   * One row of the Languages tab.
+   *
+   * `resolvedValue` is for the keys whose effective value is a FALLBACK CHAIN rather than
+   * the key itself: `languages.ticket` inherits `jiraComment` when unset, so reading
+   * `repoLangs.ticket` alone would show English above a repo whose tickets are written in
+   * French. Callers with a plain key omit it.
+   */
+  const langRow = (langKey: string, label: string, hint: string, resolvedValue?: string): SettingsCardRow => ({
+    id: langKey,
+    label,
+    hint,
+    disabled: readOnly,
+    control: languageControl(
+      resolvedValue || (repoLangs as Record<string, string | undefined>)[langKey] || 'en',
+      (next) => handleLanguageChange(langKey, next),
+      label,
+    ),
+  })
 
   /**
    * The clone address row, rendered on BOTH the Repository and the Tickets tab.
@@ -852,40 +2377,38 @@ export function RepoPage({ repoName }: RepoPageProps) {
    * same time, so sharing them is what makes it impossible for the field to hold two
    * different answers depending on where you opened it. Only the label and the help
    * line differ — on Repository it is the address the team clones from, on Tickets it
-   * is the repository the issues are filed in.
+   * is the repository the issues are filed in. The `id` too, because `SettingsCard` keys
+   * its rows on it and the two cards are two lists.
    *
-   * A FUNCTION returning JSX, deliberately not a component: a component declared
-   * inside RepoPage is a new type on every render, so React remounts it and the text
-   * input loses focus on every keystroke. That is the reason SettingRow sits at module
-   * scope, and it applies to anything holding an input.
+   * IT RETURNS A ROW DESCRIPTOR AND NOT JSX NOW, which is what `SettingsCard` takes —
+   * and it settles the hazard the old note here was about. A component declared inside
+   * `RepoPage` is a new type on every render, so React remounts it and the field inside
+   * loses focus on every keystroke; a plain object cannot be a component, so there is
+   * nothing left to get wrong.
    */
-  const remoteUrlRow = (label: string, description: ReactNode) => (
-    <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-      <div className="flex-1">
-        <label className="block text-sm font-medium mb-0.5">{label}</label>
-        <p className="text-xs text-text-secondary/50">{description}</p>
-      </div>
-      <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-        <input
-          type="text"
-          value={remoteUrl}
-          placeholder="https://github.com/owner/repo"
-          onChange={(e) => handleRemoteUrlChange(e.target.value)}
-          className={`${INPUT} w-full`}
-        />
-        {remoteUrlError && (
-          <div className="flex items-center gap-1.5 text-xs text-red">
-            <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
-          </div>
-        )}
-        {remoteUrlChanged && (
-          <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-            {t('common.save')}
-          </button>
-        )}
-      </fieldset>
-    </div>
-  )
+  const remoteUrlRow = (id: string, label: string, hint: string): SettingsCardRow => ({
+    id,
+    label,
+    hint,
+    disabled: readOnly,
+    // The refusal is the FIELD's, not a line of red text beside it: `invalid` draws the
+    // hairline, and the note under the row says what is wrong with the value. The page
+    // used to spell both by hand, in two different reds.
+    ...(remoteUrlError ? { note: remoteUrlError } : {}),
+    control: [
+      {
+        kind: 'input' as const,
+        value: remoteUrl,
+        onChange: handleRemoteUrlChange,
+        placeholder: 'https://github.com/owner/repo',
+        invalid: !!remoteUrlError,
+        className: 'w-64',
+      },
+      ...(remoteUrlChanged
+        ? [{ kind: 'button' as const, children: t('common.save'), onClick: saveRemoteUrl }]
+        : []),
+    ],
+  })
 
   const resolvePreviewFormat = resolveUseCommitConfigVal
     ? (formatVal === 'default' ? 'angular' : formatVal)
@@ -908,80 +2431,651 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   // No entrance animation of its own: the settings content pane already animates
   // every page switch, and two nested slides would compound.
+  // Each skill's languages, where it writes in them (the Languages tab is gone). The
+  // ticket cascade still reads top-down: `spec` inherits `ticket`, which inherits
+  // `jiraComment`, and each row shows the RESOLVED value, what is actually in force.
+  const languagesGroup = (rows: (SettingsCardRow | false)[]): WorkflowInspectorSettings => ({
+    id: 'languages',
+    title: t('repo.langs.section'),
+    rows,
+  })
+
+  /**
+   * THE PLAN SKILL'S SETTINGS, in the three phases the skill itself runs in: it looks
+   * for what already exists, it decides how to cut the work up, then it creates the
+   * tickets. Shown in the workflow editor's inspector when the Plan step is selected,
+   * and nowhere else: the tab they had is gone, the step on the canvas is where they are
+   * read. Saved as soon as they change, like every other setting on this page, not with
+   * the workflow's Save.
+   */
+  const planStepSettings: WorkflowInspectorSettings[] = [
+    { id: 'before', title: t('repo.plan.groupBefore'), rows: [{
+        id: 'duplicateCheck',
+        label: t('repo.plan.duplicateCheck'),
+        hint: t('repo.plan.duplicateCheckHelp'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: planDuplicateCheckVal,
+          onChange: (next: boolean) => handlePlanSettingChange('duplicateCheck', next),
+          label: t('repo.plan.duplicateCheck'),
+        },
+      }] },
+    { id: 'breakdown', title: t('repo.plan.groupBreakdown'), rows: [
+        {
+          id: 'splitting',
+          label: t('repo.plan.splitting'),
+          hint: t('repo.plan.splittingHelp'),
+          disabled: readOnly,
+          control: enumControl(
+            t,
+            planSplittingVal,
+            PLAN_SPLITTING_MODES,
+            PLAN_SPLITTING_LABELS,
+            (v) => handlePlanSettingChange('splitting', v),
+            t('repo.plan.splitting'),
+          ),
+        },
+        {
+          id: 'acceptanceCriteria',
+          label: t('repo.plan.acceptanceCriteria'),
+          hint: t('repo.plan.acceptanceCriteriaHelp'),
+          disabled: readOnly,
+          control: enumControl(
+            t,
+            planAcceptanceCriteriaVal,
+            PLAN_ACCEPTANCE_CRITERIA_FORMATS,
+            PLAN_ACCEPTANCE_CRITERIA_LABELS,
+            (v) => handlePlanSettingChange('acceptanceCriteria', v),
+            t('repo.plan.acceptanceCriteria'),
+          ),
+        },
+      ] },
+    { id: 'tickets', title: t('repo.plan.groupTickets'), rows: [
+        // Jira issue-type NAMES, as that project spells them — read by this skill and
+        // nothing else (jira-fields.md §1.2), which is why they sit here rather than
+        // with the Jira address on the Tickets tab. Hidden when the repo files into
+        // GitHub, where an "Epic" issue type does not exist.
+        ...(trackerModeVal === 'jira'
+          ? ([
+            ['epic', t('repo.plan.epicType'), t('repo.plan.epicTypeHelp'), planEpicTypeVal, 'Epic'],
+            ['story', t('repo.plan.storyType'), t('repo.plan.storyTypeHelp'), planStoryTypeVal, 'Story'],
+          ] as const).map(([key, label, hint, value, placeholder]) => ({
+            id: `issueType-${key}`,
+            label,
+            hint,
+            disabled: readOnly,
+            control: {
+              kind: 'input' as const,
+              value,
+              onChange: (next: string) => handlePlanIssueTypeChange(key, next),
+              placeholder,
+              className: 'w-64',
+            },
+          }))
+          : []),
+        // Two switches that differ only by key, and whose message keys are
+        // mechanically `repo.plan.<key>` / `<key>Help`. `duplicateCheck` used to ride
+        // along here; it belongs to the phase before any of this.
+        ...([
+          ['useRepoTemplates', planUseRepoTemplatesVal],
+          ['assignToMe', planAssignToMeVal],
+        ] as const).map(([key, checked]) => ({
+          id: key,
+          label: t(`repo.plan.${key}` as MessageKey),
+          hint: t(`repo.plan.${key}Help` as MessageKey),
+          disabled: readOnly,
+          control: {
+            kind: 'switch' as const,
+            checked,
+            onChange: (next: boolean) => handlePlanSettingChange(key, next),
+            label: t(`repo.plan.${key}` as MessageKey),
+          },
+        })),
+        {
+          id: 'defaultLabels',
+          label: t('repo.plan.defaultLabels'),
+          hint: t('repo.plan.defaultLabelsHelp'),
+          disabled: readOnly,
+          layout: 'stacked' as const,
+          control: {
+            kind: 'chips' as const,
+            items: planDefaultLabelsVal,
+            onChange: (labels: string[]) => handlePlanSettingChange('defaultLabels', labels),
+            placeholder: 'enhancement',
+            addLabel: t('common.add'),
+            removeLabel: t('common.remove'),
+            id: 'plan-default-label-input',
+            disabled: readOnly,
+          },
+        },
+      ] },
+    languagesGroup([
+      langRow('ticket', t('repo.issues.ticketLang'), t('repo.issues.ticketLangHelp'), resolveTicketLanguage(repoLangs)),
+      langRow('spec', t('repo.issues.specLang'), t('repo.issues.specLangHelp'), resolveSpecLanguage(repoLangs)),
+    ]),
+  ]
+  /**
+   * /MAGIC:START'S SETTINGS, in the order its Step 5 runs: what it does before writing
+   * code, who writes it, then how hard the critic is to satisfy. The plan's own rows (its
+   * review, its approval, who implements it) only show while there is a plan: without
+   * one, the agent implements straight from the ticket, alone.
+   */
+  const stepperFor = (
+    key: 'criticIterations' | 'criticMinScore',
+    value: number,
+    range: { min: number; max: number; fallback: number },
+    label: string,
+    text: string,
+  ) => ({
+    kind: 'stepper' as const,
+    value: text,
+    onDecrement: () => handleStartSettingChange(key, value - 1),
+    onIncrement: () => handleStartSettingChange(key, value + 1),
+    canDecrement: value > range.min,
+    canIncrement: value < range.max,
+    decrementTitle: t('repo.start.less'),
+    incrementTitle: t('repo.start.more'),
+    onReset: () => handleStartSettingChange(key, range.fallback),
+    canReset: value !== range.fallback,
+    resetTitle: t('repo.start.reset'),
+    label,
+    disabled: readOnly,
+  })
+  const startStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'before',
+      title: t('repo.start.groupBefore'),
+      rows: [
+        {
+          id: 'exploration',
+          label: t('repo.start.exploration'),
+          hint: t('repo.start.explorationHelp'),
+          disabled: readOnly,
+          control: enumControl(t, startExplorationVal, START_EXPLORATION_MODES, START_EXPLORATION_LABEL,
+            (next) => handleStartSettingChange('exploration', next), t('repo.start.exploration')),
+        },
+        switchRow('plan', t('repo.start.plan'), t('repo.start.planHelp'),
+          startPlanVal, (next) => handleStartSettingChange('plan', next)),
+        startPlanVal && switchRow('planReview', t('repo.start.planReview'), t('repo.start.planReviewHelp'),
+          startPlanReviewVal, (next) => handleStartSettingChange('planReview', next)),
+        startPlanVal && switchRow('planApproval', t('repo.start.planApproval'), t('repo.start.planApprovalHelp'),
+          startPlanApprovalVal, (next) => handleStartSettingChange('planApproval', next)),
+      ],
+    },
+    {
+      id: 'implementation',
+      title: t('repo.start.groupImplementation'),
+      rows: [
+        startPlanVal && {
+          id: 'execution',
+          label: t('repo.start.execution'),
+          hint: t('repo.start.executionHelp'),
+          disabled: readOnly,
+          control: enumControl(t, startExecutionVal, START_EXECUTION_MODES, START_EXECUTION_LABEL,
+            (next) => handleStartSettingChange('execution', next), t('repo.start.execution')),
+        },
+        switchRow('simplify', t('repo.start.simplify'), t('repo.start.simplifyHelp'),
+          startSimplifyVal, (next) => handleStartSettingChange('simplify', next)),
+      ],
+    },
+    {
+      id: 'critic',
+      title: t('repo.start.groupCritic'),
+      rows: [
+        {
+          id: 'criticIterations',
+          label: t('repo.start.criticIterations'),
+          hint: t('repo.start.criticIterationsHelp'),
+          disabled: readOnly,
+          control: stepperFor('criticIterations', startIterationsVal, START_CRITIC_ITERATIONS,
+            t('repo.start.criticIterations'), String(startIterationsVal)),
+        },
+        {
+          id: 'criticMinScore',
+          label: t('repo.start.criticMinScore'),
+          hint: t('repo.start.criticMinScoreHelp'),
+          disabled: readOnly,
+          control: stepperFor('criticMinScore', startMinScoreVal, START_CRITIC_SCORE,
+            t('repo.start.criticMinScore'), `${startMinScoreVal}/10`),
+        },
+      ],
+    },
+  ]
+
+  /**
+   * THE COMMIT, PULL REQUEST AND RESOLVE SKILLS' SETTINGS, as their steps' inspector
+   * shows them, like Plan's above and for the same reasons: the tabs they had are gone.
+   * A group's `sample` is the preview that sat under its card, and `notice` the warning
+   * that replaces it when there is nothing to preview.
+   */
+  const commitStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'message',
+      title: t('repo.commit.groupMessage'),
+      rows: [
+        {
+          id: 'style',
+          label: t('repo.commit.style'),
+          hint: t('repo.commit.styleHelp'),
+          disabled: readOnly,
+          control: enumControl(t, styleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
+            (next) => handleCommitSettingChange('style', next), t('repo.commit.style')),
+        },
+        {
+          id: 'format',
+          label: t('repo.commit.format'),
+          hint: t('repo.commit.formatHelp'),
+          disabled: readOnly,
+          control: enumControl(t, formatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
+            (next) => handleCommitSettingChange('format', next), t('repo.commit.format')),
+        },
+        switchRow('coAuthor', t('repo.commit.coAuthor'), t('repo.commit.coAuthorHelp'),
+          coAuthorVal, (next) => handleCommitSettingChange('coAuthor', next)),
+        switchRow('ticketId', t('repo.commit.ticketId'), t('repo.commit.ticketIdHelp'),
+          includeTicketIdVal, (next) => handleCommitSettingChange('includeTicketId', next)),
+      ],
+      sample: { label: t('repo.example'), text: commitPreview },
+    },
+    {
+      id: 'branches',
+      title: t('repo.commit.groupBranches'),
+      rows: [{
+        id: 'protectedBranch',
+        // The padlock says this row is a guard rail rather than another property of
+        // the message — see `SettingRow.icon`, which exists for it.
+        icon: Lock,
+        label: t('repo.commit.protectedBranch'),
+        // The help text has to say which way round it is, because both states do
+        // something: ON means allowed-but-asked, OFF means /magic:commit branches
+        // off first.
+        hint: allowOnProtectedBranchVal
+          ? t('repo.commit.protectedBranchHelpOn')
+          : t('repo.commit.protectedBranchHelpOff'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: allowOnProtectedBranchVal,
+          onChange: (next: boolean) => handleCommitSettingChange('allowOnProtectedBranch', next),
+          label: t('repo.commit.protectedBranch'),
+        },
+      }, {
+        id: 'pushAfterCommit',
+        icon: Upload,
+        label: t('repo.commit.push'),
+        hint: pushAfterCommitVal ? t('repo.commit.pushHelpOn') : t('repo.commit.pushHelpOff'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: pushAfterCommitVal,
+          onChange: (next: boolean) => handleCommitSettingChange('pushAfterCommit', next),
+          label: t('repo.commit.push'),
+        },
+      }],
+    },
+    languagesGroup([langRow('commit', t('repo.langs.commit'), t('repo.commit.languageHelp'))]),
+  ]
+
+  const prStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'description',
+      title: t('repo.pr.groupDescription'),
+      rows: [
+        // First row of the card because it governs the body itself, where the rows
+        // under it only add things to that body.
+        {
+          id: 'bodyVerbosity',
+          label: t('repo.pr.bodyVerbosity'),
+          hint: t('repo.pr.bodyVerbosityHelp'),
+          disabled: readOnly,
+          control: enumControl(t, bodyVerbosityVal, BODY_VERBOSITY_MODES, BODY_VERBOSITY_LABEL,
+            (next) => handlePRSettingChange('bodyVerbosity', next), t('repo.pr.bodyVerbosity')),
+        },
+        switchRow('hideIrrelevantSections', t('repo.pr.hideIrrelevantSections'), t('repo.pr.hideIrrelevantSectionsHelp'),
+          hideIrrelevantSectionsVal, (next) => handlePRSettingChange('hideIrrelevantSections', next)),
+        switchRow('autoLink', t('repo.pr.autoLink'), t('repo.pr.autoLinkHelp'),
+          autoLinkTicketsVal, (next) => handlePRSettingChange('autoLinkTickets', next)),
+        {
+          id: 'testAccounts',
+          label: t('repo.pr.testAccounts'),
+          hint: t('repo.pr.testAccountsHelp'),
+          // The warning is about the VALUE — test accounts written into a description
+          // a public repository will publish — which is exactly what `note` is for.
+          ...(testAccountsVal === 'inline' ? { note: t('repo.pr.testAccountsPublicWarn') } : {}),
+          disabled: readOnly,
+          control: enumControl(t, testAccountsVal, TEST_ACCOUNT_MODES, TEST_ACCOUNT_LABEL,
+            (next) => handlePRSettingChange('testAccounts', next), t('repo.pr.testAccounts')),
+        },
+        // Only when the accounts are surfaced at all: where to read them from is not a
+        // question about a feature that is off.
+        testAccountsVal !== 'off' && {
+          id: 'testAccountsSource',
+          label: t('repo.pr.testAccountsSource'),
+          hint: t('repo.pr.testAccountsSourceHelp'),
+          disabled: readOnly,
+          control: {
+            kind: 'input' as const,
+            value: testAccountsSourceVal,
+            onChange: (next: string) => handlePRSettingChange('testAccountsSource', next),
+            placeholder: 'docs/test-accounts.md',
+            className: 'w-64',
+          },
+        },
+        // What /magic:pr may do with the boxes of the template edited just below,
+        // which is why it sits against that block rather than with the rows above.
+        {
+          id: 'templateCheckboxes',
+          label: t('repo.pr.templateCheckboxes'),
+          hint: t('repo.pr.templateCheckboxesHelp'),
+          disabled: readOnly,
+          control: enumControl(t, templateCheckboxesVal, TEMPLATE_CHECKBOX_MODES, TEMPLATE_CHECKBOX_LABEL,
+            (next) => handlePRSettingChange('templateCheckboxes', next), t('repo.pr.templateCheckboxes')),
+        },
+        // THE TEMPLATE IS ONE ROW IN THREE STATES, which is what it always was and
+        // could not say while it was three blocks of markup: the file is being looked
+        // for, it is not there and can be written, or it is there and can be edited.
+        templateLoading
+          ? { id: 'template', label: t('repo.pr.template'), hint: t('repo.pr.templateHelp'), note: t('repo.pr.templateChecking') }
+          : !template?.exists
+            ? {
+              id: 'template',
+              label: t('repo.pr.template'),
+              hint: t('repo.pr.templateHelp'),
+              disabled: readOnly,
+              control: {
+                kind: 'button' as const,
+                icon: Plus,
+                children: t('repo.pr.templateGenerate'),
+                onClick: handleGenerateTemplate,
+              },
+            }
+            : {
+              id: 'template',
+              label: t('repo.pr.template'),
+              hint: t('repo.pr.templateHelp'),
+              // WHERE the file is, which is the one fact the editor below cannot
+              // carry: a template is a real path in the repository, not a field.
+              note: template.path,
+              disabled: readOnly,
+              // Stacked: a 64-line editor has no business in a right-hand column.
+              layout: 'stacked' as const,
+              control: [
+                {
+                  kind: 'input' as const,
+                  multiline: true as const,
+                  rows: 14,
+                  resize: 'vertical' as const,
+                  value: templateContent,
+                  onChange: (next: string) => {
+                    setTemplateContent(next)
+                    setTemplateChanged(next !== template.content)
+                  },
+                  placeholder: t('repo.pr.templatePlaceholder'),
+                  className: 'flex-1 min-w-0',
+                },
+                ...(templateChanged
+                  ? [{ kind: 'button' as const, children: t('common.save'), onClick: handleSaveTemplate }]
+                  : []),
+              ],
+            },
+      ],
+    },
+    {
+      id: 'after',
+      title: t('repo.pr.groupAfter'),
+      rows: [
+        switchRow('draft', t('repo.pr.draft'), t('repo.pr.draftHelp'),
+          draftVal, (next) => handlePRSettingChange('draft', next)),
+        // The comment lands on the TICKET and carries the PR link. It sits here
+        // rather than with the tracker's address because it is the pull request that
+        // triggers it — the same reason the auto-link row above is on this tab.
+        // /magic:review and /magic:done read it too.
+        switchRow('commentOnPR', t('repo.issues.commentOnPR'), t('repo.issues.commentOnPRHelp'),
+          commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
+        {
+          ...switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
+            watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
+          // /magic:pr does not watch a draft (Step 7.4.0): said here rather than left to
+          // be found out after thirty minutes of nothing.
+          ...(draftVal && watchCIVal ? { note: t('repo.pr.watchCIDraftNote') } : {}),
+        },
+      ],
+    },
+    languagesGroup([
+      langRow('pullRequest', t('repo.langs.pullRequest'), t('repo.pr.languageHelp')),
+      // The comment /magic:pr leaves on the ticket, and the start of the ticket cascade.
+      langRow('jiraComment', t('repo.issues.commentLang'), t('repo.issues.commentLangHelp')),
+    ]),
+  ]
+
+  const resolveStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'commits',
+      title: t('repo.resolve.groupCommits'),
+      rows: [
+        {
+          id: 'commitMode',
+          label: t('repo.resolve.commitMode'),
+          hint: t('repo.resolve.commitModeHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveCommitModeVal, RESOLVE_COMMIT_MODES, RESOLVE_COMMIT_MODE_LABEL,
+            (next) => handleResolveSettingChange('commitMode', next), t('repo.resolve.commitMode')),
+        },
+        // Shown when a new commit is possible at all — amending writes no message of
+        // its own, so there is no format to choose.
+        resolveCommitModeVal !== 'amend' && {
+          id: 'commitFormatSource',
+          label: t('repo.resolve.commitFormat'),
+          hint: t('repo.resolve.commitFormatHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveUseCommitConfigVal ? 'commit' : 'custom',
+            RESOLVE_CONFIG_SOURCES, RESOLVE_CONFIG_SOURCE_LABEL,
+            (next) => handleResolveSettingChange('useCommitConfig', next === 'commit'),
+            t('repo.resolve.commitFormat')),
+        },
+        // ...and its own style and format only once it has been told not to borrow
+        // the commit tab's.
+        ...(resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal
+          ? [
+            {
+              id: 'resolveStyle',
+              label: t('repo.commit.style'),
+              hint: t('repo.commit.styleHelp'),
+              disabled: readOnly,
+              control: enumControl(t, resolveStyleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
+                (next) => handleResolveSettingChange('style', next), t('repo.commit.style')),
+            },
+            {
+              id: 'resolveFormat',
+              label: t('repo.commit.format'),
+              hint: t('repo.commit.formatHelp'),
+              disabled: readOnly,
+              control: enumControl(t, resolveFormatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
+                (next) => handleResolveSettingChange('format', next), t('repo.commit.format')),
+            },
+          ]
+          : []),
+      ],
+      // THE THREE MODES SAY THREE DIFFERENT THINGS HERE, and only one of them is a
+      // preview. A new commit can be shown; amending and asking cannot be, because what
+      // they produce is a rewritten history rather than a message, so they warn about
+      // the force-push instead.
+      ...(resolveCommitModeVal === 'new'
+        ? { sample: { label: t('repo.example'), text: resolvePreview } }
+        : { notice: { variant: 'warning' as const, text: `${t(resolveCommitModeVal === 'amend' ? 'repo.resolve.amendNotice' : 'repo.resolve.askNotice')} --force-with-lease` } }),
+    },
+    {
+      id: 'replies',
+      title: t('repo.resolve.groupReplies'),
+      rows: [
+        // The language these replies are written in lives on the Languages tab, with
+        // every other language — this switch decides whether they are written at all,
+        // which is a different question.
+        switchRow('reply', t('repo.resolve.reply'), t('repo.resolve.replyHelp'),
+          resolveReplyVal, (next) => handleResolveSettingChange('replyToComments', next)),
+        // Shown only when replies are on, like the language row on the Languages tab:
+        // how much a reply says is not a question worth asking about replies that are
+        // never written.
+        resolveReplyVal && {
+          id: 'replyVerbosity',
+          label: t('repo.resolve.replyVerbosity'),
+          hint: t('repo.resolve.replyVerbosityHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveReplyVerbosityVal, RESOLVE_VERBOSITIES, RESOLVE_VERBOSITY_LABEL,
+            (next) => handleResolveSettingChange('replyVerbosity', next), t('repo.resolve.replyVerbosity')),
+        },
+      ],
+    },
+    // Review replies live in `resolve.replyLanguage`, not in the `languages` block, and
+    // fall back to the discussion language. Only while replies are written at all.
+    ...(resolveReplyVal
+      ? [languagesGroup([{
+        id: 'replyLanguage',
+        label: t('repo.resolve.replyLang'),
+        hint: t('repo.resolve.replyLangHelp'),
+        disabled: readOnly,
+        control: languageControl(
+          resolveReplyLangVal,
+          (next) => handleResolveSettingChange('replyLanguage', next),
+          t('repo.resolve.replyLang'),
+        ),
+      }])]
+      : []),
+  ]
+
+  /** A skill's `SkillIntro`, translated for the inspector: the same words its tab opened on. */
+  const introOf = (skill: keyof typeof SKILL_INTROS, summary: SkillSummary): WorkflowInspectorIntro => ({
+    command: SKILL_INTROS[skill].command,
+    lead: t(SKILL_INTROS[skill].lead),
+    steps: summary.steps.map((step) => t(step.key, step.vars)),
+    flags: summary.tail.map((flag) => t(flag.key, flag.vars)),
+  })
+
+  // By skill: what each step's inspector shows below its own controls.
+  const stepSettings: Record<string, WorkflowStepConfig> = {
+    'magic-plan': {
+      intro: introOf('plan', planSummary({
+        tracker: planTrackerVal,
+        jiraProject: jiraProjectVal,
+        githubTarget: githubIssuesTargetVal,
+        epicType: planEpicTypeVal,
+        storyType: planStoryTypeVal,
+        duplicateCheck: planDuplicateCheckVal,
+        splitting: planSplittingVal,
+        acceptanceCriteria: planAcceptanceCriteriaVal,
+        assignToMe: planAssignToMeVal,
+        labels: planDefaultLabelsVal,
+        useRepoTemplates: planUseRepoTemplatesVal,
+      })),
+      settings: planStepSettings,
+    },
+    'magic-start': {
+      intro: introOf('start', startSummary({
+        exploration: startExplorationVal,
+        plan: startPlanVal,
+        planReview: startPlanReviewVal,
+        planApproval: startPlanApprovalVal,
+        execution: startExecutionVal,
+        simplify: startSimplifyVal,
+        criticIterations: startIterationsVal,
+        criticMinScore: startMinScoreVal,
+      })),
+      settings: startStepSettings,
+    },
+    'magic-commit': {
+      intro: introOf('commit', commitSummary({
+        format: formatVal,
+        style: styleVal,
+        allowOnProtectedBranch: allowOnProtectedBranchVal,
+        pushAfterCommit: pushAfterCommitVal,
+        developmentBranch: branchSettings.development || '',
+        coAuthor: coAuthorVal,
+        includeTicketId: includeTicketIdVal,
+      })),
+      settings: commitStepSettings,
+    },
+    'magic-pr': {
+      intro: introOf('pr', prSummary({
+        trackerMode: trackerModeVal,
+        autoLinkTickets: autoLinkTicketsVal,
+        testAccounts: testAccountsVal,
+        testAccountsSource: testAccountsSourceVal,
+        commentOnPR: commentOnPRVal,
+        watchCI: watchCIVal,
+        templateCheckboxes: templateCheckboxesVal,
+        bodyVerbosity: bodyVerbosityVal,
+        hideIrrelevantSections: hideIrrelevantSectionsVal,
+        draft: draftVal,
+      })),
+      settings: prStepSettings,
+    },
+    'magic-resolve': {
+      intro: introOf('resolve', resolveSummary({
+        commitMode: resolveCommitModeVal,
+        useCommitConfig: resolveUseCommitConfigVal,
+        // Translated here rather than in the summary: a step carries strings, and these
+        // two labels are the resolve settings' own dropdowns spelled out.
+        formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
+        styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
+        replyToComments: resolveReplyVal,
+        replyVerbosity: resolveReplyVerbosityVal,
+      })),
+      settings: resolveStepSettings,
+    },
+  }
+
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => { window.location.hash = '#/' }}
-            className="p-1.5 text-text-secondary hover:text-ink hover:bg-bg-tertiary rounded-lg transition-colors"
-            title={t('repo.back')}
+      <RepoPageHeader
+        name={repoName}
+        color={repoColor}
+        subtitle={readOnly ? t('repo.subtitleReadOnly') : t('repo.subtitle')}
+        backLabel={t('repo.back')}
+        onBack={() => { window.location.hash = '#/' }}
+      />
+
+      {/* THREE THINGS CAN BE WRONG BEFORE ANY SETTING IS, and all three are `Banner` now
+          — one component, three variants, where they were three hand-built boxes that
+          disagreed about their padding and each spelled its own tint twice.
+
+          They stay above the tab strip because none of them belongs to a tab: a repo
+          nobody has bound to a folder is unusable whichever tab you are reading. */}
+      <div className="flex flex-col gap-3 mb-6">
+        {/* You are neither an admin of the org nor the repo's creator. */}
+        {readOnly && (
+          <Banner
+            variant="info"
+            icon={Lock}
+            hint={t('repo.readOnly.body', { org: scopeOrg?.name ?? t('repo.readOnly.theOrganization') })}
           >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          {/* Same repository tile as the rail, the list it was opened from and the
-              agent sidebar's cards — at page-title scale. */}
-          <span
-            className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
-            style={{ backgroundColor: `${repoColor}1f`, color: repoColor }}
+            {t('repo.readOnly.title')}
+          </Banner>
+        )}
+
+        {/* The folder is bound but is not a git repository, or is not there at all. */}
+        {pathStatus && !pathStatus.isGit && (
+          <Banner
+            variant="danger"
+            icon={AlertTriangle}
+            hint={pathStatus.exists ? t('repo.gitWarning.notGitBody') : t('repo.gitWarning.missingBody')}
           >
-            <FolderGit2 className="w-5 h-5" />
-          </span>
-          <h1 className="text-2xl font-semibold">{repoName}</h1>
-        </div>
-        <p className="text-text-secondary text-sm">
-          {readOnly ? t('repo.subtitleReadOnly') : t('repo.subtitle')}
-        </p>
+            {pathStatus.exists ? t('repo.gitWarning.notGitTitle') : t('repo.gitWarning.missingTitle')}
+          </Banner>
+        )}
+
+        {/* A team repo nobody has pointed at a clone on THIS machine. The only one of the
+            three that can be fixed from here, so it is the only one carrying a button. */}
+        {repo?.needsLocalPath && (
+          <Banner
+            variant="warning"
+            icon={FolderOpen}
+            hint={t('repo.noLocal.body')}
+            actions={[{ label: t('repo.noLocal.action'), icon: FolderOpen, onClick: handlePickFolder, primary: true }]}
+          >
+            {t('repo.noLocal.title')}
+          </Banner>
+        )}
       </div>
-
-      {/* Read-only notice (team repo, and you are neither admin nor its creator) */}
-      {readOnly && (
-        <div className="flex items-start gap-4 p-4 mb-6 bg-surface-subtle border border-line-field rounded-xl">
-          <Lock className="w-5 h-5 text-text-secondary flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-sm mb-1">{t('repo.readOnly.title')}</h3>
-            <p className="text-xs text-text-secondary">
-              {t('repo.readOnly.body', { org: scopeOrg?.name ?? t('repo.readOnly.theOrganization') })}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Git Warning */}
-      {pathStatus && !pathStatus.isGit && (
-        <div className="flex items-start gap-4 p-4 mb-6 bg-red/10 border border-red/20 rounded-xl">
-          <AlertTriangle className="w-5 h-5 text-red flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-red text-sm mb-1">
-              {pathStatus.exists ? t('repo.gitWarning.notGitTitle') : t('repo.gitWarning.missingTitle')}
-            </h3>
-            <p className="text-xs text-text-secondary">
-              {pathStatus.exists ? t('repo.gitWarning.notGitBody') : t('repo.gitWarning.missingBody')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* No local folder warning (team repo not yet bound on this machine) */}
-      {repo?.needsLocalPath && (
-        <div className="flex items-start gap-4 p-4 mb-6 bg-yellow/10 border border-yellow/20 rounded-xl">
-          <FolderOpen className="w-5 h-5 text-yellow flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="font-semibold text-yellow text-sm mb-1">{t('repo.noLocal.title')}</h3>
-            <p className="text-xs text-text-secondary mb-3">
-              {t('repo.noLocal.body')}
-            </p>
-            <button
-              onClick={handlePickFolder}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow/15 hover:bg-yellow/25 text-yellow text-xs font-medium rounded-lg transition-colors"
-            >
-              <FolderOpen className="w-3.5 h-3.5" />
-              {t('repo.noLocal.action')}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Sub-tabs, INSIDE one entry of the settings rail — the shared TabStrip, so a
           second level of navigation looks like every other tab row in the app rather
@@ -1006,335 +3100,321 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Every tab's panel, in one wrapper so the switch between them travels the way
           the strip does: a tab further right arrives from the right. The panels keep
           their own indentation rather than gaining a level from this — the alternative
-          was reindenting nine hundred lines of settings to add a div. */}
-      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)}>
+          was reindenting nine hundred lines of settings to add a div.
+
+          `bleed` because this sweep is NESTED: the window's own sweep layer already
+          insets every page by `p-6` (see `pages/Config/index.tsx`), so without it the
+          cards start flush against the box that clips and each one loses 24px of its
+          side for the length of the slide. */}
+      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)} bleed>
 
       {tab === 'general' && (
-        <>
-        {/* Scope / Sharing Section */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.scope.section')}</h2>
-          <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-start justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                {repo?.orgId ? (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
-                    <Building2 className="w-3.5 h-3.5" />
-                    {scopeOrg ? t('repo.scope.teamNamed', { name: scopeOrg.name }) : t('repo.scope.team')}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-strong text-text-secondary text-xs font-medium">
-                    <Lock className="w-3.5 h-3.5" />
-                    {t('repo.scope.personal')}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-text-secondary/50">
-                {repo?.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp')}
-              </p>
-            </div>
-            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 shrink-0 min-w-0">
-              {repo?.orgId ? (
-                <button
-                  onClick={handleMakePersonal}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  {t('repo.scope.makePersonal')}
-                </button>
-              ) : orgs.length > 0 ? (
-                <div className="relative">
-                  <select
-                    value=""
-                    onChange={(e) => handleShare(e.target.value)}
-                    className={`${SELECT} w-full`}
-                  >
-                    <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
-                    {orgs.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                </div>
-              ) : (
-                <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
-              )}
-            </fieldset>
+        <div className="flex flex-col gap-6">
+        <SectionHeader icon={Settings2} title={t('repo.general.section')} description={t('repo.general.intro')} spacing="none" />
+        {/* WHO THE REPOSITORY BELONGS TO, and the one move that changes it.
+
+            A `SettingRow` with a mark rather than the accent-tinted badge this drew by
+            hand: the padlock and the building say personal-or-team at the same glance the
+            plate did, on the row every other setting on this page is drawn as. */}
+        <SettingsCard
+          title={t('repo.scope.section')}
+          rows={[{
+            id: 'scope',
+            icon: repo?.orgId ? Building2 : Lock,
+            label: repo?.orgId
+              ? (scopeOrg ? t('repo.scope.teamNamed', { name: scopeOrg.name }) : t('repo.scope.team'))
+              : t('repo.scope.personal'),
+            hint: repo?.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp'),
+            disabled: readOnly,
+            ...(repo?.orgId
+              ? {
+                control: {
+                  kind: 'button' as const,
+                  icon: Lock,
+                  children: t('repo.scope.makePersonal'),
+                  onClick: handleMakePersonal,
+                },
+              }
+              : orgs.length > 0
+                ? {
+                  // Held at `''` on purpose: picking an organization SHARES the repository
+                  // with it rather than setting the control to it, so the trigger goes
+                  // back to the placeholder and the row is replaced by the shared state.
+                  control: {
+                    kind: 'select' as const,
+                    value: '',
+                    options: orgs.map((o) => ({ value: o.id, label: o.name })),
+                    onChange: handleShare,
+                    placeholder: t('repo.scope.sharePlaceholder'),
+                    ariaLabel: t('repo.scope.sharePlaceholder'),
+                    width: SELECT_WIDTH,
+                  },
+                }
+                // No organization to share with: the row states why rather than offering
+                // a picker with nothing in it.
+                : { note: t('repo.scope.joinOrg') }),
+          }]}
+        />
+
+        {/* The one language that belongs to no skill: the one Claude speaks with you, in
+            every skill alike. Each skill's own languages are on its step in the workflow. */}
+        <SettingsCard
+          title={t('repo.langs.groupChat')}
+          rows={[langRow('discussion', t('repo.general.discussionLang'), t('repo.general.discussionLangHelp'))]}
+        />
+
+        <SettingsCard
+          title={t('repo.general.section')}
+          rows={[
+            {
+              id: 'name',
+              label: t('repo.general.name'),
+              hint: t('repo.general.nameHelp'),
+              disabled: readOnly,
+              // The Save appears only once the field differs, and it sits BESIDE the
+              // input rather than under it: the row draws its controls as one cluster,
+              // which is what keeps a field-plus-button the same object here as on every
+              // other settings page.
+              control: [
+                { kind: 'input' as const, value: editedName, onChange: setEditedName, className: 'w-64' },
+                ...(editedName !== repoName && editedName.trim()
+                  ? [{ kind: 'button' as const, children: t('common.save'), onClick: handleRename }]
+                  : []),
+              ],
+            },
+            {
+              id: 'keywords',
+              label: t('repo.general.keywords'),
+              hint: t('repo.general.keywordsHelp'),
+              disabled: readOnly,
+              // STACKED, because chips grow along the row and a handful of them beside
+              // their own label wraps after two. Each one saves as it is added or
+              // removed, so there is no draft to lose and no Save button to find.
+              layout: 'stacked' as const,
+              control: {
+                kind: 'chips' as const,
+                items: repo.keywords || [],
+                onChange: handleKeywordsChange,
+                placeholder: 'auth',
+                addLabel: t('common.add'),
+                removeLabel: t('common.remove'),
+                id: 'keyword-input',
+                disabled: readOnly,
+              },
+            },
+          ]}
+        />
+
+        {/* The colour picker is the one control on this tab that is not a design system
+            kind and should not become one: thirty-six hues in a popover is this app's own
+            object, and a `kind` for it would be the design system holding the palette. It
+            keeps its hand-built row, which is now the only one left on the page. */}
+        <Card className="flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <Text size="sm" weight="medium" className="block">{t('repo.general.color')}</Text>
+            <Text size="xs" tone="secondary" className="mt-0.5 block opacity-50">
+              {t('repo.general.colorHelp')}
+            </Text>
           </div>
+          {/* `repoColor`, not `repo.color`: a repo that never chose keeps the fallback the
+              rest of the app draws it with, so the selection shown here is never a colour
+              the repo is not wearing. */}
+          <RepoColorPicker color={repoColor} onChange={handleColorChange} disabled={readOnly} />
+        </Card>
+
+        {/* Danger last, and inside General rather than behind a tab of its own: a tab is a
+            place you go, and nobody goes looking for the delete button. At the bottom of
+            the page the repo's own settings live on, it is where a destructive action
+            belongs — past everything else, and not one click from anywhere.
+
+            `SettingsCard`'s own `alert`, which is a `Banner` in the variant's colour: the
+            red-tinted box with a red-outlined button was this page's private spelling of
+            exactly that, and the outline went with every other border on the page. */}
+        <SettingsCard
+          title={t('repo.danger.section')}
+          rows={[]}
+          alert={{
+            variant: 'danger',
+            icon: Trash2,
+            message: t('repo.danger.delete'),
+            hint: t('repo.danger.deleteHelp'),
+            actions: readOnly
+              ? []
+              : [{ label: t('repo.danger.deleteAction'), icon: Trash2, onClick: () => setIsDeleteModalOpen(true) }],
+          }}
+        />
         </div>
-
-        {/* General Section */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.general.section')}</h2>
-          <div className="bg-surface border border-line-strong rounded-xl px-4">
-            {/* Name */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.name')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
-              </div>
-              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className={`${INPUT} w-full`}
-                />
-                {editedName !== repoName && editedName.trim() && (
-                  <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
-              </fieldset>
-            </div>
-
-            {/* Keywords, as chips — the same control as the worktree files, and for the
-                same reason: this is a LIST, and a comma-separated line made you re-read
-                the whole thing to drop one word from it. Each chip saves as it is added
-                or removed, so there is no draft to lose and no Save button to find.
-
-                Stacked like that list too: chips grow along the row, and a handful of
-                them beside their own label wraps after two. */}
-            <div className="py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1 mb-3">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
-              </div>
-              <fieldset disabled={readOnly} className="w-full min-w-0">
-                <ChipList
-                  items={repo.keywords || []}
-                  onChange={handleKeywordsChange}
-                  placeholder="auth"
-                  inputId="keyword-input"
-                />
-              </fieldset>
-            </div>
-
-
-            {/* Color */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
-              </div>
-              <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
-                {PROJECT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => handleColorChange(color)}
-                    className={`w-6 h-6 rounded-full transition-all ${
-                      repo?.color === color
-                        ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-ink'
-                        : 'hover:scale-110'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </fieldset>
-            </div>
-          </div>
-        </div>
-
-        {/* Danger last, and inside General rather than behind a tab of its own: a
-            tab is a place you go, and nobody goes looking for the delete button. At the
-            bottom of the page the repo's own settings live on, it is where a destructive
-            action belongs — past everything else, and not one click from anywhere. */}
-        {/* Danger Zone */}
-        <div className="mb-6">
-          <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
-          <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
-              </div>
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
-              >
-                <Trash2 className="w-3 h-3" />
-                {t('repo.danger.deleteAction')}
-              </button>
-            </div>
-          </fieldset>
-        </div>
-        </>
       )}
 
       {tab === 'repository' && (
-        <>
+        <div className="flex flex-col gap-6">
+        <SectionHeader icon={GitBranch} title={t('repo.repository.section')} description={t('repo.repository.intro')} spacing="none" />
         {/* Repository, in three groups that answer three different questions: WHERE the
             repo is — the folder on this machine and the address teammates clone — which
             branch work starts from, and what a fresh worktree needs copied into it. One
             unlabelled card held all four rows, which read as a pile: the path is private
             to this machine while the branch is shared config, and nothing on screen said
             so. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupLocation')}</h2>
-          {/* No `disabled` fieldset around this group, unlike the two below. The path is
-              this machine's own, private to you, and a read-only member of a team repo
-              still has to point the repo at their clone; the remote row carries its own
-              fieldset because its rule is different again — any member may FILL IN a
-              missing address, only an owner or admin may correct one already set. */}
-          <div className="bg-surface border border-line-strong rounded-xl px-4">
-            <SettingRow
-              label={t('repo.general.path')}
-              description={readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
-            >
-              <div className="flex flex-col gap-2 w-72">
-                {/* `items-stretch`, so the picker is exactly as tall as the field beside
-                    it: its own padding made it 4px taller, and a hardcoded height would
-                    go stale the day INPUT's padding changes. */}
-                <div className="flex items-stretch gap-2">
-                  <input
-                    type="text"
-                    value={path}
-                    onChange={(e) => handlePathChange(e.target.value)}
-                    className={`${INPUT} flex-1 min-w-0`}
-                  />
-                  <button
-                    onClick={handlePickFolder}
-                    title={t('repo.general.chooseFolder')}
-                    className="flex items-center justify-center px-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </button>
-                </div>
-                {pathStatus && (
-                  <div className={`flex items-center gap-1.5 text-xs ${
-                    pathStatus.isGit ? 'text-green' : 'text-yellow'
-                  }`}>
-                    {pathStatus.isGit ? (
-                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
-                    ) : pathStatus.exists ? (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
-                    ) : (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
-                    )}
-                  </div>
-                )}
-                {pathChanged && (
-                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
-              </div>
-            </SettingRow>
-
-            {/* The same remote row the Tickets tab shows — same state, same save button
-                (see remoteUrlRow). It appears twice because the address answers two
-                different questions: here it is where a teammate clones this repo FROM,
-                there it is the repository the issues are filed IN. One row shared
-                between them is what keeps the two from drifting apart. */}
-            {remoteUrlRow(
+        {/* NO `disabled` ON THE PATH ROW, unlike the two cards below. The path is this
+            machine's own, private to you, and a read-only member of a team repo still has
+            to point the repo at their clone. The remote row carries its own rule again —
+            any member may FILL IN a missing address, only an owner or admin may correct
+            one already set. */}
+        <SettingsCard
+          title={t('repo.repository.groupLocation')}
+          rows={[
+            {
+              id: 'path',
+              label: t('repo.general.path'),
+              hint: readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp'),
+              // What the folder actually IS, under the row. The loud version of a bad
+              // path is the banner at the top of the page, which every tab shows: a
+              // second red line here would be the same news twice.
+              ...(pathStatus
+                ? {
+                  note: pathStatus.isGit
+                    ? t('repo.general.pathValid')
+                    : pathStatus.exists
+                      ? t('repo.general.pathNotGit')
+                      : t('repo.general.pathMissing'),
+                }
+                : {}),
+              control: [
+                { kind: 'input' as const, value: path, onChange: handlePathChange, className: 'w-64' },
+                {
+                  kind: 'buttonIcon' as const,
+                  icon: FolderOpen,
+                  title: t('repo.general.chooseFolder'),
+                  onClick: handlePickFolder,
+                },
+                ...(pathChanged
+                  ? [{ kind: 'button' as const, children: t('common.save'), onClick: savePath }]
+                  : []),
+              ],
+            },
+            // The same remote row the Tickets tab shows — same state, same save button
+            // (see `remoteUrlRow`). It appears twice because the address answers two
+            // different questions: here it is where a teammate clones this repo FROM,
+            // there it is the repository the issues are filed IN. One row shared between
+            // them is what keeps the two from drifting apart.
+            remoteUrlRow(
+              'remote-repository',
               t('repo.general.remoteUrl'),
               readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
-            )}
-          </div>
-        </div>
+            ),
+          ]}
+        />
 
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupBranches')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            <SettingRow
-              label={t('repo.branches.development')}
-              description={t('repo.branches.developmentHelp')}
-            >
-              <div className="relative">
-                <select
-                  value={branchSettings.development || ''}
-                  onChange={(e) => handleBranchSettingChange('development', e.target.value)}
-                  disabled={branchesLoading}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  <option value="">
-                    {branchesLoading ? t('common.loading') : t('repo.branches.select')}
-                  </option>
-                  {remoteBranches.map((branch) => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-              </div>
-            </SettingRow>
-          </fieldset>
-        </div>
+        <SettingsCard
+          title={t('repo.repository.groupBranches')}
+          rows={[{
+            id: 'development',
+            label: t('repo.branches.development'),
+            hint: t('repo.branches.developmentHelp'),
+            disabled: readOnly,
+            // The placeholder does double duty while the branches are being read: the
+            // list is empty then, and "Loading…" is the honest name for a picker that has
+            // nothing to offer yet.
+            control: {
+              kind: 'select' as const,
+              value: branchSettings.development || '',
+              options: remoteBranches.map((branch) => ({ value: branch, label: branch })),
+              onChange: (next: string) => handleBranchSettingChange('development', next),
+              disabled: branchesLoading,
+              placeholder: branchesLoading ? t('common.loading') : t('repo.branches.select'),
+              ariaLabel: t('repo.branches.development'),
+              width: SELECT_WIDTH,
+            },
+          }]}
+        />
 
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupWorktrees')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Stacked rather than side by side: the chips grow along the row, and a
-                list of filenames beside its own label would wrap after two. */}
-            <div className="py-4">
-              <div className="flex-1 mb-3">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
-              </div>
-              <ChipList
-                items={repo.worktreeFiles || []}
-                onChange={handleWorktreeFilesChange}
-                placeholder=".env"
-                inputId="worktree-file-input"
-              />
-            </div>
-          </fieldset>
+        <SettingsCard
+          title={t('repo.repository.groupWorktrees')}
+          rows={[{
+            id: 'worktree-files',
+            label: t('repo.worktree.files'),
+            hint: t('repo.worktree.filesHelp'),
+            disabled: readOnly,
+            // Stacked for the keywords' reason: a list of filenames beside its own label
+            // wraps after two.
+            layout: 'stacked' as const,
+            control: {
+              kind: 'chips' as const,
+              items: repo.worktreeFiles || [],
+              onChange: handleWorktreeFilesChange,
+              placeholder: '.env',
+              addLabel: t('common.add'),
+              removeLabel: t('common.remove'),
+              id: 'worktree-file-input',
+              disabled: readOnly,
+            },
+          }]}
+        />
         </div>
-        </>
       )}
 
       {tab === 'tickets' && (
-        <>
+        <div className="flex flex-col gap-6">
+        <SectionHeader icon={Ticket} title={t('repo.tickets.section')} description={t('repo.tickets.intro')} spacing="none" />
         {/* Tickets, in groups that answer one question each: WHERE do tickets go, and
             what is each tracker's address. It was one flat list of seven rows mixing
             the two with Jira issue-type names, and it read as a form rather than as an
             answer — the Jira type names have moved to the Plan tab, which is the only
             skill that reads them. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupDestination')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Which tracker this repo files into. Not quite `plan.tracker`, which has a
-                third value, `ask`: that one is not a tracker but an instruction to
-                choose at runtime, so it is the toggle below rather than an option here.
-                Switching to GitHub writes `github` and leaves every Jira value in
-                storage untouched, so it cannot lose a project key by accident. */}
-            <SettingRow label={t('repo.tracker.mode')} description={t('repo.tracker.modeHelp')}>
-              <EnumSelect
-                value={trackerModeVal}
-                values={TRACKER_MODES}
-                labels={TRACKER_MODE_LABELS}
-                onChange={(mode) => handlePlanSettingChange('tracker', mode === 'github' ? 'github' : 'jira')}
-              />
-            </SettingRow>
+        <SettingsCard
+          title={t('repo.tracker.groupDestination')}
+          rows={[
+            // Which tracker this repo files into. Not quite `plan.tracker`, which has a
+            // third value, `ask`: that one is not a tracker but an instruction to choose
+            // at runtime, so it is the switch below rather than an option here. Switching
+            // to GitHub writes `github` and leaves every Jira value in storage untouched,
+            // so it cannot lose a project key by accident.
+            {
+              id: 'tracker',
+              label: t('repo.tracker.mode'),
+              hint: t('repo.tracker.modeHelp'),
+              disabled: readOnly,
+              control: withIcons(enumControl(
+                t,
+                trackerModeVal,
+                TRACKER_MODES,
+                TRACKER_MODE_LABELS,
+                (mode) => handlePlanSettingChange('tracker', mode === 'github' ? 'github' : 'jira'),
+                t('repo.tracker.mode'),
+              ), TRACKER_MODE_ICONS),
+            },
+            // Only reachable in Jira mode, because it is a question about a CHOICE: with
+            // GitHub alone there is nothing to ask about. On means `ask`, off means the
+            // tracker named above — so switching it off leaves a repo filing into Jira,
+            // never into nothing.
+            trackerModeVal === 'jira' && {
+              id: 'tracker-ask',
+              label: t('repo.tracker.askEachTime'),
+              hint: t('repo.tracker.askEachTimeHelp'),
+              disabled: readOnly,
+              control: {
+                kind: 'switch' as const,
+                checked: planTrackerVal === 'ask',
+                onChange: (next: boolean) => handlePlanSettingChange('tracker', next ? 'ask' : 'jira'),
+                label: t('repo.tracker.askEachTime'),
+              },
+            },
+          ]}
+        />
 
-            {/* Only reachable in Jira mode, because it is a question about a CHOICE:
-                with GitHub alone there is nothing to ask about. On means `ask`, off
-                means the tracker named above — so switching it off leaves a repo filing
-                into Jira, never into nothing. */}
-            {trackerModeVal === 'jira' && (
-              <SettingRow align="center" label={t('repo.tracker.askEachTime')} description={t('repo.tracker.askEachTimeHelp')}>
-                <Switch
-                  checked={planTrackerVal === 'ask'}
-                  onChange={(next) => handlePlanSettingChange('tracker', next ? 'ask' : 'jira')}
-                  label={t('repo.tracker.askEachTime')}
-                />
-              </SettingRow>
-            )}
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupGithub')}</h2>
-          <div className="bg-surface border border-line-strong rounded-xl px-4">
-            {/* The same remote row the Repository tab shows as a clone address — same state,
-                same save button (see remoteUrlRow).
-
-                Its help line depends on the tracker, and that is the whole point: it
-                used to claim "issues are filed in …/issues" even when the tracker was
-                Jira, contradicting the row above it. In Jira mode the remote is still
-                needed — pull requests and clones use it — but it is not where tickets
-                go, so it says so. */}
-            {remoteUrlRow(
+        <SettingsCard
+          title={t('repo.tracker.groupGithub')}
+          rows={[
+            // The same remote row the Repository tab shows as a clone address — same
+            // state, same save button (see `remoteUrlRow`).
+            //
+            // Its help line depends on the tracker, and that is the whole point: it used
+            // to claim "issues are filed in …/issues" even when the tracker was Jira,
+            // contradicting the row above it. In Jira mode the remote is still needed —
+            // pull requests and clones use it — but it is not where tickets go, so it
+            // says so.
+            remoteUrlRow(
+              'remote-tickets',
               t('repo.tracker.githubRepo'),
               readOnly
                 ? t('repo.general.remoteUrlHelpReadOnly')
@@ -1343,697 +3423,82 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   : githubIssuesTargetVal
                     ? t('repo.tracker.issuesGoTo', { target: githubIssuesTargetVal })
                     : t('repo.tracker.githubTargetNone'),
-            )}
-          </div>
-        </div>
+            ),
+          ]}
+        />
 
         {trackerModeVal === 'jira' && (
-          <div className="mb-6">
-            <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupJira')}</h2>
-            <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-              {/* Two halves of one address, which is why they share a config block: the
-                  site says where Jira is, the key says which project inside it receives
-                  the tickets. Only the key is needed to WRITE one — the site decides
-                  whether a ticket can be shown as a link (trackers.md §3.1). */}
-              <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
-                <input
-                  type="text"
-                  value={jiraSiteUrlVal}
-                  onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
-                  placeholder="https://company.atlassian.net/browse/"
-                  className={`${INPUT} w-72`}
-                />
-              </SettingRow>
-
-              <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
-                <input
-                  type="text"
-                  value={jiraProjectVal}
-                  onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
-                  placeholder="PROJ"
-                  className={`${INPUT} w-72`}
-                />
-              </SettingRow>
-            </fieldset>
-          </div>
+          <SettingsCard
+            title={t('repo.tracker.groupJira')}
+            rows={[
+              // Two halves of one address, which is why they share a config block: the
+              // site says where Jira is, the key says which project inside it receives
+              // the tickets. Only the key is needed to WRITE one — the site decides
+              // whether a ticket can be shown as a link (trackers.md §3.1).
+              {
+                id: 'jira-site',
+                label: t('repo.tracker.jiraLink'),
+                hint: t('repo.tracker.jiraLinkHelp'),
+                disabled: readOnly,
+                control: {
+                  kind: 'input' as const,
+                  value: jiraSiteUrlVal,
+                  onChange: (next: string) => handleJiraSettingChange('siteUrl', next),
+                  placeholder: 'https://company.atlassian.net/browse/',
+                  className: 'w-64',
+                },
+              },
+              {
+                id: 'jira-project',
+                label: t('repo.plan.jiraProject'),
+                hint: t('repo.plan.jiraProjectHelp'),
+                disabled: readOnly,
+                control: {
+                  kind: 'input' as const,
+                  value: jiraProjectVal,
+                  onChange: (next: string) => handleJiraSettingChange('projectKey', next),
+                  placeholder: 'PROJ',
+                  className: 'w-64',
+                },
+              },
+            ]}
+          />
         )}
-
-        </>
+        </div>
       )}
 
-      {tab === 'languages' && (
-        <>
-        {/* Languages, in three groups — BY WHO READS THEM, not by which skill writes
-            them. Grouping by skill is what this tab was created to undo: the six rows
-            were one per skill section, and answering "what language does this repo work
-            in?" meant visiting five of them.
+      {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
+          guarantees: the canvas listens for the space bar on the whole document. */}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} onEditorOpened={() => setOpenEditor(false)} readOnly={readOnly} stepSettings={stepSettings} startVersion={JSON.stringify(repo?.start ?? {})} />}
 
-            The audience is the useful axis because it is what a wrong answer costs. The
-            discussion language is between you and Claude and nobody else ever sees it;
-            everything in the second group is read by whoever opens the repository; the
-            third is read by whoever opens the ticket — often a different set of people,
-            which is exactly why a French-speaking developer filing English tickets is
-            the normal case rather than an inconsistency. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupChat')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupCode')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            <LangSelect langKey="commit" label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')} />
-            <LangSelect langKey="pullRequest" label={t('repo.langs.pullRequest')} description={t('repo.pr.languageHelp')} />
-
-            {/* Not a LangSelect: review replies live in `resolve.replyLanguage`, not in
-                the `languages` block, and they fall back to the discussion language
-                rather than to English. Shown only when replies are enabled — a language
-                for something switched off is a setting with no effect. Styled like its
-                neighbours so the group still reads as one list. */}
-            {resolveReplyVal && (
-              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyLang')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
-                </div>
-                <LanguageSelect
-                  value={resolveReplyLangVal}
-                  onChange={(next) => handleResolveSettingChange('replyLanguage', next)}
-                />
-              </div>
-            )}
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupTickets')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* One cascade, in reading order: each row inherits the one above it
-                when unset (`spec` -> `ticket` -> `jiraComment` -> 'en'), and
-                LangSelect is handed the RESOLVED value so a row shows what is
-                actually in force rather than a blank. */}
-            <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
-            <LangSelect
-              langKey="ticket"
-              label={t('repo.issues.ticketLang')}
-              description={t('repo.issues.ticketLangHelp')}
-              resolvedValue={resolveTicketLanguage(repoLangs)}
-            />
-            {/* Last of the three, because the cascade reads top-down: the spec
-                inherits the tickets, which inherit the comments. */}
-            <LangSelect
-              langKey="spec"
-              label={t('repo.issues.specLang')}
-              description={t('repo.issues.specLangHelp')}
-              resolvedValue={resolveSpecLanguage(repoLangs)}
-            />
-          </fieldset>
-        </div>
-        </>
-      )}
-
-      {tab === 'plan' && (
-        <>
+      {tab === 'annex' && (
+        <div className="flex flex-col gap-6">
+        <SectionHeader icon={Puzzle} title={t('repo.annex.section')} description={t('repo.annex.intro')} spacing="none" />
         <SkillIntro
-          skill="plan"
-          summary={planSummary({
-            tracker: planTrackerVal,
-            jiraProject: jiraProjectVal,
-            githubTarget: githubIssuesTargetVal,
-            epicType: planEpicTypeVal,
-            storyType: planStoryTypeVal,
-            duplicateCheck: planDuplicateCheckVal,
-            splitting: planSplittingVal,
-            acceptanceCriteria: planAcceptanceCriteriaVal,
-            assignToMe: planAssignToMeVal,
-            labels: planDefaultLabelsVal,
-            useRepoTemplates: planUseRepoTemplatesVal,
-          })}
+          skill="review"
+          summary={reviewSummary({ confidenceScore: reviewConfidenceScoreVal, mode: reviewModeVal })}
         />
-        {/* Plan, in the three phases the skill itself runs in: it looks for what already
-            exists, it decides how to cut the work up, then it creates the tickets. The
-            settings were one list of seven rows in which "search for duplicates" sat
-            between "acceptance criteria" and "assign to me" — three different moments of
-            one run, in no particular order. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBefore')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            <SettingRow align="center" label={t('repo.plan.duplicateCheck')} description={t('repo.plan.duplicateCheckHelp')}>
-              <Switch
-                checked={planDuplicateCheckVal}
-                onChange={(next) => handlePlanSettingChange('duplicateCheck', next)}
-                label={t('repo.plan.duplicateCheck')}
-              />
-            </SettingRow>
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBreakdown')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
-              <EnumSelect
-                value={planSplittingVal}
-                values={PLAN_SPLITTING_MODES}
-                labels={PLAN_SPLITTING_LABELS}
-                onChange={(v) => handlePlanSettingChange('splitting', v)}
-              />
-            </SettingRow>
-
-            <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
-              <EnumSelect
-                value={planAcceptanceCriteriaVal}
-                values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
-                labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
-                onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
-              />
-            </SettingRow>
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupTickets')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Jira issue-type NAMES, as that project spells them — read by this skill
-                and nothing else (jira-fields.md §1.2), which is why they sit here rather
-                than with the Jira address on the Tickets tab. Hidden when the repo files
-                into GitHub, where an "Epic" issue type does not exist. */}
-            {trackerModeVal === 'jira' && (
-              <>
-                <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                  <input
-                    type="text"
-                    value={planEpicTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
-                    placeholder="Epic"
-                    className={`${INPUT} w-72`}
-                  />
-                </SettingRow>
-
-                <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                  <input
-                    type="text"
-                    value={planStoryTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
-                    placeholder="Story"
-                    className={`${INPUT} w-72`}
-                  />
-                </SettingRow>
-              </>
-            )}
-
-            {/* Two switches that differ only by key, and whose message keys are
-                mechanically `repo.plan.<key>` / `<key>Help`. `duplicateCheck` used to
-                ride along here; it belongs to the phase before any of this. */}
-            {([
-              ['useRepoTemplates', planUseRepoTemplatesVal],
-              ['assignToMe', planAssignToMeVal],
-            ] as const).map(([key, checked]) => (
-              <SettingRow
-                key={key}
-                align="center"
-                label={t(`repo.plan.${key}`)}
-                description={t(`repo.plan.${key}Help`)}
-              >
-                <Switch
-                  checked={checked}
-                  onChange={(next) => handlePlanSettingChange(key, next)}
-                  label={t(`repo.plan.${key}`)}
-                />
-              </SettingRow>
-            ))}
-
-            <div className="py-4">
-              <div className="flex-1 mb-3">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.plan.defaultLabels')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.plan.defaultLabelsHelp')}</p>
-              </div>
-              <ChipList
-                items={planDefaultLabelsVal}
-                onChange={(labels) => handlePlanSettingChange('defaultLabels', labels)}
-                placeholder="enhancement"
-                inputId="plan-default-label-input"
-              />
-            </div>
-          </fieldset>
-        </div>
-        </>
-      )}
-
-      {tab === 'commit' && (
-        <>
-        <SkillIntro
-          skill="commit"
-          summary={commitSummary({
-            format: formatVal,
-            style: styleVal,
-            allowOnProtectedBranch: allowOnProtectedBranchVal,
-            developmentBranch: branchSettings.development || '',
-            coAuthor: coAuthorVal,
-            includeTicketId: includeTicketIdVal,
-          })}
+        <SettingsCard
+          title={t('repo.review.groupDraft')}
+          rows={[
+            switchRow('confidenceScore', t('repo.review.confidenceScore'), t('repo.review.confidenceScoreHelp'),
+              reviewConfidenceScoreVal, (next) => handleReviewSettingChange('confidenceScore', next)),
+            {
+              id: 'reviewMode',
+              label: t('repo.review.mode'),
+              hint: t('repo.review.modeHelp'),
+              disabled: readOnly,
+              control: enumControl(t, reviewModeVal, REVIEW_MODES, REVIEW_MODE_LABEL,
+                (next) => handleReviewSettingChange('mode', next), t('repo.review.mode')),
+            },
+          ]}
         />
-        {/* Commit — what the message looks like, then the one rule about which branch
-            it may land on. The protected-branch guard was the last row of a list of
-            five, reading as a fifth property of the message; it is not, it is the only
-            setting here that can move your work to another branch. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupMessage')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Style */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={styleVal}
-                  onChange={(e) => handleCommitSettingChange('style', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                  <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Format */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={formatVal}
-                  onChange={(e) => handleCommitSettingChange('format', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                  <option value="angular">{t('repo.commit.formatAngular')}</option>
-                  <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                  <option value="none">{t('repo.commit.formatNone')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Co-Author Toggle */}
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
-              </div>
-              <Switch
-                checked={coAuthorVal}
-                onChange={(next) => handleCommitSettingChange('coAuthor', next)}
-                label={t('repo.commit.coAuthor')}
-              />
-            </div>
-
-            {/* Include Ticket ID Toggle */}
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
-              </div>
-              <Switch
-                checked={includeTicketIdVal}
-                onChange={(next) => handleCommitSettingChange('includeTicketId', next)}
-                label={t('repo.commit.ticketId')}
-              />
-            </div>
-
-            {/* Commit Preview — inside the message group, which is what it previews. */}
-            <div className="my-4 p-3 bg-surface border border-line-subtle rounded-lg">
-              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
-            </div>
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupBranches')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
-                means /magic:commit branches off first. The help text has to say which
-                way round it is, because both states do something — and the padlock says
-                this row is a guard rail rather than another property of the message. */}
-            <SettingRow
-              align="center"
-              icon={Lock}
-              label={t('repo.commit.protectedBranch')}
-              description={
-                allowOnProtectedBranchVal
-                  ? t('repo.commit.protectedBranchHelpOn')
-                  : t('repo.commit.protectedBranchHelpOff')
-              }
-            >
-              <Switch
-                checked={allowOnProtectedBranchVal}
-                onChange={(next) => handleCommitSettingChange('allowOnProtectedBranch', next)}
-                label={t('repo.commit.protectedBranch')}
-              />
-            </SettingRow>
-          </fieldset>
-        </div>
-        </>
-      )}
-
-      {tab === 'pr' && (
-        <>
-        <SkillIntro
-          skill="pr"
-          summary={prSummary({
-            trackerMode: trackerModeVal,
-            autoLinkTickets: autoLinkTicketsVal,
-            testAccounts: testAccountsVal,
-            testAccountsSource: testAccountsSourceVal,
-            commentOnPR: commentOnPRVal,
-            watchCI: watchCIVal,
-          })}
+        <SettingsCard
+          title={t('repo.langs.section')}
+          // Inherits the pull request language when unset, so it is handed the resolved value.
+          rows={[langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs))]}
         />
-        {/* Pull request — what goes INTO it, then what happens once it is open. Those
-            are two moments, and watching the checks was sitting second in a list whose
-            other rows all described the body of the PR. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupDescription')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Auto-link Tickets */}
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
-              </div>
-              <Switch
-                checked={autoLinkTicketsVal}
-                onChange={(next) => handlePRSettingChange('autoLinkTickets', next)}
-                label={t('repo.pr.autoLink')}
-              />
-            </div>
-
-            {/* Test Accounts */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccounts')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.pr.testAccountsHelp')}</p>
-                {testAccountsVal === 'inline' && (
-                  <p className="text-xs text-yellow mt-1">{t('repo.pr.testAccountsPublicWarn')}</p>
-                )}
-              </div>
-              <div className="relative">
-                <select
-                  value={testAccountsVal}
-                  onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="off">{t('repo.pr.testAccountsOff')}</option>
-                  <option value="reference">{t('repo.pr.testAccountsReference')}</option>
-                  <option value="inline">{t('repo.pr.testAccountsInline')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Test Accounts Source - only when test accounts are surfaced */}
-            {testAccountsVal !== 'off' && (
-              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccountsSource')}</label>
-                  <p className="text-xs text-text-secondary/50">
-                    {t('repo.pr.testAccountsSourceHelp')}
-                  </p>
-                </div>
-                <input
-                  type="text"
-                  value={testAccountsSourceVal}
-                  onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
-                  placeholder="docs/test-accounts.md"
-                  className={`${INPUT} w-72`}
-                />
-              </div>
-            )}
-
-            {/* PR Template */}
-            <div className="py-4">
-              <div className="flex items-start justify-between gap-6 mb-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.pr.template')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.pr.templateHelp')}</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  {templateLoading ? (
-                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('repo.pr.templateChecking')}</>
-                  ) : template?.exists ? (
-                    <><Check className="w-3.5 h-3.5 text-green" /> {t('repo.pr.templateFound')}</>
-                  ) : (
-                    <button
-                      onClick={handleGenerateTemplate}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {t('repo.pr.templateGenerate')}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {template?.exists && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-text-secondary/50 bg-surface px-2 py-1 rounded">
-                      {template.path}
-                    </span>
-                    {templateChanged && (
-                      <button
-                        onClick={handleSaveTemplate}
-                        className="px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
-                      >
-                        {t('common.save')}
-                      </button>
-                    )}
-                  </div>
-                  <textarea
-                    value={templateContent}
-                    onChange={(e) => {
-                      setTemplateContent(e.target.value)
-                      setTemplateChanged(e.target.value !== template.content)
-                    }}
-                    className="w-full h-64 p-4 bg-surface border border-line-field rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
-                    placeholder={t('repo.pr.templatePlaceholder')}
-                  />
-                </div>
-              )}
-            </div>
-          </fieldset>
         </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupAfter')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* The comment lands on the TICKET and carries the PR link. It sits here
-                rather than with the tracker's address because it is the pull request
-                that triggers it — the same reason the auto-link row above is on this
-                tab. /magic:review and /magic:done read it too. */}
-            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
-              <Switch
-                checked={commentOnPRVal}
-                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
-                label={t('repo.issues.commentOnPR')}
-              />
-            </SettingRow>
-
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
-              </div>
-              <Switch
-                checked={watchCIVal}
-                onChange={(next) => handlePRSettingChange('watchCI', next)}
-                label={t('repo.pr.watchCI')}
-              />
-            </div>
-          </fieldset>
-        </div>
-        </>
-      )}
-
-      {tab === 'resolve' && (
-        <>
-        <SkillIntro
-          skill="resolve"
-          summary={resolveSummary({
-            commitMode: resolveCommitModeVal,
-            useCommitConfig: resolveUseCommitConfigVal,
-            // Translated here rather than in the summary: a step carries strings, and
-            // these two labels are the resolve tab's own dropdowns spelled out.
-            formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
-            styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
-            replyToComments: resolveReplyVal,
-            replyVerbosity: resolveReplyVerbosityVal,
-          })}
-        />
-        {/* Resolve — the commits that carry the fixes, then what is written back to the
-            reviewer. The reply switch was wedged between the commit format and the
-            commit preview, which is the one place it does not belong. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupCommits')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Commit Mode */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={resolveCommitModeVal}
-                  onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="new">{t('repo.resolve.modeNew')}</option>
-                  <option value="amend">{t('repo.resolve.modeAmend')}</option>
-                  <option value="ask">{t('repo.resolve.modeAsk')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
-            {resolveCommitModeVal !== 'amend' && (
-              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
-                </div>
-                <div className="relative">
-                  <select
-                    value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
-                    onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
-                    <option value="custom">{t('repo.resolve.customConfig')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
-            {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
-              <>
-                <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
-                    <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={resolveStyleVal}
-                      onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                      <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
-                    <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={resolveFormatVal}
-                      onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                      <option value="angular">{t('repo.commit.formatAngular')}</option>
-                      <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                      <option value="none">{t('repo.commit.formatNone')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Preview / Info */}
-            {resolveCommitModeVal === 'new' && (
-              <div className="my-4 p-3 bg-surface border border-line-subtle rounded-lg">
-                <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-                <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
-              </div>
-            )}
-            {resolveCommitModeVal === 'amend' && (
-              <div className="my-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
-                <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
-              </div>
-            )}
-            {resolveCommitModeVal === 'ask' && (
-              <div className="my-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
-              </div>
-            )}
-          </fieldset>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupReplies')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* The language these replies are written in lives on the Languages tab, with
-                every other language — this switch decides whether they are written at
-                all, which is a different question. */}
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
-              </div>
-              <Switch
-                checked={resolveReplyVal}
-                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
-                label={t('repo.resolve.reply')}
-              />
-            </div>
-
-            {/* Shown only when replies are on, like the language row on the Languages
-                tab: how much a reply says is not a question worth asking about replies
-                that are never written. */}
-            {resolveReplyVal && (
-              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyVerbosity')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyVerbosityHelp')}</p>
-                </div>
-                <div className="relative">
-                  <select
-                    value={resolveReplyVerbosityVal}
-                    onChange={(e) => handleResolveSettingChange('replyVerbosity', e.target.value)}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="minimal">{t('repo.resolve.verbosityMinimal')}</option>
-                    <option value="normal">{t('repo.resolve.verbosityNormal')}</option>
-                    <option value="detailed">{t('repo.resolve.verbosityDetailed')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-            )}
-          </fieldset>
-        </div>
-        </>
       )}
 
       </TabSweep>
@@ -2045,24 +3510,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
         title={t('repo.delete.title')}
         footer={
           <>
-            <button
-              onClick={() => setIsDeleteModalOpen(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
+            <Button tone="ghost" onClick={() => setIsDeleteModalOpen(false)}>
               {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 disabled:opacity-50 transition-all"
-            >
+            </Button>
+            {/* `danger`, and `busy` rather than a hand-spun disabled state: the delete is
+                a round trip to the cloud, and a button that dims without moving reads as
+                refused rather than as working. */}
+            <Button tone="danger" icon={Trash2} busy={isDeleting} onClick={handleDelete}>
               {isDeleting ? t('repo.delete.deleting') : t('repo.danger.deleteAction')}
-            </button>
+            </Button>
           </>
         }
       >
-        <p>{t('repo.delete.confirm', { name: repoName })}</p>
-        <p className="mt-2 text-text-secondary/50">{t('repo.delete.irreversible')}</p>
+        <Text size="sm" className="block">{t('repo.delete.confirm', { name: repoName })}</Text>
+        <Text size="sm" tone="secondary" className="mt-2 block opacity-50">{t('repo.delete.irreversible')}</Text>
       </Modal>
     </div>
   )

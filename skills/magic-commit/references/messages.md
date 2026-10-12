@@ -86,6 +86,34 @@ Commit created: {hash_and_message}
 Commit cree : {hash_and_message}
 ```
 
+## MSG_PUSH_SUCCESS
+
+### en
+
+```text
+Pushed {branch} to {remote}.
+```
+
+### fr
+
+```text
+{branch} pousse sur {remote}.
+```
+
+## MSG_PUSH_FAILED
+
+### en
+
+```text
+The commit is made, but the push failed: {reason}. Nothing was forced: push it yourself once this is sorted.
+```
+
+### fr
+
+```text
+Le commit est fait, mais le push a echoue : {reason}. Rien n'a ete force : poussez vous-meme une fois le probleme regle.
+```
+
 ## MSG_HOOK_AUTO_FIX
 
 ### en
@@ -126,6 +154,26 @@ Commits created for {TICKET-ID}: {commit_list}
 
 ```text
 Commits crees pour {TICKET-ID} : {commit_list}
+```
+
+## MSG_NEXT_STEPS
+
+Displayed once at the end of the run (SKILL.md Step 7.5), only when the workflow returned lines.
+`{next_steps}` holds the `text` of each line (`references/workflow.md` §2): for the default flow,
+`   • Run /magic:pr to create a Pull Request`.
+
+### en
+
+```text
+💡 Next step:
+{next_steps}
+```
+
+### fr
+
+```text
+💡 Prochaine étape :
+{next_steps}
 ```
 
 ## MSG_NOTHING_TO_COMMIT

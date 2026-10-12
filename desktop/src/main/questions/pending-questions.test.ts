@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
+  answerHeld,
+  holdAsk,
+  isHeld,
+  releaseHeld,
   buildPreview,
   clearAllPendingQuestions,
   clearPendingQuestion,
@@ -47,6 +51,13 @@ describe('setFromAskQuestion', () => {
       { label: 'SQLite', description: 'Local only' },
     ])
     expect(question!.unsupported).toBeUndefined()
+  })
+
+  it('keeps the preview an option carries', () => {
+    const question = setFromAskQuestion('term-1', {
+      tool_input: { questions: [{ question: 'Apply?', options: [{ label: 'Yes', preview: '**Title**\n\nBody' }, { label: 'No' }] }] },
+    })
+    expect(question!.options).toEqual([{ label: 'Yes', preview: '**Title**\n\nBody' }, { label: 'No' }])
   })
 
   it('falls back to the header when the question text is missing', () => {
@@ -404,5 +415,86 @@ describe('buildPreview', () => {
       '\x1b[?25l\x1b]0;⣿ Test askquestion avec toolbar\x07' +
       '\x1b[1mBash\x1b[0m(sw_vers)\n  Print macOS version info\n\x1b[?25h'
     expect(buildPreview(buffer)).toBe('Bash(sw_vers)\n  Print macOS version info')
+  })
+})
+
+describe('setPendingQuestionListener', () => {
+  it('hears a question arrive and leave', async () => {
+    const { setPendingQuestionListener, setFromAskQuestion, clearPendingQuestion } = await import('./pending-questions')
+    const heard: Array<string | undefined> = []
+    setPendingQuestionListener((_id, q) => heard.push(q?.prompt))
+    setFromAskQuestion('listen-1', { tool_input: { questions: [{ question: 'Which?', options: [{ label: 'A' }] }] } })
+    clearPendingQuestion('listen-1')
+    clearPendingQuestion('listen-1') // nothing left: not heard again
+    setPendingQuestionListener(null)
+    expect(heard).toEqual(['Which?', undefined])
+  })
+})
+
+/**
+ * The chat's way past the keystrokes: the AskUserQuestion hook held open, answered
+ * through its own output. Verified against Claude Code 2.1.288: `permissionDecision:
+ * allow` with the tool input and its `answers` is taken as the user's answer, and an
+ * empty output shows the TUI's own dialog.
+ */
+describe('holding an ask', () => {
+  const TWO = {
+    tool_input: {
+      questions: [
+        { question: 'Which fruit?', options: [{ label: 'Apple' }, { label: 'Cherry' }] },
+        { question: 'Which colours?', multiSelect: true, options: [{ label: 'Red' }, { label: 'Blue' }] },
+      ],
+    },
+  }
+
+  it('stores every question, answerable as held', () => {
+    const { question } = holdAsk('term-1', TWO)
+    expect(question!.held).toBe(true)
+    expect(question!.unsupported).toBeUndefined()
+    expect(question!.questions!.map((q) => q.prompt)).toEqual(['Which fruit?', 'Which colours?'])
+    expect(question!.questions![1].multiSelect).toBe(true)
+    expect(isHeld('term-1')).toBe(true)
+  })
+
+  it('answers through the hook, under each question\'s own text', async () => {
+    const { question, reply } = holdAsk('term-1', TWO)
+    expect(answerHeld('term-1', question!.token, ['Cherry', 'Red, Blue'])).toBe(true)
+    const output = JSON.parse((await reply)!)
+    expect(output.hookSpecificOutput.permissionDecision).toBe('allow')
+    expect(output.hookSpecificOutput.updatedInput.questions).toEqual(TWO.tool_input.questions)
+    expect(output.hookSpecificOutput.updatedInput.answers).toEqual({ 'Which fruit?': 'Cherry', 'Which colours?': 'Red, Blue' })
+    expect(isHeld('term-1')).toBe(false)
+  })
+
+  it('refuses answers that do not fit, or a stale token', () => {
+    const { question } = holdAsk('term-1', TWO)
+    expect(answerHeld('term-1', question!.token, ['Cherry'])).toBe(false)
+    expect(answerHeld('term-1', question!.token, ['Cherry', '  '])).toBe(false)
+    expect(answerHeld('term-1', 'stale', ['Cherry', 'Red'])).toBe(false)
+    expect(isHeld('term-1')).toBe(true)
+  })
+
+  it('releases to the terminal: no output, and what keystrokes cannot drive is unsupported again', async () => {
+    const { reply } = holdAsk('term-1', TWO)
+    releaseHeld('term-1')
+    expect(await reply).toBeNull()
+    const question = getPendingQuestion('term-1')!
+    expect(question.held).toBeUndefined()
+    expect(question.unsupported).toBe(true)
+  })
+
+  it('releases whatever ends the question: a clear, or a newer one', async () => {
+    const first = holdAsk('term-1', TWO)
+    clearPendingQuestion('term-1')
+    expect(await first.reply).toBeNull()
+    const second = holdAsk('term-1', TWO)
+    setFromAskQuestion('term-1', TWO)
+    expect(await second.reply).toBeNull()
+  })
+
+  it('does not hold a question with no text of its own to file the answer under', async () => {
+    const { question, reply } = holdAsk('term-1', { tool_input: { questions: [{ header: 'Fruit', options: [{ label: 'Apple' }] }] } })
+    expect(question!.held).toBeUndefined()
+    expect(await reply).toBeNull()
   })
 })

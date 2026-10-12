@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import type { RepositoryConfig } from '../../types'
-import { resolveTaskSelection, seedFromTarget, shouldClearSeededQuery } from './taskSelection'
+import {
+  resolveTaskSelection,
+  seedFromTarget,
+  shouldClearSeededQuery,
+  taskSelectionFor,
+} from './taskSelection'
 
 function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
   return { path: '', keywords: [], ...overrides }
@@ -166,6 +171,36 @@ describe('seedFromTarget', () => {
     // next open reads null here rather than replaying the last ticket clicked.
     expect(seedFromTarget(null)).toEqual({ selection: null, query: '' })
     expect(seedFromTarget(undefined)).toEqual({ selection: null, query: '' })
+  })
+})
+
+describe('taskSelectionFor', () => {
+  it('reads each tracker off the ID, not off the caller', () => {
+    // The plan detail page passes ONE repository for a whole tree of tickets, so a plan
+    // that filed a Jira epic and GitHub issues has both shapes arriving with the same
+    // config key. The id is the only thing that says which is which.
+    expect(taskSelectionFor('#194', 'magic-slash')).toEqual({
+      tracker: 'github',
+      configKey: 'magic-slash',
+      number: 194,
+    })
+    expect(taskSelectionFor('per-5030', 'magic-slash')).toEqual({
+      tracker: 'jira',
+      configKey: 'magic-slash',
+      key: 'PER-5030',
+    })
+  })
+
+  it('is null for a repository this machine has not configured', () => {
+    // The ordinary case for a teammate's plan: `configKeyForRepoId` finds no local key
+    // for the cloud repo id. Not a dead click — Tasks opens on the list narrowed to the
+    // ticket — which is why this returns null rather than throwing.
+    expect(taskSelectionFor('#194', undefined)).toBeNull()
+  })
+
+  it('is null for an id of neither shape', () => {
+    expect(taskSelectionFor('', 'magic-slash')).toBeNull()
+    expect(taskSelectionFor('spec-refonte', 'magic-slash')).toBeNull()
   })
 })
 

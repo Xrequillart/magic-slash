@@ -7,16 +7,16 @@ import { toSkillHours, type SkillHours, type SkillHoursRow } from './skillHours'
  * Shared by the back-office org record and the user-space Organizations page, which
  * is why the list below lives here rather than in either page. Same rule as
  * `lib/settings.ts` and its THEME_OPTIONS: the console shares DATA with the user
- * space and never components, so two surfaces showing the same eight tiles read
+ * space and never components, so two surfaces showing the same tiles read
  * them from one array instead of keeping two that drift.
  */
 
 /**
  * The skills the stats cards report, in the order the development cycle runs them —
- * plan, start, pick back up, commit, ship, review, fix the review, close.
+ * plan, rework the plan, start, pick back up, commit, ship, review, fix the review, close.
  *
  * A FIXED list, though the RPCs return every skill an org has ever run. The point is
- * that the same eight tiles sit in the same eight places on every org, so two teams
+ * that the same tiles sit in the same places on every org, so two teams
  * can be compared at a glance and a hole in the cycle ("plenty of commits, no PRs")
  * is visible as a shape. Sorting by count, or rendering whatever came back, would
  * make every card a different card.
@@ -27,6 +27,7 @@ import { toSkillHours, type SkillHours, type SkillHoursRow } from './skillHours'
  */
 export const TRACKED_SKILLS: { skill: string; label: string }[] = [
   { skill: 'magic-plan', label: '/magic:plan' },
+  { skill: 'magic-plan-change', label: '/magic:plan-change' },
   { skill: 'magic-start', label: '/magic:start' },
   { skill: 'magic-continue', label: '/magic:continue' },
   { skill: 'magic-commit', label: '/magic:commit' },

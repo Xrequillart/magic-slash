@@ -20,6 +20,7 @@ import {
   saveAgent,
   archiveAgent,
   updateAgentMetadata,
+  updateAgentInfoSidebar,
   updateAgentSplitPane,
   hydrateAgents,
 } from './agents'
@@ -205,6 +206,20 @@ describe('saveAgent', () => {
     expect(agents[0].splitPane).toBe('right')
   })
 
+  // saveAgent runs on every rename and repository change, so a panel closed by hand
+  // would reopen on the next one if this were not carried over.
+  it('preserves a closed info panel when re-saving', async () => {
+    await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 100, infoSidebarOpen: false }])
+    saveAgent('a1', 'Updated Agent', ['/repo1'])
+    expect(readAgents()[0].infoSidebarOpen).toBe(false)
+  })
+
+  it('leaves an undecided agent undecided, rather than stamping the default', async () => {
+    await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 100 }])
+    saveAgent('a1', 'Updated Agent', ['/repo1'])
+    expect('infoSidebarOpen' in readAgents()[0]).toBe(false)
+  })
+
   it('preserves tsCreate from the existing agent when not provided', async () => {
     await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 5555 }])
     saveAgent('a1', 'Updated', [])
@@ -293,6 +308,26 @@ describe('updateAgentMetadata', () => {
     await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 100, metadata: { title: 'Original' } }])
     updateAgentMetadata('nope', { title: 'Changed' })
     expect(readAgents()[0].metadata!.title).toBe('Original')
+  })
+})
+
+describe('updateAgentInfoSidebar', () => {
+  it('stores both decisions, and false is a decision', async () => {
+    await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 100 }])
+    // Absent to begin with, which is what makes the agent follow the app default.
+    expect(readAgents()[0].infoSidebarOpen).toBeUndefined()
+
+    updateAgentInfoSidebar('a1', false)
+    expect(readAgents()[0].infoSidebarOpen).toBe(false)
+
+    updateAgentInfoSidebar('a1', true)
+    expect(readAgents()[0].infoSidebarOpen).toBe(true)
+  })
+
+  it('does not modify agents if the id is not found', async () => {
+    await seed([{ id: 'a1', name: 'Agent', repositories: [], tsCreate: 100, infoSidebarOpen: false }])
+    updateAgentInfoSidebar('nope', true)
+    expect(readAgents()[0].infoSidebarOpen).toBe(false)
   })
 })
 

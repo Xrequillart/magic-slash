@@ -41,7 +41,6 @@ import {
 import { Fragment } from 'react'
 import { Card, CARD_TONE_CYCLE, LogoPlate, ShowcaseCard, ToneCard } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
-import { Bloom } from '../home/HeroSection'
 import { HomeSection } from '../home/Shell'
 import { GithubIcon } from '../icons'
 import { FeaturesSidebar } from './FeaturesSidebar'
@@ -64,7 +63,7 @@ import { VISUALS } from './visuals'
  * they came for. Which is also why there is no search and no filter — see the note in
  * `FeaturesSidebar.tsx`.
  *
- * NO `marketing.css`, and none of that stylesheet's eleven button recipes. This tree is
+ * NO `showcase.css`, and none of that stylesheet's eleven button recipes. This tree is
  * in `homepageStylesheet.test.ts`'s scan (it walks `components/site/**` and excludes only
  * `story/` and `documentation/`), so the rule is enforced rather than remembered: every
  * value below is a token from `tailwind.config.ts` or a primitive from `components/ui.tsx`.
@@ -217,27 +216,30 @@ export function FeaturesContent() {
   const { t } = useT()
 
   return (
-    // `bg-white` on the page's own root rather than in the `(marketing)` layout: that
+    // `bg-white` on the page's own root rather than in the `(showcase)` layout: that
     // layout also wraps the homepage (on `canvas`), so each page paints its own ground.
     // See the ink note above for why this one is white.
     <div className="bg-white">
       {/* TWO `HomeSection`s, where there used to be one. The opening is its own band so
-          it can carry the homepage hero's wash — `softblue` fading down, with the blue
-          `Bloom` behind the headline — without that wash running under thirty rows of
-          list. `padding="hero"` because this is the page's first band: the bar is
-          `fixed` and 64px tall, so the first line owes it the taller top pad. The
-          component also supplies the `max-w-site` column every other page of the site
-          is capped on, which is the reason not to hand-roll a wrapper here.
+          its treatment does not run under thirty rows of list. `padding="hero"` because
+          this is the page's first band: the bar is `fixed` and 64px tall, so the first
+          line owes it the taller top pad. The component also supplies the `max-w-site`
+          column every other page of the site is capped on, which is the reason not to
+          hand-roll a wrapper here.
 
-          THE GRADIENT ENDS ON WHITE, NOT `canvas`, and so does the bloom's own fade
-          (`fadeTo="to-white"`): this page's ground is white (see the ink note above),
-          and a band that fades to `canvas` over a white page leaves a blue-grey step at
-          its bottom edge. Same recipe as `HeroSection`, one token changed. */}
-      <HomeSection
-        padding="hero"
-        backdrop={<Bloom fadeTo="to-white" />}
-        className="bg-gradient-to-b from-softblue to-white"
-      >
+          NO WASH AND NO `backdrop`. This band carried the homepage hero's own recipe —
+          `softblue` fading down with a blue `Bloom` behind the headline — and it is gone,
+          after `/changelog`, `/faq` and `/download`: what fills the band now is a drawing
+          beside the title, and a wash behind it would be a second decoration competing
+          with the one that says something about the page.
+
+          Dropping the prop rather than passing an empty layer also drops an
+          `overflow-hidden`: `HomeSection` only clips itself when it is given a backdrop.
+
+          `/privacy` and `/terms` still open on the wash, and that is deliberate rather
+          than an oversight: those two are documents, and a document has no drawing to
+          put beside its title. */}
+      <HomeSection padding="hero">
         {/*
           The headline is written out instead of going through `HomeHeading`, and the
           reason is the heading LEVEL: that component emits an `h2`, because on the
@@ -252,20 +254,22 @@ export function FeaturesContent() {
             catalogue for real. Inline, these two were the page's biggest line and its
             lead sitting outside that guard — and `t()` renders a missing key as
             nothing at all. */}
-        {/* CENTRED, ON THE HOMEPAGE HERO'S OWN RECIPE — `mx-auto max-w-3xl text-center`
-            around the pair, the `4xl → 6xl` display face on the headline, and the lead
-            at `text-lg` under it with its own `mx-auto` (a `max-w-xl` inside a centred
-            column still hugs the left edge unless it is told where to sit).
+        {/* TWO COLUMNS: what the page IS on the left, a drawing of it on the right —
+            `/changelog`'s and `/faq`'s opening, for the reason those give. This pair was
+            centred (`mx-auto max-w-3xl text-center`, the homepage hero's own recipe) on
+            the argument that centring says "this is the page"; a split says the same
+            thing with the width the band actually has, and the grid below was already
+            left-aligned, so the page now reads down one edge instead of two.
 
-            It is copied from `HeroSection` rather than routed through `BAND_TITLE`,
-            which is what this used to use: `BAND_TITLE` is the type of a BAND heading —
-            an `h2` at `3xl` sitting under a page's `h1` — and this line is the page's
-            `h1`. The two want different sizes for the same reason they want different
-            levels. `text-center` is inherited rather than restated per element.
+            THE TYPE IS STILL `HeroSection`'S and not `BAND_TITLE`: that constant is the
+            type of a BAND heading — an `h2` at `3xl` under a page's `h1` — and this line
+            is the page's `h1`. The two want different sizes for the same reason they
+            want different levels.
 
-            The GRID BELOW STAYS LEFT-ALIGNED. Centring an opening is a way of saying
-            "this is the page"; centring thirty rows of prose would just make them
-            harder to scan. */}
+            It stacks below `lg`, text first: the drawing is a decoration, so it is the
+            half that waits. `items-center` because the text block is two elements tall
+            and the drawing several times that — aligning their tops would hang the title
+            off a column of empty space. */}
         {/* THE AIR BETWEEN THE OPENING AND THE GRID IS THE TWO BANDS' PADDING, and none
             of it is written here. `HomeSection`'s padding arrives through the `padding`
             slot precisely so a caller cannot race it — a `pt-40` appended through
@@ -278,13 +282,32 @@ export function FeaturesContent() {
             `follow` top is that rhythm on this page's scale — the same 7rem (10rem from
             `md`) the old `pb-4 md:pb-8` + `mt-24 lg:mt-32` margins came to, before the
             opening became a band of its own. */}
-        <div className="mx-auto max-w-3xl text-center">
-          <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
-            {t(PAGE_CHROME.title)}
-          </h1>
-          <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-ink/60">
-            {t(PAGE_CHROME.lead)}
-          </p>
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
+              {t(PAGE_CHROME.title)}
+            </h1>
+            {/* `max-w-md` inside a half-column already about that wide: the measure holds
+                on the screens where the column grows past it, so the line length stays
+                readable instead of tracking the viewport. */}
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-ink/60">
+              {t(PAGE_CHROME.lead)}
+            </p>
+          </div>
+
+          {/* THE DRAWING, and its file is CROPPED rather than sized down here. The source
+              is a 1000×1000 canvas carrying the drawing at 922×950, so the box has dead
+              margin on every side. `illustration-ideas.svg` therefore ships with a
+              `viewBox` of `39 25 922 950` and matching `width`/`height`, which is its
+              measured bounding box — nothing in this file has to correct for empty space.
+
+              `alt=""`: a decoration. It says nothing the heading beside it does not, and
+              a screen reader on its way to thirty rows of features wants to get there. */}
+          <img
+            src="/img/illustration-ideas.svg"
+            alt=""
+            className="w-full max-w-md justify-self-center lg:justify-self-end"
+          />
         </div>
       </HomeSection>
 
@@ -399,6 +422,20 @@ export function FeaturesContent() {
                             {t(feature.caption)}
                           </p>
                         ) : null}
+                      {feature.shape === 'showcase' && feature.visual ? (
+                        // A SHOWCASE IN THE GRID: the integrations' white card, copy on
+                        // the left and a plate on the right, for a card whose drawing is
+                        // a mark rather than a screen (the profile, the languages).
+                        <ShowcaseCard
+                          title={titleOf(feature.title, t)}
+                          description={t(feature.description)}
+                          art={(() => {
+                            const Visual = VISUALS[feature.visual]
+                            return <Visual />
+                          })()}
+                          className={feature.span === 'full' ? 'sm:col-span-2' : undefined}
+                        />
+                      ) : (
                       <ToneCard
                         // Cycled by POSITION unless the row asks for a ground by name.
                         // A tone is normally a surface in a family, not a skill's
@@ -416,7 +453,9 @@ export function FeaturesContent() {
                         // rendering rule rather than a fact about the command, so it
                         // belongs here; `span` and `visual` are the facts, and this
                         // reads them.
-                        layout={feature.span === 'full' && feature.visual ? 'beside' : 'stacked'}
+                        // A full card that asks for `block` keeps the drawing under its
+                        // copy: the workflow canvas needs the card's whole width.
+                        layout={feature.span === 'full' && feature.visual && feature.shape !== 'block' ? 'beside' : 'stacked'}
                         // `sm:col-span-2` and not `col-span-2`: below `sm` the grid is
                         // a single column, where spanning two tracks that do not exist
                         // is at best a no-op and at worst an overflow. The flex
@@ -440,6 +479,7 @@ export function FeaturesContent() {
                           return <Visual />
                         })()}
                       </ToneCard>
+                      )}
                       </Fragment>
                     ))}
                   </div>

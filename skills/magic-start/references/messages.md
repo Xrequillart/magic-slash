@@ -26,6 +26,15 @@ rien de fiable sur quoi travailler.
 Lance Magic Slash, puis relance cette commande.
 ```
 
+## MSG_ATLASSIAN_NOT_CONFIGURED
+
+English only: Step 1 displays it before the repo, and so the language, is known.
+
+### en
+
+> ⚠️ Atlassian integration is not configured. Only GitHub issues (#123) are supported.
+> To enable Atlassian, open the Magic Slash app → Settings → Integrations.
+
 ## MSG_NODE_NO_MANAGER
 
 ### en
@@ -777,6 +786,34 @@ Choix (1/2/3) :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+## MSG_PLAN_AUTO_APPROVED
+
+### en
+
+```text
+✅ Plan approval is off for this repository: starting the implementation.
+```
+
+### fr
+
+```text
+✅ La validation du plan est désactivée pour ce repository : je lance l'implémentation.
+```
+
+## MSG_NO_PLAN
+
+### en
+
+```text
+📝 This repository skips the plan: implementing straight from the ticket, with one agent.
+```
+
+### fr
+
+```text
+📝 Ce repository se passe de plan : j'implémente directement depuis le ticket, avec un seul agent.
+```
+
 ## MSG_PROGRESS_SOLO
 
 ### en
@@ -904,8 +941,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Next steps:
    • Test the changes (see "How to test" above)
-   • Run /commit to create a commit
-   • Run /pr to create a Pull Request
+{next_steps}
 ```
 
 ### fr
@@ -943,8 +979,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Prochaines étapes :
    • Teste les changements (voir « Comment tester » ci-dessus)
-   • Lance /commit pour créer un commit
-   • Lance /pr pour créer une Pull Request
+{next_steps}
 ```
 
 ## MSG_FINAL_SUMMARY_FULLSTACK
@@ -997,8 +1032,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Next steps:
    • Test the changes in both repos (see "How to test" above)
-   • Run /commit in each worktree to create commits
-   • Run /pr to create a Pull Request
+{next_steps}
 ```
 
 ### fr
@@ -1049,8 +1083,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Prochaines étapes :
    • Teste les changements dans les deux repos (voir « Comment tester » ci-dessus)
-   • Lance /commit dans chaque worktree pour créer les commits
-   • Lance /pr pour créer une Pull Request
+{next_steps}
 ```
 
 ## MSG_AUTOFIX
@@ -1058,13 +1091,13 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 ### en
 
 ```text
-🔧 Confidence: {confidence_score}/10 — fixing: {attention_point}... (iteration {n}/3)
+🔧 Confidence: {confidence_score}/10 — fixing: {attention_point}... (iteration {n}/{max})
 ```
 
 ### fr
 
 ```text
-🔧 Confiance : {confidence_score}/10 — correction : {attention_point}... (itération {n}/3)
+🔧 Confiance : {confidence_score}/10 — correction : {attention_point}... (itération {n}/{max})
 ```
 
 ## MSG_SIMPLIFY

@@ -83,6 +83,18 @@ const TEST_ACCOUNT_STEPS: Record<string, MessageKey> = {
   inline: 'repo.pr.step.accountsInline',
 }
 
+/** No entry for 'never': the default says nothing. See prSummary's tail. */
+const TEMPLATE_CHECKBOX_TAILS: Record<string, MessageKey | undefined> = {
+  type: 'repo.pr.tail.checkboxesType',
+  all: 'repo.pr.tail.checkboxesAll',
+}
+
+/** No entry for 'concise': same rule, the default says nothing. */
+const BODY_VERBOSITY_TAILS: Record<string, MessageKey | undefined> = {
+  normal: 'repo.pr.tail.bodyNormal',
+  detailed: 'repo.pr.tail.bodyDetailed',
+}
+
 const RESOLVE_COMMIT_STEPS: Record<string, MessageKey> = {
   new: 'repo.resolve.step.commitNew',
   amend: 'repo.resolve.step.commitAmend',
@@ -190,6 +202,8 @@ export interface CommitSummaryInput {
   developmentBranch: string
   coAuthor: boolean
   includeTicketId: boolean
+  /** Pushes right after committing. Absent reads as off, the default. */
+  pushAfterCommit?: boolean
 }
 
 export function commitSummary(input: CommitSummaryInput): SkillSummary {
@@ -210,6 +224,7 @@ export function commitSummary(input: CommitSummaryInput): SkillSummary {
       vars: { branches: branches.join(', ') },
     },
   ]
+  if (input.pushAfterCommit) steps.push({ key: 'repo.commit.step.push' })
 
   const tail: SkillSummaryStep[] = []
   if (input.coAuthor) tail.push({ key: 'repo.commit.tail.coAuthor' })
@@ -227,6 +242,14 @@ export interface PrSummaryInput {
   testAccountsSource: string
   commentOnPR: boolean
   watchCI: boolean
+  /** 'never' | 'type' | 'all'. 'never' is the default, and says nothing. */
+  templateCheckboxes: string
+  /** 'concise' | 'normal' | 'detailed'. 'concise' is the default, and says nothing. */
+  bodyVerbosity: string
+  /** True is the default, and says nothing. */
+  hideIrrelevantSections: boolean
+  /** False is the default, and says nothing. */
+  draft: boolean
 }
 
 export function prSummary(input: PrSummaryInput): SkillSummary {
@@ -253,8 +276,33 @@ export function prSummary(input: PrSummaryInput): SkillSummary {
   if (source && input.testAccounts !== 'off') {
     tail.push({ key: 'repo.pr.tail.accountsSource', vars: { source } })
   }
+  // Same rule: 'never' is what a repository that never opened this setting gets, so
+  // only the two modes that depart from it are worth a line.
+  const checkboxes = TEMPLATE_CHECKBOX_TAILS[input.templateCheckboxes]
+  if (checkboxes) tail.push({ key: checkboxes })
+  const verbosity = BODY_VERBOSITY_TAILS[input.bodyVerbosity]
+  if (verbosity) tail.push({ key: verbosity })
+  if (!input.hideIrrelevantSections) tail.push({ key: 'repo.pr.tail.keepAllSections' })
+  if (input.draft) tail.push({ key: 'repo.pr.tail.draft' })
 
   return { steps, tail }
+}
+
+export interface ReviewSummaryInput {
+  confidenceScore: boolean
+  /** 'ask' | 'post' — unknown values read as 'ask'. */
+  mode: string
+}
+
+export function reviewSummary(input: ReviewSummaryInput): SkillSummary {
+  return {
+    steps: [
+      { key: 'repo.review.step.read' },
+      { key: input.confidenceScore ? 'repo.review.step.scoreOn' : 'repo.review.step.scoreOff' },
+      { key: input.mode === 'post' ? 'repo.review.step.modePost' : 'repo.review.step.modeAsk' },
+    ],
+    tail: [],
+  }
 }
 
 export interface ResolveSummaryInput {
@@ -299,6 +347,68 @@ export function resolveSummary(input: ResolveSummaryInput): SkillSummary {
       ? (RESOLVE_REPLY_STEPS[input.replyVerbosity] ?? RESOLVE_REPLY_STEPS.minimal)
       : 'repo.resolve.step.replyOff',
   })
+
+  return { steps, tail: [] }
+}
+
+export interface StartSummaryInput {
+  /** 'auto' | 'always' | 'never' — unknown values read as 'auto'. */
+  exploration: string
+  plan: boolean
+  planReview: boolean
+  planApproval: boolean
+  /** 'auto' | 'solo' | 'multi' — unknown values read as 'auto'. */
+  execution: string
+  simplify: boolean
+  /** How many times the critic may send the work back; 0 scores it once. */
+  criticIterations: number
+  /** The score out of 10 the work is accepted at. */
+  criticMinScore: number
+}
+
+const START_EXPLORATION_STEPS: Record<string, MessageKey> = {
+  auto: 'repo.start.step.exploreAuto',
+  always: 'repo.start.step.exploreAlways',
+  never: 'repo.start.step.exploreNever',
+}
+
+const START_EXECUTION_STEPS: Record<string, MessageKey> = {
+  auto: 'repo.start.step.executionAuto',
+  solo: 'repo.start.step.executionSolo',
+  multi: 'repo.start.step.executionMulti',
+}
+
+/**
+ * DESKTOP ONLY, unlike the others: the webapp's repository form has no Start settings,
+ * so its twin has nothing to summarise.
+ */
+export function startSummary(input: StartSummaryInput): SkillSummary {
+  const steps: SkillSummaryStep[] = [
+    { key: START_EXPLORATION_STEPS[input.exploration] ?? START_EXPLORATION_STEPS.auto },
+  ]
+
+  // Without a plan the skill skips its review, its approval and the dispatcher, and
+  // codes alone from the ticket (skills/magic-start/SKILL.md step 5.2): one line says it.
+  if (input.plan) {
+    steps.push(
+      { key: input.planReview ? 'repo.start.step.planReviewed' : 'repo.start.step.planUnreviewed' },
+      { key: input.planApproval ? 'repo.start.step.approvalOn' : 'repo.start.step.approvalOff' },
+      { key: START_EXECUTION_STEPS[input.execution] ?? START_EXECUTION_STEPS.auto },
+    )
+  } else {
+    steps.push({ key: 'repo.start.step.noPlan' })
+  }
+
+  if (input.simplify) steps.push({ key: 'repo.start.step.simplify' })
+
+  const score = String(input.criticMinScore)
+  if (input.criticIterations <= 0) {
+    steps.push({ key: 'repo.start.step.criticScoreOnly' })
+  } else if (input.criticIterations === 1) {
+    steps.push({ key: 'repo.start.step.criticOnce', vars: { score } })
+  } else {
+    steps.push({ key: 'repo.start.step.criticLoop', vars: { score, iterations: String(input.criticIterations) } })
+  }
 
   return { steps, tail: [] }
 }

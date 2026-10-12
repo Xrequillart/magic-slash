@@ -143,6 +143,11 @@
               "type": "string",
               "enum": ["en", "fr"],
               "description": "Language created tickets are written in, as opposed to `discussion`, the language the skill talks to you in. Unset falls back to `jiraComment`, then to English — so leaving it out is meaningful, not a gap."
+            },
+            "review": {
+              "type": "string",
+              "enum": ["en", "fr"],
+              "description": "Language /magic:review posts its comments and review body in. Unset falls back to `pullRequest`, then to English."
             }
           },
           "additionalProperties": false,
@@ -168,6 +173,10 @@
             "allowOnProtectedBranch": {
               "type": "boolean",
               "description": "Allow committing directly on main/master/develop. Defaults to true; /magic:commit asks first. False makes the skill branch off instead."
+            },
+            "pushAfterCommit": {
+              "type": "boolean",
+              "description": "Push the branch right after committing (setting its upstream on the first push). Defaults to false."
             }
           },
           "additionalProperties": false,
@@ -202,6 +211,37 @@
           "additionalProperties": false,
           "description": "Review resolve settings"
         },
+        "review": {
+          "type": "object",
+          "properties": {
+            "confidenceScore": {
+              "type": "boolean",
+              "description": "Give a confidence score out of 10 in the draft and the review body. Defaults to true."
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["ask", "post"],
+              "description": "'ask' (default) shows the draft and asks what to post; 'post' posts every comment straight away."
+            }
+          },
+          "additionalProperties": false,
+          "description": "/magic:review settings"
+        },
+        "start": {
+          "type": "object",
+          "properties": {
+            "exploration": { "type": "string", "enum": ["auto", "always", "never"], "description": "Explore the codebase before the plan: 'auto' (default) when the ticket needs it, 'always', or 'never'." },
+            "plan": { "type": "boolean", "description": "Write an implementation plan before coding. Defaults to true." },
+            "planReview": { "type": "boolean", "description": "Have a sub-agent review the plan. Only with a plan. Defaults to true." },
+            "planApproval": { "type": "boolean", "description": "Ask the user to approve the plan before coding. Only with a plan. Defaults to true." },
+            "execution": { "type": "string", "enum": ["auto", "solo", "multi"], "description": "Who implements: 'auto' (default) lets the dispatcher choose, 'solo' is one agent, 'multi' splits across agents when the plan allows it." },
+            "simplify": { "type": "boolean", "description": "Run /simplify on the changed files after implementing. Defaults to true." },
+            "criticIterations": { "type": "integer", "minimum": 0, "maximum": 5, "description": "How many times the critic may send the work back for fixes. Defaults to 3." },
+            "criticMinScore": { "type": "integer", "minimum": 1, "maximum": 10, "description": "The critic's score out of 10 at which the work is accepted. Defaults to 8." }
+          },
+          "additionalProperties": false,
+          "description": "/magic:start settings"
+        },
         "pullRequest": {
           "type": "object",
           "properties": {
@@ -217,6 +257,20 @@
             },
             "testAccountsSource": {
               "type": "string"
+            },
+            "templateCheckboxes": {
+              "type": "string",
+              "enum": ["never", "type", "all"]
+            },
+            "bodyVerbosity": {
+              "type": "string",
+              "enum": ["concise", "normal", "detailed"]
+            },
+            "hideIrrelevantSections": {
+              "type": "boolean"
+            },
+            "draft": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,

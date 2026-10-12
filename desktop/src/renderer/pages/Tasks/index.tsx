@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Github, ListTodo, RefreshCw, SearchX } from 'lucide-react'
-import type { RepositoryConfig } from '../../../types'
+import { ListTodo, RefreshCw, SearchX } from '@ds/desktop/icons'
+// The app's own GitHub mark, not a lucide icon: lucide v1 dropped every brand
+// glyph, and this one was already drawn here for the tracker badges.
+import { Github } from '@ds/desktop/icons'
+import type { RepositoryConfig, TaskBoardColumn } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useTasks } from '../../hooks/useTasks'
+import { useSprintSearch } from '../../hooks/useSprintSearch'
 import { useStore } from '../../store'
 import {
   buildTaskRows,
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  hasAgentedIssues,
+  mergeSearchIssues,
   NO_FILTER,
   sortTaskRows,
   taskFilterEpics,
@@ -21,13 +27,15 @@ import type { TaskSelection } from '../../utils/taskSelection'
 import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
-import { WaveLoader } from '../../components/WaveLoader'
+import { Loader, TaskBoard, type TaskBoardNotice } from '@ds/desktop'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
-import { TaskBoard } from './TaskBoard'
+import { buildTaskColumns, taskFailureNotices } from './boardColumns'
 import { openCountLabel, sprintCountLabel } from './parts'
-import { TaskFilters, type TaskFilterValue } from './TaskFilters'
+import { buildTaskFilters, type TaskFilterValue } from './TaskFilters'
+import { PICK_BAR_H, PickTicketBanner } from './PickTicketBanner'
+import { useTaskAgents } from '../../hooks/useTaskAgent'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -51,7 +59,7 @@ function alwaysSideways(): boolean {
 /**
  * The Tasks page — ONE repository's work, as a board of four columns.
  *
- * Structurally `pages/Dashboard/index.tsx`: the same full-screen shell inside a
+ * Structurally `pages/Plans/index.tsx`: the same full-screen shell inside a
  * PageModal, whose title and chrome the modal renders. What it draws is the tickets of
  * the repository named in the picker at the top — its open GitHub issues, its Jira
  * sprint, or both when the repository is tracked in both — dealt into Blocked, Backlog,
@@ -86,7 +94,6 @@ function alwaysSideways(): boolean {
  * credential ever crosses the bridge.
  */
 export function TasksPage() {
-  const { snapshot, loading, reload } = useTasks()
   const { config, updateTasksRepo } = useConfig()
   // Mounting this here fires an `org:listAgents` IPC every time the modal opens.
   // Deliberate, and affordable: it is the only way to know a TEAMMATE has an agent
@@ -115,6 +122,19 @@ export function TasksPage() {
    */
   const tasksInitialTarget = useStore((s) => s.tasksInitialTarget)
   const setTasksInitialTarget = useStore((s) => s.setTasksInitialTarget)
+  /**
+   * Set when the board is open to CHOOSE a ticket for an agent. It changes exactly two
+   * things — what a card's click does, and the banner pinned above the filter bar — and
+   * it is read from the store rather than seeded into state because it is a mode that
+   * lasts as long as the modal. See `tasksPickAgentId`.
+   */
+  const pickAgentId = useStore((s) => s.tasksPickAgentId)
+  const pickAgentName = useStore((s) => {
+    const terminal = s.terminals.find((candidate) => candidate.id === s.tasksPickAgentId)
+    return terminal ? terminal.metadata?.title || terminal.name : null
+  })
+  const pickTicketForAgent = useStore((s) => s.pickTicketForAgent)
+  const closeModal = useStore((s) => s.closeModal)
   const t = useT()
 
   /**
@@ -139,7 +159,7 @@ export function TasksPage() {
    * have not.
    *
    * Null is not "no repository": it is "this page has not been told, so fall back" —
-   * which `repo` below resolves against the saved choice and then against the first
+   * which the main process resolves against the saved choice and then against the first
    * repository on offer. Three states rather than two, and the third is what lets a
    * saved repository that has since been deleted resolve to something without the page
    * having to detect it.
@@ -150,6 +170,14 @@ export function TasksPage() {
    * writing it would quietly move the board every time somebody clicked a ticket.
    */
   const [repoKey, setRepoKey] = useState<string | null>(seed.selection?.configKey ?? null)
+
+  /**
+   * The read, of THAT repository and no other. See `useTasks`: the main process reads
+   * the picked repository (and whatever shares its tracker target) and only names the
+   * rest, so opening the page costs one repository's queries rather than every one's.
+   * With nothing picked yet it falls back to the saved choice, then the first.
+   */
+  const { snapshot, loading, reload } = useTasks(repoKey)
 
   /**
    * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
@@ -212,6 +240,33 @@ export function TasksPage() {
   const listOffsetRef = useRef(0)
 
   /**
+   * The repository the board is showing, and whether its read is still on its way.
+   *
+   * The PICK wins the moment it is made, so the picker moves as soon as it is used
+   * rather than when the read lands — provided it names a repository on offer, which
+   * is what lets a deep link to a repository since deleted settle on whatever the main
+   * process fell back to. Anything else is the snapshot's own answer: the saved choice,
+   * then the first repository, resolved on the other side of the bridge.
+   *
+   * `switching` is the gap between the two: a snapshot of the repository just left,
+   * whose tickets must not be drawn under the name of the one just picked.
+   */
+  const repo = repoKey && snapshot?.repos.some((entry) => entry.configKey === repoKey)
+    ? repoKey
+    : snapshot?.configKey ?? ''
+  const switching = !!snapshot && repo !== snapshot.configKey
+  const groups = useMemo(() => (switching ? [] : snapshot?.groups ?? []), [switching, snapshot?.groups])
+
+  /**
+   * THE FILTER BAR'S OWN STUCK TEST IS GONE FROM HERE, and so is the board's.
+   *
+   * Both were a sentinel in state, an `IntersectionObserver` and a `rootMargin` computed
+   * from whatever was pinned above — thirty lines saying twice that a band which has moved
+   * cannot report where it started. `FilterBar` and `TaskBoard` own that now; this page
+   * owes them one number, `top`, which is what is pinned above the WHOLE pane.
+   */
+
+  /**
    * Which tickets already have an agent, per repository, built once for the page.
    *
    * A map rather than a predicate called per row: the alternative walks the whole
@@ -229,54 +284,32 @@ export function TasksPage() {
       // index is keyed by repository, not by card: the two share one answer to "which
       // of this repo's tickets has an agent", and asking twice would walk the whole
       // roster a second time for a `Set` that must come out identical.
-      [...new Set((snapshot?.groups ?? []).map((group) => group.configKey))],
+      [...new Set(groups.map((group) => group.configKey))],
       config?.repositories ?? {},
       // Read non-reactively: `terminalsKey` above is this page's subscription to
       // the terminals, and it is in the dependency list in this read's stead.
       taskAgentRefs(agents, useStore.getState().terminals),
     ),
-    [snapshot?.groups, config?.repositories, agents, terminalsKey],
+    [groups, config?.repositories, agents, terminalsKey],
   )
 
   /**
    * Every row the read produced, before either control has had a say.
    *
-   * Kept apart from `rows` below because three things need the UNFILTERED set: the
-   * repository picker's own list of options, the "nothing matched" state (which has
-   * to know there WAS something to match), and the counter's "of N" form.
+   * Kept apart from `rows` below because two things need the UNFILTERED set: the
+   * "nothing matched" state (which has to know there WAS something to match), and the
+   * counter's "of N" form.
    */
   const allRows = useMemo(
-    () => buildTaskRows(snapshot?.groups ?? [], config?.repositories ?? {}, agentedIssues),
-    [snapshot?.groups, config?.repositories, agentedIssues],
+    () => buildTaskRows(groups, config?.repositories ?? {}, agentedIssues),
+    [groups, config?.repositories, agentedIssues],
   )
 
-  const filterRepos = useMemo(() => taskFilterRepos(allRows), [allRows])
-
-  /**
-   * The repository the board is actually showing, resolved from three places in order
-   * of how much they know about what the reader wants.
-   *
-   * 1. What they have PICKED since the page opened, or the ticket they arrived on.
-   * 2. What they LEFT IT ON, read back off the account (`Config.tasksRepo`). This is
-   *    the whole point of storing it in the cloud: the app keeps no config file, so
-   *    without this the picker would have to be re-picked after every quit.
-   * 3. The FIRST repository on offer, for an account that has never picked one — and
-   *    for one whose saved repository has since been deleted, renamed or stopped being
-   *    tracked. That fallback is why the saved value needs no validation on the way in
-   *    (see `updateTasksRepo`): a key that no longer names anything simply fails to
-   *    match here.
-   *
-   * `''` only when there is nothing to offer at all, which is the empty-state path
-   * below rather than a board with no repository in it.
-   */
-  const repo = useMemo(() => {
-    const offered = filterRepos.map((entry) => entry.configKey)
-    if (repoKey && offered.includes(repoKey)) return repoKey
-    // Skipped once the reader has picked: their choice outranks the saved one even
-    // while the write of it is still in flight.
-    if (!repoKey && config?.tasksRepo && offered.includes(config.tasksRepo)) return config.tasksRepo
-    return offered[0] ?? ''
-  }, [repoKey, config?.tasksRepo, filterRepos])
+  /** Every repository the picker offers — named by the read, not read. */
+  const filterRepos = useMemo(
+    () => taskFilterRepos(snapshot?.repos ?? [], config?.repositories ?? {}),
+    [snapshot?.repos, config?.repositories],
+  )
 
   /**
    * What the controls are set to, with the resolved repository in it.
@@ -302,11 +335,94 @@ export function TasksPage() {
    */
   const filterEpics = useMemo(() => taskFilterEpics(repoRows), [repoRows])
 
+  /**
+   * Whether anybody is on a ticket of THIS repository — what decides whether the agent
+   * picker is offered at all. See `hasAgentedIssues`.
+   *
+   * Off `repoRows` for `filterEpics`' reason: an option list drawn from the narrowed rows
+   * would take itself away the moment it was used — picking "with an agent" leaves a
+   * board whose every ticket has one, and picking "without" leaves a board with none at
+   * all, which would withdraw the very control that has to clear the filter.
+   */
+  const hasAgents = useMemo(() => hasAgentedIssues(repoRows), [repoRows])
+
+  /**
+   * The name of the sprint the board is showing, for the chip beside the repository
+   * picker. `undefined` for a GitHub-only repository, and for a Jira one whose read
+   * could not name its sprint — `TaskFilters` then draws no chip at all.
+   *
+   * Off `repoRows` and NOT off `rows`, which is the whole point of taking it here: the
+   * sprint is a property of the repository, not of what survived the search, and read
+   * from the narrowed rows it would blink out the moment a query matched no Jira ticket
+   * — leaving the reader to conclude the sprint had ended.
+   *
+   * The first Jira row that has one. A repository tracked in both places contributes a
+   * GitHub row as well, and two services planned in one Jira project share a single row
+   * (see `TaskRow.repos`), so there is at most one sprint here to name.
+   */
+  const sprintName = useMemo(() => {
+    for (const row of repoRows) {
+      if (row.tracker === 'jira' && row.sprintName) return row.sprintName
+    }
+    return undefined
+  }, [repoRows])
+
+  /**
+   * The columns Jira had to cut short on this repository, as a set the board can ask.
+   *
+   * Off `repoRows` for `sprintName`'s reason: a column is short or it is not, and that
+   * is a fact about the read rather than about what survived the search. Taken from the
+   * narrowed rows it would clear itself the moment a query matched nothing, which is
+   * precisely the moment the reader most needs to know the board is incomplete.
+   *
+   * A repository tracked in both places contributes only its Jira row here. The GitHub
+   * half caps too, but its own admission is a NUMBER — "50 of 214", off `totalCount` —
+   * and it is reported in the page header where it always was. Marking its columns with
+   * a `+` as well would say the same thing twice in two different shapes.
+   */
+  const truncatedColumns = useMemo(() => {
+    const columns = new Set<TaskBoardColumn>()
+    for (const row of repoRows) {
+      if (row.tracker !== 'jira') continue
+      for (const column of row.truncatedColumns ?? []) columns.add(column)
+    }
+    return columns
+  }, [repoRows])
+
+  /**
+   * The sprint search, and the one condition under which it runs at all.
+   *
+   * A board with every column whole holds every ticket its sprint has, so the in-memory
+   * filter over it is already exact and a round trip on a keystroke would buy nothing.
+   * On a board that is short it is the opposite: the filter is searching a fraction of
+   * the sprint and saying nothing about it. `enabled` is that distinction, and it is why
+   * the overwhelming majority of boards never make this call.
+   */
+  const sprintSearch = useSprintSearch({
+    configKey: repo,
+    query: filter.query,
+    enabled: truncatedColumns.size > 0,
+  })
+
+  /**
+   * Every row, with anything the search reached folded into the one it belongs to.
+   *
+   * Substituted for `allRows` from here down rather than merged later, so the search's
+   * findings go through the very same narrowing, sorting and dealing as the rows that
+   * arrived with the board. A ticket fetched by the search is then a ticket like any
+   * other — it lands in a column by its status, it carries an agent marker if somebody
+   * is on it, and it counts.
+   */
+  const searchedRows = useMemo(
+    () => mergeSearchIssues(allRows, repo, sprintSearch.issues),
+    [allRows, repo, sprintSearch.issues],
+  )
+
   const { rows, total, totalOpen, truncatedSprint } = useMemo(() => {
     // Sorted AFTER filtering, which is both the cheaper order and the only correct
     // one for the counts below: they are taken off what is on screen, and a sort that
     // ran first would reorder rows the filter is about to drop.
-    const shown = sortTaskRows(filterTaskRows(allRows, filterValue), filterValue.sort)
+    const shown = sortTaskRows(filterTaskRows(searchedRows, filterValue), filterValue.sort)
     const count = countOpenIssues(shown)
     return {
       rows: shown,
@@ -318,12 +434,15 @@ export function TasksPage() {
       // nobody asked about. The repository picker alone keeps it, since a repository's
       // own total is still its own total.
       totalOpen: filterValue.query.trim() ? count : countTotalOpen(shown),
-      // Whether a SPRINT was cut short by its page size. A different admission from
-      // GitHub's: `/rest/api/3/search/jql` is paginated by cursor and returns no total,
-      // so there is no second number to print — only "showing the first N".
-      truncatedSprint: shown.some((row) => row.tracker === 'jira' && row.truncated),
+      // Whether ANY column of a sprint was cut short by its budget. A different
+      // admission from GitHub's: `/rest/api/3/search/jql` is paginated by cursor and
+      // returns no total, so there is no second number to print — only "showing the
+      // first N". Which columns is said on the columns themselves; this is the
+      // page-level form, and it is what stops the header printing a total that is really
+      // a cap.
+      truncatedSprint: shown.some((row) => row.tracker === 'jira' && (row.truncatedColumns?.length ?? 0) > 0),
     }
-  }, [allRows, filterValue])
+  }, [searchedRows, filterValue])
 
   /** The rows on screen, dealt into the four columns. See `buildBoard`. */
   const board = useMemo(() => buildBoard(rows), [rows])
@@ -479,19 +598,39 @@ export function TasksPage() {
   // free: the offset is saved here, so a Jira row gets it by going through the same
   // door a GitHub row does.
   const select = useCallback((next: TaskSelection) => {
+    // PICKING MODE SHORT-CIRCUITS THE PAGE. The reader came here to answer one
+    // question, and opening the ticket they just answered it with would put a page in
+    // front of them to dismiss. The id is written in the form the board prints —
+    // `PER-1234`, `#234` — which is also the form `/magic:start` writes and the one
+    // `normalizeTicketId` folds for every lookup, so a ticket attached by hand and one
+    // attached by the skill are the same ticket.
+    if (pickAgentId) {
+      pickTicketForAgent(pickAgentId, next.tracker === 'jira' ? next.key : `#${next.number}`)
+      return
+    }
     // Read here rather than in the effect above: by the time that runs, the pane
     // has already been scrolled to the top of the ticket.
     listOffsetRef.current = paneRef.current?.scrollTop ?? 0
     setSelected(next)
-  }, [])
+  }, [pickAgentId, pickTicketForAgent])
 
   const back = useCallback(() => setSelected(null), [])
+
+  /**
+   * The board's launcher, one hook over every card on it.
+   *
+   * Here rather than in `boardColumns.ts` because that file holds no components any more
+   * and nothing to hang a hook on — and here rather than per card because a card is data
+   * now. `useTaskAgents` keeps which launches failed as a set of card ids; the ticket page
+   * next door uses the single-subject twin. See `useTaskAgent`.
+   */
+  const { startFailed, startAgent } = useTaskAgents()
 
   if (loading && !snapshot) {
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 flex items-center justify-center gap-2 text-text-secondary text-sm">
-          <WaveLoader className="text-accent" />
+          <Loader tone="accent" />
           <span>{t('tasks.loading')}</span>
         </div>
       </div>
@@ -546,7 +685,7 @@ export function TasksPage() {
    * the bar holding an invisible query, and blame the configuration for a ticket the
    * reader had just clicked.
    */
-  const narrowable = allRows.length > 0 || !!filter.query.trim()
+  const narrowable = filterRepos.length > 0 || !!filter.query.trim()
 
   /**
    * Whether the SEARCH is what emptied the board, as opposed to the repository simply
@@ -557,7 +696,81 @@ export function TasksPage() {
    * "nothing matched your search" — with the failure's own explanation rendered directly
    * underneath it.
    */
-  const noMatch = narrowable && countBoard(board) === 0 && rows.every((row) => !row.error)
+  const noMatch = !switching && narrowable && countBoard(board) === 0 && rows.every((row) => !row.error)
+
+  /**
+   * THE BANDS BETWEEN THE CONTROLS AND THE COLUMNS, in the order they are read: what is
+   * missing from the page as a whole, then what each unreadable repository has to say.
+   *
+   * The GitHub one used to sit ABOVE the filter bar and now sits under it with the rest,
+   * which is where a fact about the CONTENTS belongs: the heading names the section and
+   * the bar narrows it, and both are true whatever the read did. Past the early return
+   * above, `githubMissing` implies `hasJiraRepos` — the GitHub half is unreadable and the
+   * Jira half is not, so the page keeps rendering and says what is missing in one line
+   * rather than covering the sprint with the full panel. `info` rather than `warning`: the
+   * sprint below is perfectly readable, and nothing here is broken.
+   */
+  const notices: TaskBoardNotice[] = [
+    ...(githubMissing
+      ? [{
+        id: 'github',
+        variant: 'info' as const,
+        icon: Github,
+        children: t('tasks.github.title'),
+        hint: t('tasks.github.partialFix'),
+      }]
+      : []),
+    ...taskFailureNotices(rows, t),
+  ]
+
+  /**
+   * The sentence that stands in for the columns, when there are none to draw.
+   *
+   * TWO STATES AND NOT ONE, in the order of how much they blame. The search matching
+   * nothing is a DIFFERENT state from the four configuration hints, and the distinction
+   * matters: those send the reader to a settings field, and doing that because they
+   * mistyped a ticket id would be the page blaming its configuration for their search. The
+   * MARK is what keeps them apart — they read almost identically in words, and only one of
+   * them is the reader's own doing.
+   *
+   * A board with rows and nothing in them is NEITHER: four empty columns rather than a
+   * message, because that IS the state of its board.
+   */
+  const emptyBoard = switching
+    // The picked repository's read is still out. Said in the columns' place, under a
+    // picker that already names it, rather than by taking the whole page down to the
+    // opening loader and the picker with it.
+    ? { busy: true, children: t('tasks.loading') }
+    : noMatch
+      ? {
+        icon: SearchX,
+        children: t('tasks.filter.noMatch'),
+        actions: [{
+          id: 'clear',
+          // The repository is NOT cleared — it has no cleared state, and this button is
+          // about undoing a search rather than leaving the board.
+          label: t('tasks.filter.clearAll'),
+          onClick: () => setFilter(NO_FILTER),
+        }],
+      }
+      : rows.length === 0
+        // Not "no tickets": nobody asked the question, or the ones who did have no readable
+        // coordinates. Every fix is a per-repository setting on another page, which is
+        // exactly the case `EmptyState.hint` exists for: there is no button to press, so the
+        // instruction has nowhere else to go.
+        ? { icon: ListTodo, children: t(emptyState.title), hint: t(emptyState.hint) }
+        : undefined
+
+  const columns = buildTaskColumns({
+    board,
+    repoConfigs,
+    truncatedColumns,
+    picking: pickAgentId !== null,
+    startFailed,
+    onStart: startAgent,
+    onSelect: select,
+    t,
+  })
 
   return (
     // One scrolling pane holding two pages: the backlog, and the issue that
@@ -566,6 +779,19 @@ export function TasksPage() {
     // code and tables in it, and none of those survive being folded into a
     // column two words wide.
     <div ref={paneRef} className="h-full overflow-y-auto">
+      {/* ABOVE the sweep layers and outside their padding, because it is not part of
+          either page: it describes what the whole modal is currently for. It is still
+          inside the scrolling pane — the pane IS the page here, there is no fixed shell
+          to hang it from — so it is sticky rather than static. */}
+      {pickAgentId && (
+        <PickTicketBanner
+          // The agent may be gone by now — closed from the rail while this was open.
+          // The mode is still valid (the attachment simply lands on nothing), so the
+          // banner degrades to the generic name rather than taking itself down.
+          agentName={pickAgentName || t('tasks.pick.fallbackAgent')}
+          onCancel={closeModal}
+        />
+      )}
       {/* The title and its chrome are rendered by the hosting modal.
 
           The page's padding is on the SWEEP LAYERS, not on the pane: a `sticky`
@@ -611,92 +837,75 @@ export function TasksPage() {
             onBack={back}
           />
         ) : (
-          <div className="flex flex-col gap-3 pt-6">
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <ListTodo className="w-4 h-4" />
-              <span>{t('tasks.section')}</span>
-              <span className="ml-auto flex items-center gap-3">
-                {rows.length > 0 && (
-                  <span className="text-xs text-text-secondary/50">
-                    {/* "showing 50 of 214" wins when there IS a second number — it is
-                        strictly more than "showing the first 50", and only the GitHub
-                        half can ever supply it. The sprint form is the fallback for a
-                        board whose Jira half was cut short. */}
-                    {totalOpen > total
+          // THE WHOLE PAGE IS ONE COMPONENT: `TaskBoard` in `@ds/desktop` draws the
+          // heading, the pinned bar, the bands and the columns, and the public site draws
+          // the very same file. What is left here is data — see `boardColumns.ts` for the
+          // vocabulary and `TaskFilters.ts` for which controls the bar carries.
+          //
+          // The TOP inset is the page's own: `SweepPane` carries the sides, and the layer
+          // on its way out keeps the same one as the layer arriving.
+          <div className="pt-6">
+            <TaskBoard
+              heading={{
+                icon: ListTodo,
+                title: t('tasks.section'),
+                // A STRING rather than a number because only this page knows whether its
+                // own figure is a total or a cap — see `SectionHeader.count`. "showing 50
+                // of 214" wins when there IS a second number: it is strictly more than
+                // "showing the first 50", and only the GitHub half can ever supply it. The
+                // sprint form is the fallback for a board whose Jira half was cut short.
+                ...(rows.length > 0
+                  ? {
+                    count: totalOpen > total
                       ? openCountLabel(total, t, totalOpen)
-                      : sprintCountLabel(total, t, truncatedSprint)}
-                  </span>
-                )}
-                <button
-                  onClick={reload}
-                  disabled={loading}
-                  title={t('tasks.reload')}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  <span>{t('tasks.reload')}</span>
-                </button>
-              </span>
-            </div>
-
-            {/* Past the early return above, `githubMissing` implies `hasJiraRepos`. */}
-            {githubMissing && (
-              // The GitHub half is unreadable and the Jira half is not, so the page
-              // keeps rendering and says what is missing in one line rather than
-              // covering the sprint with the full panel.
-              <div className="flex items-start gap-2 px-4 py-2.5 text-xs bg-surface-subtle border border-line-subtle rounded-lg">
-                <Github className="w-3.5 h-3.5 text-icon-muted flex-shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-text-secondary">{t('tasks.github.title')}</span>
-                  <span className="text-text-secondary/60">{t('tasks.github.partialFix')}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Only once there is something to work with. Four controls over a page
-                that read nothing are four things to read before finding out there is
-                nothing there — and the repository picker would have nothing to offer.
-                See `narrowable` for why an empty board can still qualify. */}
-            {narrowable && (
-              <TaskFilters value={filterValue} repos={filterRepos} epics={filterEpics} onChange={changeFilter} />
-            )}
-
-            {/* Three outcomes, in the order of how much they blame. The search matching
-                nothing is a DIFFERENT state from the four configuration hints, and the
-                distinction matters: those send the reader to a settings field, and doing
-                that because they mistyped a ticket id would be the page blaming its
-                configuration for their search. */}
-            {noMatch ? (
-              <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <SearchX className="w-8 h-8 text-icon-muted" />
-                <p>{t('tasks.filter.noMatch')}</p>
-                <button
-                  // The repository is NOT cleared — it has no cleared state, and this
-                  // button is about undoing a search rather than leaving the board.
-                  onClick={() => setFilter(NO_FILTER)}
-                  className="mt-1 px-2.5 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
-                >
-                  {t('tasks.filter.clearAll')}
-                </button>
-              </div>
-            ) : rows.length === 0 ? (
-              <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <ListTodo className="w-8 h-8 text-icon-muted" />
-                {/* Not "no tickets": nobody asked the question, or the ones who did
-                    have no readable coordinates — and with two trackers that is four
-                    situations, not two. Every fix is a per-repository setting, so
-                    each hint names the one that applies. */}
-                <p>{t(emptyState.title)}</p>
-                <p className="text-xs text-text-secondary/60 max-w-sm text-center">
-                  {t(emptyState.hint)}
-                </p>
-              </div>
-            ) : (
-              // The board draws its four columns whatever is in them — an empty column
-              // says so itself, and a repository with nothing open at all is four empty
-              // columns rather than a message, because that IS the state of its board.
-              <TaskBoard board={board} rows={rows} repoConfigs={repoConfigs} onSelect={select} />
-            )}
+                      : sprintCountLabel(total, t, truncatedSprint),
+                  }
+                  : {}),
+                // `busy` rather than `disabled` plus a hand-spun glyph: it spins the mark,
+                // blocks the second press and keeps the button at full strength — a dimmed
+                // spinner says "unavailable" about a control that is in fact working.
+                actions: [{
+                  id: 'reload',
+                  label: t('tasks.reload'),
+                  icon: RefreshCw,
+                  busy: loading,
+                  onClick: reload,
+                }],
+              }}
+              // Only once there is something to work with. Four controls over a page that
+              // read nothing are four things to read before finding out there is nothing
+              // there — and the repository picker would have nothing to offer. See
+              // `narrowable` for why an empty board can still qualify.
+              {...(narrowable
+                ? {
+                  filters: buildTaskFilters({
+                    value: filterValue,
+                    repos: filterRepos,
+                    epics: filterEpics,
+                    hasAgents,
+                    ...(sprintName ? { sprintName } : {}),
+                    // What the box is doing beyond narrowing what is on screen. Only ever
+                    // true on a board that reported itself short — see `useSprintSearch` —
+                    // so an ordinary board's box looks exactly as it always has.
+                    searching: sprintSearch.loading,
+                    searchFailed: sprintSearch.failed,
+                    searchesSprint: truncatedColumns.size > 0,
+                    // The page's own 24px inset, spelled as a full bleed: an opaque band
+                    // inset by it would let the cards slide past either side of it.
+                    bleed: '-mx-6 px-6',
+                    t,
+                    onChange: changeFilter,
+                  }),
+                }
+                : {})}
+              notices={notices}
+              {...(emptyBoard ? { empty: emptyBoard } : {})}
+              columns={columns}
+              // What is pinned above the whole pane. The board works the rest out: the bar
+              // pins here, the column headings at this plus the bar's own height.
+              top={pickAgentId ? PICK_BAR_H : 0}
+              paneRef={paneRef}
+            />
           </div>
         )}
       </SweepPane>

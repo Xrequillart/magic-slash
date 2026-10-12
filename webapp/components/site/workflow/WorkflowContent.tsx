@@ -33,14 +33,14 @@ import { WorkflowHero } from './WorkflowHero'
  *   • `ControlBand` — THE OBJECTION, answered: where the loop stops for you, and the one
  *     thing it never does, which is press merge. Then the way on to `/features`.
  *
- * `FinalCtaSection` follows in `app/(marketing)/workflow/page.tsx`, so the page ends on the
+ * `FinalCtaSection` follows in `app/(showcase)/workflow/page.tsx`, so the page ends on the
  * ask, on the same dark sheet `DayBand` changed to.
  *
  * WHAT IS ON THE PAGE IS STILL NOT DECIDED HERE. `lib/workflow.ts` owns the five steps and
  * `lib/workflowPage.ts` owns everything this page says around them; both are pinned from
  * the root suite. This file is the order and nothing else.
  *
- * WHITE, not `canvas`, like `/faq`, `/features` and `/changelog`: the `(marketing)` layout
+ * WHITE, not `canvas`, like `/faq`, `/features` and `/changelog`: the `(showcase)` layout
  * paints no ground, so whichever page owns one paints its own.
  */
 export function WorkflowContent() {

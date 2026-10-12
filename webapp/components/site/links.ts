@@ -20,7 +20,7 @@ export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTO
  * policy. They live in the repository, and they are read from there.
  *
  * THE SITE HAS `/privacy` AND `/terms` NOW — story #273 wrote them, as ordinary routes
- * under `app/(marketing)`, listed in `PUBLIC_PATHS` and linked from the footer's
+ * under `app/(showcase)`, listed in `PUBLIC_PATHS` and linked from the footer's
  * copyright row. THESE TWO ARE NOT THOSE TWO, which is the whole reason this note still
  * exists: that story added a privacy policy and terms of use, and it added no licence
  * page and no security page. So the argument below is unchanged for the two constants it
@@ -36,7 +36,8 @@ export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTO
  * ONE OF THEM IS LINKED AGAIN. The footer's Legal column was removed by request (see
  * `SiteFooter.tsx`), and its three rows scattered: `NEW_ISSUE_URL` moved into Help and
  * stayed used, `LICENSE_URL` sat idle until `/terms` gave it a footnote to sit in
- * (`TermsContent.tsx`, "Read the MIT licence"), and `SECURITY_URL` is still unused —
+ * (`TermsContent.tsx`, "Read the PolyForm Shield licence"), and `SECURITY_URL` is still
+ * unused —
  * nothing on the site names a security policy. It is kept anyway, for the reason the
  * other two were kept while idle: a constant with a note explaining why it is unused
  * costs nothing, where re-deriving a `blob/main` path from memory later costs a wrong

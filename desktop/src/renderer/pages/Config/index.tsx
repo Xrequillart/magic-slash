@@ -1,95 +1,38 @@
-import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
-import { AccountPage } from './AccountPage'
-import { ConnectionsPage } from './ConnectionsPage'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Building2, Lock } from '@ds/desktop/icons'
+import { RepositoryList } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
-import { OrgPage, resolveActiveOrgId } from './OrgPage'
-import { AppearancePage } from './AppearancePage'
-import { NotificationsPage } from './NotificationsPage'
-import { LanguagePage } from './LanguagePage'
-import { SectionHeader } from './SectionHeader'
-import { ToggleRow } from './ToggleRow'
-import { TelemetryHealthCard } from './TelemetryHealthCard'
-import { SetupHealthCard } from './SetupHealthCard'
-import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { SweepPane } from '../../components/SweepPane'
-import { AccountAvatar } from '../../components/AccountAvatar'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
-import { useAuth } from '../../hooks/useAuth'
-import { useAvatar } from '../../hooks/useAvatar'
-import { displayNameFromEmail } from '../../utils/displayName'
-import type { SpotlightShortcut, LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
+import type { RepositoryConfig } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
-import { formatUsd } from '../../utils/usageStats'
-import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { CHANGELOG_URL } from '../../../urls'
-import { Switch } from '../../components/Switch'
-import { SELECT } from '../../theme/controls'
+import { useT } from '../../i18n'
 
-const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
-  { label: '\u2303 Space', value: 'Control+Space' },
-  { label: '\u2303\u21E7 Space', value: 'Control+Shift+Space' },
-  { label: '\u2325 Space', value: 'Alt+Space' },
-  { label: '\u2325\u21E7 Space', value: 'Alt+Shift+Space' },
-  { label: '\u2303 M', value: 'Control+M' },
-  { label: '\u2303\u21E7 M', value: 'Control+Shift+M' },
-  { label: '\u2325 M', value: 'Alt+M' },
-  { label: '\u2325\u21E7 M', value: 'Alt+Shift+M' },
-]
-
-// Message keys rather than labels, for the same reason as SETTINGS_TABS below:
-// module scope is evaluated once at import, so a literal here would pin the
-// select to the boot language.
-const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'plan', labelKey: 'settings.launchMode.plan', descriptionKey: 'settings.launchMode.plan.help' },
-  { value: 'default', labelKey: 'settings.launchMode.default', descriptionKey: 'settings.launchMode.default.help' },
-  { value: 'acceptEdits', labelKey: 'settings.launchMode.acceptEdits', descriptionKey: 'settings.launchMode.acceptEdits.help' },
-  { value: 'auto', labelKey: 'settings.launchMode.auto', descriptionKey: 'settings.launchMode.auto.help' },
-  { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
-]
-
-const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
-  { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
-]
-
-// Icons mirror each tab's own section header, so the rail and the content agree.
-// Claude Code and Application are the exceptions: each holds several sections —
-// the CLI's account/launch mode/usage on one side, the machine's setup and every
-// feature toggle on the other — so each gets an icon for the whole rather than
-// one borrowed from a single section.
-//
-// Message KEYS, not labels: this list is module scope, so a `t()` call here would
-// be evaluated once at import and pin the rail to whatever language the app
-// booted in. The labels are resolved in the render path instead.
-const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }[] = [
-  { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
-  { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
-  { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
-  { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
-  { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
-  { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
-  { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
-  { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
-  { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
-  { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
-  { id: 'about', labelKey: 'settings.tab.about', icon: Info },
-]
-
-const TAB_POSITION = new Map<string, number>(SETTINGS_TABS.map((tab, index) => [tab.id, index]))
 
 /**
- * Where a settings page sits in the rail, read top to bottom. Feeds the sweep
- * its direction, so the content moves the same way the eye does down the menu.
- * A repository detail is half a notch under Repositories: opening one reads as
- * a step down the list, and going back reads as a step up.
+ * THE MODAL IS ONE PAGE NOW, and the page is the repositories.
+ *
+ * It had eleven tabs, then seven, then six, and this is the end of that road rather
+ * than another step along it. Everything that was a PREFERENCE went to the quick
+ * settings sheet under the title bar and the panel it opens — the setup, the
+ * notifications, the appearance, the language, the chords. Everything that was an
+ * IDENTITY went to the account sheet beside it and ITS panel — who you are, which
+ * organization, which connections, which Claude Code, which version.
+ *
+ * A repository is neither. It is a folder on this disk with a remote behind it and a
+ * detail page of its own, and a list of them does not fit in a card hanging off a menu
+ * the way a roster or a version number does. So it kept the window, and the window lost
+ * the rail: a vertical menu of one entry is a menu that has nothing to say. The left
+ * sidebar names it directly.
+ *
+ * WHAT WENT WITH THE RAIL, and is not coming back as a component somewhere else: the
+ * repositories and organizations that unfolded under their tabs, and the account footer
+ * with its sign-out. The first two answered "which of these am I looking at", which the
+ * page itself answers now that it is the only page; the footer is the account sheet's
+ * first card.
  */
-function railPosition(contentKey: string): number {
-  if (contentKey.startsWith('repo:')) return (TAB_POSITION.get('repositories') ?? 0) + 0.5
-  return TAB_POSITION.get(contentKey) ?? 0
-}
 
 /**
  * Whether a switch is the hop between the repository list and one repository's
@@ -105,142 +48,16 @@ function isRepoDetailSwitch(fromKey: string, toKey: string): boolean {
   )
 }
 
-// toFixed would pin the decimal separator to a point, so the mantissa goes
-// through toLocaleString: French wants "12,5 M", not "12.5M". The unit itself is
-// a catalogue entry — French abbreviates a billion "Md" and spaces it.
-function formatTokensCompact(n: number, locale: string, t: Translate): string {
-  const scaled = (value: number, digits: number, unit: string) =>
-    `${value.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}`
-  if (n >= 1_000_000_000) return scaled(n / 1_000_000_000, 2, t('usage.unit.billion'))
-  if (n >= 1_000_000) return scaled(n / 1_000_000, 1, t('usage.unit.million'))
-  if (n >= 1_000) return scaled(n / 1_000, 1, t('usage.unit.thousand'))
-  return n.toLocaleString(locale)
-}
-
-// Human-readable label for a Claude seat tier / billing type. Not translated:
-// these are Anthropic's own plan names, identical in every language.
-const SEAT_TIER_LABELS: Record<string, string> = {
-  team_standard: 'Team',
-  team_premium: 'Team Premium',
-  enterprise: 'Enterprise',
-  max: 'Max',
-  pro: 'Pro',
-}
-
 /**
- * Footer pinned to the bottom of the settings tab rail. Shows the signed-in
- * account, an organization switcher (when the user belongs to more than one),
- * and a Sign out action. Moved here from the sidebar account dropdown. There is
- * no organization switcher: every org's repositories are visible at once.
- */
-function SettingsAccountFooter() {
-  const { status, logout } = useAuth()
-  const avatar = useAvatar()
-  const t = useT()
-
-  if (!status.enabled || !status.loggedIn) return null
-
-  const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } catch {
-      // best-effort; the hook's statusChanged subscription reconciles state.
-    }
-  }
-
-  return (
-    <div className="mt-auto border-t border-line-field p-2 space-y-1">
-      {/* Account identity */}
-      <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary">
-        {/*
-          The photo, at the exact 20 px the initial badge used to occupy, so the row's
-          height and the name's baseline do not move. The initial is gone on purpose
-          and not by omission: there is only ever ONE account here, spelled out in full
-          right next to it, so a letter was decoration that read like information —
-          `AccountAvatar`'s header has the long version. Same `bg-accent/20` pill behind
-          the fallback glyph, so a user with no photo sees the badge they always saw.
-        */}
-        <AccountAvatar variant="footer" dataUrl={avatar} />
-        <span className="truncate">{name}</span>
-      </div>
-
-      {/* Sign out */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
-      >
-        <LogOut className="w-3.5 h-3.5" />
-        <span>{t('settings.footer.signOut')}</span>
-      </button>
-    </div>
-  )
-}
-
-// The two halves of the activity-recording breakdown. Message keys rather than
-// labels, for the same reason as SETTINGS_TABS: module scope is evaluated once at
-// import, so a literal would pin the list to the boot language.
-const USAGE_LOGS_COLLECTED: MessageKey[] = [
-  'settings.application.usageLogs.collected.activity',
-  'settings.application.usageLogs.collected.skills',
-  'settings.application.usageLogs.collected.session',
-  'settings.application.usageLogs.collected.context',
-]
-
-// The last two are the counterweight to the skills line opposite: now that a run
-// carries its duration and its outcome, the obvious next question is whether the
-// words next to /magic:pr travel with it (they do not — types.ts, SkillInvocationInput)
-// and which skills reach the table at all.
-//
-// That second one is worded as a NAME test, not as ownership, because that is all
-// isMagicSkill does (main/usage/skill-invocations.ts): it folds the plugin prefix,
-// then requires the basename to start with `magic-`. Promising "nothing that is not
-// ours" would over-claim — a third-party skill called `acme:magic-deploy` clears that
-// filter. The panel states the rule the code actually enforces.
-const USAGE_LOGS_EXCLUDED: MessageKey[] = [
-  'settings.application.usageLogs.excluded.prompts',
-  'settings.application.usageLogs.excluded.code',
-  'settings.application.usageLogs.excluded.terminal',
-  'settings.application.usageLogs.excluded.secrets',
-  'settings.application.usageLogs.excluded.args',
-  'settings.application.usageLogs.excluded.otherSkills',
-]
-
-/**
- * What activity recording does and does not send, side by side. Shown whatever
- * the toggle's state: someone who turned it off is exactly the person who wants
- * to know what they turned off, and someone deciding needs the two lists to
- * compare — a paragraph the length of both never gets read.
+ * How deep a page sits, which is the whole of what `SweepPane` needs: it compares two
+ * ranks and takes the SIGN, so the numbers only have to be in the right order.
  *
- * `t` is passed in rather than pulled from useT() so the desktop and the webapp's
- * copy of this block stay diffable line by line.
+ * Declared at module scope because `SweepPane` reads it during render — a fresh closure
+ * on every render would be a new prop each time, which is what `pages/Tasks/index.tsx`
+ * and `pages/Plans/index.tsx` both note where they declare theirs.
  */
-function UsageLogsBreakdown({ t }: { t: Translate }) {
-  const columns = [
-    { titleKey: 'settings.application.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
-    { titleKey: 'settings.application.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
-  ] as const
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-line-subtle">
-      {columns.map(({ titleKey, keys, Icon, tone }) => (
-        <div key={titleKey}>
-          <div className="text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
-            {t(titleKey)}
-          </div>
-          <ul className="space-y-1.5">
-            {keys.map((key) => (
-              <li key={key} className="flex items-start gap-2 text-xs text-text-secondary leading-snug">
-                <Icon className={`w-3.5 h-3.5 shrink-0 mt-px ${tone}`} />
-                <span>{t(key)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  )
+function pageDepth(pageKey: string): number {
+  return pageKey.startsWith('repo:') ? 1 : 0
 }
 
 /** Hash route within Settings. `repo` is a sub-page of the Repositories tab. */
@@ -249,208 +66,22 @@ interface SettingsRoute {
   params: { name?: string }
 }
 
-/**
- * How long the repository list takes to fold or unfold in the rail. Kept in sync
- * with the `duration-200` on the wrapper below — it is what holds the items
- * mounted for the length of their own exit.
- */
-const RAIL_COLLAPSE_MS = 200
-
-interface RepoRailContent {
-  repos: [string, RepositoryConfig][]
-  colorMap: Record<string, string>
-  activeName?: string
-}
-
-/**
- * The repositories unfolded under the Repositories tab in the rail — one entry
- * per configured repo, indented under a hairline that stands for the parent.
- *
- * Flat, in the same order as the list page reads — personal first, then each
- * organization — so the rail and the content never disagree about which repo
- * comes next. Grouping headers are left to the page: they cost a third of this
- * column's width and repeat what the page already says.
- *
- * The dot is the project colour used everywhere else (sidebar, agent chips), so
- * a repo is recognisable here before its name is read.
- */
-function RepoRailItems({ repos, colorMap, activeName }: RepoRailContent) {
-  return (
-    <div className="ml-[19px] pl-3 py-0.5 border-l border-line-field space-y-0.5">
-      {repos.map(([name]) => {
-        const isActive = name === activeName
-        return (
-          <a
-            key={name}
-            href={`#/repo/${encodeURIComponent(name)}`}
-            aria-current={isActive ? 'page' : undefined}
-            className={`relative flex items-center gap-2 px-2 py-1.5 text-[13px] rounded-lg transition-colors ${
-              isActive
-                ? 'text-ink font-medium'
-                : 'text-text-secondary/70 hover:text-ink hover:bg-surface'
-            }`}
-          >
-            {/* Sits on top of the container's hairline, marking the open page */}
-            {isActive && (
-              <span className="absolute -left-[13px] top-1 bottom-1 w-[2px] rounded-full bg-accent" />
-            )}
-            {/* The repo tile's icon, bare and tinted rather than in its backdrop:
-                these rows are 13px and sit right next to the organization ones,
-                which carry a plain Building2 — a filled tile here would outweigh
-                both. The colour still comes across. */}
-            <FolderGit2 className="w-3 h-3 shrink-0" style={{ color: colorMap[name] }} />
-            <span className="truncate">{name}</span>
-          </a>
-        )
-      })}
-    </div>
-  )
-}
-
-/**
- * Folds the repository list in and out of the rail, both ways. Shown only while
- * Repositories is the live tab (a repo detail counts): the rail lists the tabs,
- * and a tab that is not open has no business spending nine lines of it.
- *
- * The height is animated through `grid-template-rows: 0fr → 1fr` rather than a
- * max-height guess: the rail holds however many repos the user configured, and
- * a cap tall enough for twenty would make five snap open. The single grid track
- * measures itself, and the two values interpolate.
- *
- * Leaving the tab has to animate too, which means the items outlive the prop
- * that showed them: `mounted` keeps them in the tree for the fold, and the props
- * are replayed from the last open commit — a switch away from a repo detail
- * clears the active name in the same commit, and reading it live would blink the
- * marker off at the very moment the list starts folding.
- */
-function RailDisclosure({ open, children }: { open: boolean; children: ReactNode }) {
-  const shownRef = useRef<ReactNode>(children)
-  if (open) shownRef.current = children
-
-  const [mounted, setMounted] = useState(open)
-  const [expanded, setExpanded] = useState(open)
-
-  useEffect(() => {
-    if (open) {
-      setMounted(true)
-      return
-    }
-    if (!mounted) return
-    setExpanded(false)
-    const timer = window.setTimeout(() => setMounted(false), RAIL_COLLAPSE_MS)
-    return () => window.clearTimeout(timer)
-  }, [open, mounted])
-
-  // Opening flips the track one frame after the items are in the tree: a
-  // transition needs two committed values, and going 0fr → 1fr within a single
-  // commit is a jump, not a fold.
-  useEffect(() => {
-    if (!mounted || !open) return
-    const frame = requestAnimationFrame(() => setExpanded(true))
-    return () => cancelAnimationFrame(frame)
-  }, [mounted, open])
-
-  if (!mounted) return null
-
-  return (
-    <div
-      // Folded away is not "there but short": a link inside a closing list must
-      // stop answering the keyboard and the mouse the moment it starts leaving.
-      aria-hidden={!expanded}
-      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
-        expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'
-      }`}
-    >
-      <div className="overflow-hidden">{shownRef.current}</div>
-    </div>
-  )
-}
-
-/**
- * The organizations unfolded under the Organization tab in the rail.
- *
- * Same shape as the repositories above — indented under the hairline, one row
- * each — because they answer the same question in the rail: which of the things
- * this tab owns am I looking at. The difference is that an organization has no
- * page of its own: picking one scopes the Organization page, which is why these
- * are buttons writing to the store rather than links to a hash route.
- *
- * Creating and joining live on the page's own header, not here: the rail names
- * what you have, and a row that makes a new one reads as one of them.
- */
-function OrgRailItems({
-  orgs,
-  activeOrgId,
-  onSelect,
-}: {
-  orgs: Org[]
-  activeOrgId?: string
-  onSelect: (orgId: string) => void
-}) {
-  return (
-    <div className="ml-[19px] pl-3 py-0.5 border-l border-line-field space-y-0.5">
-      {orgs.map((org) => {
-        const isActive = org.id === activeOrgId
-        return (
-          <button
-            key={org.id}
-            type="button"
-            onClick={() => onSelect(org.id)}
-            aria-current={isActive ? 'true' : undefined}
-            className={`relative w-full flex items-center gap-2 px-2 py-1.5 text-[13px] rounded-lg transition-colors text-left ${
-              isActive ? 'text-ink font-medium' : 'text-icon hover:text-ink hover:bg-surface'
-            }`}
-          >
-            {/* Sits on top of the container's hairline, marking the open org */}
-            {isActive && (
-              <span className="absolute -left-[13px] top-1 bottom-1 w-[2px] rounded-full bg-accent" />
-            )}
-            <Building2 className="w-3 h-3 shrink-0" />
-            <span className="truncate">{org.name}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function WelcomePage({ route }: { route: SettingsRoute }) {
-  const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
-  const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode, updateDefaultAgentType } = useConfig()
+  const { config, terminals } = useStore()
+  const { addRepository } = useConfig()
   const orgs = useStore((s) => s.orgs)
-  // The rail lists the organizations too, so it needs the same selection the
-  // Organization page reads — and the same fallback rule, hence the shared
-  // resolver rather than a second copy of it here.
-  const settingsOrgId = useStore((s) => s.settingsOrgId)
-  const setSettingsOrgId = useStore((s) => s.setSettingsOrgId)
-  const activeOrgId = useMemo(() => resolveActiveOrgId(orgs, settingsOrgId), [orgs, settingsOrgId])
   const t = useT()
-  const locale = useLocale()
-  // Deep-link support: another view can request a specific settings tab via the
-  // store (e.g. the sidebar account menu → Organization). Initialise straight
-  // from it so the requested tab paints on first render (no Profile → target
-  // flash), then clear the store value once so later visits start on the default.
-  const [activeTab, setActiveTab] = useState<SettingsTab>(settingsInitialTab ?? 'account')
 
-  useEffect(() => {
-    if (!settingsInitialTab) return
-    setActiveTab(settingsInitialTab)
-    setSettingsInitialTab(null)
-  }, [settingsInitialTab, setSettingsInitialTab])
-
-  // A repository detail page replaces the tab content but keeps the rail, so the
-  // menu never disappears. Repositories stays lit — the detail is its sub-page.
+  // Two pages and not seven: the list, and one repository's detail under `#/repo/<name>`.
   const isRepoRoute = route.page === 'repo'
-  const railActiveTab = isRepoRoute ? 'repositories' : activeTab
-  const contentTab = isRepoRoute ? null : activeTab
 
   /**
-   * What the content pane is currently showing. Used as its React key, so
-   * moving between tabs — or between two repository pages — remounts the pane
-   * and plays the sweep. Without the key React would reuse the same element and
-   * the new page would simply appear.
+   * What the content pane is currently showing. Used as its React key, so moving
+   * between the list and a repository — or between two repositories — remounts the pane
+   * and plays the sweep. Without the key React would reuse the same element and the new
+   * page would simply appear.
    */
-  const contentKey = isRepoRoute ? `repo:${route.params.name ?? ''}` : activeTab
+  const contentKey = isRepoRoute ? `repo:${route.params.name ?? ''}` : 'repositories'
 
   // A page opens at its top. The pane is the scroll container and it survives
   // the switch, so without this the next page inherits the previous page's
@@ -460,117 +91,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     contentScrollRef.current?.scrollTo({ top: 0 })
   }, [contentKey])
 
-  const handleSelectTab = (tab: SettingsTab) => {
-    setActiveTab(tab)
-    // Picking a tab from a repo detail page must also leave that hash route,
-    // otherwise the detail would keep covering the content pane.
-    if (window.location.hash && window.location.hash !== '#/') {
-      window.location.hash = '#/'
-    }
-  }
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
-  const [appVersion, setAppVersion] = useState('')
-  const [loadingWhatsNew, setLoadingWhatsNew] = useState(false)
-  const [autoStart, setAutoStart] = useState(false)
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
-  const [spotlightError, setSpotlightError] = useState(false)
-  const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
-  const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
-  const [showBypassWarning, setShowBypassWarning] = useState(false)
-  const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
-  const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
-  const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
-  const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
-
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  const configSpotlightShortcut = config?.spotlight?.shortcut
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-    if (configSpotlightShortcut !== undefined) setSpotlightShortcut(configSpotlightShortcut)
-  }, [configSpotlightEnabled, configSpotlightShortcut])
-
-  const configLaunchMode = config?.launchMode
-  useEffect(() => {
-    if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
-  }, [configLaunchMode])
-
-  const configUsageLogsEnabled = config?.usageLogsEnabled
-  useEffect(() => {
-    if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
-  }, [configUsageLogsEnabled])
-
-  const configPrWatcherEnabled = config?.prReviews?.enabled
-  const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
-  const configPrWatcherAutoLaunch = config?.prReviews?.autoLaunchSkills
-  useEffect(() => {
-    if (configPrWatcherEnabled !== undefined) setPrWatcherEnabled(configPrWatcherEnabled)
-    if (configPrWatcherInterval !== undefined) setPrWatcherInterval(configPrWatcherInterval)
-    if (configPrWatcherAutoLaunch !== undefined) setPrWatcherAutoLaunch(configPrWatcherAutoLaunch)
-  }, [configPrWatcherEnabled, configPrWatcherInterval, configPrWatcherAutoLaunch])
-
-  const handleSpotlightToggle = async () => {
-    const newEnabled = !spotlightEnabled
-    setSpotlightEnabled(newEnabled)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: newEnabled, shortcut: spotlightShortcut })
-      if (newEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightEnabled(!newEnabled) // revert on error
-    }
-  }
-
-  const handleSpotlightShortcutChange = async (newShortcut: SpotlightShortcut) => {
-    const previousShortcut = spotlightShortcut
-    setSpotlightShortcut(newShortcut)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: spotlightEnabled, shortcut: newShortcut })
-      if (spotlightEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightShortcut(previousShortcut)
-    }
-  }
-
-  const applyLaunchMode = async (mode: LaunchMode) => {
-    const previous = launchMode
-    setLaunchMode(mode)
-    setShowBypassWarning(false)
-    try {
-      await updateLaunchMode(mode)
-      showToast(t('toast.launchModeUpdated'), 'success')
-    } catch {
-      setLaunchMode(previous)
-    }
-  }
-
-  // Optimistic, then reverted on failure — the same shape as applyLaunchMode above and
-  // as ToggleRow, so every control in this page fails the same way.
-  const applyDefaultAgentType = async (type: AgentType) => {
-    const previous = defaultAgentType
-    setDefaultAgentType(type)
-    try {
-      await updateDefaultAgentType(type)
-      showToast(t('toast.defaultAgentTypeUpdated'), 'success')
-    } catch {
-      setDefaultAgentType(previous)
-    }
-  }
-
-  const handleLaunchModeChange = (mode: LaunchMode) => {
-    if (mode === 'bypassPermissions') {
-      setShowBypassWarning(true)
-      return
-    }
-    applyLaunchMode(mode)
-  }
-
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
 
@@ -580,7 +102,20 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   // visible: that is how you discover a colleague's repo and point it at your
   // own clone.
   const personalRepos = useMemo(() => repos.filter(([, r]) => !r.orgId), [repos])
-  const reposByOrg = useMemo(() => {
+  /**
+   * The team sections: the organizations `useOrgList` hydrated, in its order, and then
+   * any org a REPOSITORY names that the list does not hold.
+   *
+   * That tail is the whole point. This used to render `orgs.map(...)` and nothing else,
+   * so a repository whose org was missing from the list had no section to sit in and
+   * simply was not drawn — the page showed the personal repos and swallowed every team
+   * one. And `orgs` is missing far more often than it looks: it lands asynchronously
+   * from the cloud, it stays empty when that read fails or the user is offline, and it
+   * never holds an org the user has since left while a local repo still points at it.
+   * Grouping by what the repositories themselves say, with `orgs` supplying only names
+   * and order, means a repo can lose its heading but never its row.
+   */
+  const orgSections = useMemo(() => {
     const byOrg = new Map<string, typeof repos>()
     for (const org of orgs) byOrg.set(org.id, [])
     for (const entry of repos) {
@@ -588,19 +123,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       if (!orgId) continue
       byOrg.set(orgId, [...(byOrg.get(orgId) ?? []), entry])
     }
-    return byOrg
-  }, [repos, orgs])
+    const names = new Map(orgs.map((org) => [org.id, org.name]))
+    return [...byOrg].map(([id, orgRepos]) => ({
+      id,
+      name: names.get(id) ?? t('settings.repos.otherOrg'),
+      repos: orgRepos,
+    }))
+  }, [repos, orgs, t])
 
-  // The rail's flat reading of the same list: personal repos, then each org's, in
-  // the order the sections are rendered below. Built from reposByOrg rather than
-  // from `repos` so a repo whose orgId points at an org the user is no longer in
-  // stays out of the rail exactly as it stays out of the page.
-  const railRepos = useMemo(
-    () => [...personalRepos, ...orgs.flatMap((org) => reposByOrg.get(org.id) ?? [])],
-    [personalRepos, orgs, reposByOrg]
-  )
-
-  // Generate color map for projects
   const colorMap = useMemo(
     () => getProjectColorMap(projectNames, config?.repositories),
     [projectNames, config?.repositories]
@@ -623,133 +153,31 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     return counts
   }, [terminals, repos])
 
-  // One row of the repositories list. Shared by the Personal and Team sections —
-  // a plain render function, not a component, so React keeps the same elements
-  // across renders instead of remounting a freshly-declared type.
-  const renderRepoRow = ([name, repo]: [string, RepositoryConfig]) => {
-    const hasGithub = githubStatus[name]
-    const color = colorMap[name]
+  // One row of the repositories list, as `RepositoryItem`'s props. Shared by the Personal
+  // and Team sections.
+  const repoRow = ([name, repo]: [string, RepositoryConfig]) => {
     const agentCount = agentCountByRepo[name] || 0
-
-    return (
-      <a
-        key={name}
-        href={`#/repo/${encodeURIComponent(name)}`}
-        className="group flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface-strong border border-line-strong hover:border-line-strong rounded-xl transition-all"
-      >
-        {/* Repository tile — the same one the webapp's repository list and the
-            agent sidebar's cards use: the repo's colour tints the icon and its
-            backdrop, instead of a bare dot that named nothing. */}
-        <span
-          className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: `${color}1f`, color }}
-        >
-          <FolderGit2 className="w-4 h-4" />
-        </span>
-
-        {/* Repo info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{name}</span>
-            {/* GitHub status badge — only meaningful once a local folder is bound */}
-            {!repo.needsLocalPath && (
-              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                hasGithub
-                  ? 'bg-green/10 text-green'
-                  : 'bg-red/10 text-red'
-              }`}>
-                <Github className="w-2.5 h-2.5" />
-                {hasGithub ? t('settings.repos.connected') : t('settings.repos.noRemote')}
-              </span>
-            )}
-          </div>
-          {repo.needsLocalPath ? (
-            <div className="flex items-center gap-1 text-xs text-yellow mt-0.5">
-              <AlertTriangle className="w-3 h-3" />
-              {t('settings.repos.noLocalFolder')}
-            </div>
-          ) : (
-            <div className="text-xs text-text-secondary/50 truncate mt-0.5">
-              {repo.path}
-            </div>
-          )}
-        </div>
-
-        {/* Agent count */}
-        {agentCount > 0 && (
-          <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-            {t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount })}
-          </span>
-        )}
-
-        {/* Arrow */}
-        <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors" />
-      </a>
-    )
-  }
-
-  // Latest known Claude account usage (plan rate limits). These are account-global,
-  // so they're identical across agents — pick the most recently reported one that
-  // actually carries plan limits (Claude.ai Pro/Max only).
-  const accountUsage = useMemo(() => {
-    let latest: NonNullable<typeof terminals[number]['metadata']>['usage'] | undefined
-    for (const terminal of terminals) {
-      const usage = terminal.metadata?.usage
-      if (!usage) continue
-      if (typeof usage.fiveHourPercent !== 'number' && typeof usage.sevenDayPercent !== 'number') continue
-      if (!latest || (usage.updatedAt ?? 0) > (latest.updatedAt ?? 0)) {
-        latest = usage
-      }
-    }
-    return latest
-  }, [terminals])
-
-  // accountUsage can exist while carrying neither percentage, so gate the bars on
-  // the values actually rendered rather than on the object itself.
-  const hasRateLimits =
-    typeof accountUsage?.fiveHourPercent === 'number' ||
-    typeof accountUsage?.sevenDayPercent === 'number'
-
-  // Re-render every 30s so the "resets in …" countdowns stay fresh.
-  const [usageNow, setUsageNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setUsageNow(Date.now()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-
-  // Claude account identity + estimated spend, sourced from ~/.claude on disk.
-  const [claudeAccount, setClaudeAccount] = useState<ClaudeAccount | null>(null)
-  const [spend, setSpend] = useState<SpendSummary | null>(null)
-  useEffect(() => {
-    if (activeTab !== 'claude-code') return
-    let cancelled = false
-    window.electronAPI.usage.getAccount().then((a) => { if (!cancelled) setClaudeAccount(a) })
-    window.electronAPI.usage.getSpend().then((s) => { if (!cancelled) setSpend(s) })
-    return () => { cancelled = true }
-  }, [activeTab])
-
-  // Fetch app version and auto-start state
-  useEffect(() => {
-    window.electronAPI.updater.getVersion().then(setAppVersion)
-    window.electronAPI.config.getAutoStart().then(setAutoStart)
-  }, [])
-
-  const handleWhatsNew = async () => {
-    if (loadingWhatsNew || !appVersion) return
-    setLoadingWhatsNew(true)
-    try {
-      const html = await window.electronAPI.updater.getReleaseNotes(appVersion)
-      if (!html) {
-        showToast(t('toast.releaseNotesFailed'), 'error')
-        return
-      }
-      window.dispatchEvent(new CustomEvent('show:whats-new', {
-        detail: { version: appVersion, releaseNotes: html },
-      }))
-    } catch {
-      showToast(t('toast.releaseNotesFailed'), 'error')
-    } finally {
-      setLoadingWhatsNew(false)
+    return {
+      key: name,
+      name,
+      ...(colorMap[name] ? { color: colorMap[name] } : {}),
+      href: `#/repo/${encodeURIComponent(name)}`,
+      // Only meaningful once a local folder is bound: until then there is nothing to read
+      // a remote off, so the chip stays away rather than reporting none.
+      ...(repo.needsLocalPath
+        ? { missingPath: t('settings.repos.noLocalFolder') }
+        : {
+          remote: {
+            connected: !!githubStatus[name],
+            label: githubStatus[name] ? t('settings.repos.connected') : t('settings.repos.noRemote'),
+          },
+          path: repo.path,
+        }),
+      // Worded here, where the catalogue is. The row takes the sentence, not the number —
+      // the plural rule is the app's and not the design system's.
+      ...(agentCount > 0
+        ? { agents: t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount }) }
+        : {}),
     }
   }
 
@@ -811,677 +239,79 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   }
 
   return (
-    <div className="flex h-full animate-fade-in">
-      {/* Left rail: vertical tabs, account footer */}
-      <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
-        <nav className="flex-1 overflow-y-auto px-2 pt-3 space-y-0.5">
-          {SETTINGS_TABS.map((tab) => {
-            const Icon = tab.icon
-            const isActive = railActiveTab === tab.id
-            // The two tabs that own a list are the ones that report an expanded
-            // state to assistive tech — and only while their list has something
-            // in it, since an empty one renders nothing to expand.
-            const expandable =
-              (tab.id === 'repositories' && railRepos.length > 0) ||
-              (tab.id === 'organization' && orgs.length > 0)
-            return (
-              <Fragment key={tab.id}>
-                <button
-                  onClick={() => handleSelectTab(tab.id)}
-                  aria-expanded={expandable ? isActive : undefined}
-                  className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-accent/15 text-ink'
-                      : 'text-text-secondary hover:text-ink hover:bg-surface'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{t(tab.labelKey)}</span>
-                </button>
-                {tab.id === 'repositories' && railRepos.length > 0 && (
-                  <RailDisclosure open={isActive}>
-                    <RepoRailItems
-                      repos={railRepos}
-                      colorMap={colorMap}
-                      activeName={isRepoRoute ? route.params.name : undefined}
-                    />
-                  </RailDisclosure>
-                )}
-                {tab.id === 'organization' && orgs.length > 0 && (
-                  <RailDisclosure open={isActive}>
-                    <OrgRailItems
-                      orgs={orgs}
-                      activeOrgId={activeOrgId}
-                      onSelect={(id) => { setSettingsOrgId(id); handleSelectTab('organization') }}
-                    />
-                  </RailDisclosure>
-                )}
-              </Fragment>
-            )
-          })}
-        </nav>
-        <SettingsAccountFooter />
-      </div>
+    <div className="h-full animate-fade-in">
+      {/* THE WHOLE WINDOW, where it used to be the half beside the rail.
 
-      {/* Content */}
-      <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
+          NO PADDING ON THE PANE — it is on the SWEEP LAYERS below, which is
+          `pages/Plans/index.tsx`'s arrangement and it is load-bearing for the sideways
+          sweep. A scrolling box clips at its padding box, so a page inset 24px from the
+          pane's edge has nowhere to travel: sliding it 24px left puts its first column
+          of pixels exactly on the clip edge, and the row you are leaving loses its left
+          side for the length of the animation. Padding on the LAYER instead means the
+          24px that leaves the box is the layer's own empty inset, and the content
+          arrives and departs whole. */}
+      <div ref={contentScrollRef} className="h-full overflow-y-auto">
         <SweepPane
           pageKey={contentKey}
-          order={railPosition}
+          // `depth` AND NOT A CONSTANT, which is what this was — and the constant was
+          // the bug. `SweepPane` reads the SIGN of the gap between two ranks to decide
+          // which way a switch travels; with every page ranked 0 the gap is always 0,
+          // never negative, so no switch here was ever a switch BACK. Opening a
+          // repository and leaving it both played `sweep-*-left`, and the return
+          // repeated the arrival instead of undoing it.
+          //
+          // The rail is gone, so there is no longer a menu order to read this off —
+          // but there is still a DEPTH, and depth is all the sign needs: the list is
+          // the surface and a repository is one page under it. Going down sweeps left,
+          // coming back up sweeps right, which is what the comment at the top of this
+          // file already promised.
+          order={pageDepth}
           horizontal={isRepoDetailSwitch}
           scrollRef={contentScrollRef}
-          className="max-w-4xl flex flex-col gap-6"
+          // A CAP AGAIN, and centred — which reverses a decision the rail had made for
+          // us. There was a `max-w-4xl` here once; it went because a form sitting against
+          // a 224px rail on a full-screen modal was already off the window edge, and the
+          // cap only added a band of empty panel beside it. The rail is gone, so nothing
+          // holds the content in any more: a repository row would run the full width of a
+          // maximised window, with its name at one end and its chevron at the other.
+          // 72rem is wider than the measure prose would ask for, because these are rows
+          // and not paragraphs — it is a limit on the reach of the eye, not on the line.
+          className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6"
         >
 
-      {/* Repository detail — sub-page of the Repositories tab */}
+      {/* One repository, under `#/repo/<name>` — the window's only sub-page. */}
       {isRepoRoute && <RepoPage repoName={route.params.name || ''} />}
 
-      {/* Account tab — cloud identity + Claude profile */}
-      {contentTab === 'account' && (
-        <AccountPage />
-      )}
-
-      {/* Connections tab — the outside services this machine is linked to */}
-      {contentTab === 'connections' && (
-        <ConnectionsPage />
-      )}
-
-      {/* Organization tab */}
-      {contentTab === 'organization' && (
-        <OrgPage />
-      )}
-
-      {/* Repositories tab */}
-      {contentTab === 'repositories' && <div>
-        <SectionHeader
-          icon={FolderGit2}
-          title={t('settings.repos.section')}
-          action={
-            <button
-              onClick={handleOpenProject}
-              disabled={isAdding}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-50"
-            >
-              <Plus className="w-3 h-3" />
-              <span>{isAdding ? t('settings.repos.adding') : t('settings.repos.add')}</span>
-            </button>
-          }
+      {/* The repository list — the whole of this window, the detail above excepted. The
+          drawing is `RepositoryList`'s; what each row says is worked out here. */}
+      {!isRepoRoute && (
+        <RepositoryList
+          add={{
+            label: isAdding ? t('settings.repos.adding') : t('settings.repos.add'),
+            busy: isAdding,
+            onClick: handleOpenProject,
+          }}
+          empty={{ title: t('settings.repos.emptyTitle'), hint: t('settings.repos.emptyHint') }}
+          sections={[
+            {
+              id: 'personal',
+              icon: Lock,
+              title: t('settings.repos.personal'),
+              rows: personalRepos.map(repoRow),
+              empty: t('settings.repos.noPersonal'),
+            },
+            // One section per organization, in the order useOrgList lists them.
+            ...orgSections.map((section) => ({
+              id: section.id,
+              icon: Building2,
+              title: section.name,
+              rows: section.repos.map(repoRow),
+              empty: t('settings.repos.noTeam'),
+            })),
+          ]}
         />
+      )}
 
-        {repos.length === 0 ? (
-          <button
-            onClick={handleOpenProject}
-            disabled={isAdding}
-            className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
-          >
-            <Folder className="w-8 h-8 text-icon-muted mx-auto mb-3" />
-            <div className="text-sm text-text-secondary/50 mb-1">{t('settings.repos.emptyTitle')}</div>
-            <div className="text-xs text-text-secondary/30">{t('settings.repos.emptyHint')}</div>
-          </button>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {/* Personal */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
-                <Lock className="w-3 h-3" />
-                <span>{t('settings.repos.personal')}</span>
-                <span className="text-text-secondary/30">{personalRepos.length}</span>
-              </div>
-              {personalRepos.length === 0 ? (
-                <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                  {t('settings.repos.noPersonal')}
-                </div>
-              ) : (
-                <div className="space-y-2">{personalRepos.map(renderRepoRow)}</div>
-              )}
-            </div>
-
-            {/* One section per organization, in the order useOrg lists them */}
-            {orgs.map((org) => {
-              const orgRepos = reposByOrg.get(org.id) ?? []
-              return (
-                <div key={org.id}>
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
-                    <Building2 className="w-3 h-3" />
-                    <span>{org.name}</span>
-                    <span className="text-text-secondary/30">{orgRepos.length}</span>
-                  </div>
-                  {orgRepos.length === 0 ? (
-                    <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                      {t('settings.repos.noTeam')}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">{orgRepos.map(renderRepoRow)}</div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>}
-
-      {/* Claude Code tab — everything about the CLI itself: the account it runs
-          as, how it launches, and how much of the plan it is consuming. */}
-      {contentTab === 'claude-code' && <div className="flex flex-col gap-8">
-
-      {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
-      <div>
-        <SectionHeader icon={User} title={t('settings.claude.account')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {claudeAccount ? (
-            <div className="space-y-2 text-sm">
-              {claudeAccount.displayName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.name')}</span>
-                  <span className="font-medium">{claudeAccount.displayName}</span>
-                </div>
-              )}
-              {claudeAccount.emailAddress && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.email')}</span>
-                  <span className="font-medium">{claudeAccount.emailAddress}</span>
-                </div>
-              )}
-              {claudeAccount.organizationName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.organization')}</span>
-                  <span className="font-medium">{claudeAccount.organizationName}</span>
-                </div>
-              )}
-              {claudeAccount.seatTier && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.plan')}</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
-                    {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.claude.noAccount')}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Launch mode */}
-      <div>
-        <SectionHeader icon={Bot} title={t('settings.defaultAgentType.title')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.defaultAgentType.title')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.defaultAgentType.description')}</div>
-            </div>
-            <div className="relative">
-              <select
-                value={defaultAgentType}
-                onChange={(e) => applyDefaultAgentType(e.target.value as AgentType)}
-                className={`${SELECT} w-52`}
-              >
-                {AGENT_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-            </div>
-          </div>
-          <div className="text-xs text-text-secondary/50">
-            {(() => {
-              const active = AGENT_TYPE_OPTIONS.find(o => o.value === defaultAgentType)
-              return active ? t(active.descriptionKey) : null
-            })()}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <SectionHeader icon={Shield} title={t('settings.launchMode.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.launchMode.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.launchMode.help')}</div>
-            </div>
-            <div className="relative">
-              <select
-                value={launchMode}
-                onChange={(e) => handleLaunchModeChange(e.target.value as LaunchMode)}
-                className={`${SELECT} w-52`}
-              >
-                {LAUNCH_MODE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-            </div>
-          </div>
-          <div className="text-xs text-text-secondary/50">
-            {(() => {
-              const active = LAUNCH_MODE_OPTIONS.find(o => o.value === launchMode)
-              return active ? t(active.descriptionKey) : null
-            })()}
-          </div>
-          {showBypassWarning && (
-            <div className="flex flex-col gap-3 px-3 py-3 bg-red/10 border border-red/20 rounded-lg">
-              <div className="flex items-center gap-2 text-xs text-red">
-                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="font-medium">{t('settings.launchMode.bypassWarning')}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => applyLaunchMode('bypassPermissions')}
-                  className="px-3 py-1.5 bg-red/20 hover:bg-red/30 text-red text-xs rounded-lg transition-colors"
-                >
-                  {t('settings.launchMode.bypassConfirm')}
-                </button>
-                <button
-                  onClick={() => setShowBypassWarning(false)}
-                  className="px-3 py-1.5 bg-surface-strong hover:bg-ink/15 text-text-secondary text-xs rounded-lg transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Rate usage — plan limits reported by the running agents */}
-      <div>
-        <SectionHeader icon={Gauge} title={t('settings.rate.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {hasRateLimits ? (
-            <div className="space-y-4">
-              {typeof accountUsage?.fiveHourPercent === 'number' && (
-                <RateLimitBar
-                  label={t('usage.session')}
-                  percent={accountUsage.fiveHourPercent}
-                  resetsAt={accountUsage.fiveHourResetsAt}
-                  now={usageNow}
-                />
-              )}
-              {typeof accountUsage?.sevenDayPercent === 'number' && (
-                <RateLimitBar
-                  label={t('usage.weekly')}
-                  percent={accountUsage.sevenDayPercent}
-                  resetsAt={accountUsage.sevenDayResetsAt}
-                  now={usageNow}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.rate.empty')}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Spend & tokens */}
-      <div>
-        <SectionHeader icon={Coins} title={t('settings.spend.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {/* Three states, not two: `spend` is null until the fold comes back, and
-              showing the empty copy during that read said "no history" to users who
-              have plenty of it. */}
-          {spend === null || spend.hasData ? (
-            <>
-              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.tokens')}</span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.estCost')}</span>
-
-                {([
-                  { key: 'settings.spend.today', b: spend?.today },
-                  { key: 'settings.spend.week', b: spend?.week },
-                  { key: 'settings.spend.allTime', b: spend?.allTime },
-                ] as const).map(({ key, b }) => (
-                  <Fragment key={key}>
-                    <span className="text-text-secondary">{t(key)}</span>
-                    {b ? (
-                      <>
-                        <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale, t)}</span>
-                        <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
-                      </>
-                    ) : (
-                      // Sized to the numbers they stand in for, so nothing shifts
-                      // when the values land.
-                      <>
-                        <span aria-hidden className="block h-4 w-16 justify-self-end rounded bg-surface-strong animate-pulse" />
-                        <span aria-hidden className="block h-4 w-14 justify-self-end rounded bg-surface-strong animate-pulse" />
-                      </>
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.spend.disclaimer')}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.spend.empty')}
-            </div>
-          )}
-        </div>
-      </div>
-      </div>}
-
-      {/* Application tab — the app itself. Setup comes first: nothing below it
-          matters if the skills cannot run. Then the window you work in (split
-          view, Spotlight, menu bar), and last what the app does on its own in the
-          background (activity recording, digest, PR watcher). Which panels the
-          sidebars show is an appearance decision and lives in that tab. */}
-      {contentTab === 'application' && <div className="flex flex-col gap-8">
-
-      {/* Machine setup (prerequisites, MCP servers, integrations) */}
-      <SetupHealthCard />
-
-      {/* Split View Section */}
-      <div>
-        <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.split.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
-            </div>
-            <Switch
-              checked={splitEnabled}
-              onChange={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
-              label={t('settings.application.split.label')}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Spotlight Section */}
-      <div>
-        <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.spotlight.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.help')}</div>
-            </div>
-            <Switch
-              checked={spotlightEnabled}
-              onChange={handleSpotlightToggle}
-              label={t('settings.application.spotlight.label')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">{t('settings.application.spotlight.shortcutLabel')}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.shortcutHelp')}</div>
-              </div>
-              <div className="relative">
-                <select
-                  value={spotlightShortcut}
-                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
-                  disabled={!spotlightEnabled}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  {SPOTLIGHT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-              </div>
-            </div>
-          </div>
-          {spotlightError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{t('settings.application.spotlight.error')}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Background App Section */}
-      <div>
-        <SectionHeader icon={MonitorSmartphone} title={t('settings.application.background.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.background.autoStartLabel')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.background.autoStartHelp')}</div>
-            </div>
-            <Switch
-              checked={autoStart}
-              onChange={() => {
-                const newValue = !autoStart
-                setAutoStart(newValue)
-                window.electronAPI.config.setAutoStart(newValue)
-              }}
-              label={t('settings.application.background.autoStartLabel')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="text-sm font-medium mb-1">{t('settings.application.background.menuBarLabel')}</div>
-            <div className="text-xs text-text-secondary/50">
-              {t('settings.application.background.menuBarHelp')}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Plan session sync (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <ToggleRow
-            label={t('settings.application.planSync.label')}
-            help={t('settings.application.planSync.help')}
-            value={config?.planSyncEnabled}
-            onChange={async (next) => {
-              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
-              setConfig(result.config)
-            }}
-            errorMessage={t('settings.application.planSync.error')}
-          />
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.planSync.footnote')}
-          </div>
-        </div>
-      </div>
-
-      {/* PR Review Watcher Section */}
-      <div>
-        <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.prWatcher.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
-            </div>
-            <Switch
-              checked={prWatcherEnabled}
-              onChange={async () => {
-                const newValue = !prWatcherEnabled
-                setPrWatcherEnabled(newValue)
-                // Pushed into the store, not just written to disk: the PR card in
-                // the agent sidebar reads this setting to decide whether to say
-                // "watching is off", and it would otherwise keep claiming the
-                // opposite until the next config load.
-                setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
-              }}
-              label={t('settings.application.prWatcher.label')}
-            />
-          </div>
-          {prWatcherEnabled && (
-            <>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.intervalLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.intervalHelp')}</div>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={prWatcherInterval}
-                      onChange={(e) => {
-                        const newInterval = parseInt(e.target.value, 10)
-                        setPrWatcherInterval(newInterval)
-                        window.electronAPI.prWatcher.setInterval(newInterval)
-                      }}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value={30_000}>{t('settings.application.prWatcher.interval30s')}</option>
-                      <option value={60_000}>{t('settings.application.prWatcher.interval1m')}</option>
-                      <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
-                      <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.autoLaunchLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.autoLaunchHelp')}</div>
-                  </div>
-                  <Switch
-              checked={prWatcherAutoLaunch}
-              onChange={() => {
-                const newValue = !prWatcherAutoLaunch
-                setPrWatcherAutoLaunch(newValue)
-                window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-              }}
-              label={t('settings.application.prWatcher.autoLaunchLabel')}
-            />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Activity recording (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.application.usageLogs.help')}
-              </div>
-            </div>
-            <Switch
-              checked={usageLogsEnabled}
-              onChange={async () => {
-                const newValue = !usageLogsEnabled
-                setUsageLogsEnabled(newValue)
-                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
-                setConfig(result.config)
-              }}
-              label={t('settings.application.usageLogs.label')}
-            />
-          </div>
-          {/*
-            The breakdown answers "what am I sharing?", so it goes away with the
-            sharing — same for the sentence about who can read it. What stays in
-            both states is the agents caveat: it is truest for the person who just
-            turned this off, since their agents keep syncing regardless.
-          */}
-          {usageLogsEnabled && (
-            <>
-              <UsageLogsBreakdown t={t} />
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.application.usageLogs.footnote')}
-              </div>
-            </>
-          )}
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.usageLogs.footnote.agents')}
-          </div>
-        </div>
-      </div>
-
-      </div>}
-
-      {/* Notifications tab */}
-      {contentTab === 'notifications' && <NotificationsPage />}
-
-      {/* Appearance tab */}
-      {contentTab === 'appearance' && <AppearancePage />}
-
-      {/* Language & Region tab */}
-      {contentTab === 'language' && <LanguagePage />}
-
-      {/* Shortcuts tab */}
-      {contentTab === 'shortcuts' && <div>
-        <SectionHeader icon={Keyboard} title={t('settings.shortcuts.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {([
-              ['sidebar.newAgent', 'N'],
-              ['settings.shortcuts.duplicateAgent', 'D'],
-              ['settings.shortcuts.closeAgent', 'W'],
-              ['settings.shortcuts.previousAgent', '↑'],
-              ['settings.shortcuts.nextAgent', '↓'],
-              ['settings.shortcuts.toggleAgentInfo', 'I'],
-              ['settings.shortcuts.toggleAgentsList', 'B'],
-              ['sidebar.skills', ';'],
-              ['settings.tab.repositories', 'P'],
-              ['sidebar.settings', ','],
-              ['settings.shortcuts.toggleSplit', '/'],
-            ] as const).map(([labelKey, key]) => (
-              <div key={labelKey} className="flex items-center justify-between">
-                <span className="text-text-secondary">{t(labelKey)}</span>
-                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> {key}</kbd>
-              </div>
-            ))}
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">{t('settings.shortcuts.quickLaunch')}</span>
-              {spotlightEnabled ? (
-                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary">
-                  {SPOTLIGHT_OPTIONS.find(o => o.value === spotlightShortcut)?.label ?? spotlightShortcut}
-                </kbd>
-              ) : (
-                <span className="px-2 py-0.5 text-xs text-text-secondary/40">{t('settings.shortcuts.disabled')}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>}
-
-      {/* About tab */}
-      {contentTab === 'about' && <div>
-        <SectionHeader icon={Info} title={t('settings.about.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <div className="font-medium">Magic Slash</div>
-            <div className="text-xs text-text-secondary/50 mt-0.5">v{appVersion}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={CHANGELOG_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-colors"
-            >
-              <Clock className="w-3.5 h-3.5" />
-              {t('settings.about.changelog')}
-            </a>
-            <button
-              onClick={handleWhatsNew}
-              disabled={loadingWhatsNew}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-50"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {loadingWhatsNew ? t('common.loading') : t('settings.about.whatsNew')}
-            </button>
-          </div>
-        </div>
-        <TelemetryHealthCard />
-      </div>}
         </SweepPane>
       </div>
     </div>

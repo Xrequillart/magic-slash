@@ -18,11 +18,8 @@ import { useT } from '@/lib/i18n/useLanguage'
  * loses on an alphabetical accident nobody here chose.
  *
  * Additive layout — `mt-6`, `ml-auto`, `w-full`, `shrink-0` — is safe, and is
- * MOST of what call sites pass; it is not all of it. `app/plans/page.tsx` and
- * `ProfileSection` both hand a `Card` a `hover:border-black/10` that argues with
- * `SURFACE`'s `border-black/5` (it happens to land, since the two differ only in
- * the variant), and until `Card` grew a `shadow` slot `SkillHoursOptIn` handed it
- * a second shadow the same way. Anything that would fight the recipe belongs in a
+ * MOST of what call sites pass; it is not all of it. Until `Card` grew a `shadow`
+ * slot, `SkillHoursOptIn` handed it a second shadow on top of the recipe's. Anything that would fight the recipe belongs in a
  * slot inside it instead: `BUTTON_SIZES`, `Eyebrow`'s `spacing`, and `Card`'s
  * `shadow` are the three that exist.
  */
@@ -138,16 +135,15 @@ const BUTTON_ICON_SIZES = {
  *   • `danger` — enough fill that dimming the whole thing still reads as a button.
  *
  * The RANKING is the point, not any one recipe. `primary` and its neighbour sit
- * side by side in every modal footer and settings row (`app/organization/page.tsx`,
- * `CloudAccountSection`, `ClaudeCodeSettings`, `app/application/repository/[id]`),
- * so the distance between them is what makes either legible. Give `ghost` an edge
+ * side by side in every modal footer and settings row, so the distance between
+ * them is what makes either legible. Give `ghost` an edge
  * or a plate of its own and it collapses into `secondary`; that is the failure this
  * ladder is arranged to prevent.
  */
 const BUTTON_VARIANTS = {
   // Blue fill, white text — the one CTA in the product that carries the brand
   // colour. Shares the disabled recipe below rather than fading the blue: a
-  // `bg-brand/40` would put white text on a pale periwinkle and lose the contrast
+  // `bg-brand/40` would put white text on a pale blue and lose the contrast
   // the fill exists to provide.
   primary:
     'border-transparent bg-brand text-white shadow-button hover:bg-brand/90 hover:shadow-button-hover disabled:bg-black/[0.04] disabled:text-muted disabled:shadow-none',
@@ -293,7 +289,7 @@ export function Button({
  * Anchor styled as a Button — for external links (downloads) that must stay <a>.
  *
  * AND FOR CROSS-ORIGIN ROUTES, which is the case the parenthesis above does not name:
- * `LOGIN_PATH` leaves the marketing site for the app host, and there is no client-side
+ * `LOGIN_PATH` leaves the showcase site for the app host, and there is no client-side
  * navigation across origins to lose. `ButtonNavLink` below is the one to reach for
  * INSIDE one origin.
  */
@@ -416,35 +412,36 @@ export function Card({
 
 /**
  * THE COLOURED CARD. A gradient surface with a headline, a line under it and room
- * for a visual — the marketing pages' loud counterpart to `Card`, which is white and
+ * for a visual — the showcase pages' loud counterpart to `Card`, which is white and
  * deliberately quiet.
  *
  * WHY IT IS NOT A VARIANT OF `Card`. `Card` is the product's surface: white, a
  * hairline border, one shadow rung, and it appears on ~35 screens where the content
- * is what should be read. This one has no border and no shadow, its ground carries
- * the colour, and the copy inside it changes ink depending on that ground. A `tone`
+ * is what should be read. This one wears the same border and the same shadow rung now,
+ * but its ground carries the colour and the copy inside it changes ink depending on that
+ * ground — which is the whole of the difference and the whole of the reason. A `tone`
  * prop on `Card` would have made every one of those 35 call sites able to reach for
  * a gradient, and made `Card`'s own recipe conditional on a prop it has no other use
  * for. Two components, one for each job.
  *
- * THE TONE IS A SLOT AND IT CARRIES ITS OWN INK. That pairing is the point of the
- * table below: `midnight` is near-black, so its title has to be white and its body
- * a white alpha, and `mist` is barely a tint, so the same card needs `ink`. Left to
- * a caller, that is two decisions that can disagree — a `text-ink` title on a
- * `midnight` ground is invisible, renders fine and passes every check. Here they
- * cannot come apart: naming the tone names the ink with it.
+ * THE TONE IS A SLOT AND IT CARRIES ITS OWN INK. That pairing is the point of the table
+ * below: left to a caller, the ground and the ink are two decisions that can disagree,
+ * and a title that cannot be read against its own card renders fine and passes every
+ * check. Here they cannot come apart — naming the tone names the ink with it.
+ *
+ * EVERY TONE IS LIGHT NOW and every one of them takes `text-ink`, which makes that
+ * pairing look like ceremony. It is not: `indigo` and `midnight` were the two dark
+ * grounds, they were removed at the owner's request, and the table is the reason their
+ * removal was a six-line edit with a `tsc` error at every call site rather than a hunt
+ * for white text left stranded on a pale card.
  *
  * `className` STAYS ADDITIVE, as everywhere in this file: layout only — a column
  * span, a min-height. Anything that would argue with the recipe (the ground, the
  * radius, the ink) is a slot or is not available.
  */
 export const CARD_TONES = {
-  mist: { surface: 'bg-tone-mist', title: 'text-ink', body: 'text-ink/60' },
-  sky: { surface: 'bg-tone-sky', title: 'text-ink', body: 'text-ink/60' },
-  // `onink-body` is the declared white-on-dark body alpha the footer plate already
-  // uses, rather than a second `text-white/60` spelling of the same number.
-  indigo: { surface: 'bg-tone-indigo', title: 'text-white', body: 'text-onink-body' },
-  midnight: { surface: 'bg-tone-midnight', title: 'text-white', body: 'text-onink-body' },
+  mist: { surface: 'bg-card-mist', title: 'text-ink', body: 'text-ink/60' },
+  sky: { surface: 'bg-card-sky', title: 'text-ink', body: 'text-ink/60' },
   // Green, and the only tone outside the blue family. See the note on `tone-mint` in
   // `tailwind.config.ts` for why it is earned rather than added, why it is PALE rather
   // than the saturated green it started as, and why it is absent from the cycle below:
@@ -453,10 +450,12 @@ export const CARD_TONES = {
   // Light ground, so it takes the same dark ink `mist` and `sky` take. That pairing is
   // not a detail — it changed with the ground, and `lib/designTokens.test.ts` is what
   // makes sure the two moved together.
-  mint: { surface: 'bg-tone-mint', title: 'text-ink', body: 'text-ink/60' },
+  mint: { surface: 'bg-card-mint', title: 'text-ink', body: 'text-ink/60' },
   // Orange, and the second tone outside the blue family. Same standing as `mint` and
   // earned the same way: it dresses the card for `/magic:start`, where work ENTERS the
-  // loop, so the grid opens warm and closes green. See the note on `tone-amber` in
+  // loop, so the grid opens warm and closes green. It dresses `/magic:resolve` too now,
+  // at the owner's request — see `CARD_TONES_BY_COMMAND` in `lib/features.ts` for what
+  // that softens and what it buys. See the note on `tone-amber` in
   // `tailwind.config.ts` for why it sweeps as wide as `sky` rather than as gently as
   // `mint`, and for the two colours it is deliberately not — `yellow`, which is a
   // status, and Claude's coral, which is somebody else's brand.
@@ -464,7 +463,7 @@ export const CARD_TONES = {
   // Light ground, so it takes the same dark ink `mist`, `sky` and `mint` take. Absent
   // from the cycle below, for `mint`'s reason: it MEANS something, so it is asked for by
   // name.
-  amber: { surface: 'bg-tone-amber', title: 'text-ink', body: 'text-ink/60' },
+  amber: { surface: 'bg-card-amber', title: 'text-ink', body: 'text-ink/60' },
   // Pink and yellow, and their standing is deliberately different from the two above:
   // `mint` and `amber` MEAN something on `/features`, these are grounds the palette
   // offers and nothing names yet. Declared rather than left out because the alternative
@@ -475,22 +474,27 @@ export const CARD_TONES = {
   // Light grounds, so both take the dark ink every light tone here takes. Out of the
   // cycle below with `mint` and `amber`: the cycle is positional and deals four, and
   // widening it would change the rhythm of a grid neither of these is on.
-  rose: { surface: 'bg-tone-rose', title: 'text-ink', body: 'text-ink/60' },
-  lemon: { surface: 'bg-tone-lemon', title: 'text-ink', body: 'text-ink/60' },
+  rose: { surface: 'bg-card-rose', title: 'text-ink', body: 'text-ink/60' },
+  lemon: { surface: 'bg-card-lemon', title: 'text-ink', body: 'text-ink/60' },
 } as const
 
 export type CardTone = keyof typeof CARD_TONES
 
 /**
- * The tone order the grids cycle through, and it is an ORDER rather than a set: two
- * light then two dark, so a four-column row lands one of each and no two neighbours
- * carry the same weight. Exported because the cycling belongs to the caller — it
- * knows how many cards it has and how wide its grid is.
+ * The tone order the grids cycle through, and it is an ORDER rather than a set: no two
+ * neighbours carry the same hue, so a four-column row lands four different grounds.
+ * Exported because the cycling belongs to the caller — it knows how many cards it has and
+ * how wide its grid is.
  *
- * FOUR OF THE EIGHT. The other four — `mint`, `amber`, `rose`, `lemon` — are asked for
- * by name and are never dealt to whichever card happens to land on their index. Two of
- * them mean something today (`amber` opens the loop on `/magic:start`, `mint` closes it
- * on `/magic:done`); the other two are grounds the palette offers and nothing names yet.
+ * IT USED TO RUN `mist, sky, indigo, midnight` — two light then two dark, so a row landed
+ * one of each WEIGHT as well as one of each hue. That property is gone with the two dark
+ * tones, which the owner removed: every ground in the table is light now, and the rhythm
+ * the cycle can still offer is hue rather than weight.
+ *
+ * `rose` and `lemon` TOOK THEIR SLOTS because they are the two grounds the palette offers
+ * that mean nothing about a command — which is the only qualification the cycle asks for.
+ * `mint` and `amber` stay out of it for the opposite reason: they DO mean something, and
+ * dealing a meaningful ground positionally is what naming one was meant to stop.
  *
  * WIDENING THE CYCLE IS NOT THE WAY TO USE THEM. Two light then two dark is what makes a
  * four-column row land one of each, so a fifth entry would put two neighbours on the
@@ -501,7 +505,7 @@ export type CardTone = keyof typeof CARD_TONES
  * it keep theirs, because the index is the card's own and not a running counter. See
  * `FeaturesContent`.
  */
-export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'midnight']
+export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'rose', 'lemon']
 
 /**
  * `rounded-2xl`, not a radius of its own. The Tailwind config says it outright —
@@ -510,11 +514,28 @@ export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'm
  * these were drawn from rounds a little harder; one surface convention is worth more
  * than the four pixels.
  *
- * `overflow-hidden` so a visual handed to `children` can bleed to the card's edges
- * and still be clipped to the corner. NO SHADOW: the ground is doing the separating,
- * and `shadow-card` under a saturated gradient reads as dirt rather than as lift.
+ * `overflow-hidden` so a visual handed to `children` can bleed to the card's edges and
+ * still be clipped to the corner.
+ *
+ * A SHADOW AND A BORDER, WHICH IS A REVERSAL. This carried neither, on the argument that
+ * the ground did the separating and that `shadow-card` under a saturated gradient read as
+ * dirt rather than as lift. The second half of that was true and is no longer relevant:
+ * the grounds are FLAT now (`bg-card-*`, see `CARD_TONES`), and a shadow under a flat
+ * field is the lift it was always meant to be. The first half was the weaker claim — a
+ * pale tone like `mist` is three points off white, and three points is not separation.
+ *
+ * `shadow-card` IS `Card`'S OWN RUNG, deliberately: a page that stacks a white card and a
+ * coloured one wants them at one elevation, or the difference reads as importance rather
+ * than as colour.
+ *
+ * THE BORDER IS THE GROUND, DARKENED — literally, since `black/[0.08]` over the card's
+ * own fill is that fill eight percent darker, whatever the fill is. That is what makes
+ * one token right for all six tones where six hand-picked edge colours would be six
+ * chances to pick one wrong. It reads on every one of them now that all six grounds are
+ * light; when there were two dark ones, `midnight`'s was invisible and the shadow carried
+ * that card alone.
  */
-const TONE_SURFACE = 'relative overflow-hidden rounded-2xl'
+const TONE_SURFACE = 'relative overflow-hidden rounded-2xl border border-black/[0.08] shadow-card'
 
 /**
  * ONE HEIGHT FOR EVERY COLOURED CARD, and it lives here rather than at the call sites.
@@ -550,11 +571,15 @@ const TONE_HEIGHT = 'min-h-80'
  * bottom edge reads as an afterthought rather than as the point. Side by side, the copy
  * gets a column it can be read in and the visual gets the rest.
  *
- * IT STAYS STACKED BELOW `md` in either case. A 24rem copy column and a panel beside it
+ * `halves` is `beside` for a HALF-width card: the copy takes a little over half the
+ * card (55%) and the visual the rest. `beside`'s 24rem copy column would leave a
+ * half-width card's drawing a sliver; here the two shares grow together.
+ *
+ * IT STAYS STACKED BELOW `md` in every case. A 24rem copy column and a panel beside it
  * do not both fit on a phone, and the thing that gives way is the copy — so the row only
  * exists where there is width for it.
  */
-export type ToneCardLayout = 'stacked' | 'beside'
+export type ToneCardLayout = 'stacked' | 'beside' | 'halves'
 
 /**
  * WHERE A STACKED VISUAL SITS in the height the card has left, and it is a slot for the
@@ -572,10 +597,15 @@ export type ToneCardLayout = 'stacked' | 'beside'
  * object leaves a pool of empty ground above it that reads as a mistake rather than as
  * air; centred, the card reads as a thing with something in the middle of it.
  *
- * IGNORED IN A `beside` ROW, where the visual is already centred on the row's cross axis
- * and there is no leftover height to place it in.
+ * `corner` is for an illustration CROPPED BY THE CARD'S BOTTOM-RIGHT CORNER: pinned to the
+ * bottom and to the right, in either layout, so a drawing that runs past both edges is cut
+ * by the card's own radius there. The visual supplies the overhang (negative margins); the
+ * card only puts it in the corner.
+ *
+ * `end` and `center` are IGNORED IN A `beside` ROW, where the visual is already centred on
+ * the row's cross axis and there is no leftover height to place it in. `corner` is not.
  */
-export type ToneCardVisual = 'end' | 'center'
+export type ToneCardVisual = 'end' | 'center' | 'corner'
 
 export function ToneCard({
   tone = 'mist',
@@ -609,7 +639,7 @@ export function ToneCard({
   className?: string
 }) {
   const { surface, title: titleInk, body } = CARD_TONES[tone]
-  const beside = layout === 'beside'
+  const beside = layout === 'beside' || layout === 'halves'
 
   return (
     <div
@@ -629,7 +659,12 @@ export function ToneCard({
           ground needs more margin before its own edge, or the type looks pinned to the
           corner. In a row the copy is capped so it stays a readable measure — a
           full-width card would otherwise set its description across 1000px. */}
-      <div className={cx('p-7', beside ? 'md:max-w-sm md:shrink-0' : undefined)}>
+      <div
+        className={cx(
+          'p-7',
+          layout === 'beside' ? 'md:max-w-sm md:shrink-0' : layout === 'halves' ? 'md:w-[55%] md:shrink-0' : undefined,
+        )}
+      >
         <h3 className={cx('font-display text-xl font-bold leading-tight', titleInk)}>{title}</h3>
         {/* `text-base` at `font-medium` — 16px, 500.
             
@@ -639,8 +674,10 @@ export function ToneCard({
             
             The WEIGHT went up only one step, not two. 400 was too thin — a coloured
             ground eats weight, and a light face loses more to a saturated background
-            than a heavy one does, so the title and the description were drifting apart
-            on `indigo` and `midnight` while looking right on `mist`. But 600 at 16px
+            than a heavy one does, so the title and the description were drifting apart on
+            the two dark grounds this table used to have while looking right on `mist`.
+            Those are gone and the reasoning still holds on a saturated light ground like
+            `amber`. But 600 at 16px
             overcorrected: the description started competing with the `font-bold` title
             above it, and two headlines on a card is none. 500 is the step that fixes
             the thinness without picking a fight. */}
@@ -657,7 +694,9 @@ export function ToneCard({
         // these visuals are deliberately wider than their box.
         <div
           className={
-            beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
+            visual === 'corner'
+              ? cx('mt-auto flex min-w-0 justify-end', beside ? 'md:flex-1 md:self-end' : undefined)
+              : beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
           }
         >
           {children}
@@ -783,7 +822,7 @@ export function LogoPlate({
  *
  * WHAT IT IS FOR, AND WHERE IT SITS BETWEEN THE OTHER TWO. `Card` is the product's plain
  * surface — white, a hairline, one shadow rung, and whatever you put in it. `ToneCard`
- * is the marketing counterpart, where the GROUND carries the colour and the copy has to
+ * is the showcase counterpart, where the GROUND carries the colour and the copy has to
  * change ink with it. This is the third shape: the ground stays white and readable, and
  * the colour is spent on one artwork panel that is allowed to be as loud as it likes.
  * That is what makes it the right card for a row about somebody else's product — the
@@ -895,7 +934,7 @@ export type SplitMedia = keyof typeof SPLIT_MEDIA
  * set in, and that recipe already has exactly one home (`BAND_TITLE` in
  * `components/site/home/Shell.tsx`, which `HomeHeading` renders). A `title` prop here
  * would have to respell it, and this file's own header is explicit that nothing may copy a
- * recipe back out — so the block takes the heading as `children` and the marketing page
+ * recipe back out — so the block takes the heading as `children` and the showcase page
  * hands it the component that already owns the type. `art` is a slot for the same reason
  * `ShowcaseCard`'s is: the arrangement knows how a band is split, not what a terminal
  * looks like.
@@ -996,7 +1035,7 @@ export type FeaturePoint =
  * enough: 600 in the display face is heavier than 400 in the body face at the same
  * nominal size.
  *
- * `text-brand` ON THE ICON, and it is the one place on a marketing band where the primary
+ * `text-brand` ON THE ICON, and it is the one place on a showcase band where the primary
  * button's own blue appears on something that is not a button. That is deliberate rather
  * than an oversight: the icons are 20px glyphs at a hairline weight with no fill and no
  * plate, so there is nothing about them that could be mistaken for a control — and the
@@ -1168,7 +1207,7 @@ export function Badge({
  *   2. A `div` FOR THE TRIGGER, which is what theirs is — no role, no `aria-expanded`, no
  *      keyboard. Here it is a real `button` inside an `h3`: pressed with Space as well as
  *      Enter, announced as expanded or collapsed, and giving a screen reader a list of
- *      headings to navigate rather than eleven unnamed rows. The `h3` wraps the button
+ *      headings to navigate rather than fifteen unnamed rows. The `h3` wraps the button
  *      instead of replacing it, which is what the ARIA accordion pattern asks for and
  *      costs an element with no styles on it.
  *
@@ -1362,7 +1401,7 @@ export function FullPageLoader({ tone = 'app' }: { tone?: 'app' | 'login' }) {
     <div
       className={cx(
         'flex min-h-screen items-center justify-center text-muted',
-        tone === 'login' ? 'bg-softblue' : 'bg-canvas',
+        'bg-white',
       )}
     >
       {t('common.loading')}

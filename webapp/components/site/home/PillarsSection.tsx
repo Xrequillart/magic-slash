@@ -3,7 +3,6 @@
 import { ToneCard } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
-import { StartTerminal } from '../features/StartTerminal'
 import { SkillsTimeline } from './SkillsTimeline'
 import { HomeSection } from './Shell'
 
@@ -20,7 +19,7 @@ import { HomeSection } from './Shell'
  *
  * TWO CARDS AND NOT THREE. There is no third half of the product, and a grid that would
  * take one is a grid that invites someone to invent one — the cut bands this page has
- * already lost (`app/(marketing)/page.tsx` keeps that history) all started as a slot
+ * already lost (`app/(showcase)/page.tsx` keeps that history) all started as a slot
  * somebody had to fill.
  *
  * `midnight` BESIDE `sky`, one dark and one light, which is the rule `CARD_TONE_CYCLE`
@@ -89,7 +88,7 @@ export function PillarsSection() {
       <div className="grid gap-6 md:grid-cols-2">
         <Reveal order={1} className="min-w-0">
           <ToneCard
-            tone="midnight"
+            tone="lemon"
             title={t('site.pillars.skillsTitle')}
             description={t('site.pillars.skillsDesc')}
             className="h-full"
@@ -120,11 +119,13 @@ export function PillarsSection() {
             description={t('site.pillars.desktopDesc')}
             className="h-full"
           >
-            {/* UNPADDED, so the panel runs to the card's edges and is cut by its radius —
-                `StartTerminal`'s own header explains that it is drawn wider than its
-                column for that reason, and that the card's `overflow-hidden` does the
-                clipping so the panel never has to know it is being cropped. */}
-            <StartTerminal />
+            {/* AN ILLUSTRATION FROM THE SITE'S OWN SET (`illustration-remote.svg`: someone
+                working from a laptop, wherever they are), where the `/magic:start`
+                terminal was: the owner's call. Cropped a little at the BOTTOM, `-mb-10`
+                past the card's edge so its `overflow-hidden` cuts it, like the done card in
+                the workflow band. The file's `viewBox` is cropped to the drawing's measured
+                box (`25 62 950 876`). `alt=""`: the title says it. */}
+            <img src="/img/illustration-remote.svg" alt="" className="mx-auto -mb-10 w-full max-w-[24rem] px-7" />
           </ToneCard>
         </Reveal>
       </div>

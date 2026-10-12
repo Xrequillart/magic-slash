@@ -30,7 +30,32 @@ vi.mock('../cloud/auth', () => ({
   updatePassword: vi.fn(),
   requestEmailChange: vi.fn(),
   confirmEmailChange: vi.fn(),
+  // Reached through the email-change watcher, which `setupAuthHandlers` starts at
+  // startup. The factory lists every export on purpose: a partial mock fails at
+  // PROPERTY ACCESS, which surfaces as an unhandled rejection in whichever test
+  // happened to be running rather than as a missing stub here.
+  refreshUser: vi.fn(async () => ({ changed: false, pending: false, status: LOGGED_OUT })),
   deleteAccount: () => deleteAccount(),
+}))
+
+/**
+ * The email-change watcher, mocked whole.
+ *
+ * It polls on a timer and reads the network, and neither belongs in a test about which
+ * handler emits what. Mocked, it also becomes assertable: the three places that must
+ * STOP it — sign-out, account deletion, a code typed in — are easy to get wrong and
+ * invisible until a poller is found asking a dead session for its email.
+ */
+const startEmailChangeWatch = vi.fn()
+const stopEmailChangeWatch = vi.fn()
+const resumeEmailChangeWatch = vi.fn(async () => {})
+vi.mock('../cloud/email-change-watcher', () => ({
+  // The callback is not forwarded: these assert THAT the watch was started or stopped,
+  // and the only argument is the same `emit` every handler already uses. Typing a rest
+  // spread through `vi.fn()` costs a tuple type for nothing.
+  startEmailChangeWatch: () => startEmailChangeWatch(),
+  stopEmailChangeWatch: () => stopEmailChangeWatch(),
+  resumeEmailChangeWatch: () => resumeEmailChangeWatch(),
 }))
 
 // The teardown collaborators. `calls` records the order across all three so the
@@ -60,10 +85,10 @@ beforeEach(() => {
   setupAuthHandlers(() => fakeWindow as unknown as BrowserWindow)
 })
 
-const invoke = (channel: string) => {
+const invoke = (channel: string, args: unknown = {}) => {
   const handler = handlers.get(channel)
   if (!handler) throw new Error(`no handler registered for ${channel}`)
-  return handler({})
+  return handler({}, args)
 }
 
 describe('auth:logout', () => {
@@ -107,5 +132,45 @@ describe('read-only auth paths', () => {
 
     expect(calls).toEqual([])
     expect(sent).toEqual([])
+  })
+})
+
+/**
+ * THE EMAIL-CHANGE WATCH, which is the one piece of this file with no moment of its
+ * own: the change is confirmed in a browser, so nothing here ever sees it happen. What
+ * these cover is the wiring around that — when the polling starts, and the three ways
+ * it has to stop. A watcher left running asks a dead session for its email every
+ * fifteen seconds, and can report the PREVIOUS account's address as a change to
+ * whoever signs in next.
+ */
+describe('the email-change watch', () => {
+  it('resumes at startup, for a change confirmed while the app was closed', () => {
+    // `setupAuthHandlers` ran in beforeEach — this is the ordinary case, since the
+    // link is clicked in a browser and there is no reason the app was running.
+    expect(resumeEmailChangeWatch).toHaveBeenCalledOnce()
+  })
+
+  it('starts watching once a change has actually been requested', async () => {
+    await invoke('auth:requestEmailChange', { newEmail: 'new@example.com' })
+
+    expect(startEmailChangeWatch).toHaveBeenCalledOnce()
+  })
+
+  it('stops on sign-out, so it cannot outlive the session that started it', async () => {
+    await invoke('auth:logout')
+
+    expect(stopEmailChangeWatch).toHaveBeenCalledOnce()
+  })
+
+  it('stops on account deletion, which has no session left to ask', async () => {
+    await invoke('auth:deleteAccount')
+
+    expect(stopEmailChangeWatch).toHaveBeenCalledOnce()
+  })
+
+  it('stops when a code is typed in, because there is nothing left to discover', async () => {
+    await invoke('auth:confirmEmailChange', { newEmail: 'new@example.com', code: '123456' })
+
+    expect(stopEmailChangeWatch).toHaveBeenCalledOnce()
   })
 })

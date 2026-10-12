@@ -7,7 +7,8 @@ import { reconcilePlanSpecs } from '../store/plan-sync'
 import { flushPendingArchives } from '../store/pending-archives'
 import { drainSkillSpool } from '../usage/skill-spool'
 import { migrateConfig } from '../config/migrate'
-import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
+import { applyRemoteSettingsRow, refreshWorkflows, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
+import { notifyWorkflowsChanged } from '../workflow/notify'
 import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { readConfig } from '../config/config'
@@ -26,6 +27,7 @@ import {
   startUserSyncRealtime,
   stopUserSyncRealtime,
 } from '../cloud/settings-realtime'
+import { resumePlanLive, setPlanLiveEmitters, suspendPlanLive } from '../cloud/plan-live'
 
 let restoredOnce = false
 
@@ -73,23 +75,39 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
     (status) => getMainWindow()?.webContents.send('org:realtimeStatusChanged', status),
   )
 
+  // The open plan's channels (#306): who else is on it, a nudge to re-read it, and their
+  // health. The renderer asks for a plan with `plans:live:open`; what the channels say
+  // comes back here, so the renderer never holds a socket of its own.
+  setPlanLiveEmitters({
+    presence: (presence) => getMainWindow()?.webContents.send('plans:live:presence', presence),
+    changed: (change) => getMainWindow()?.webContents.send('plans:live:changed', change),
+    status: (status) => getMainWindow()?.webContents.send('plans:live:status', status),
+  })
+
   // Same wiring for the user-scoped channels: a setting or a repository changed
   // on the web app (or on another machine) is adopted by remote-sync, then the
   // renderer is handed the new config so the interface follows without a restart.
   setRemoteSyncEmitters({
     onConfigChanged: (config) => getMainWindow()?.webContents.send('config:changed', config),
     onRepositoriesReloaded: () => emitInvalidRepos(),
+    // Sent to every window, like a save from this app (config:saveRepositoryWorkflow).
+    onWorkflowsChanged: (repoIds) => notifyWorkflowsChanged(repoIds),
   })
 
   setUserSyncHandlers({
     onSettingsRow: (row) => applyRemoteSettingsRow(row),
     onRepositoriesChanged: () => scheduleRemoteRefresh(),
+    // A flow saved elsewhere. Its own reload: the config reload would find the config
+    // unchanged and stop there. A repository reload refreshes the flows too, since
+    // sharing a repo changes which of them are visible.
+    onWorkflowsChanged: () => void refreshWorkflows(),
     // A (re)subscription is the only hint that events were missed: nothing is
     // replayed, so a sleep, a network drop or a token refresh leaves the local
     // copy silently behind. This also covers the FIRST join, which is not waste:
     // hydration runs before the channels open, and a change landing in that gap
-    // would otherwise go unseen until the next launch. Both channels joining at
-    // once collapses into one reload via the debounce.
+    // would otherwise go unseen until the next launch. Every channel joining at
+    // once collapses into one reload via the debounce, and that reload covers the
+    // flows as well.
     onResubscribed: () => scheduleRemoteRefresh(),
   })
 
@@ -159,6 +177,13 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
             )
           }
         }
+        // A plan still open on the page whose channels went down — a join that missed its
+        // deadline, a sign-in after a sign-out, an open made offline — is joined again here,
+        // and asks the page to re-read on its first join: nothing is replayed. A no-op when
+        // no plan is wanted or the wanted one is already joined, which it checks itself.
+        void resumePlanLive().catch((error) =>
+          console.error('[connectivity] failed to resume plan realtime:', error),
+        )
       } catch (error) {
         console.error('[connectivity] hydration failed:', error)
       }
@@ -168,6 +193,10 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
       // Session gone → tear down the realtime channels so the next user starts clean.
       void stopOrgAgentsRealtime()
       void stopUserSyncRealtime()
+      // Suspended rather than closed: the page may still be mounted behind the sign-in
+      // gate, and the plan it holds is joined again on the next 'ok'. The page's own
+      // unmount is what closes it for good.
+      void suspendPlanLive()
     }
 
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)

@@ -1,0 +1,347 @@
+import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { MODAL_HEADER_HEIGHT, ModalHeader, type ModalHeaderProps } from './ModalHeader'
+import { PAGE_MODAL_RAIL_WIDTH, PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
+import { SettingsRail, type SettingsRailProps } from './SettingsRail'
+
+/**
+ * THE BIG ONE — a dialog the size of a page, floating on the dimmed app, with a header
+ * across the top and the caller's page under it.
+ *
+ * It was the app's `PageModal` and it is here now for `AppTitleBar`'s reason: the
+ * drawing is a drawing, and the app had it tangled with a store, a translator, an
+ * Escape listener and a keyboard chord. What crossed over is the geometry — the
+ * backdrop, the inset, the two sizes and the travel between them — and what stayed
+ * behind is every fact about the app. This component has no state but the frame it is
+ * painting.
+ *
+ * WHAT IT DOES NOT DO, stated plainly because a dialog is expected to: it does not trap
+ * focus, it does not listen for Escape, and it does not restore focus to whatever opened
+ * it. All three are real obligations and the app carries them.
+ *
+ * IT DOES CLOSE ON THE BACKDROP, which it did not for a long time — the close button was
+ * the only way out short of Escape, and a reader who had gone looking for the corner of
+ * the window found nothing there. See `onBackdropClick` for the one thing that makes it
+ * safe.
+ *
+ * FULL SCREEN IS THE WHOLE WINDOW, TITLE BAR INCLUDED.
+ *
+ * It stopped at `TITLE_BAR_HEIGHT` for a while, on the argument that an overlay is over
+ * the app and not instead of it. The argument is tidy and the result was not: expanding
+ * a page left a 40px band of app across the top that the page could not use and the
+ * reader had not asked to keep, so the biggest the window got was never quite the window.
+ * Reaching the top is what the control says it does.
+ *
+ * TWO THINGS THAT BAND WAS DOING HAVE TO BE PICKED UP HERE, and neither is optional:
+ *
+ *  1. THE WINDOW WAS DRAGGED BY IT. Cover it and the window is immovable for as long as
+ *     the overlay is open. `ModalHeader`'s `draggable` puts the drag region on the
+ *     overlay's own band instead, which is the same gesture in the same place.
+ *  2. THE TRAFFIC LIGHTS ARE STILL THERE. macOS draws them over the web content, so
+ *     covering the bar does not cover them — the overlay is painted UNDER three buttons
+ *     that land exactly on its mark and title. `ModalHeader`'s `trafficLightGutter`
+ *     steps around the same 64px `AppTitleBar` steps around.
+ *
+ * Both are passed only while full screen, because inset there is a real title bar above
+ * doing both jobs already.
+ *
+ * WHAT DOES NOT COME BACK is the probe this component used to need. Whether the lights
+ * are there at all is the WINDOW's fact — they are gone in native fullscreen — and this
+ * component has no way to ask and no business knowing. The app passes
+ * `trafficLightGutter`, the same way it passes it to `AppTitleBar`.
+ *
+ * NO BORDER ON THE FRAME. There was a `border border-line`, and it is gone with the rule
+ * under the header: a hairline around a panel that is already lifted off a dimmed
+ * background by a shadow is a second answer to "where does this window end".
+ *
+ * ── TWO WIDTHS, AND THE NARROW ONE BRINGS ITS OWN BODY ────────────────────────────
+ *
+ * See `modalSizes.ts` for why there are two. What matters here is that `column` is the
+ * one size where this component lays the content out rather than handing over a box: the
+ * panel's width IS the measure plus its gutters, so the measure and the gutters have to
+ * be the same two numbers the panel was computed from. Spelled at the call site — a
+ * `max-w-3xl px-6` in the app, which is exactly what they were — they are two numbers
+ * that agree today and a sliver of empty plate the day either moves.
+ *
+ * A `page` still gets a bare `overflow-hidden` box and is told nothing else. A page
+ * brings its own layout; a column of forms is laid out by the window, because at that
+ * width the window IS the column.
+ */
+
+export interface PageModalProps {
+  /** The band across the top. Every word of it translated by the caller. */
+  header: ModalHeaderProps
+  /**
+   * Whether the panel fills the window (less the title bar) or floats inset in it.
+   *
+   * THE CALLER'S, and in the app it is not even the caller's — it is the store's, shared
+   * by every overlay and persisted, so the size a reader last chose is the size the next
+   * overlay opens at. A component that held this would hold it per instance, which is
+   * the one shape that decision must not have.
+   */
+  fullScreen?: boolean
+  /**
+   * Whether macOS's traffic lights are on screen, so a FULL-SCREEN panel can keep their
+   * corner clear — see the note above, and `ModalHeader`'s prop of the same name.
+   *
+   * TRUE BY DEFAULT and ignored while the panel is inset, where the app's own title bar
+   * is above it holding that corner. The app turns it off in NATIVE fullscreen, which is
+   * the one state where the lights do not exist and a gutter kept for them would be a
+   * hole nothing fills. A browser has no lights either, and a drawing of the app that
+   * says nothing gets the gutter only in the full-screen specimen, which is the honest
+   * picture of the app.
+   */
+  trafficLightGutter?: boolean
+  /**
+   * How wide the panel is at rest — see `modalSizes.ts`. `page` unless stated, which is
+   * the four overlays that were here first.
+   */
+  size?: PageModalSize
+  /**
+   * The page. A `page` is handed a box with `overflow-hidden` and told nothing else; a
+   * `column` is scrolled and measured for — see the header.
+   *
+   * A `column`'s children carry their own padding, `MODAL_COLUMN_PADDING`, and put it on
+   * whatever element animates. See the note by the scroller for why it cannot live here.
+   */
+  children: ReactNode
+  /**
+   * `column` only: put the scroller back at the top when this changes.
+   *
+   * THE SCROLLER HOLDS THE OFFSET, and an overlay that switches pages under one header
+   * keeps the same scroller across the switch — so a reader coming from the foot of a
+   * long tab lands halfway down a short one, on a page they have never seen. Passing the
+   * open page's id here puts every page at its top, which is what a settings page should
+   * do. Absent, the scroll survives the switch.
+   *
+   * IT SETS `scrollTop` RATHER THAN REMOUNTING, and the difference matters to what is
+   * INSIDE: a `key` here would throw away the whole subtree on every switch, and
+   * anything in it that animates the change — the app slides the arriving page in the
+   * direction of the tab you picked — would be rebuilt with no memory of what it was
+   * switching from, so it would never play. Resetting the offset is the whole of what
+   * was wanted; replacing the element was how it happened to be done.
+   */
+  bodyKey?: string
+  /**
+   * `column` only: the settings window's left column, listing every page it holds.
+   *
+   * DATA AND NOT A NODE, so the column is this folder's drawing and not the caller's:
+   * the panel is sized FROM the rail (`PAGE_MODAL_RAIL_WIDTH`), and a rail the caller
+   * drew could be any width at all. With it, the panel is the rail plus exactly the
+   * column it always was, and the header carries no tabs — the rail is the control.
+   */
+  rail?: SettingsRailProps
+  /**
+   * The caller's enter and exit animation for the dimmed ground, and for the panel.
+   *
+   * THE ANIMATION IS THE CALLER'S, `Modal`'s rule and for its reason: the app's
+   * keyframes live in its own stylesheet and this folder cannot reach them.
+   */
+  backdropClassName?: string
+  panelClassName?: string
+  /**
+   * Dismiss, from a click on the dimmed ground around the panel.
+   *
+   * IT ONLY COUNTS WHEN THE PRESS STARTED THERE TOO, which is the whole of what makes
+   * this safe on a window this size. A page overlay holds a spec or a task's body —
+   * prose people SELECT — and a selection that begins on the last word of a paragraph
+   * and ends a few pixels past the panel's edge fires a `click` on their common
+   * ancestor, which is the backdrop. Without the guard, dragging to copy a line would
+   * throw the page away. Checked on `mousedown` and again on the click, because either
+   * one alone is a different bug.
+   *
+   * Absent, the ground is inert and the header's close button is the only way out.
+   */
+  onBackdropClick?: () => void
+  /** For a caller driving its own exit — see the app's `useModalExit`. */
+  onAnimationEnd?: (event: AnimationEvent<HTMLDivElement>) => void
+  /** Where to portal. `document.body` unless the theme is scoped — see `Modal`. */
+  portalTo?: HTMLElement | null
+}
+
+export function PageModal({
+  header,
+  fullScreen = false,
+  trafficLightGutter = true,
+  size = 'page',
+  children,
+  bodyKey,
+  rail,
+  backdropClassName = '',
+  panelClassName = '',
+  onBackdropClick,
+  onAnimationEnd,
+  portalTo,
+}: PageModalProps) {
+  /**
+   * The `column` scroller, so `bodyKey` can put it back at the top — see the prop.
+   *
+   * A LAYOUT EFFECT and not an effect: it runs after the new page is in the DOM and
+   * before the frame is painted, so nobody sees the old offset against the new page.
+   */
+  const scroller = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (scroller.current) scroller.current.scrollTop = 0
+  }, [bodyKey])
+
+  /** Whether the press that is in flight began on the ground — see `onBackdropClick`. */
+  const pressedGround = useRef(false)
+  const onGroundMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    pressedGround.current = event.target === event.currentTarget
+  }
+  const onGroundClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!pressedGround.current) return
+    if (event.target !== event.currentTarget) return
+    onBackdropClick?.()
+  }
+  /**
+   * MOUNTED BEFORE PORTALLED, `Modal`'s rule: `document` does not exist while the
+   * showcase site is pre-rendered on the server and `createPortal` would throw there.
+   */
+  const [ready, setReady] = useState(false)
+  useEffect(() => setReady(true), [])
+  if (!ready) return null
+  if (typeof document === 'undefined') return null
+
+  // NO PADDING ON EITHER OF THESE, and it is load-bearing rather than tidy: a scrolling
+  // box clips at its PADDING BOX, so content inset from the scroller's edge has nowhere to
+  // travel — slide it and its leading pixels are cut off for the length of the animation,
+  // which is every card in the page arriving with a side missing. The inset belongs to
+  // whatever moves, and the caller puts it there with `MODAL_COLUMN_PADDING`. The 24px
+  // that leaves the box is then the layer's own empty margin and the content arrives whole.
+  //
+  // The column is capped even though the panel is exactly this wide, because FULL SCREEN
+  // is where the two part: the panel becomes the window, and without the cap the forms
+  // would stretch across all of it, label at one end and control at the other.
+  const column = (
+    <div ref={scroller} className="h-full overflow-y-auto">
+      <div className="mx-auto w-full" style={{ maxWidth: PAGE_MODAL_WIDTH.column }}>
+        {children}
+      </div>
+    </div>
+  )
+
+  return createPortal(
+    // The backdrop's `p-6` is what the panel is inset by, so full screen has to drop it
+    // rather than fight it with a wider `max-w`: padding left in place would show 24px
+    // of dimmed desktop around a panel asked to fill the window.
+    //
+    // THE GROUND IS THE WHOLE WINDOW IN BOTH STATES, which it did not used to be: it
+    // started at `TITLE_BAR_HEIGHT` in full screen so the app's bar stayed uncovered.
+    // Now that the panel reaches the top, the dim has to as well — a scrim that stopped
+    // 40px short would be a strip of undimmed app above a panel that ends flush with the
+    // window, which reads as the overlay having failed to finish opening. One fewer
+    // property to transition, too: only the padding moves.
+    //
+    // `no-drag` ON THE BACKDROP, AND IT IS NOT COSMETIC. Electron hands macOS a set of
+    // RECTANGLES computed from the DOM, not a hit-test: an element painted over a
+    // `-webkit-app-region: drag` region does not reclaim those pixels, only a `no-drag`
+    // one does. The app drags its window by a full-width band at the top, and this
+    // backdrop lies across that band in both states — with the panel's own header partly
+    // inside it when inset, which is where the close and full-screen buttons would stop
+    // responding and the window would drag instead. Nothing is drawn over them, which is
+    // what makes the obstacle invisible. The panel's header opts back INTO dragging on
+    // top of this when it is full screen; regions nest, and the innermost one wins. A
+    // browser ignores the property entirely, so a drawing of the app pays nothing for it.
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70
+        transition-[padding] duration-300 ease-out motion-reduce:transition-none
+        ${fullScreen ? 'p-0' : 'p-6'} ${backdropClassName}`}
+      style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+      onMouseDown={onGroundMouseDown}
+      onClick={onGroundClick}
+    >
+      {/* The panel. `overflow-hidden` is what keeps a page's own scroller inside the
+          rounded corners, and `flex flex-col` is what gives the body the height the
+          header does not take. */}
+      <div
+        onAnimationEnd={onAnimationEnd}
+        className={`relative flex w-full flex-col overflow-hidden bg-bg-secondary shadow-2xl
+          transition-[max-width,height,border-radius] duration-300 ease-out motion-reduce:transition-none
+          ${panelClassName}`}
+        // THE THREE THINGS FULL SCREEN CHANGES, AS INLINE VALUES SO THEY CAN TRAVEL.
+        //
+        // They were Tailwind classes swapped on the flag — `max-w-6xl h-[85vh] rounded-2xl`
+        // against `max-w-none h-full rounded-none` — and a class swap cannot be
+        // transitioned through `max-w-none`: `none` is not a length, so there is nothing
+        // to interpolate towards and the panel simply jumped. Written as two definite
+        // values per property, the browser interpolates each (it mixes rem, vh and
+        // percentages through `calc`), and the panel grows into the window instead of
+        // replacing itself.
+        //
+        // The backdrop's padding animates over the same 300ms, which is the other half of
+        // it: the panel is measured against the padded box, so an instant `p-6` → `p-0`
+        // would move the finish line in the first frame and the last 24px would be a jump
+        // at the start rather than growth at the end.
+        //
+        // `border-radius` travels too. It is what says which of the two shapes this is —
+        // a rounded panel floating on a dimmed desktop, or the window itself — and a
+        // corner that squared off instantly under a box that was still growing read as
+        // two separate things happening. 1rem is `rounded-2xl`, the radius the app's
+        // dialogs settled on.
+        //
+        // VIEWPORT UNITS RATHER THAN `100%` FOR THE FULL-SCREEN END. `rem`, `vw` and `vh`
+        // all resolve to px at computed-value time, so each pair is a plain px-to-px
+        // interpolation; a percentage stays a percentage and has to be interpolated
+        // against a length through `calc`, which is a slower path and a less certain one.
+        // They agree at rest: full screen is exactly when the backdrop's padding is zero,
+        // so the padded box IS the viewport.
+        style={{
+          maxWidth: fullScreen ? '100vw' : size === 'column' && rail ? PAGE_MODAL_RAIL_WIDTH : PAGE_MODAL_WIDTH[size],
+          height: fullScreen ? '100vh' : '85vh',
+          borderRadius: fullScreen ? 0 : '1rem',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* The two the panel owns rather than the caller — see the note at the top. Both
+            are false while inset, where the app's real title bar is above doing both
+            jobs, and a gutter or a drag region down here would be a second one. */}
+        {rail && size === 'column' ? (
+          /* THE SETTINGS WINDOW HAS NO TITLE BAND. The rail is the control AND the label
+             — the lit row already says which page is open — so a band naming it again
+             above the page was the third answer to one question. The rail runs the full
+             height, and the header survives only as its buttons, over the page side.
+
+             The buttons keep a row of their own rather than floating over the page: the
+             column's cards start 20px down with a 24px gutter, which is exactly where a
+             floating close button would land. */
+          <div className="flex min-h-0 flex-1">
+            <SettingsRail
+              {...rail}
+              // Full screen puts the traffic lights over the rail's top-left corner, so
+              // the rail starts below the band they sit in.
+              topInset={fullScreen && trafficLightGutter ? MODAL_HEADER_HEIGHT : undefined}
+            />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <ModalHeader
+                {...header}
+                title=""
+                icon={undefined}
+                tabs={undefined}
+                trafficLightGutter={false}
+                draggable={fullScreen}
+              />
+              <div className="min-h-0 flex-1 overflow-hidden">{column}</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <ModalHeader
+              {...header}
+              trafficLightGutter={fullScreen && trafficLightGutter}
+              draggable={fullScreen}
+            />
+            <div className="flex-1 overflow-hidden">
+              {size === 'column' ? (
+                column
+              ) : (
+                children
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>,
+    portalTo ?? document.body,
+  )
+}

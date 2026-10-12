@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { FoldVertical, UnfoldVertical, X } from 'lucide-react'
+import { FoldVertical, UnfoldVertical, X } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 import ChangeCountChip from './ChangeCountChip'
 import type { MarkerCounts } from '../../utils/diffMarkers'

@@ -3,14 +3,16 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
-import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
+import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
+import { commandEnded, commandStarting } from './chat/command-diff'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setCommandDiffCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
+import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener, holdAsk, answerHeld } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
-import type { MenuCommand, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude } from './pty/terminal-manager'
+import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
@@ -20,26 +22,36 @@ import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
-import { recordPlanSession, schedulePlanSpecUpload, syncPlanTickets } from './store/plan-sync'
+import { recordPlanSession, schedulePlanSpecUpload, setPlanSessionListener, syncPlanTickets } from './store/plan-sync'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
 import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
+import { buildWorkflowPayload } from '../workflow/payload'
+import { buildSkillContext } from '../workflow/skillContext'
+import { applyActionPolicy, applyChainPolicy, buildWorkflowNext } from '../workflow/next'
+import { ChainCounter } from '../workflow/chainCounter'
+import { hasSkillIn } from './skill-copy'
+import { resolveWorkflowSettings } from '../types'
+import * as os from 'os'
+import { workflowForRepo } from './workflow/workflows'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover, hidePopover, resizePopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom } from './appearance'
+import { initAppearance, applyZoom, onLanguageChanged, setZoomWindow, stepZoom, currentTheme, themeBackground, setThemedWindow } from './appearance'
 import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
 import { setupJiraHandlers } from './ipc/jira-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
+import { setupPlansHandlers } from './ipc/plans-handlers'
 import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
+import { closePlanLive } from './cloud/plan-live'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 import { setupReengagementNotifications } from './notifications/reengagement'
@@ -130,9 +142,9 @@ function createMenu() {
       submenu: [
         { label: t('menu.newAgent'), click: () => sendMenuCommand('new-agent') },
         { type: 'separator' as const },
+        { label: t('menu.plans'), click: () => sendMenuCommand('plans') },
         { label: t('menu.tasks'), click: () => sendMenuCommand('tasks') },
         { label: t('menu.skills'), click: () => sendMenuCommand('skills') },
-        { label: t('menu.team'), click: () => sendMenuCommand('team') },
         { label: t('menu.account'), click: () => sendMenuCommand('account') },
         ...(isMac
           ? []
@@ -198,15 +210,20 @@ function createWindow() {
     minHeight: 600,
     show: false,
     titleBarStyle: 'hidden',
+    // LEAVE THIS ALONE. It was moved once, to centre the lights in a bar whose height
+    // had been raised to meet them, and the result was wrong on sight: these are macOS's
+    // own widgets and the corner they sit in is the one every other Mac app puts them
+    // in. Vertical centring in whatever bar happens to be underneath is not a property
+    // anybody was missing.
     trafficLightPosition: { x: 16, y: 12 },
-    transparent: true,
-    vibrancy: 'fullscreen-ui',
-    visualEffectState: 'active',
+    // OPAQUE, in the theme's own ground. It sat on macOS's blurred `fullscreen-ui`
+    // vibrancy once, under a translucent wash per theme; every panel has since grown a
+    // ground of its own, the blur showed through nowhere it helped, and it made the same
+    // theme look different on every desktop picture. The colour is set here too, not
+    // only by the page, so the window never flashes another one before the first paint.
+    backgroundColor: themeBackground(currentTheme()),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      // Hands the preload the current theme, so the renderer paints in it from
-      // its very first frame instead of flashing the default and correcting.
-      additionalArguments: appearanceArguments(),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false,
@@ -222,6 +239,7 @@ function createWindow() {
   // The interface scale applies to this window only — the popover and quick
   // launch are sized for their content.
   setZoomWindow(mainWindow)
+  setThemedWindow(mainWindow)
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
@@ -302,6 +320,12 @@ function setupHandlers() {
   // in the browser, so the credential arrives long after `jira:connect` returned.
   setupJiraHandlers(() => mainWindow)
   setupOrgHandlers()
+  // The Plans page's read of `/magic:plan` sessions. The list is pull-only: it reads on
+  // open, and again when the reader retries a read that failed. ONE open plan is live
+  // (#306, 20260929110000): the page asks for it through `plans:live:open`, and the
+  // channels are joined on demand by `cloud/plan-live.ts`, so there is still nothing to
+  // start here.
+  setupPlansHandlers()
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.
   setupTasksHandlers()
@@ -535,6 +559,10 @@ function setupTrayHandlers() {
    * The decision itself lives in `answerPendingQuestion` so it can be unit-tested;
    * this handler only supplies the store and the PTY.
    */
+  // The chat view's first read of an agent's question; changes arrive as `terminal:question`.
+  ipcMain.handle('terminal:getQuestion', async (_event, { id }: { id: unknown }) =>
+    (typeof id === 'string' ? getPendingQuestion(id) ?? null : null))
+
   ipcMain.handle('tray:answerQuestion', async (
     _event,
     payload: { id: string; token: string; choice: TrayAnswerChoice },
@@ -550,6 +578,7 @@ function setupTrayHandlers() {
     // drops all but one event out of a single burst — see answer-keys.ts.
     const result = await answerPendingQuestion(id, token, choice, {
       getQuestion: getPendingQuestion,
+      answerHeld,
       write: writeToTerminal,
       clear: clearPendingQuestion,
     })
@@ -589,6 +618,14 @@ function setupTrayHandlers() {
 function setupQuickLaunchHandlers() {
   ipcMain.handle('quicklaunch:dispatch', async (_event, { ticketId, action }: { ticketId: string; action: string }) => {
     hideQuickLaunch()
+    // Settings → Quick Launch can keep the reader where they were: the agent starts in
+    // the main window without it being brought forward, and the "agent waiting"
+    // notification is what says it is ready. A window that does not exist yet has to be
+    // opened either way, so that case still goes through the focus.
+    if (readConfig().quickLaunchBackground === true && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('quicklaunch:dispatch', { ticketId, action })
+      return
+    }
     focusMainWindow(win => win.webContents.send('quicklaunch:dispatch', { ticketId, action }))
   })
 
@@ -610,8 +647,8 @@ app.whenReady().then(async () => {
   // connectivity gate). Nothing is persisted locally.
   setStore(new CloudStore())
 
-  // Before any window: the stored theme drives the traffic lights and the macOS
-  // vibrancy material, which are decided at creation time.
+  // Before any window: the stored theme drives the traffic lights and the window's
+  // ground, which are decided at creation time.
   initAppearance()
 
   // Create custom menu (removes Cmd+W close window behavior)
@@ -694,6 +731,8 @@ async function initializeHooksAndSessions() {
     setInnerStatusLine(configureStatusLine())
 
     // Set up callbacks for status updates
+    // Only the agent's own `claude` reports on it, not one it ran itself.
+    setReporterCheck(isAgentClaude)
     setStateCallback((terminalId: string, state: string) => {
       updateTerminalStateFromHook(terminalId, state)
       if (mainWindow) {
@@ -709,7 +748,10 @@ async function initializeHooksAndSessions() {
       }
     })
 
-    setMetadataCallback((terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => {
+    // One path for every metadata write, whoever makes it: a skill through the hook, or
+    // this process on the agent's behalf (the plan link below). Persisted, sent to the
+    // renderer, and reflected in the tray, in that order.
+    const applyMetadata = (terminalId: string, metadata: Partial<TerminalMetadata>) => {
       updateTerminalMetadataFromHook(terminalId, metadata)
       if (mainWindow) {
         mainWindow.webContents.send('terminal:metadata', {
@@ -721,11 +763,24 @@ async function initializeHooksAndSessions() {
       if (aggregator) {
         aggregator.update()
       }
+    }
+    setMetadataCallback(applyMetadata)
+
+    // The planner's plan, as soon as its row exists: written back onto the agent so the
+    // sidebar can link to it from the first minute. Only when it changes — the listener
+    // hears every upsert, and most of them re-announce the same id.
+    setPlanSessionListener((terminalId, plan) => {
+      const agent = readAgents().find((a) => a.id === terminalId)
+      if (!agent) return
+      if (agent.metadata?.planId === plan.id && agent.metadata?.planNumber === plan.number) return
+      applyMetadata(terminalId, { planId: plan.id, ...(plan.number !== undefined ? { planNumber: plan.number } : {}) })
     })
 
     // Usage stats from the statusLine wrapper — in-memory update + single metadata IPC.
     // Not persisted to disk (see updateTerminalUsageFromHook) since statusLine is high-frequency.
     setUsageCallback((terminalId: string, usage: TerminalUsage) => {
+      // The session's transcript, for the chat view. A no-op when it is the same file.
+      if (usage.transcriptPath) watchTranscript(terminalId, usage.transcriptPath)
       updateTerminalUsageFromHook(terminalId, usage)
       if (mainWindow) {
         mainWindow.webContents.send('terminal:metadata', {
@@ -733,6 +788,22 @@ async function initializeHooksAndSessions() {
           metadata: { usage }
         })
       }
+    })
+
+    setChatListener((terminalId, chat) => {
+      if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, ...chat })
+    })
+    // What an agent's shell commands change on disk, shown under them in the chat.
+    setCommandDiffCallback((phase, terminalId, body) =>
+      phase === 'before' ? commandStarting(body) : commandEnded(terminalId, body))
+    // Escape fires no hook: the transcript is what says the turn stopped, and whatever
+    // question it was blocked on went with it.
+    setInterruptListener((terminalId, at) => {
+      if (settleInterruptedTurn(terminalId, at)) clearPendingQuestion(terminalId)
+    })
+    // The question the chat view draws over its composer.
+    setPendingQuestionListener((terminalId, question) => {
+      if (mainWindow) mainWindow.webContents.send('terminal:question', { id: terminalId, question: question ?? null })
     })
 
     // A question an agent is blocked on, from the capture hooks. The payload is
@@ -745,6 +816,34 @@ async function initializeHooksAndSessions() {
       if (question && aggregator) {
         aggregator.update()
       }
+    })
+
+    // Terminal or chat, as the renderer resolves it (renderer/utils/displayMode.ts):
+    // the agent's own choice, else the account's default.
+    const agentDisplayMode = (terminalId: string) =>
+      readAgents().find((a) => a.id === terminalId)?.displayMode ?? readConfig().defaultDisplayMode ?? 'terminal'
+
+    // The AskUserQuestion hook. Held while the agent is shown as a chat, which then
+    // answers it through the hook; answered empty at once otherwise, so the terminal
+    // asks as it always did. Held, the agent is waiting on the user, and says so.
+    setAskCallback(async (terminalId: string, body: string) => {
+      let payload: unknown
+      try {
+        payload = JSON.parse(body)
+      } catch {
+        return null
+      }
+      if (agentDisplayMode(terminalId) !== 'chat') {
+        const question = ingestQuestionPayload(terminalId, body, () => getTerminalBuffer(terminalId))
+        if (question && aggregator) aggregator.update()
+        return null
+      }
+      const { question, reply } = holdAsk(terminalId, payload)
+      if (question) {
+        updateTerminalStateFromHook(terminalId, 'waiting')
+        aggregator?.update()
+      }
+      return reply
     })
 
     setClearQuestionCallback((terminalId: string) => {
@@ -824,13 +923,70 @@ async function initializeHooksAndSessions() {
     // one config mutation they perform (worktreeFiles).
     setConfigProvider(() => readConfig())
     setAgentProvider((terminalId: string) => readAgents().find((a) => a.id === terminalId) ?? null)
-    setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
-      // Resolve to the repo's KEY in the config record, which is not always its
-      // name: two orgs can share a name, and the second one's key is suffixed.
+    // The flow the calling skill's repository follows (#328). A worktree resolves to
+    // its repo; a path matching none gets the default flow.
+    // A skill's $PWD (a repo or one of its worktrees) → the repo's id and its KEY in the
+    // config record, which is not always its name: two orgs can share a name, and the
+    // second one's key is suffixed.
+    const repoForPath = (path: string | null) => {
       const repositories = readConfig().repositories ?? {}
       const [repoId] = path ? resolveRepoIds([path], repositories, expandPath) : []
+      const key = repoId ? Object.keys(repositories).find((k) => repositories[k].id === repoId) : undefined
+      return { repositories, repoId: repoId ?? null, key }
+    }
+    setWorkflowProvider((path: string | null, skill: string | null) => {
+      const { repoId, key } = repoForPath(path)
+      return buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill)
+    })
+    // What a magic skill shows and chains into once it is done, in the repository's
+    // discussion language: the rules of workflow/next.ts on the same flow as /workflow.
+    //
+    // Then the user's own settings (Settings → Workflow) on the chain: asked first, held
+    // after a few in a row, or held or stepped over when its skill is not on this machine.
+    const chains = new ChainCounter()
+    setUserPromptListener((cwd) => chains.reset(cwd))
+    setWorkflowNextProvider((path: string | null, skill: string | null, outcome: string, reason: string) => {
+      const config = readConfig()
+      const { repositories, repoId, key } = repoForPath(path)
+      const lang = key && repositories[key].languages?.discussion === 'fr' ? 'fr' : 'en'
+      const flow = workflowForRepo(repoId)
+      const payloadOf = (name: string | null) => buildWorkflowPayload(key ?? null, flow, name)
+      const settings = resolveWorkflowSettings(config.workflow)
+      const repoPath = key && repositories[key].path ? expandPath(repositories[key].path) : null
+      const next = applyChainPolicy(applyActionPolicy(buildWorkflowNext(payloadOf(skill), outcome, { reason, lang }), settings.runActions, lang), {
+        confirm: settings.confirmChain,
+        chained: path ? chains.count(path) : 0,
+        limit: settings.chainLimit,
+        missing: settings.missingSkill,
+        // A magic skill ships with the app, a plugin's with its plugin: only a folder skill can be missing.
+        installed: (name) => name.startsWith('magic-') || name.includes(':')
+          || [os.homedir(), path, repoPath].some((root) => !!root && hasSkillIn(root, name)),
+        payloadOf,
+      }, lang)
+      if (next.chain && path) chains.chained(path)
+      return next
+    })
+    // One action of the repository's flow, for `magic-action`: the flow the skills are
+    // served, so an action only a step turned off led to is still found (it is a card of
+    // the flow, whatever reaches it). The repository's key comes along for the message.
+    setWorkflowActionProvider((path: string | null, id: string) => {
+      const { repoId, key } = repoForPath(path)
+      const action = workflowForRepo(repoId).workflow.actions?.find((one) => one.id === id)
+      return action ? { ...action, repository: key ?? null } : null
+    })
+    // The workflow context of a custom skill the model just invoked (#333): the same
+    // lookup as /workflow above, from the skill's name alone, so a custom step finds its
+    // node exactly as a magic skill does. A path matching no repository gets the default
+    // flow, which has no custom step, so the answer there is null and the skill runs
+    // untouched; so does a magic skill, which asks /workflow/next itself.
+    setCustomSkillContextProvider((cwd: string, skill: string) => {
+      const { repoId, key } = repoForPath(cwd)
+      return buildSkillContext(buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill))
+    })
+    setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
+      const { repositories, repoId, key: keyForPath } = repoForPath(path)
       const key = repoId
-        ? Object.keys(repositories).find((k) => repositories[k].id === repoId)
+        ? keyForPath
         : Object.keys(repositories).find((k) => k === repo || repositories[k].name === repo)
 
       if (!key) {
@@ -921,6 +1077,9 @@ app.on('before-quit', async (event) => {
 
   // Tear down the org-agents realtime channel
   void stopOrgAgentsRealtime()
+  // And the open plan's: leaving it untracks the reader, so colleagues see them go now
+  // rather than when the server notices the socket is dead.
+  void closePlanLive()
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

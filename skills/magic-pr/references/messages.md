@@ -277,6 +277,7 @@ Choix (1/2) :
 
 Title: {title}
 Base:  {base_branch} ← {head_branch}
+State: {pr_state}
 
 Description:
 {description_preview}
@@ -296,6 +297,7 @@ Create this PR? (Y/n/edit)
 
 Titre : {title}
 Base :  {base_branch} ← {head_branch}
+État :  {pr_state}
 
 Description :
 {description_preview}
@@ -309,59 +311,53 @@ Créer cette PR ? (O/n/edit)
 ## MSG_PR_TEMPLATE_EN
 
 > Used only if no project template exists. Language: `pullRequest: "en"` or absent.
+> Every bracketed block is an instruction to you, never text to ship. The section caps
+> live in Step 6.1 and apply to this template and to a project one alike.
 
 ```markdown
 ## Summary
 
-[Concise summary of changes in 2-3 sentences]
+[1-2 sentences: what this changes, and why it was worth doing. Not a retelling of the diff.]
 
 ## Changes
 
-[List of commits with their messages]
+[3-7 bullets, one line each, grouped by intent — NOT one bullet per commit, since the commits are already a tab on this PR. Each bullet is a bold two-or-three-word lead-in, then one sentence, plus a short "why" clause only where the change does not explain itself. No sub-bullets, no paragraph under a bullet. Shape:
+- **The setting.** `pullRequest.bodyVerbosity` takes `concise`, `normal` or `detailed`, because one length never fits every team.]
 
 ## How to test
 
-[Write concrete MANUAL test scenarios from the user's point of view, grounded in the actual diff from Step 4.1 (the user-visible surfaces and test environment identified there):
-- If setup is needed, start with a single prerequisites line (env vars, seed data, a service to run).
-  - Test account — write a line about accounts ONLY if `pullRequest.testAccounts` is `reference` or `inline`. If the mode is `off` (the default), write NOTHING about accounts here: no line, no mention, no placeholder, no "TBD".
-    - `reference` shape: point at the documented source and name the role, never a secret — e.g. "Test account: documented in `TESTING.md` ("Test accounts") — role: admin".
-    - `inline` shape: the identifier and password exactly as the source documents them, keeping the source path — e.g. "Test account: `admin@acme.test` / `Passw0rd!` (role: admin, source: `TESTING.md`)".
-    - Nothing resolved, mode still `reference` or `inline`: say so in exactly one line — "No test account documented for this project" — and write no credential of any kind.
-    - Never invent, complete or guess a credential. See `references/test-accounts.md`.
-- Then list 2-5 numbered actions. Each step pairs a concrete action (open a URL/page, click a UI element, run a CLI command, call an endpoint) with its observable expected result — action → expected result.
-- Write every **web route or API path** a step asks the reviewer to open as inline code with a leading slash — `/admin/dashboard`, `/api/users` — never as a bare word, never as a full URL. Step 7.4.2.5 turns exactly those into clickable links against this PR's preview deployment once one is found (`[/admin/dashboard](https://<preview-host>/admin/dashboard)`); a route written any other way stays a plain path forever. Never write a **file** path this way (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — those are not routes and are never linked.
-- Do NOT write "run the automated tests" (npm test, etc.) as the only instruction. A single automated-test line is allowed ONLY as an optional last line AFTER the manual steps.
-- If the PR has no manually testable surface (docs-only, CI, pure refactor), do NOT invent a scenario: state it plainly instead, e.g. "No manual test surface — docs-only change; verify rendering / links".
-Every step must be specific to the actual changes — no generic placeholders, and no invented test account.]
+[A single prerequisites line when setup is needed (env vars, seed data, a service to run), then 2-5 numbered steps grounded in the diff read at Step 4.1. One line each, pairing a concrete action with its observable result — action → expected result.
+- Write every step as an **empty task-list item with its number inside it**, after the box — `` - [ ] 1. Open `/settings` → the new toggle is visible ``, then `- [ ] 2. …`, `- [ ] 3. …` — so the reviewer can tick each step on GitHub as they go and still sees the order to run them in. Never `1. [ ] …`: GitHub hides the numbers of an ordered list whose items are task items, so the order would vanish. Always ship the box empty: ticking it is the reviewer's act, never yours. The prerequisites line and a no-surface line carry no box.
+- Write every **web route or API path** as inline code with a leading slash — `/admin/dashboard`, `/api/users` — never as a bare word, never as a full URL: Step 7.4.2.5 turns exactly those into clickable links against this PR's preview deployment. Never write a **file** path that way (`SKILL.md`, `desktop/src/main/`); those are not routes and are never linked.
+- Test account: write a line about accounts ONLY if `pullRequest.testAccounts` is `reference` or `inline`, in the shape Step 6.1.1 and `references/test-accounts.md` define. At `off`, the default, write nothing about accounts: no line, no placeholder, no "TBD". Never invent, complete or guess a credential.
+- Never "run the automated tests" as the only instruction. One automated-test line is allowed as an optional last line, after the manual steps.
+- No manually testable surface (docs-only, CI, pure refactor)? Say so in one line instead of inventing a scenario, e.g. "No manual test surface — docs-only change; verify rendering / links".]
 ```
 
 ## MSG_PR_TEMPLATE_FR
 
 > Used only if no project template exists. Language: `pullRequest: "fr"`.
+> Same contract as the EN template: the bracketed blocks are instructions, and the
+> section caps live in Step 6.1.
 
 ```markdown
 ## Résumé
 
-[Résumé concis des changements en 2-3 phrases]
+[1 à 2 phrases : ce que ça change, et pourquoi ça valait le coup. Pas une reformulation du diff.]
 
 ## Changements
 
-[Liste des commits avec leurs messages]
+[3 à 7 bullets, une ligne chacun, regroupés par intention — PAS un bullet par commit, la liste des commits est déjà un onglet de cette PR. Chaque bullet : une amorce en gras de deux ou trois mots, puis une phrase, plus une courte incise « pourquoi » uniquement là où le changement ne se comprend pas seul. Pas de sous-bullets, pas de paragraphe sous un bullet. Forme :
+- **Le réglage.** `pullRequest.bodyVerbosity` accepte `concise`, `normal` ou `detailed`, parce qu'une seule longueur ne convient jamais à toutes les équipes.]
 
 ## Comment tester
 
-[Rédiger des scénarios de test MANUELS concrets du point de vue de l'utilisateur, ancrés dans le diff réel du Step 4.1 (les surfaces visibles par l'utilisateur et l'environnement de test identifiés à cette étape) :
-- Si une préparation est nécessaire, commencer par une seule ligne de prérequis (variables d'environnement, données de départ, un service à lancer).
-  - Compte de test — n'écrire une ligne au sujet des comptes QUE si `pullRequest.testAccounts` vaut `reference` ou `inline`. Si le mode est `off` (la valeur par défaut), n'écrire RIEN au sujet des comptes ici : aucune ligne, aucune mention, aucun placeholder, aucun « à définir ».
-    - Forme `reference` : pointer vers la source documentée et nommer le rôle, jamais un secret — ex. « Compte de test : documenté dans `TESTING.md` (« Comptes de test ») — rôle : admin ».
-    - Forme `inline` : l'identifiant et le mot de passe exactement tels que la source les documente, en conservant le chemin de la source — ex. « Compte de test : `admin@acme.test` / `Passw0rd!` (rôle : admin, source : `TESTING.md`) ».
-    - Rien de résolu, alors que le mode vaut `reference` ou `inline` : le dire en une seule ligne — « Aucun compte de test documenté pour ce projet » — et n'écrire aucun identifiant.
-    - Ne jamais inventer, compléter ni deviner un identifiant. Voir `references/test-accounts.md`.
-- Puis lister 2 à 5 actions numérotées. Chaque étape associe une action concrète (ouvrir une URL/page, cliquer sur un élément d'UI, lancer une commande CLI, appeler un endpoint) à son résultat attendu observable — action → résultat attendu.
-- Écrire chaque **route web ou chemin d'API** qu'une étape demande d'ouvrir en code inline avec un slash initial — `/admin/dashboard`, `/api/users` — jamais en toutes lettres, jamais en URL complète. Le Step 7.4.2.5 transforme exactement celles-là en liens cliquables vers le déploiement de preview de cette PR dès qu'il en trouve un (`[/admin/dashboard](https://<hôte-de-preview>/admin/dashboard)`) ; une route écrite autrement restera un chemin nu pour toujours. Ne jamais écrire un chemin de **fichier** sous cette forme (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — ce ne sont pas des routes et ils ne sont jamais transformés en liens.
-- Ne PAS écrire « lancer les tests automatisés » (npm test, etc.) comme seule instruction. Une unique ligne de tests automatisés n'est autorisée QU'EN dernière ligne optionnelle, APRÈS les étapes manuelles.
-- Si la PR n'a aucune surface testable manuellement (docs uniquement, CI, refactoring pur), ne PAS inventer de scénario : le dire clairement à la place, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».
-Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques, et aucun compte de test inventé.]
+[Une seule ligne de prérequis si une préparation est nécessaire (variables d'environnement, données de départ, un service à lancer), puis 2 à 5 étapes numérotées ancrées dans le diff lu au Step 4.1. Une ligne chacune, associant une action concrète à son résultat observable — action → résultat attendu.
+- Écrire chaque étape comme une **case à cocher vide suivie de son numéro** — `` - [ ] 1. Ouvrir `/settings` → le nouvel interrupteur est visible ``, puis `- [ ] 2. …`, `- [ ] 3. …` — pour que le reviewer coche chaque étape sur GitHub au fil de son test tout en voyant l'ordre d'exécution. Jamais `1. [ ] …` : GitHub masque les numéros d'une liste ordonnée dont les items sont des cases à cocher, l'ordre disparaîtrait. Toujours livrer la case vide : la cocher revient au reviewer, jamais à toi. La ligne de prérequis et une ligne « aucune surface de test » ne portent pas de case.
+- Écrire chaque **route web ou chemin d'API** en code inline avec un slash initial — `/admin/dashboard`, `/api/users` — jamais en toutes lettres, jamais en URL complète : le Step 7.4.2.5 transforme exactement celles-là en liens cliquables vers le déploiement de preview de cette PR. Ne jamais écrire un chemin de **fichier** sous cette forme (`SKILL.md`, `desktop/src/main/`) ; ce ne sont pas des routes et ils ne sont jamais transformés en liens.
+- Compte de test : n'écrire une ligne au sujet des comptes QUE si `pullRequest.testAccounts` vaut `reference` ou `inline`, dans la forme définie par le Step 6.1.1 et `references/test-accounts.md`. Si le mode vaut `off`, la valeur par défaut, n'écrire RIEN au sujet des comptes : aucune ligne, aucun placeholder, aucun « à définir ». Ne jamais inventer, compléter ni deviner un identifiant.
+- Ne PAS écrire « lancer les tests automatisés » comme seule instruction. Une unique ligne de tests automatisés est autorisée en dernière ligne optionnelle, après les étapes manuelles.
+- Aucune surface testable manuellement (docs uniquement, CI, refactoring pur) ? Le dire en une ligne au lieu d'inventer un scénario, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».]
 ```
 
 ## MSG_TEST_ACCOUNTS_NOT_FOUND
@@ -526,6 +522,19 @@ Displayed in Step 6.5, immediately after the PR is created — before the ticket
 
 Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follows), **manual** when it is `false`.
 
+- `{review_feedback_line}` (watch): the first wording when the workflow chains on
+  `review_comments` (the app's answer has a `chain`; the default flow does), the second otherwise:
+  - en: `Review feedback from bots or humans gets addressed automatically` /
+    `Review feedback from bots or humans gets reported, with the next step to run`
+  - fr: `Les retours de review (bots ou humains) sont traités automatiquement` /
+    `Les retours de review (bots ou humains) sont signalés, avec la prochaine étape à lancer`
+- `{next_steps}` (manual): one numbered line per line the workflow returned on `pr_created`
+  (SKILL.md Step 8.5), its `text` (`references/workflow.md` §2) without its bullet. The lines
+  after it are this skill's own and keep counting from where `{next_steps}` stopped. The default
+  flow has nothing on
+  `pr_created`, so for it `{next_steps}` is empty and the list starts at this skill's own lines,
+  numbered from 1.
+
 ### en — watch
 
 ```text
@@ -538,7 +547,7 @@ Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follo
 Now watching the PR — you can leave this running:
 1. Waiting for the CI checks to finish
 2. Failing checks get fixed and re-pushed automatically (up to 3 attempts)
-3. Review feedback from bots or humans gets addressed automatically
+3. {review_feedback_line}
 4. Run /magic:done once the PR is merged
 ```
 
@@ -552,10 +561,10 @@ Now watching the PR — you can leave this running:
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Next steps:
-1. Run /magic:review to perform a code review
-2. Wait for approval and CI checks
-3. Merge the PR once approved
-4. Run /magic:done to finalize the task
+{next_steps}
+{n}. Wait for approval and CI checks
+{n}. Merge the PR once approved
+{n}. Run /magic:done to finalize the task
 ```
 
 ### fr — watch
@@ -570,7 +579,7 @@ Next steps:
 Je surveille la PR — tu peux laisser tourner :
 1. J'attends la fin des checks CI
 2. Les checks en échec sont corrigés et repoussés automatiquement (3 tentatives max)
-3. Les retours de review (bots ou humains) sont traités automatiquement
+3. {review_feedback_line}
 4. Lance /magic:done une fois la PR mergée
 ```
 
@@ -584,10 +593,10 @@ Je surveille la PR — tu peux laisser tourner :
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Prochaines étapes :
-1. Lance /magic:review pour faire une revue de code
-2. Attend l'approbation et les checks CI
-3. Merge la PR une fois approuvée
-4. Lance /magic:done pour finaliser la tâche
+{next_steps}
+{n}. Attend l'approbation et les checks CI
+{n}. Merge la PR une fois approuvée
+{n}. Lance /magic:done pour finaliser la tâche
 ```
 
 ## MSG_PREVIEW_URL_MULTIPLE
@@ -818,9 +827,23 @@ Je m'arrête ici plutôt que de pousser une correction au hasard.
 
 ## MSG_REVIEW_COMMENTS_FOUND
 
-Displayed in Step 7.4.5 before chaining into the resolve workflow.
+Displayed in Step 7.4.5. Two variants, chosen by the app's answer for `review_comments` and by
+nothing else: **chain** when it has a `chain` (the default flow does, to `magic-resolve`, so
+`{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
+never says the comments are being addressed, because nothing is.
 
-### en
+`{chain_line}` (chain) depends on the chain's target. When it is `magic-resolve`, the skill that
+addresses review comments: `Addressing them now via /magic:resolve...` (fr: `Je les traite
+maintenant via /magic:resolve...`), today's line. Any other target may address nothing, so the line
+only says where the run goes: `Handing over to {skill}, as this repository's workflow says. It may
+not address them.` (fr: `Je passe la main à {skill}, comme le prévoit le workflow de ce repository.
+Il ne les traitera peut-être pas.`).
+
+`{next_steps}` (suggest) holds the `text` of each line of the answer (`references/workflow.md` §2).
+With none, replace the `Next step` header and `{next_steps}` with one line:
+`They are yours to address when you are ready.` (fr: `À toi de les traiter quand tu veux.`).
+
+### en — chain
 
 ```text
 💬 {count} actionable review comment(s) on the PR — from {reviewers}
@@ -828,10 +851,24 @@ Displayed in Step 7.4.5 before chaining into the resolve workflow.
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Addressing them now via /magic:resolve...
+{chain_line}
 ```
 
-### fr
+### en — suggest
+
+```text
+💬 {count} actionable review comment(s) on the PR, from {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+This repository's workflow does not address them on its own.
+
+Next step:
+{next_steps}
+```
+
+### fr — chain
 
 ```text
 💬 {count} commentaire(s) de review à traiter sur la PR — de {reviewers}
@@ -839,7 +876,60 @@ Addressing them now via /magic:resolve...
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Je les traite maintenant via /magic:resolve...
+{chain_line}
+```
+
+### fr — suggest
+
+```text
+💬 {count} commentaire(s) de review à traiter sur la PR, de {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+Le workflow de ce repository ne les traite pas tout seul.
+
+Prochaine étape :
+{next_steps}
+```
+
+## MSG_REVIEW_COMMENTS_OUTSTANDING
+
+Displayed in Step 7.4.5 when the chained skill ended without pushing anything, so the comments shown
+in `MSG_REVIEW_COMMENTS_FOUND` are still open. `{skill}` is the skill that was chained into.
+
+### en
+
+```text
+⚠️ {skill} pushed nothing: the {count} review comment(s) above are still open on the PR.
+Address them yourself, or run /magic:resolve.
+```
+
+### fr
+
+```text
+⚠️ {skill} n'a rien poussé : les {count} commentaire(s) de review ci-dessus sont toujours ouverts sur la PR.
+Traite-les toi-même, ou lance /magic:resolve.
+```
+
+## MSG_NEXT_STEPS
+
+Displayed in Step 8.5 after `MSG_CI_ALL_GREEN`, only when the workflow returns lines on
+`ci_green` (the default flow does not, so a default user never sees it). `{next_steps}` holds the
+`text` of each line (`references/workflow.md` §2).
+
+### en
+
+```text
+💡 Next step:
+{next_steps}
+```
+
+### fr
+
+```text
+💡 Prochaine étape :
+{next_steps}
 ```
 
 ## MSG_CI_WATCH_TIMEOUT

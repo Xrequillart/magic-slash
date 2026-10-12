@@ -14,7 +14,7 @@ import { TopNav } from '@/components/TopNav'
  */
 export function AppShell({ email, children }: { email?: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-white">
       <TopNav email={email} />
       <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8">{children}</div>
     </div>

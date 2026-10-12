@@ -10,8 +10,8 @@ import {
 } from './languages'
 import { en } from './en'
 import { fr } from './fr'
-import { marketingEn } from './marketing/en'
-import { marketingFr } from './marketing/fr'
+import { showcaseEn } from './showcase/en'
+import { showcaseFr } from './showcase/fr'
 import { localeOf, t } from '.'
 
 /**
@@ -21,22 +21,22 @@ import { localeOf, t } from '.'
  */
 
 const CATALOGUES: Record<LanguageId, Record<string, string>> = {
-  en: { ...en, ...marketingEn },
-  fr: { ...fr, ...marketingFr },
+  en: { ...en, ...showcaseEn },
+  fr: { ...fr, ...showcaseFr },
 }
 
 /**
  * The app catalogue and the public site's are checked with the same three rules but
  * SEPARATE allow-lists for "legitimately identical in both languages". Merging the
- * lists would mean a marketing rewrite could silently mask an untranslated string in
+ * lists would mean a showcase rewrite could silently mask an untranslated string in
  * the product copy, and the two files are edited by different people.
  */
 const PAIRS = [
   { name: 'app', en: en as Record<string, string>, fr: fr as Record<string, string> },
   {
     name: 'site',
-    en: marketingEn as Record<string, string>,
-    fr: marketingFr as Record<string, string>,
+    en: showcaseEn as Record<string, string>,
+    fr: showcaseFr as Record<string, string>,
   },
 ] as const
 
@@ -69,7 +69,7 @@ describe('message catalogues', () => {
     // its keys are ordinary `site.faq.*` entries in the catalogue below. `faq.test.ts`
     // is what keeps the family from creeping back in.
     const appKeys = Object.keys(en)
-    const siteKeys = Object.keys(marketingEn)
+    const siteKeys = Object.keys(showcaseEn)
 
     expect(siteKeys.filter((key) => !key.startsWith('site.')), 'unprefixed site keys').toEqual([])
     expect(appKeys.filter((key) => key.startsWith('site.')), 'app keys in the site namespace').toEqual([])
@@ -96,8 +96,8 @@ describe('message catalogues', () => {
     // does not just lose bold — it leaks the tag into the rest of the page.
     const tags = (message: string) => (message.match(/<\/?[a-z]+>/g) ?? []).sort()
 
-    const source = marketingEn as Record<string, string>
-    const target = marketingFr as Record<string, string>
+    const source = showcaseEn as Record<string, string>
+    const target = showcaseFr as Record<string, string>
     for (const key of Object.keys(source)) {
       expect(tags(target[key]), `fr.${key} markup`).toEqual(tags(source[key]))
     }
@@ -110,7 +110,7 @@ describe('message catalogues', () => {
     // would put a URL in a translator's hands, and a `<script>` would end the argument.
     const ALLOWED = /^<\/?(br|strong|code|em)>$/
 
-    for (const catalogue of [marketingEn, marketingFr]) {
+    for (const catalogue of [showcaseEn, showcaseFr]) {
       for (const [key, message] of Object.entries(catalogue)) {
         for (const tag of message.match(/<[^>]+>/g) ?? []) {
           expect(ALLOWED.test(tag), `${key} contains ${tag}`).toBe(true)
@@ -127,17 +127,12 @@ describe('message catalogues', () => {
     // to anyone who also reads English, and this is the only thing that notices.
     const SAME_IN_BOTH: Record<(typeof PAIRS)[number]['name'], string[]> = {
       app: [
-      'nav.application',
       'nav.admin',
       // "Plans" is the product's own name for the page, in both languages, and
       // "Epic" is the word the French Jira and the French spec both use.
-      'nav.plans',
       'plans.title',
-      'plans.kind.epic',
       // Ticket counts, same reason as the agent counts below: "1 ticket" and
       // "{count} tickets" are spelled identically in French.
-      'plans.tickets.one',
-      'plans.tickets.many',
       'team.agents.one',
       'team.agents.many',
       'profile.role.dev',
@@ -147,61 +142,15 @@ describe('message catalogues', () => {
       'profile.role.manager',
       'profile.level.expert',
       'profile.style.simple',
-      'application.title',
       'theme.espresso',
       // "Notifications" and "Format" are the same word in both languages, and
       // "Pull requests" is left in English on purpose — it is what the GitHub UI
       // says, in both.
-      'settings.notifications.section',
-      'settings.notifications.pr.section',
-      'settings.sidebars.format.label',
-      'settings.prWatcher.interval1m',
-      'settings.prWatcher.interval2m',
-      'settings.prWatcher.interval5m',
-      'settings.claudeCode',
       'settings.launchMode.plan',
       'settings.launchMode.default',
       'settings.launchMode.auto',
       'settings.launchMode.bypass',
-      'org.joinModal.placeholder',
-      'org.role.admin',
       'org.colActions',
-      'org.invitations',
-      // Section and tab titles French borrows whole. "Repository", "Tickets",
-      // "Skills" and "Danger" are the words the French UI uses too.
-      'repo.repository.section',
-      // Two of the Repository tab's three group headings: a "branch" is a branche but
-      // "Branches" heads the same box either way, and a worktree is a worktree — it is
-      // git's own word, which is why the help line under it uses it in French too.
-      'repo.repository.groupBranches',
-      'repo.repository.groupWorktrees',
-      'repo.tickets.section',
-      // The two trackers, named after the products: "GitHub" and "Jira" in both
-      // languages. Every other tab is labelled by its own section key, which is
-      // already listed above wherever French borrows it whole.
-      'repo.tracker.modeGithub',
-      'repo.tracker.modeJira',
-      // The Tracker tab's two product groups, headed by the products themselves.
-      'repo.tracker.groupGithub',
-      'repo.tracker.groupJira',
-      // Two of the three Languages groups: "Conversation" and "Tickets" are the same
-      // word either way. The third, "Code et pull requests", is not.
-      'repo.langs.groupChat',
-      'repo.langs.groupTickets',
-      // Same again for three of the skill-tab groups: "Message", "Branches" and
-      // "Description" are spelled identically in both languages.
-      'repo.commit.groupMessage',
-      'repo.commit.groupBranches',
-      'repo.pr.groupDescription',
-      'repo.commit.section',
-      'repo.commit.style',
-      'repo.commit.format',
-      'repo.commit.formatConventional',
-      'repo.commit.formatAngular',
-      'repo.commit.formatGitmoji',
-      'repo.resolve.section',
-      'repo.resolve.askNoticeAmend',
-      'repo.pr.section',
       // Two duration units. "{count}h" is the form the banner was specified with in
       // both languages, and "min" is the same abbreviation in French.
       'skillHours.hours',
@@ -248,17 +197,6 @@ describe('message catalogues', () => {
         // first prerequisite is the product's name.
         'site.downloadPage.reassureChip',
         'site.downloadPage.reqClaudeTitle',
-        // The homepage hero's orbit titles its six artefacts in the product's own words,
-        // and every one of them is spelled the same in French: "Spec", "Review",
-        // "Worktree", "Epic", "stories" and "commits" are what the skills and the app
-        // call them, "Done" is the Jira column, and "PR #318" is a label. The six
-        // description lines under them are real French.
-        'site.hero.orbitSpecTitle',
-        'site.hero.orbitEpicTitle',
-        'site.hero.orbitWorktreeTitle',
-        'site.hero.orbitPrTitle',
-        'site.hero.orbitReviewTitle',
-        'site.hero.orbitDoneTitle',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.
@@ -285,10 +223,13 @@ describe('message catalogues', () => {
         // too. The repository slug on the rail above is a literal in the component, so
         // only this half of the pair reaches the catalogues at all.
         'site.orgTeam.config',
-        // The Agents sidebar's own two: "Skills" is the product's word for them in both
+        // The Agents sidebar's own three: "Skills" is the product's word for them in both
         // languages, and so is "Agents" — the label over the list, which the app's French
-        // catalogue also leaves as it is.
+        // catalogue also leaves as it is. "Plans" is the third, and it is the app's own
+        // French label too (`sidebar.plans` in `desktop/src/i18n/fr.ts`): the page is
+        // named after the plan documents it lists, and the word did not need translating.
         'site.agentsCard.skills',
+        'site.agentsCard.plans',
         // The Skills window's gauge prints its own unit under each bar, and the app's
         // French catalogue spells "tokens" exactly the same way — `skills.budget.unitTokens`
         // in `desktop/src/i18n/fr.ts`. The characters unit beside it is NOT the same word
@@ -303,16 +244,28 @@ describe('message catalogues', () => {
         'site.infoSidebar.scriptsBuild',
         'site.infoSidebar.scriptsTest',
         'site.agentsCard.agents',
-        // The Tasks mockup's agent marker. It is the app's own word beside the dot, and
-        // the app's French catalogue spells it "agent" too — this string is the app's,
-        // not a translation of it.
-        'site.tasksCard.agent',
+        // The usage card's short name for the five-hour limit. "session" is the same
+        // word in both languages, and the app's own French catalogue leaves it alone
+        // too. Its neighbour does not ("semaine"), which is why only this half is here.
+        'site.usageCard.sessionShort',
+        // The Plans mockup. Four of its five ticket counts are the app's own wording
+        // and spell identically in French ("aucun ticket" does not, which is why the
+        // fifth is absent), and so does the count of plans beside the heading — the
+        // app's `plans.count.other` is "{count} plans" in both catalogues.
+        'site.planCard.count',
+        'site.planCard.tickets1',
+        'site.planCard.tickets2',
+        'site.planCard.tickets3',
+        'site.planCard.tickets4',
         // The Settings drawing prints the app's own tab labels, and three of the eleven
         // are the same word in French — as the app's own `settings.tab.*` keys are. The
         // agent counts are the app's too: "1 agent" and "2 agents" spell identically.
-        'site.reposCard.tabApplication',
-        'site.reposCard.tabClaudeCode',
-        'site.reposCard.tabNotifications',
+        // The homepage's small Tasks panels print the app's own word beside their agent
+        // dot, and the app's French catalogue spells it "agent" too.
+        'site.tasksCard.agent',
+        // The PR tab's description-length picker, set to its default: "Concise" in both
+        // catalogues, as the app's own `repo.pr.bodyVerbosityConcise`.
+        'site.prCfg.bodyVerbosityConcise',
         'site.reposCard.agents.one',
         'site.reposCard.agents.other',
         // The launch modes grid: four of the five mode names are the app's own single
@@ -367,7 +320,7 @@ describe('translation', () => {
 
   it('substitutes named placeholders', () => {
     expect(t('dashboard.greeting', 'en', { name: 'Xavier' })).toBe('Hey Xavier.')
-    expect(t('org.archiveModal.confirm', 'fr', { name: 'Poppins' })).toBe('Archiver Poppins ?')
+    expect(t('org.inviteModal.title', 'fr', { name: 'Poppins' })).toBe('Inviter dans Poppins')
   })
 
   it('leaves a placeholder alone when no value is given for it', () => {

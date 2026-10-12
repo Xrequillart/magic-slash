@@ -1,7 +1,71 @@
+import { Children, isValidElement, useMemo, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+
+/**
+ * One block of the rendered document, handed to a caller that wants to draw something
+ * around it — a hover ground, a mark in a gutter, a place to hang a comment off.
+ *
+ * `tag` is the element the markdown asked for and MUST be what the caller renders: the
+ * typography below is a sheet of descendant selectors, so a `<div>` standing in for an
+ * `<li>` loses its marker, its indent and its margins in one go.
+ */
+export interface MarkdownLineProps {
+  tag: string
+  /**
+   * A name for this block that is the same on every render of the same document, or
+   * `undefined` when the parser could not give one.
+   *
+   * It is the block's OFFSET IN THE MARKDOWN SOURCE, which is the one identifier available
+   * here that survives a re-render: the DOM is rebuilt from scratch on every pass, and a
+   * counter incremented during render is a side effect that StrictMode's double invoke
+   * makes a liar of. `rehype-raw` reparses embedded HTML and does not always carry a
+   * position through it, hence `undefined` — a block with no key gets drawn plainly, which
+   * is a block that cannot be commented on rather than a crash.
+   */
+  lineKey: string | undefined
+  /**
+   * Where this block's markdown sits in the source, `[start, end)` — present exactly when
+   * `lineKey` is. What a caller editing the document in place replaces when the block is
+   * rewritten: the rendered text has lost its markup, the source has not.
+   *
+   * A list item that carries a sublist ENDS WHERE THE SUBLIST STARTS: the sublist's items
+   * are lines of their own, and handing them over with their parent would have them edited
+   * twice, once in each.
+   */
+  source?: { start: number; end: number }
+  className?: string
+  children?: ReactNode
+}
+
+/**
+ * A table, handed over row by row: each row with a key a caller can hang a comment off —
+ * the row's offset in the source, `MarkdownLineProps`' reason — and its cells as drawn.
+ *
+ * `fallback` is the table as it would have been drawn: a caller that does not recognise
+ * this one returns it, and the document is unchanged.
+ */
+export interface MarkdownTableProps {
+  /** The header's words, one per column. */
+  head: string[]
+  rows: { lineKey: string | undefined; cells: ReactNode[] }[]
+  fallback: ReactNode
+}
+
+/**
+ * A bulleted list, handed over item by item: each with the key a `MarkdownLineProps` block
+ * carries, its plain words (to recognise it by) and its words as drawn. Only a FLAT list of
+ * tight items is handed over — an item holding paragraphs or a sublist holds blocks, which
+ * are lines of their own, and is drawn as it always was.
+ *
+ * `fallback` is the list as it would have been drawn, `MarkdownTableProps`' reason.
+ */
+export interface MarkdownListProps {
+  items: { lineKey: string | undefined; text: string; children: ReactNode }[]
+  fallback: ReactNode
+}
 
 interface Props {
   content: string
@@ -11,6 +75,24 @@ interface Props {
    * air, and no padding of its own (the page frame supplies it).
    */
   variant?: 'panel' | 'document'
+  /**
+   * Draw each block through this instead of as a bare tag — absent for every caller that
+   * only wants the document read.
+   *
+   * WHAT IT DOES NOT DO is as much the point as what it does: the typography, the
+   * sanitiser, the plugins and the two Tailwind strings are untouched, and a caller that
+   * passes nothing gets exactly the component it had. The one thing that changes for a
+   * caller that passes something is which function builds the element for a paragraph.
+   */
+  line?: (props: MarkdownLineProps) => ReactNode
+  /**
+   * Draw a table through this instead — absent, and every table is drawn as one. A
+   * COMPONENT and not a function, so a table that holds state (a row unfolded) keeps it
+   * across the re-renders an edit makes. Held stable by its callers, `line`'s reason.
+   */
+  table?: ComponentType<MarkdownTableProps>
+  /** Draw a bulleted list through this instead. `table`'s terms, for `MarkdownListProps`. */
+  list?: ComponentType<MarkdownListProps>
 }
 
 // Everything that does not change with the size: colours, borders, list markers.
@@ -119,13 +201,191 @@ const COMPONENTS = {
  */
 const SANITIZE_SCHEMA = { ...defaultSchema, clobberPrefix: '' }
 
-export default function MarkdownView({ content, variant = 'panel' }: Props) {
+/**
+ * The blocks a caller may draw for itself — the LEAVES of the document, which is what a
+ * reader calls a line.
+ *
+ * `ul`, `ol` and `table` are pointedly not here. They contain the blocks above rather than
+ * text of their own, so a ground on one of them would light up a whole list under a cursor
+ * that is on a single bullet, and a mark beside it would be a mark on eight lines at once.
+ */
+const LINE_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre'] as const
+
+/** What react-markdown hands a component override, as much of it as this file reads. */
+type Position = { start?: { offset?: number }; end?: { offset?: number } }
+type NodeProps = {
+  node?: {
+    position?: Position
+    children?: { type?: string; tagName?: string; value?: string; position?: Position }[]
+  }
+}
+
+/** The block's `[start, end)` in the source, cut short at a nested list. See `source`. */
+function sourceOf(node: NodeProps['node']): { start: number; end: number } | undefined {
+  const start = node?.position?.start?.offset
+  let end = node?.position?.end?.offset
+  if (typeof start !== 'number' || typeof end !== 'number') return undefined
+  const sublist = node?.children?.find((child) => child.tagName === 'ul' || child.tagName === 'ol')
+  const cut = sublist?.position?.start?.offset
+  if (typeof cut === 'number' && cut > start) end = cut
+  return { start, end }
+}
+
+/**
+ * Everything that holds other blocks rather than words of its own.
+ *
+ * Used by `isContainer` below and NOT the same list as `LINE_TAGS`: this one is about what a
+ * node may CONTAIN, so it includes the wrappers that are never lines themselves.
+ */
+const BLOCK_CHILDREN = new Set([
+  'p', 'div', 'pre', 'blockquote', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
+  'section', 'article', 'aside', 'header', 'footer', 'figure', 'figcaption', 'details',
+])
+
+/**
+ * Whether this block holds only other blocks — which makes it a CONTAINER and not a line.
+ *
+ * IT EXISTS BECAUSE MARKDOWN HAS TWO KINDS OF LIST. A tight item is `<li>text</li>`; a loose
+ * one — an item with a blank line after it, which is most of the items anyone writes — is
+ * `<li><p>text</p></li>`. Both are one line to a reader, and without this test both the `li`
+ * and the `p` were drawn as lines: two marks, at the same height, in the same 56px box, one
+ * of them lying on top of the other. The one underneath could not be clicked.
+ *
+ * So a block with no words of its own is not offered as a line: it gets no mark, no
+ * attribute, and the blocks INSIDE it are the lines. An item that mixes text and a sublist —
+ * `<li>text<ul>…</ul></li>` — keeps its own line, because it does have words of its own, and
+ * its mark sits beside them rather than beside its sublist.
+ *
+ * Whitespace-only text is not content: the parser leaves newlines between block children,
+ * and counting them would make every loose item a line again.
+ */
+function isContainer(node: NodeProps['node']): boolean {
+  const children = node?.children
+  if (!children || children.length === 0) return false
+  // A block holding NO block is not a container, whatever its text: an item or a paragraph
+  // holding only a non-breaking space is the empty line Enter just made, and it is a line.
+  if (!children.some((child) => child.type === 'element' && BLOCK_CHILDREN.has(child.tagName ?? ''))) return false
+  return children.every((child) => (
+    child.type === 'element'
+      ? BLOCK_CHILDREN.has(child.tagName ?? '')
+      : /^[ \t\r\n]*$/.test(child.value ?? '')
+  ))
+}
+
+/** A hast node's words, markup dropped: a header cell's name. */
+type HastNode = NonNullable<NodeProps['node']> & { tagName?: string; type?: string; value?: string }
+function textOf(node: HastNode | undefined): string {
+  if (!node) return ''
+  if (node.type === 'text') return node.value ?? ''
+  return (node.children ?? []).map((child) => textOf(child as HastNode)).join('')
+}
+
+/** The element children of a hast node with the given tag. */
+function hastChildren(node: HastNode | undefined, tag: string): HastNode[] {
+  return ((node?.children ?? []) as HastNode[]).filter((child) => child.type === 'element' && child.tagName === tag)
+}
+
+/** The element children of a rendered node with the given tag, in the same order as hast's. */
+function reactChildren(children: ReactNode, tag: string): ReactElement<{ children?: ReactNode }>[] {
+  return Children.toArray(children).filter(
+    (child): child is ReactElement<{ children?: ReactNode }> => isValidElement(child) && child.type === tag,
+  )
+}
+
+/** A `table` override that hands the table to `Table`, cut into rows and cells. */
+function tableOverride(Table: ComponentType<MarkdownTableProps>) {
+  return function TableLines({ node, children, ...props }: NodeProps & JSX.IntrinsicElements['table']) {
+    const fallback = COMPONENTS.table({ ...props, children })
+    const hast = node as HastNode | undefined
+    const head = hastChildren(hastChildren(hastChildren(hast, 'thead')[0], 'tr')[0], 'th').map((th) => textOf(th).trim())
+    const hastRows = hastChildren(hastChildren(hast, 'tbody')[0], 'tr')
+    const rendered = reactChildren(reactChildren(children, 'tbody')[0]?.props.children, 'tr')
+    if (hastRows.length !== rendered.length) return fallback
+    const rows = hastRows.map((tr, i) => {
+      const start = tr.position?.start?.offset
+      return {
+        lineKey: typeof start === 'number' ? `tr@${start}` : undefined,
+        cells: reactChildren(rendered[i].props.children, 'td').map((td) => td.props.children),
+      }
+    })
+    return <Table head={head} rows={rows} fallback={fallback} />
+  }
+}
+
+/**
+ * A `ul` override that hands a flat list to `List`, item by item.
+ *
+ * THE ITEMS ARE READ OFF WHAT WAS RENDERED, and matched to the tree by position: with a `line`
+ * renderer each `<li>` has already been built by it, and what this needs of it is the words
+ * inside, which are that element's own `children` either way.
+ */
+function listOverride(List: ComponentType<MarkdownListProps>) {
+  return function ListLines({ node, children, ...props }: NodeProps & JSX.IntrinsicElements['ul']) {
+    const fallback = <ul {...props}>{children}</ul>
+    const hastItems = hastChildren(node as HastNode | undefined, 'li')
+    const rendered = Children.toArray(children).filter(
+      (child): child is ReactElement<{ children?: ReactNode }> => isValidElement(child),
+    )
+    const flat = hastItems.every((li) => !(li.children ?? []).some((child) => (
+      child.type === 'element' && BLOCK_CHILDREN.has(child.tagName ?? '')
+    )))
+    if (!flat || hastItems.length === 0 || hastItems.length !== rendered.length) return fallback
+    const items = hastItems.map((li, i) => {
+      const source = sourceOf(li)
+      return {
+        lineKey: source ? `li@${source.start}` : undefined,
+        text: textOf(li).trim(),
+        children: rendered[i].props.children,
+      }
+    })
+    return <List items={items} fallback={fallback} />
+  }
+}
+
+export default function MarkdownView({ content, variant = 'panel', line, table, list }: Props) {
+  /**
+   * The overrides, built once per `line` — which is once, since its callers hold it in a
+   * `useCallback`.
+   *
+   * It matters: `components` is read by react-markdown on every pass, and a fresh object
+   * of ten fresh function components would make every block a NEW COMPONENT TYPE on every
+   * render, so React would unmount and remount the entire document rather than update it.
+   * A textarea inside a comment bubble anchored to one of those blocks would lose its
+   * focus on every keystroke.
+   */
+  const components = useMemo(() => {
+    if (!line && !table && !list) return COMPONENTS
+    const overrides: Record<string, unknown> = { ...COMPONENTS }
+    if (table) overrides.table = tableOverride(table)
+    if (list) overrides.ul = listOverride(list)
+    const draw = line
+    if (draw) for (const tag of LINE_TAGS) {
+      overrides[tag] = ({ node, children, className }: NodeProps & {
+        children?: ReactNode
+        className?: string
+      }) => {
+        // A container is drawn plainly: no key means no mark and no anchor — see
+        // `isContainer`, and `CommentLine`, which draws the bare tag for a keyless block.
+        const source = isContainer(node) ? undefined : sourceOf(node)
+        return draw({
+          tag,
+          lineKey: source ? `${tag}@${source.start}` : undefined,
+          source,
+          className,
+          children,
+        })
+      }
+    }
+    return overrides
+  }, [line, table, list])
+
   return (
     <div className={`${STRUCTURE} ${SCALE[variant]}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]]}
-        components={COMPONENTS}
+        components={components}
       >
         {content}
       </ReactMarkdown>

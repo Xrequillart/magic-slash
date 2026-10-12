@@ -9,7 +9,7 @@
  * NOT `lib/skills.ts`. That file's `TRACKED_SKILLS` looks like the same eight names and
  * is a different thing entirely — it is the TELEMETRY vocabulary, read by
  * `app/admin/organizations/[orgId]/page.tsx` and `components/SkillStats.tsx` to bucket
- * recorded skill hours, and it imports `./supabase`. Importing it from a marketing page
+ * recorded skill hours, and it imports `./supabase`. Importing it from a showcase page
  * would drag the auth SDK into the bundle of a page that authenticates nobody, so the
  * public site gets its own list and the two stay separate on purpose.
  *

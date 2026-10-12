@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 /**
  * How far the arriving panel travels. The same 24px `SweepPane` uses sideways, so a
@@ -38,6 +38,9 @@ export function TabSweep({
   tabKey,
   order,
   className = '',
+  style,
+  bleed = false,
+  vertical = false,
   children,
 }: {
   /** The active tab. A change slides; the first render does not. */
@@ -48,6 +51,44 @@ export function TabSweep({
    */
   order: string[]
   className?: string
+  /**
+   * Styles for the travelling element — which is what the PADDING of a page belongs on.
+   *
+   * A scrolling box clips at its padding box, so a page inset from its pane's edge has
+   * nowhere to go: sliding it 24px cuts its leading 24px of pixels for the length of the
+   * animation, and every card arrives with a side missing. On the layer, that 24px is
+   * the layer's own empty inset and the content arrives whole. `pages/Config/index.tsx`
+   * makes the same arrangement for `SweepPane`, in classes; this takes a style object
+   * because the page overlay's padding is a measured number it is handed.
+   */
+  style?: CSSProperties
+  /**
+   * BORROW THE PANEL'S OWN INSET WHILE TRAVELLING — for a sweep NESTED inside a padded
+   * layer, which is the one case where the padding cannot simply be moved down here.
+   *
+   * The repository page's sub-tabs are inside the window's sweep layer, which carries
+   * the `p-6` its own sideways travel needs; the organization tabs are inside the
+   * account overlay's, which carries the measured column padding. Either way the panel
+   * above has already inset the content, so the cards sit flush against the box that
+   * clips and 24px of every card is cut off for the length of the slide.
+   *
+   * This widens the clipping box by the travel distance on each side and puts the same
+   * amount back as padding on the layer, so nothing moves at rest and the content has
+   * exactly its own travel to disappear into.
+   *
+   * ONLY WHEN THE PANEL ABOVE INSETS BY AT LEAST `SLIDE_PX`. Borrowing room that is not
+   * there would paint the page over whatever sits beside it. Both call sites are inset
+   * by exactly 24. A caller that bleeds does not set a horizontal padding of its own —
+   * the bleed is it.
+   */
+  bleed?: boolean
+  /**
+   * TRAVEL UP AND DOWN, for tabs listed DOWN a rail rather than across a strip — the
+   * settings window's. The eye follows the row you picked, so a page further down the
+   * list arrives from below. Same distance, same duration: only the axis follows the
+   * control.
+   */
+  vertical?: boolean
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -80,11 +121,12 @@ export function TabSweep({
 
     const list = keys.split('\u0000')
     const forward = list.indexOf(tabKey) > list.indexOf(from)
+    const axis = vertical ? 'translateY' : 'translateX'
     setClipX(true)
     const animation = el.animate(
       [
-        { opacity: 0, transform: `translateX(${forward ? SLIDE_PX : -SLIDE_PX}px)` },
-        { opacity: 1, transform: 'translateX(0)' },
+        { opacity: 0, transform: `${axis}(${forward ? SLIDE_PX : -SLIDE_PX}px)` },
+        { opacity: 1, transform: `${axis}(0)` },
       ],
       { duration: SLIDE_MS, easing: 'ease-out' },
     )
@@ -95,11 +137,22 @@ export function TabSweep({
       animation.cancel()
       setClipX(false)
     }
-  }, [tabKey, keys])
+  }, [tabKey, keys, vertical])
 
   return (
-    <div className={clipX ? 'overflow-x-clip' : undefined}>
-      <div ref={ref} className={className}>
+    // The margin and the padding are PERMANENT and cancel each other out; only the clip
+    // is held for the length of the slide. Toggling the inset with it would move the
+    // whole page sideways by 24px at the start of every switch.
+    <div
+      // Clipped on the axis it travels, so the overhang never adds a scrollbar.
+      className={clipX ? (vertical ? 'overflow-y-clip' : 'overflow-x-clip') : undefined}
+      style={bleed ? { marginLeft: -SLIDE_PX, marginRight: -SLIDE_PX } : undefined}
+    >
+      <div
+        ref={ref}
+        className={className}
+        style={bleed ? { ...style, paddingLeft: SLIDE_PX, paddingRight: SLIDE_PX } : style}
+      >
         {children}
       </div>
     </div>

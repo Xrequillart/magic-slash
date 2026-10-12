@@ -8,7 +8,7 @@ import { getSupabase } from './supabase'
 
 /**
  * Where each half of the guard sends people. Defined in `./routes` — a module with no
- * imports — so the marketing pages can link to the login page without pulling this
+ * imports — so the showcase pages can link to the login page without pulling this
  * file's Supabase client into their bundle. Re-exported here because the guards below,
  * and everything that already imports them, read better naming one module.
  */

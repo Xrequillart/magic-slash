@@ -257,12 +257,32 @@ interface AdminUserDetailRpcRow {
   auto_start_at_login: boolean | null
   launch_mode: string | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
+  split_new_agent_pane: string | null
+  default_display_mode: string | null
+  quick_launch_repo: string | null
+  quick_launch_background: boolean | null
+  quick_launch_launch_mode: string | null
+  quick_settings_enabled: boolean | null
+  quick_settings_items: string[] | null
+  sidebar_order: string[] | null
+  sidebar_hidden: string[] | null
+  sidebar_shown: string[] | null
+  sidebar_compact: boolean | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
   sync_claude_theme: boolean | null
-  code_theme: string | null
+  code_syntax: string | null
+  code_font_size: number | null
   agent_sort: string | null
+  info_sidebar_on_create: boolean | null
+  chat_sticky_prompt: boolean | null
+  chat_send_key: string | null
+  chat_tool_detail: string | null
+  chat_diffs: string | null
+  chat_timestamps: string | null
 }
 
 interface AdminOrgRpcRow {
@@ -414,12 +434,32 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       autoStartAtLogin: r.auto_start_at_login,
       launchMode: r.launch_mode,
       defaultAgentType: r.default_agent_type,
+      defaultModel: r.default_model,
+      confirmAgentArchive: r.confirm_agent_archive,
+      splitNewAgentPane: r.split_new_agent_pane,
+      defaultDisplayMode: r.default_display_mode,
+      quickLaunchRepo: r.quick_launch_repo,
+      quickLaunchBackground: r.quick_launch_background,
+      quickLaunchLaunchMode: r.quick_launch_launch_mode,
+      quickSettingsEnabled: r.quick_settings_enabled,
+      quickSettingsItems: r.quick_settings_items,
+      sidebarOrder: r.sidebar_order,
+      sidebarHidden: r.sidebar_hidden,
+      sidebarShown: r.sidebar_shown,
+      sidebarCompact: r.sidebar_compact,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,
       language: r.language,
       syncClaudeTheme: r.sync_claude_theme,
-      codeTheme: r.code_theme,
+      codeSyntax: r.code_syntax,
+      codeFontSize: r.code_font_size,
       agentSort: r.agent_sort,
+      infoSidebarOnCreate: r.info_sidebar_on_create,
+      chatStickyPrompt: r.chat_sticky_prompt,
+      chatSendKey: r.chat_send_key,
+      chatToolDetail: r.chat_tool_detail,
+      chatDiffs: r.chat_diffs,
+      chatTimestamps: r.chat_timestamps,
     },
   }
 }

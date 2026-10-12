@@ -129,7 +129,7 @@ export type WorkflowStepId = 'plan' | 'start' | 'commit' | 'review' | 'done'
  * by any page that wants it, spent by none. `rose` likewise, and it is the one a sixth step
  * would reach for.
  */
-export type WorkflowTone = 'sky' | 'amber' | 'midnight' | 'indigo' | 'mint'
+export type WorkflowTone = 'sky' | 'amber' | 'lemon' | 'rose' | 'mint'
 
 export type WorkflowStep = {
   id: WorkflowStepId
@@ -142,7 +142,7 @@ export type WorkflowStep = {
    *
    * Ids rather than the `/magic:…` strings: `lib/commands.ts` owns the spelling, and its
    * template-literal type is what makes a typo a compile error instead of a command on a
-   * marketing page that does not exist. Whoever renders these resolves them through that
+   * showcase page that does not exist. Whoever renders these resolves them through that
    * module — the drawings do, and so does the page.
    */
   commands: readonly MagicCommandId[]
@@ -175,14 +175,14 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
   },
   {
     id: 'commit',
-    tone: 'midnight',
+    tone: 'lemon',
     title: 'site.workflow.commitTitle',
     description: 'site.workflow.commitDesc',
     commands: ['commit', 'pr'],
   },
   {
     id: 'review',
-    tone: 'indigo',
+    tone: 'rose',
     title: 'site.workflow.reviewTitle',
     description: 'site.workflow.reviewDesc',
     commands: ['review', 'resolve'],

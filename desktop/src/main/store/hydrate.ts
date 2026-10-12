@@ -1,6 +1,7 @@
 import { hydrateConfig, resetConfigCache } from '../config/config'
 import { hydrateAgents, resetAgentsCache } from '../config/agents'
 import { hydrateProfile } from '../config/profile'
+import { hydrateWorkflows, resetWorkflowsCache } from '../workflow/workflows'
 import { applyLanguage, applyTheme } from '../appearance'
 import type { Config } from '../../types'
 
@@ -48,7 +49,9 @@ export function applyAppearanceFromConfig(config: Config): void {
 export function ensureHydrated(): Promise<void> {
   if (!hydrationPromise) {
     hydrationPromise = (async () => {
-      const config = await hydrateConfig()
+      // The workflows load alongside the config they belong to: they do not depend on
+      // it. Never rejects: a failed read serves the default flow, today's behaviour.
+      const [config] = await Promise.all([hydrateConfig(), hydrateWorkflows()])
       applyAppearanceFromConfig(config)
       await hydrateAgents()
       await hydrateProfile()
@@ -68,7 +71,7 @@ export function ensureHydrated(): Promise<void> {
  */
 export function rehydrate(): Promise<void> {
   hydrationPromise = (async () => {
-    const config = await hydrateConfig()
+    const [config] = await Promise.all([hydrateConfig(), hydrateWorkflows()])
     applyAppearanceFromConfig(config)
     await hydrateAgents()
   })().catch((error) => {
@@ -87,4 +90,5 @@ export function resetHydration(): void {
   hydrationPromise = null
   resetConfigCache()
   resetAgentsCache()
+  resetWorkflowsCache()
 }

@@ -1,7 +1,7 @@
 {
   "name": "magic-slash",
-  "version": "0.91.1",
-  "description": "8 skills for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
+  "version": "0.118.4",
+  "description": "9 skills for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
   "keywords": [
     "claude",
     "claude-code",
@@ -20,27 +20,32 @@
     "type": "git",
     "url": "git+https://github.com/xrequillart/magic-slash.git"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "xrequillart",
   "scripts": {
     "lint": "npm run lint:yaml && npm run lint:js",
-    "lint:js": "eslint desktop/src/",
+    "lint:js": "eslint desktop/src/ design-system/",
     "lint:yaml": "yamllint -c .yamllint.yml .",
     "desktop": "cd desktop && npm run dev",
-    "desktop:install": "cd desktop && npm install",
+    "desktop:install": "npm run ds:install && cd desktop && npm install",
     "desktop:build": "cd desktop && npm run build",
     "desktop:package": "cd desktop && npm run package:mac",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ds:install": "npm --prefix design-system install",
+    "supabase:config:push": "bash scripts/supabase-config-push.sh",
+    "video:install": "npm run ds:install && npm --prefix video install",
+    "video:studio": "npm --prefix video run studio",
+    "video:render": "npm --prefix video run render"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.2",
+    "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.0.1",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.9.1",
-    "globals": "^17.12.0",
-    "typescript-eslint": "^8.69.0",
-    "vitest": "^5.0.0"
+    "eslint": "^10.11.0",
+    "globals": "^17.13.0",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
   },
   "engines": {
     "node": ">=18.0.0"

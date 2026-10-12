@@ -1,4 +1,5 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { WorkflowOverlay } from '../../workflow/overlay'
+import type { AccountSettings, AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -12,6 +13,53 @@ import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, Org
  *                   the app must show the "cloud not configured" blocking screen.
  */
 export type ConnectivityStatus = 'ok' | 'unauthorized' | 'unreachable' | 'disabled'
+
+/**
+ * How claiming a handle turned out.
+ *
+ * Three of the four outcomes are things the USER does something about, which is why
+ * they are values rather than exceptions: `taken` means type another one, `invalid`
+ * means the shape was refused by the column (and `validateUsername` should have said
+ * so first — see `setUsername`), and `offline` means there is no session to write
+ * through, which the card reports rather than silently swallowing. A transport failure
+ * is none of those and still throws.
+ */
+export type UsernameWriteOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'taken' | 'invalid' | 'offline' }
+
+/**
+ * How writing (or clearing) the profile photo turned out.
+ *
+ * ONE REASON, and it is `UsernameWriteOutcome`'s: there is no session to write
+ * through. The photo has no equivalent of `taken` or `invalid` — a payload the bytes
+ * rules refuse never reaches a session at all, it throws out of `parseAvatarDataUrl`
+ * long before — so this is a two-state answer and not a three-state one.
+ *
+ * IT EXISTS BECAUSE `Promise<void>` COULD NOT SAY IT. Both writes used to return
+ * nothing and simply stop when there was no session, which the IPC layer above had no
+ * way to tell apart from a completed upload: it reported `{ ok: true }`, and the
+ * Account tab then published the bytes it was holding to every surface that draws a
+ * face. The change looked saved, in the card and in the sidebar, and was gone at the
+ * next read — nothing had been written and nothing had failed. A write that did not
+ * happen has to be sayable, which is all this type does.
+ *
+ * A transport failure is still NOT one of these. Like `setUsername`, the values here
+ * are the outcomes a user acts on; everything else throws and is reported as an error.
+ */
+export type AvatarWriteOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'offline' }
+
+/**
+ * A `repository_workflows` row as loaded. `revision` is its `updated_at`, verbatim as
+ * the backend wrote it: an opaque token that a save hands back to say which version it
+ * was based on, never parsed or compared as a date.
+ */
+export interface StoredWorkflow {
+  definition: unknown
+  revision: string
+}
 
 /**
  * The single persistence contract for config, agents and history. The Supabase
@@ -50,6 +98,29 @@ export interface Store {
   setRepositoryRemoteUrl(id: string, url: string): Promise<boolean>
   /** Set (or clear, when null) the caller's own local path binding for a repo. */
   setRepositoryPath(id: string, path: string | null): Promise<void>
+  /**
+   * The custom workflows of the repos visible to the caller, repo id → the stored
+   * definition, unvalidated (main/workflow/workflows.ts decides whether it is usable),
+   * and the row's revision. A repo absent from the record follows the default flow.
+   * Never rejects: a failed read is `null`, kept apart from `{}` (no rows), so a
+   * refresh that fails leaves the last loaded flows alone.
+   */
+  loadRepositoryWorkflows(): Promise<Record<string, StoredWorkflow> | null>
+  /**
+   * Store a repo's workflow overlay (workflow/overlay.ts), or delete it when null, which
+   * puts the repo back on the default flow. Resolves to the row's new revision (null
+   * once there is no row).
+   *
+   * OPTIMISTIC: `expectedRevision` is the revision the editor started from (null: it saw
+   * no row, the default flow). A row that moved since, created, edited or deleted by
+   * someone else, rejects with a StoreConflictError instead of being overwritten; the
+   * one exception is a delete finding the row already gone, which is what it wanted.
+   * Who may write is RLS's call (the repo's owner, or an admin of its org): a refusal
+   * rejects with a StoreForbiddenError, any other failure with a plain Error. Unlike
+   * the reads, this one does reject, because the editor that called it has to tell a
+   * saved flow from one that is not.
+   */
+  saveRepositoryWorkflow(repoId: string, overlay: WorkflowOverlay | null, expectedRevision: string | null): Promise<string | null>
 
   loadAgents(): Promise<Agent[]>
   /** Upsert the caller's agents. Never destructive: an absent agent is left alone. */
@@ -81,8 +152,11 @@ export interface Store {
    * Upsert ONE plan session from its spec. Creates the row when the spec is still
    * a promise (no file yet), which is what records a plan whose agent was closed
    * before anything was written.
+   *
+   * Resolves to the session's id and short number, which is what links the planner to
+   * its plan — or to nothing when there is no signed-in user to write as.
    */
-  savePlanSpec(input: PlanSpecInput): Promise<void>
+  savePlanSpec(input: PlanSpecInput): Promise<PlanSessionRef | null>
   /**
    * Upsert the tickets ONE plan session created, resolving the session from the
    * spec path. Creates the session first when there is none — the tickets exist
@@ -92,8 +166,12 @@ export interface Store {
   /**
    * When each of the caller's own plan sessions last received its spec — the
    * projection the launch reconcile compares file mtimes against. Read-only.
+   *
+   * `specOversize` rides along because a spec past the ceiling never stamps
+   * `specSyncedAt`, so the timestamp alone can never say "already known, and
+   * unchanged" about one. See `reconcilePlanSpecs`.
    */
-  loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]>
+  loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt' | 'specOversize'>[]>
 
   /**
    * Append ONE activity event (append-only, fire-and-forget). Write-only: the
@@ -177,6 +255,38 @@ export interface Store {
   loadProfile(): Promise<UserProfile | null>
   saveProfile(profile: UserProfile): Promise<void>
 
+  // The ACCOUNT fields, which are not profile fields either — off load/saveProfile for
+  // the photo's reason, and readable for a user whose profile is too incomplete for
+  // loadProfile to return at all.
+  /**
+   * The handle, when the password last changed, and when the account was created —
+   * everything the account card draws that is not already in `AuthStatus`.
+   *
+   * ONE CALL because the first two are two columns of one row. Never throws: each
+   * field is separately nullable and each null is a state the card draws.
+   */
+  getAccountSettings(): Promise<AccountSettings>
+  /**
+   * Is `candidate` free for the caller to take? Their own current handle counts as
+   * free, so re-saving it — or only changing its capitalisation — is not a collision.
+   *
+   * ADVISORY. It answers for the instant it ran and reserves nothing; the unique
+   * index is what decides, at `setUsername`. An implementation that cannot find out
+   * answers `true` rather than blocking a user out of a handle that may well be
+   * theirs.
+   */
+  isUsernameAvailable(candidate: string): Promise<boolean>
+  /**
+   * Claim a handle. `username` is UNTRUSTED — it crosses the preload bridge — so a
+   * caller validates its shape with `validateUsername` (desktop/src/username.ts)
+   * first; the database states the same rule and an implementation reports a
+   * violation as `invalid` rather than throwing.
+   *
+   * A handle somebody else holds is a RESULT and not a failure: the user acts on it
+   * by typing another one. Everything that is not one of the three outcomes throws.
+   */
+  setUsername(username: string): Promise<UsernameWriteOutcome>
+
   // The profile PHOTO, which is not a profile field: the bytes live in the
   // `avatars` Storage bucket and only the path is on the row. Kept off
   // load/saveProfile deliberately — saveProfile rewrites every optional column
@@ -189,10 +299,18 @@ export interface Store {
    * validates it (prefix, base64, decoded size against AVATAR_MAX_BYTES, WebP
    * container) before it allocates or uploads anything, and throws when it will
    * not. `parseAvatarDataUrl` in desktop/src/avatar.ts is that check.
+   *
+   * Answers whether it WROTE, rather than returning nothing — see `AvatarWriteOutcome`.
+   * An implementation with no session reports `offline`; it must never resolve as a
+   * success it did not perform.
    */
-  setAvatar(dataUrl: string): Promise<void>
-  /** Delete the caller's photo — the Storage object and the row's pointer. */
-  removeAvatar(): Promise<void>
+  setAvatar(dataUrl: string): Promise<AvatarWriteOutcome>
+  /**
+   * Delete the caller's photo — the Storage object and the row's pointer.
+   *
+   * Same contract as `setAvatar`: a removal that could not be performed says so.
+   */
+  removeAvatar(): Promise<AvatarWriteOutcome>
   /** The caller's photo as a data URL, or null when there is none (or it cannot be read). */
   getAvatarDataUrl(): Promise<string | null>
   /**
@@ -232,6 +350,40 @@ export interface Store {
 // ---------------------------------------------------------------------------
 
 /**
+ * A write the backend refused on permission grounds (RLS, or a guard trigger), rather
+ * than one that failed. Recognised by `code`, which survives where `instanceof` may not
+ * (a mocked module, a re-thrown copy): see isStoreForbidden.
+ */
+export class StoreForbiddenError extends Error {
+  readonly code = 'forbidden'
+  constructor(message: string) {
+    super(message)
+    this.name = 'StoreForbiddenError'
+  }
+}
+
+export function isStoreForbidden(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'forbidden'
+}
+
+/**
+ * A write that lost a race: the row it was based on changed since it was read (an
+ * optimistic save, see Store.saveRepositoryWorkflow). Nothing was written. Recognised
+ * by `code`, like StoreForbiddenError: see isStoreConflict.
+ */
+export class StoreConflictError extends Error {
+  readonly code = 'conflict'
+  constructor(message: string) {
+    super(message)
+    this.name = 'StoreConflictError'
+  }
+}
+
+export function isStoreConflict(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'conflict'
+}
+
+/**
  * A do-nothing store used before the real store is wired and in unit tests. It
  * keeps every persistence call a safe no-op and reports the backend as
  * unauthorized so nothing accidentally believes it is connected.
@@ -245,11 +397,13 @@ export const NOOP_STORE: Store = {
   async deleteRepository() { /* no-op */ },
   async setRepositoryRemoteUrl() { return false },
   async setRepositoryPath() { /* no-op */ },
+  async loadRepositoryWorkflows() { return {} },
+  async saveRepositoryWorkflow() { return null },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },
   async loadOrgAgents() { return [] },
-  async savePlanSpec() { /* no-op */ },
+  async savePlanSpec() { return null },
   async savePlanTickets() { /* no-op */ },
   async loadPlanSyncState() { return [] },
   async appendHistory() { /* no-op */ },
@@ -264,8 +418,17 @@ export const NOOP_STORE: Store = {
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },
   async saveProfile() { /* no-op */ },
-  async setAvatar() { /* no-op */ },
-  async removeAvatar() { /* no-op */ },
+  async getAccountSettings() {
+    return { username: null, passwordChangedAt: null, accountCreatedAt: null, avatarUpdatedAt: null }
+  },
+  // Nothing is stored, so nothing is taken.
+  async isUsernameAvailable() { return true },
+  async setUsername() { return { ok: false as const, reason: 'offline' as const } },
+  // `offline` and not a no-op, for the reason the two lines above already take: this
+  // store persists nothing, so reporting a write it never made is the one answer it
+  // must not give.
+  async setAvatar() { return { ok: false as const, reason: 'offline' as const } },
+  async removeAvatar() { return { ok: false as const, reason: 'offline' as const } },
   async getAvatarDataUrl() { return null },
   async loadAvatarDataUrls() { return {} },
   async recordAppInstallation() { /* no-op */ },

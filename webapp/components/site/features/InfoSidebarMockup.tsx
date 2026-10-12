@@ -4,25 +4,29 @@ import {
   ArrowRight,
   ChevronDown,
   CircleStop,
-  Clock,
-  Copy,
-  Cpu,
-  DollarSign,
-  Edit2,
+  PenLine,
   ExternalLink,
   FolderGit2,
-  Gauge,
-  GitBranch,
   Globe,
-  Minus,
-  Play,
-  RefreshCw,
   X,
 } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
+import {
+  BranchCard,
+  CommitCard,
+  ContextAgentCard,
+  HeaderRepoCard,
+  RepositoryCard,
+  ScriptCard,
+  SidebarAgentCoderInfo,
+  TitleAgentCard,
+  UnCommittedChangesCard,
+  type StatusTone,
+} from '@ds/desktop'
+import { Github, Play, VSCode } from '@ds/desktop/icons'
 import { useT } from '@/lib/i18n/useLanguage'
+import { AppGround } from '../AppGround'
 import { PullRequestCard, type PullRequestPart, type PullRequestReview } from './PullRequestCardMockup'
-import { WaveLoader } from './RepoCardMockup'
 import { GithubMark } from './TasksModalMockup'
 import { JiraMark } from './TicketCardMockup'
 
@@ -75,6 +79,8 @@ export type SidebarPart =
   | 'status'
   | 'repository'
   | 'scripts'
+  | 'scriptsMenu'
+  | 'server'
   | 'branches'
   | 'files'
   | 'commits'
@@ -88,6 +94,8 @@ const PART_PARENT: Record<SidebarPart, SidebarPart | null> = {
   status: 'ticket',
   repository: null,
   scripts: 'repository',
+  scriptsMenu: 'repository',
+  server: 'repository',
   branches: 'repository',
   files: 'repository',
   commits: 'repository',
@@ -112,15 +120,15 @@ function holds(part: SidebarPart, focus: SidebarPart): boolean {
  * (StatusPill.tsx `STATUS_OPTIONS`, value for value) and the site's own label key.
  */
 export const SIDEBAR_STATUSES = {
-  inProgress: { tone: 'bg-yellow/20 text-yellow', label: 'site.status.inProgress' },
-  committed: { tone: 'bg-cyan/20 text-cyan', label: 'site.status.committed' },
-  readyForPR: { tone: 'bg-orange/20 text-orange', label: 'site.status.readyForPR' },
-  prCreated: { tone: 'bg-green/20 text-green', label: 'site.status.prCreated' },
-  ciGreen: { tone: 'bg-accent/20 text-accent', label: 'site.status.ciGreen' },
-  inReview: { tone: 'bg-blue/20 text-blue', label: 'site.status.inReview' },
-  changesRequested: { tone: 'bg-red/20 text-red', label: 'site.status.changesRequested' },
-  prMerged: { tone: 'bg-purple/20 text-purple', label: 'site.status.prMerged' },
-} as const satisfies Record<string, { tone: string; label: MessageKey }>
+  inProgress: { tone: 'yellow', label: 'site.status.inProgress' },
+  committed: { tone: 'cyan', label: 'site.status.committed' },
+  readyForPR: { tone: 'orange', label: 'site.status.readyForPR' },
+  prCreated: { tone: 'green', label: 'site.status.prCreated' },
+  ciGreen: { tone: 'accent', label: 'site.status.ciGreen' },
+  inReview: { tone: 'blue', label: 'site.status.inReview' },
+  changesRequested: { tone: 'red', label: 'site.status.changesRequested' },
+  prMerged: { tone: 'purple', label: 'site.status.prMerged' },
+} as const satisfies Record<string, { tone: StatusTone; label: MessageKey }>
 
 export type SidebarStatus = keyof typeof SIDEBAR_STATUSES
 
@@ -154,6 +162,23 @@ const COMMITS: readonly { subject: string; age: string; hash: string }[] = [
   { subject: 'refactor(billing): lift applyVat out of the PDF', age: '14m', hash: 'c1d8a05' },
 ]
 
+/** Nothing is listening: these are drawings, and a hash nobody can copy is still a hash. */
+const noop = () => undefined
+
+/**
+ * The scripts menu's own contents, in `SelectIcon`'s shape — a group per package.json
+ * section, an item per script, the command as the quiet trailing hint.
+ *
+ * A FUNCTION AND NOT A CONSTANT because the group headings are translated and the
+ * script NAMES are not: `dev`, `build` and `test` are keys in a package.json, which no
+ * catalogue should touch.
+ */
+export const SCRIPT_GROUPS = (t: (key: MessageKey) => string) => [
+  { label: t('site.infoSidebar.scriptsDev'), items: [{ id: 'dev', label: 'dev', hint: 'pnpm dev' }] },
+  { label: t('site.infoSidebar.scriptsBuild'), items: [{ id: 'build', label: 'build', hint: 'pnpm build' }] },
+  { label: t('site.infoSidebar.scriptsTest'), items: [{ id: 'test', label: 'test', hint: 'pnpm test' }] },
+]
+
 const BASE_BRANCH = 'main'
 const BRANCH = 'feature/PAY-318-invoice-vat'
 
@@ -164,39 +189,10 @@ export function gaugeColors(pct: number) {
   return { bar: 'bg-green', text: 'text-green' }
 }
 
-/** `UsageCard.tsx`'s thresholds for the context window: green, orange at 40, red at 70. */
-function contextColors(pct: number) {
-  if (pct >= 70) return { bar: 'bg-red', text: 'text-red' }
-  if (pct >= 40) return { bar: 'bg-orange', text: 'text-orange' }
-  return { bar: 'bg-green', text: 'text-green' }
-}
-
 /**
  * The three dashed controls of the repository card (RepositoryCard.tsx:82 and :91,
  * ScriptsDropdown.tsx:161), character for character.
  */
-const DASHED_BUTTON =
-  'flex items-center gap-1 rounded border border-dashed border-appline/40 px-1.5 py-0.5 text-[10px] font-semibold text-appink-icon'
-
-/** A branch pill of the branch row: `px-2 py-1.5` on the raised surface, inside a subtle filet. */
-function BranchPill({ name, tone }: { name: string; tone: 'base' | 'current' }) {
-  const ink = tone === 'current' ? 'text-green' : 'text-appink'
-  return (
-    <div
-      className={`flex min-w-0 items-center gap-1.5 rounded-md border border-white/5 bg-white/[0.06] px-2 py-1.5 ${
-        tone === 'current' ? 'flex-1' : 'self-stretch'
-      }`}
-    >
-      <GitBranch className={`h-3.5 w-3.5 shrink-0 ${ink}`} />
-      <span className={`truncate text-xs font-medium ${ink}`}>{name}</span>
-      {tone === 'current' ? (
-        <span className="ml-auto shrink-0 rounded p-1">
-          <Copy className="h-3 w-3 text-appink-icon" />
-        </span>
-      ) : null}
-    </div>
-  )
-}
 
 /**
  * The dim-or-ring treatment a `focus` puts on a card. `transition-opacity` rather than
@@ -205,6 +201,36 @@ function BranchPill({ name, tone }: { name: string; tone: 'base' | 'current' }) 
  * is exactly the app's.
  */
 const RING = 'ring-2 ring-accent ring-offset-2 ring-offset-appbg'
+
+/**
+ * A field at rest and going nowhere. `EditableText` is controlled, so a drawing hands it
+ * the closed state and handlers that do nothing — the price of using the real component,
+ * and a fair one: the pencil and the column it reserves are the app's.
+ */
+const FIELD = (value: string) => ({
+  value,
+  placeholder: value,
+  editing: false,
+  draft: value,
+  onDraftChange: () => undefined,
+  onStartEditing: () => undefined,
+  onSave: () => undefined,
+  onCancel: () => undefined,
+})
+
+/**
+ * WHERE THE TOUR GRABS A PART THAT LIVES INSIDE A COMPONENT.
+ *
+ * `SidebarScrollBand` finds what it zooms to with a query, and a `data-part` attribute
+ * is what the hand-drawn parts carry. A design-system component draws its own markup
+ * and takes no arbitrary attributes — deliberately — so the two parts inside the ticket
+ * card are marked with a CLASS instead, through the `className` every one of them
+ * already accepts. The band's selector takes either form.
+ *
+ * A class as a selector hook rather than an escape hatch in the design system: a
+ * showcase page's scroll animation has no business widening a component's API.
+ */
+const part = (name: SidebarPart) => `part-${name}`
 
 function focusClass(focus: SidebarPart | null | undefined, part: SidebarPart): string {
   if (!focus) return ''
@@ -229,11 +255,8 @@ export function InfoSidebarPanel({
   className?: string
 } = {}) {
   const { t } = useT()
-
   const added = FILES.reduce((n, f) => n + f.added, 0)
   const removed = FILES.reduce((n, f) => n + f.removed, 0)
-  const ratio = added / (added + removed || 1)
-  const context = contextColors(CONTEXT_PCT)
   const pill = SIDEBAR_STATUSES[status]
 
   // The pull request card draws its own rings, so it is told which of ITS parts is in
@@ -244,310 +267,245 @@ export function InfoSidebarPanel({
   return (
     // NO HEADER. No title, no agent name, no close X — the close action is the Archive
     // pill in the titlebar, because it belongs to the agent and not to a panel that may
-    // be collapsed. `font-display`: the one region whose family the app sets EXPLICITLY,
-    // as an inline `fontFamily` on the scrolling container (AgentInfoSidebar.tsx:445).
-    <div
-      aria-hidden
-      className={['shrink-0 space-y-4 bg-black/30 p-4 font-display', className].filter(Boolean).join(' ')}
-      style={{ width: PANEL_WIDTH }}
-    >
-      {/* ── 1. THE SESSION CARD (`UsageCard.tsx`) ──────────────────────────────── */}
-      <div
-        data-part="session"
-        className={`space-y-3 rounded-xl bg-white/[0.06] p-4 transition-opacity duration-500 ${focusClass(focus, 'session')}`}
-      >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider text-appink/50">
-              {t('site.infoSidebar.session')}
-            </span>
-            <span className="flex items-center gap-1 text-[11px] normal-case tracking-normal text-appink-icon">
-              <RefreshCw className="h-3 w-3" />
-              {t('site.infoSidebar.justNow')}
-            </span>
-          </span>
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center gap-1 rounded-md bg-purple/15 px-1.5 py-0.5 text-[11px] font-medium text-purple">
-              <Cpu className="h-3 w-3" />
-              Fable 5.1
-            </span>
-            <span className="flex shrink-0 items-center justify-center self-stretch rounded-md px-1 text-appink-icon">
-              <Minus className="h-3 w-3" />
-            </span>
-          </div>
-        </div>
+    // be collapsed.
+    //
+    // `SidebarInfo` from `design-system/desktop/` is the column itself now: its ground,
+    // its width, its gutter, the face it sets for everything inside, and the order the
+    // regions are read in. What was here was a copy of all five — down to a comment
+    // pointing at the line of `AgentInfoSidebar.tsx` it had copied the font from, which
+    // is the kind of note that is only ever true on the day it is written.
+    /* `paint={false}`: the column paints its OWN ground (`bg-surface-sunken`), and it
+       only needs the variables to resolve it with. */
+    <AppGround paint={false} className={['shrink-0', className].filter(Boolean).join(' ')}>
+    {/* THE COLUMN AND EVERY CARD IN IT are `SidebarAgentCoderInfo`'s: its ground, its
+        width, its gutter, the face it sets for everything inside, the order the regions
+        are read in, and the arrangement of the repository cards. What was here was a copy
+        of all six — down to a comment pointing at the line of `AgentInfoSidebar.tsx` it had
+        copied the font from, which is the kind of note that is only ever true on the day it
+        is written.
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 text-appink">
-              <Gauge className="h-3.5 w-3.5" />
-              {t('site.infoSidebar.context')}
-            </span>
-            <span className={`font-medium ${context.text}`}>{CONTEXT_PCT}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
-            <div className={`h-full rounded-full ${context.bar}`} style={{ width: `${CONTEXT_PCT}%` }} />
-          </div>
-          <div className="text-[11px] tabular-nums text-appink/70">540.0k / 1.00M tokens</div>
-        </div>
+        SO THIS FILE IS DATA NOW. Every region below is the card's own arguments rather
+        than the card: the drawings cannot drift from the app's, because they ARE the app's.
 
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-appink">
-            <DollarSign className="h-3.5 w-3.5" />
-            <span className="font-medium tabular-nums text-white">$3.13</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-appink">
-            <Clock className="h-3.5 w-3.5" />
-            <span className="tabular-nums">24m 18s</span>
-          </span>
-        </div>
-      </div>
+        THE TOUR RIDES ON `className` at every level, which is why each region has one. The
+        scroll band rings a part and zooms to it, and `.part-x` is a selector it already
+        accepts beside `[data-part="x"]` — so a wrapper `div`, which there is no longer
+        anywhere to put, is not what it needed. */}
+    <SidebarAgentCoderInfo
+      width={PANEL_WIDTH}
+      /* ── 1. THE SESSION CARD ─────────────────────────────────────────────────
+         `rounded-xl` is gone with the wrapper and nothing was lost: the ring now rides on
+         `Card` itself, which is where that radius came from in the first place. */
+      usage={{
+        contextPercent: CONTEXT_PCT,
+        contextDetail: '540.0k / 1.00M tokens',
+        model: 'Fable 5.1',
+        cost: '$3.13',
+        duration: '24m 18s',
+        onMinimizedChange: noop,
+        labels: {
+          context: t('site.infoSidebar.context'),
+          minimize: t('site.infoSidebar.fold'),
+          expand: t('site.infoSidebar.unfold'),
+        },
+        className: `${part('session')} transition-opacity duration-500 ${focusClass(focus, 'session')}`,
+      }}
+      /* ── 2. THE TICKET CARD ──────────────────────────────────────────────────
+         THE TOUR REACHES INSIDE IT: the band rings the ticket id and the status separately
+         and zooms to whichever it names. Both ride on the parts' OWN `className`, which
+         `TitleAgentCard` already passes down, so the card needs no escape hatch.
 
-      {/* ── 2. THE TICKET CARD (`TicketHeader.tsx`) ────────────────────────────── */}
-      <div
-        data-part="ticket"
-        className={`rounded-xl bg-white/[0.06] p-4 transition-opacity duration-500 ${focusClass(focus, 'ticket')}`}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          {/* The mark hangs off the ticket ID rather than off the link: it says which
-              tracker the ID belongs to, which is worth showing whether or not a URL
-              could be built for it. */}
-          <span
-            data-part="ticketId"
-            className={`flex items-center gap-1.5 rounded text-xs font-semibold text-white ${focus === 'ticketId' ? RING : ''}`}
-          >
-            <JiraMark className="h-3.5 w-3.5 shrink-0" />
-            PAY-318
-          </span>
-          {/* `StatusPill`: `px-2.5 py-1 rounded-full text-xs font-medium`, tint and ink
-              from `STATUS_OPTIONS`, the chevron that opens the list. The colours change
-              with the status; the shape never does. */}
-          <span
-            data-part="status"
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-500 ${pill.tone} ${focusClass(focus, 'status')}`}
-          >
-            {t(pill.label)}
-            <ChevronDown className="h-3 w-3" />
-          </span>
-        </div>
+         The pill FADES between the four status steps because `Status` carries
+         `transition-colors`, which it does for `ProgressBar`'s reason rather than for this
+         page's: a coloured indicator that snaps reads as a redraw. */
+      ticket={{
+        ticket: {
+          children: 'PAY-318',
+          // The tone brings Atlassian's own mark and its blue at 14%, which is what a Tasks
+          // card wears — so the badge says which tracker the id belongs to whether or not a
+          // URL could be built for it.
+          tone: 'jira',
+          title: 'PAY-318',
+          onClick: noop,
+          className: `${part('ticketId')} ${focus === 'ticketId' ? RING : ''}`,
+        },
+        status: {
+          label: t(pill.label),
+          tone: pill.tone,
+          options: [],
+          onSelect: noop,
+          className: `${part('status')} ${focusClass(focus, 'status')}`,
+        },
+        title: FIELD(t('site.infoSidebar.ticketTitle')),
+        description: FIELD(t('site.infoSidebar.ticketDescription')),
+        className: `${part('ticket')} transition-opacity duration-500 ${focusClass(focus, 'ticket')}`,
+      }}
+      /* ── 3. THE REPOSITORY CARDS ─────────────────────────────────────────────
+         A LIST, because an agent can carry several repositories — this one carries one, and
+         the list is what makes the second cost no layout. The `space-y-3` between them is
+         the column's, not this drawing's. */
+      repositories={[
+        {
+          id: 'magic-pay',
+          /* `relative` so the hand-drawn scripts menu below can hang off this card, and the
+             ring rides on the same element: `Card` is `rounded-xl`, so the outline follows
+             the plate instead of squaring it off. */
+          className: `relative ${part('repository')} transition-opacity duration-500 ${focusClass(focus, 'repository')}`,
+          /* THE SCRIPTS STEP RINGS THE TRIGGER, not the row around it. The button lives
+             inside `HeaderRepoCard`, so it carries `part-scripts` in its own `className`. */
+          header: {
+            name: 'magic-pay',
+            color: REPO_COLOR,
+            scripts: {
+              icon: Play,
+              title: t('site.infoSidebar.scripts'),
+              groups: SCRIPT_GROUPS(t),
+              onSelect: noop,
+              // Off the trigger once the server runs: the ring moves onto the server card.
+              className: `${part('scripts')} ${
+                focus === 'scripts' && scripts !== 'running' && scripts !== 'serving' ? RING : ''
+              }`,
+              /* THE REAL PANEL IS NOT USED HERE, and this is the one place in the four
+                 drawings where it could not be. `SelectIcon` positions its panel `fixed`,
+                 from the trigger's VIEWPORT rect — and `/desktop` draws this sidebar at
+                 500px inside a `scale()` that its scroll tour animates. A fixed box inside
+                 a transformed ancestor resolves its coordinates against that ancestor
+                 rather than the viewport: measured, the panel landed 767px to the right of
+                 its trigger and came out 290px wide instead of 280. Nothing at the call
+                 site fixes that; the panel would have to anchor within a container rather
+                 than within the window.
 
-        <div className="flex items-start gap-2">
-          <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
-            {t('site.infoSidebar.ticketTitle')}
-          </h2>
-          <Edit2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
-        </div>
-        <div className="mt-3 flex items-start gap-2">
-          <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
-            {t('site.infoSidebar.ticketDescription')}
-          </div>
-          <Edit2 className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
-        </div>
-      </div>
-
-      {/* ── 3. THE REPOSITORY CARD (`RepositoryCard.tsx`) ──────────────────────── */}
-      {/* A `space-y-3` LIST, because an agent can carry several repositories — this one
-          carries one, and the list is what makes the second one cost no layout. */}
-      <div className="space-y-3">
-        <div
-          data-part="repository"
-          className={`relative rounded-xl bg-white/[0.06] p-3 transition-opacity duration-500 ${focusClass(focus, 'repository')}`}
-        >
-          <div className="mb-2 flex items-center gap-2">
-            <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${REPO_COLOR}1f`, color: REPO_COLOR }}
-            >
-              <FolderGit2 className="h-3.5 w-3.5" />
-            </span>
-            <span className="truncate text-sm font-medium text-white/90">magic-pay</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              {/* SCRIPTS reads first — `ScriptsDropdown` is the first child of this row
-                  in the app (RepositoryCard.tsx:78) — drawn CLOSED, its resting state. */}
-              <span
-                data-part="scripts"
-                className={`${DASHED_BUTTON} ${focus === 'scripts' ? RING : ''} ${
-                  scripts === 'open' || scripts === 'hover' ? 'border-accent/50 bg-accent/5 text-accent' : ''
-                }`}
-              >
-                <Play className="h-3 w-3" />
-                {t('site.infoSidebar.scripts')}
-                <ChevronDown className="h-2.5 w-2.5" />
-              </span>
-              <span className={DASHED_BUTTON}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/img/vscode-logo.png" alt="" className="h-3 w-3 object-contain" />
-                {t('site.infoSidebar.open')}
-              </span>
-              <span className={DASHED_BUTTON}>
-                <GithubMark className="h-3 w-3" />
-                {t('site.infoSidebar.open')}
-              </span>
-              <span className="flex items-center justify-center rounded p-1 text-appink-icon">
-                <X className="h-3.5 w-3.5" />
-              </span>
-            </div>
-          </div>
-
-          {/* ── THE SCRIPTS MENU, hung under its trigger (`ScriptsDropdown.tsx`) ─────
-              Portalled and `fixed` in the app; absolute here, at the offset that puts it
-              under the trigger in this card, the same numbers `RepoCardMockup.tsx` uses. */}
-          {scripts === 'open' || scripts === 'hover' ? (
-            <div className="absolute right-[calc(0.75rem+7.75rem)] top-[calc(0.75rem+1.5rem+4px)] z-20 w-[280px] overflow-hidden rounded-lg border border-appline/50 bg-appbg-secondary shadow-lift">
-              <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-                {t('site.infoSidebar.scriptsDev')}
-              </div>
-              <div className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${scripts === 'hover' ? 'bg-white/[0.06]' : ''}`}>
-                <Play className="h-3 w-3 shrink-0 text-accent" />
-                <span className="truncate text-xs font-medium text-white/90">dev</span>
-                <span className="ml-auto truncate text-[10px] text-appink/40">pnpm dev</span>
-              </div>
-              <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-                {t('site.infoSidebar.scriptsBuild')}
-              </div>
-              <div className="flex w-full items-center gap-2 px-3 py-1.5 text-left">
-                <Play className="h-3 w-3 shrink-0 text-accent" />
-                <span className="truncate text-xs font-medium text-white/90">build</span>
-                <span className="ml-auto truncate text-[10px] text-appink/40">pnpm build</span>
-              </div>
-              <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-                {t('site.infoSidebar.scriptsTest')}
-              </div>
-              <div className="flex w-full items-center gap-2 px-3 py-1.5 text-left">
-                <Play className="h-3 w-3 shrink-0 text-accent" />
-                <span className="truncate text-xs font-medium text-white/90">test</span>
-                <span className="ml-auto truncate text-[10px] text-appink/40">pnpm test</span>
-              </div>
-            </div>
-          ) : null}
-
-          {/* ── A SCRIPT RUNNING (`RunningScripts.tsx`), between the header and the branch
-              row where RepositoryCard.tsx:111 puts it: the purple bar with the app's
-              WaveLoader, the script's name, the Stop button; then, once the server has
-              opened a port, the address row hung under it. */}
-          {scripts === 'running' || scripts === 'serving' ? (
-            <div data-part="server" className="mb-2 flex flex-col">
-              <div
-                className={`flex w-full items-center gap-2 bg-purple px-2 py-1.5 text-xs text-white ${
-                  scripts === 'serving' ? 'rounded-t-lg' : 'rounded-lg'
-                }`}
-              >
-                <span className="shrink-0 text-white">
-                  <WaveLoader />
-                </span>
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-xs font-medium">dev</div>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 rounded-md bg-white/15 py-1 pl-1.5 pr-2">
-                  <CircleStop className="h-3.5 w-3.5 text-white" />
-                  <span className="text-[11px] font-semibold text-white">{t('site.infoSidebar.stop')}</span>
-                </span>
-              </div>
-              {scripts === 'serving' ? (
-                <div className="flex w-full items-center gap-2.5 rounded-b-lg border border-t-0 border-white/5 bg-white/[0.06] px-3 py-2.5 text-sm text-appink">
-                  <Globe className="h-4 w-4 shrink-0 text-purple" />
-                  <span className="flex-1 truncate text-left font-medium">localhost:3000</span>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                 So the menu is drawn by hand below, and the cost is the trigger's open
+                 tint — `DevServerMockup` on `/features`, which has no transform over it,
+                 uses the real one and keeps it. */
+            },
+            editor: { icon: VSCode, title: t('site.infoSidebar.open'), onClick: noop },
+            remote: { icon: Github, title: t('site.infoSidebar.open'), onClick: noop },
+            remove: { title: t('site.infoSidebar.open'), onClick: noop },
+          },
+          /* `RunningScripts` is the app's own component — it reads the store and the pty —
+             so what stands in for it is drawn here. The slot is what puts it under the
+             header, and it is also where the hand-drawn menu goes: an absolutely positioned
+             child takes no space in the card's flow, and the card is its containing block. */
+          activity: (
+            <>
+              {/* `ScriptCard` from `design-system/desktop/`: the purple bar, its loader, the
+                  stop chip and the address row hanging off it are all its own. */}
+              {scripts === 'running' || scripts === 'serving' ? (
+                /* THE RING MOVES HERE once `dev` is up: the same `RING` every other step
+                   draws, off the trigger and onto what it started, and only while the
+                   scripts step is the one in focus, so it goes with the next paragraph.
+                   `rounded-lg` for `ScriptCard`'s own radius, so the ring follows it
+                   rather than squaring its corners (the fix `branches` needed too). */
+                <div data-part="server" className={focus === 'scripts' ? `rounded-lg ${RING}` : ''}>
+                  <ScriptCard
+                    name="dev"
+                    state="running"
+                    stop={{ label: t('site.infoSidebar.stop'), title: t('site.infoSidebar.stop'), onStop: noop }}
+                    urls={
+                      scripts === 'serving'
+                        ? [{ url: 'http://localhost:3000', label: 'localhost:3000', title: 'localhost:3000' }]
+                        : []
+                    }
+                    onOpenUrl={noop}
+                  />
                 </div>
               ) : null}
-            </div>
-          ) : null}
-
-          {/* The branch row: where the work came from, an arrow, where it is now. */}
-          <div
-            data-part="branches"
-            className={`mb-2 flex items-center gap-1.5 rounded-md ${focus === 'branches' ? RING : ''}`}
-          >
-            <BranchPill name={BASE_BRANCH} tone="base" />
-            <ArrowRight className="h-3 w-3 shrink-0 text-appink-muted" />
-            <BranchPill name={BRANCH} tone="current" />
-          </div>
-
-          {/* Uncommitted changes, with the six-square gauge: each square is green when
-              the additions' share of the diff clears `(i + 1) / 6`. */}
-          <div
-            data-part="files"
-            className={`mb-2 rounded-md border border-white/5 bg-white/[0.06] p-2 ${focus === 'files' ? RING : ''}`}
-          >
-            <div className="mb-2 flex items-center gap-2 text-xs">
-              <span className="font-medium text-appink/70">{t('site.infoSidebar.uncommitted')}</span>
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-appink/50">{t('site.infoSidebar.files', { count: FILES.length })}</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-green">+{added}</span>
-                  <span className="text-red">-{removed}</span>
-                </span>
-                <div className="flex gap-0.5">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 w-1.5 rounded-sm ${ratio >= (i + 1) / 6 ? 'bg-green' : 'bg-red'}`}
-                    />
+              {/* ── THE SCRIPTS MENU, hung under its trigger (`ScriptsDropdown.tsx`) ─────
+                  `right-[3.25rem]` puts it under the icon-only trigger, which sits three
+                  `ButtonIcon`s in from the card's right edge. */}
+              {scripts === 'open' || scripts === 'hover' ? (
+                <div
+                  data-part="scriptsMenu"
+                  className="absolute right-[3.25rem] top-[calc(0.75rem+1.5rem+8px)] z-20 w-[280px] overflow-hidden rounded-lg border border-appline/50 bg-appbg-secondary shadow-lift">
+                  {SCRIPT_GROUPS(t).map((group) => (
+                    <div key={group.label}>
+                      <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
+                        {group.label}
+                      </div>
+                      {group.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
+                            scripts === 'hover' && item.id === 'dev' ? 'bg-white/[0.06]' : ''
+                          }`}
+                        >
+                          <Play className="h-3 w-3 shrink-0 text-accent" />
+                          <span className="truncate text-xs font-medium text-white/90">{item.label}</span>
+                          <span className="ml-auto truncate text-[10px] text-appink/40">{item.hint}</span>
+                        </div>
+                      ))}
+                    </div>
                   ))}
                 </div>
-              </div>
-            </div>
-            <div className="space-y-0.5">
-              {FILES.map((file) => (
-                <div key={file.file} className="flex items-center gap-1.5 py-0.5 text-xs">
-                  <span className="flex-1 truncate font-mono text-appink/60">{file.file}</span>
-                  <span className="shrink-0 text-[10px] text-appink/40">
-                    <span className="text-green">+{file.added}</span>
-                    {file.removed > 0 ? <span className="text-red"> -{file.removed}</span> : null}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* The commits already on the branch. "N ahead of main" is the app's own
-              literal (RepositoryCard.tsx:227) — git's phrasing, in every language. */}
-          <div
-            data-part="commits"
-            className={`rounded-md border border-white/5 bg-white/[0.06] p-2 ${focus === 'commits' ? RING : ''}`}
-          >
-            <div className="mb-1.5 flex items-center text-xs">
-              <span className="font-medium text-appink/70">{t('site.infoSidebar.commits')}</span>
-              <span className="ml-auto text-appink/50">
-                {COMMITS.length} ahead of {BASE_BRANCH}
-              </span>
-            </div>
-            <div className="space-y-1">
-              {COMMITS.map((commit) => (
-                <div key={commit.hash} className="flex items-center gap-2 py-0.5 text-xs">
-                  <span className="flex-1 truncate text-appink/60">{commit.subject}</span>
-                  <span className="shrink-0 text-xs text-appink/40">{commit.age}</span>
-                  <span className="flex shrink-0 items-center gap-1 rounded border border-appline/30 bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-appink-icon">
-                    {commit.hash}
-                    <Copy className="h-3 w-3" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── 3b. THE PULL REQUEST (`PRWatchCard.tsx`), when there is one ────────
-              Under the commits, inside the repository card, `mt-2` — where
-              RepositoryCard.tsx:290 puts it. Absent until the agent has opened one. */}
-          {pr ? (
+              ) : null}
+            </>
+          ),
+          /* `BranchCard`'s subject is the RELATION between two branches — base, arrow,
+             current — which `BranchPill` drew only one side of at a time. */
+          branch: {
+            branch: BRANCH,
+            base: BASE_BRANCH,
+            copy: { label: BRANCH, onCopy: noop },
+            /* `rounded-lg` WITH THE RING: `BranchCard`'s root is a bare flex row, the two
+               chips inside it carry the radius, so a ring on the row alone drew a square
+               corner around two round ones. The chips' own radius, on the element the ring
+               is a shadow of. */
+            className: `${part('branches')} ${focus === 'branches' ? `rounded-lg ${RING}` : ''}`,
+          },
+          changes: {
+            label: t('site.infoSidebar.uncommitted'),
+            summary: t('site.infoSidebar.files', { count: FILES.length }),
+            additions: added,
+            deletions: removed,
+            files: FILES.map((file) => ({
+              path: file.file,
+              name: file.file,
+              additions: file.added,
+              deletions: file.removed,
+            })),
+            /* A HANDLER, EVEN THOUGH NOTHING OPENS. `FileModifiedLine` is inert without one
+               — no pointer, and no lift on the filename under the cursor — and this panel is
+               a picture of a card whose rows DO answer the mouse. The hover is a text colour
+               and nothing else since the plate went, so it promises far less than a ground
+               would: it says the row is a row, not that a drawer is about to open. */
+            onOpenFile: noop,
+            className: `${part('files')} ${focus === 'files' ? RING : ''}`,
+          },
+          commits: {
+            label: t('site.infoSidebar.commits'),
+            summary: `${COMMITS.length} ahead of ${BASE_BRANCH}`,
+            commits: COMMITS.map((commit) => ({
+              hash: commit.hash,
+              shortHash: commit.hash,
+              subject: commit.subject,
+              relativeDate: commit.age,
+              copyLabel: commit.hash,
+            })),
+            onCopyHash: noop,
+            className: `${part('commits')} ${focus === 'commits' ? RING : ''}`,
+          },
+          pullRequest: pr ? (
             <div
               data-part="pr"
-              className={`mt-2 rounded-lg transition-opacity duration-500 ${focusClass(focus, 'pr')}`}
+              className={`rounded-lg transition-opacity duration-500 ${focusClass(focus, 'pr')}`}
             >
               <PullRequestCard passed={pr.passed} review={pr.review} comments={pr.comments} focus={prFocus} />
             </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* ── 4. THE ADD-REPOSITORY BOX ──────────────────────────────────────────── */}
-      <div
-        className={`w-full rounded-lg border border-dashed border-appline/50 py-4 text-center transition-opacity duration-500 ${
-          focus ? 'opacity-30' : ''
-        }`}
-      >
-        <div className="text-xs text-appink/50">Add a repository</div>
-      </div>
-    </div>
+          ) : undefined,
+        },
+      ]}
+      /* ── 4. THE ADD-REPOSITORY BOX ──────────────────────────────────────────── */
+      /* THE REAL BOX, like every card above it. What stood here was a fourth copy of the
+         dashed rectangle, and it had drifted from the app's: `rounded-lg` against the card
+         radius, and a hardcoded `appline` / `appink` that stayed the dark theme's grey
+         whatever ground it was dropped on. */
+      addRepository={{
+        label: t('site.mockup.addRepo'),
+        onClick: noop,
+        className: `transition-opacity duration-500 ${focus ? 'opacity-30' : ''}`.trim(),
+      }}
+    />
+    </AppGround>
   )
 }

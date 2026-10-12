@@ -65,9 +65,10 @@ temp/
 # Claude Code
 .claude/settings.local.json
 
-# Slides (local only)
-slides/
 
 # Misc
 *.bak
 *.orig
+
+# Personal working notes, never part of the repo
+TODO.md

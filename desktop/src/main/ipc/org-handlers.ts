@@ -5,6 +5,7 @@ import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
   listMembers,
+  listMembersRead,
   listMemberAvatars,
   listInvitations,
   createInvitation,
@@ -37,6 +38,8 @@ interface SetSharedArgs { shared: OrgSharedConfig; orgId?: string }
 interface PickUpArgs { ticketId: string; repositories: string[] }
 interface ActivityArgs { sinceMs?: number }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export function setupOrgHandlers(): void {
   ipcMain.handle('org:current', async (): Promise<Org | null> => getCurrentOrg())
 
@@ -45,6 +48,16 @@ export function setupOrgHandlers(): void {
   ipcMain.handle('org:members', async (_event, args?: OptionalOrgIdArgs): Promise<Member[]> =>
     listMembers(args?.orgId),
   )
+
+  // The same roster with whether the read happened (`ok: false` when the RPC failed), for
+  // the plan access panel, which must not draw a refused read as an empty organization.
+  // orgId REQUIRED, and a uuid: the panel always names the plan's organization, and
+  // anything else is refused here rather than forwarded to the RPC.
+  ipcMain.handle('org:membersRead', async (_event, args?: OptionalOrgIdArgs): Promise<{ members: Member[]; ok: boolean }> => {
+    const orgId = args?.orgId
+    if (typeof orgId !== 'string' || !UUID_RE.test(orgId)) return { members: [], ok: false }
+    return listMembersRead(orgId)
+  })
 
   // The faces for that list, keyed by user id — a channel of its own, and see
   // listMemberAvatars for why they do not simply ride along on the rows above.

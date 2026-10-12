@@ -24,7 +24,14 @@ export { DEFAULTS } from './settingsCatalog'
  * Deliberately absent: the Spotlight SHORTCUT and "launch at login", which are
  * properties of a machine rather than of an account (and writing
  * auto_start_at_login=false from here would make the app touch the macOS login
- * item on its next start), plus split_active, which is a transient view state.
+ * item on its next start).
+ *
+ * `split_active` is here, and `split_enabled` is not, though it once was the other
+ * way round. There were two columns: one saying the split view was allowed, one
+ * saying the window was in two panes, and the app needed both to show anything. The
+ * permission is gone — one switch, one meaning — so the writable column is the one
+ * that decides what the window looks like. `split_enabled` still exists in the
+ * table and nothing reads it.
  *
  * `spotlight_enabled` is here even so, and the line between it and the shortcut
  * next to it is not arbitrary: whether you want a global panel at all travels with
@@ -35,7 +42,8 @@ export { DEFAULTS } from './settingsCatalog'
 export interface UserSettings {
   theme: string | null
   syncClaudeTheme: boolean | null
-  codeTheme: string | null
+  codeSyntax: string | null
+  codeFontSize: number | null
   language: string | null
   usageCardEnabled: boolean | null
   usageCardMinimized: boolean | null
@@ -49,13 +57,26 @@ export interface UserSettings {
   notificationPrReview: boolean | null
   notificationPrChangesRequested: boolean | null
   dailyDigestEnabled: boolean | null
-  splitEnabled: boolean | null
+  splitActive: boolean | null
   spotlightEnabled: boolean | null
   prReviewsEnabled: boolean | null
   prReviewsPollIntervalMs: number | null
   prReviewsAutoLaunchSkills: boolean | null
   launchMode: string | null
   defaultAgentType: string | null
+  defaultModel: string | null
+  confirmAgentArchive: boolean | null
+  splitNewAgentPane: string | null
+  defaultDisplayMode: string | null
+  quickLaunchRepo: string | null
+  quickLaunchBackground: boolean | null
+  quickLaunchLaunchMode: string | null
+  quickSettingsEnabled: boolean | null
+  quickSettingsItems: string[] | null
+  sidebarOrder: string[] | null
+  sidebarHidden: string[] | null
+  sidebarShown: string[] | null
+  sidebarCompact: boolean | null
 }
 
 export type UserSettingsPatch = Partial<UserSettings>
@@ -63,7 +84,8 @@ export type UserSettingsPatch = Partial<UserSettings>
 interface UserSettingsRow {
   theme: string | null
   sync_claude_theme: boolean | null
-  code_theme: string | null
+  code_syntax: string | null
+  code_font_size: number | null
   language: string | null
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
@@ -77,23 +99,37 @@ interface UserSettingsRow {
   notification_pr_review: boolean | null
   notification_pr_changes_requested: boolean | null
   daily_digest_enabled: boolean | null
-  split_enabled: boolean | null
+  split_active: boolean | null
   spotlight_enabled: boolean | null
   pr_reviews_enabled: boolean | null
   pr_reviews_poll_interval_ms: number | null
   pr_reviews_auto_launch_skills: boolean | null
   launch_mode: string | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
+  split_new_agent_pane: string | null
+  default_display_mode: string | null
+  quick_launch_repo: string | null
+  quick_launch_background: boolean | null
+  quick_launch_launch_mode: string | null
+  quick_settings_enabled: boolean | null
+  quick_settings_items: string[] | null
+  sidebar_order: string[] | null
+  sidebar_hidden: string[] | null
+  sidebar_shown: string[] | null
+  sidebar_compact: boolean | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_shown, sidebar_compact'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   theme: 'theme',
   syncClaudeTheme: 'sync_claude_theme',
-  codeTheme: 'code_theme',
+  codeSyntax: 'code_syntax',
+  codeFontSize: 'code_font_size',
   language: 'language',
   usageCardEnabled: 'usage_card_enabled',
   usageCardMinimized: 'usage_card_minimized',
@@ -107,20 +143,34 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   notificationPrReview: 'notification_pr_review',
   notificationPrChangesRequested: 'notification_pr_changes_requested',
   dailyDigestEnabled: 'daily_digest_enabled',
-  splitEnabled: 'split_enabled',
+  splitActive: 'split_active',
   spotlightEnabled: 'spotlight_enabled',
   prReviewsEnabled: 'pr_reviews_enabled',
   prReviewsPollIntervalMs: 'pr_reviews_poll_interval_ms',
   prReviewsAutoLaunchSkills: 'pr_reviews_auto_launch_skills',
   launchMode: 'launch_mode',
   defaultAgentType: 'default_agent_type',
+  defaultModel: 'default_model',
+  confirmAgentArchive: 'confirm_agent_archive',
+  splitNewAgentPane: 'split_new_agent_pane',
+  defaultDisplayMode: 'default_display_mode',
+  quickLaunchRepo: 'quick_launch_repo',
+  quickLaunchBackground: 'quick_launch_background',
+  quickLaunchLaunchMode: 'quick_launch_launch_mode',
+  quickSettingsEnabled: 'quick_settings_enabled',
+  quickSettingsItems: 'quick_settings_items',
+  sidebarOrder: 'sidebar_order',
+  sidebarHidden: 'sidebar_hidden',
+  sidebarShown: 'sidebar_shown',
+  sidebarCompact: 'sidebar_compact',
 }
 
 /** What the page shows before the fetch resolves, and when no row exists yet. */
 export const EMPTY_SETTINGS: UserSettings = {
   theme: null,
   syncClaudeTheme: null,
-  codeTheme: null,
+  codeSyntax: null,
+  codeFontSize: null,
   language: null,
   usageCardEnabled: null,
   usageCardMinimized: null,
@@ -134,13 +184,26 @@ export const EMPTY_SETTINGS: UserSettings = {
   notificationPrReview: null,
   notificationPrChangesRequested: null,
   dailyDigestEnabled: null,
-  splitEnabled: null,
+  splitActive: null,
   spotlightEnabled: null,
   prReviewsEnabled: null,
   prReviewsPollIntervalMs: null,
   prReviewsAutoLaunchSkills: null,
   launchMode: null,
   defaultAgentType: null,
+  defaultModel: null,
+  confirmAgentArchive: null,
+  splitNewAgentPane: null,
+  defaultDisplayMode: null,
+  quickLaunchRepo: null,
+  quickLaunchBackground: null,
+  quickLaunchLaunchMode: null,
+  quickSettingsEnabled: null,
+  quickSettingsItems: null,
+  sidebarOrder: null,
+  sidebarHidden: null,
+  sidebarShown: null,
+  sidebarCompact: null,
 }
 
 
@@ -148,7 +211,8 @@ function toSettings(row: UserSettingsRow): UserSettings {
   return {
     theme: row.theme,
     syncClaudeTheme: row.sync_claude_theme,
-    codeTheme: row.code_theme,
+    codeSyntax: row.code_syntax,
+    codeFontSize: row.code_font_size,
     language: row.language,
     usageCardEnabled: row.usage_card_enabled,
     usageCardMinimized: row.usage_card_minimized,
@@ -162,13 +226,26 @@ function toSettings(row: UserSettingsRow): UserSettings {
     notificationPrReview: row.notification_pr_review,
     notificationPrChangesRequested: row.notification_pr_changes_requested,
     dailyDigestEnabled: row.daily_digest_enabled,
-    splitEnabled: row.split_enabled,
+    splitActive: row.split_active,
     spotlightEnabled: row.spotlight_enabled,
     prReviewsEnabled: row.pr_reviews_enabled,
     prReviewsPollIntervalMs: row.pr_reviews_poll_interval_ms,
     prReviewsAutoLaunchSkills: row.pr_reviews_auto_launch_skills,
     launchMode: row.launch_mode,
     defaultAgentType: row.default_agent_type,
+    defaultModel: row.default_model,
+    confirmAgentArchive: row.confirm_agent_archive,
+    splitNewAgentPane: row.split_new_agent_pane,
+    defaultDisplayMode: row.default_display_mode,
+    quickLaunchRepo: row.quick_launch_repo,
+    quickLaunchBackground: row.quick_launch_background,
+    quickLaunchLaunchMode: row.quick_launch_launch_mode,
+    quickSettingsEnabled: row.quick_settings_enabled,
+    quickSettingsItems: row.quick_settings_items,
+    sidebarOrder: row.sidebar_order,
+    sidebarHidden: row.sidebar_hidden,
+    sidebarShown: row.sidebar_shown,
+    sidebarCompact: row.sidebar_compact,
   }
 }
 
@@ -263,10 +340,10 @@ export const THEME_OPTIONS: ThemeOption[] = [
     labelKey: 'theme.dark',
     descriptionKey: 'theme.dark.help',
     swatch: {
-      bgRgb: '10 10 11',
+      bgRgb: '11 12 14',
       surface: 'rgba(255, 255, 255, 0.06)',
       inkRgb: '255 255 255',
-      accentRgb: '99 102 241',
+      accentRgb: '0 122 252',
       lineStrong: 'rgba(255, 255, 255, 0.15)',
     },
   },
@@ -275,10 +352,10 @@ export const THEME_OPTIONS: ThemeOption[] = [
     labelKey: 'theme.midnight',
     descriptionKey: 'theme.midnight.help',
     swatch: {
-      bgRgb: '11 16 32',
+      bgRgb: '7 16 31',
       surface: 'rgba(255, 255, 255, 0.07)',
-      inkRgb: '237 240 252',
-      accentRgb: '129 140 248',
+      inkRgb: '234 242 252',
+      accentRgb: '0 122 252',
       lineStrong: 'rgba(255, 255, 255, 0.17)',
     },
   },
@@ -287,11 +364,11 @@ export const THEME_OPTIONS: ThemeOption[] = [
     labelKey: 'theme.espresso',
     descriptionKey: 'theme.espresso.help',
     swatch: {
-      bgRgb: '26 21 18',
-      surface: 'rgba(255, 245, 230, 0.07)',
-      inkRgb: '245 238 230',
-      accentRgb: '129 140 248',
-      lineStrong: 'rgba(255, 240, 225, 0.17)',
+      bgRgb: '32 33 36',
+      surface: 'rgba(255, 255, 255, 0.07)',
+      inkRgb: '238 239 242',
+      accentRgb: '0 122 252',
+      lineStrong: 'rgba(255, 255, 255, 0.17)',
     },
   },
   {
@@ -302,7 +379,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
       bgRgb: '0 0 0',
       surface: 'rgba(255, 255, 255, 0.12)',
       inkRgb: '255 255 255',
-      accentRgb: '147 157 255',
+      accentRgb: '77 163 255',
       lineStrong: 'rgba(255, 255, 255, 0.85)',
     },
   },
@@ -314,7 +391,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
       bgRgb: '255 255 255',
       surface: 'rgba(0, 0, 0, 0.045)',
       inkRgb: '24 24 27',
-      accentRgb: '79 70 229',
+      accentRgb: '0 122 252',
       lineStrong: 'rgba(0, 0, 0, 0.2)',
     },
   },
@@ -323,11 +400,11 @@ export const THEME_OPTIONS: ThemeOption[] = [
     labelKey: 'theme.mist',
     descriptionKey: 'theme.mist.help',
     swatch: {
-      bgRgb: '244 247 251',
-      surface: 'rgba(15, 23, 42, 0.05)',
-      inkRgb: '15 23 42',
-      accentRgb: '67 56 202',
-      lineStrong: 'rgba(15, 23, 42, 0.21)',
+      bgRgb: '238 246 255',
+      surface: 'rgba(12, 40, 80, 0.05)',
+      inkRgb: '12 27 48',
+      accentRgb: '0 122 252',
+      lineStrong: 'rgba(12, 40, 80, 0.21)',
     },
   },
   {
@@ -338,7 +415,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
       bgRgb: '250 246 238',
       surface: 'rgba(74, 54, 28, 0.05)',
       inkRgb: '43 35 26',
-      accentRgb: '79 70 229',
+      accentRgb: '0 122 252',
       lineStrong: 'rgba(74, 54, 28, 0.22)',
     },
   },
@@ -350,7 +427,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
       bgRgb: '255 255 255',
       surface: 'rgba(0, 0, 0, 0.09)',
       inkRgb: '0 0 0',
-      accentRgb: '49 46 129',
+      accentRgb: '0 88 184',
       lineStrong: 'rgba(0, 0, 0, 0.85)',
     },
   },
@@ -396,34 +473,4 @@ export const LAUNCH_MODE_OPTIONS: KeyedOption[] = [
     labelKey: 'settings.launchMode.bypass',
     descriptionKey: 'settings.launchMode.bypass.help',
   },
-]
-
-/**
- * How a sidebar panel is drawn. Two values rather than a boolean because this is
- * a picker, and `usage_card_minimized` / `agent_context_minimized` are the
- * booleans behind it — 'minimized' is true, 'full' is false. Mirrors the
- * FormatSelect in `desktop/src/renderer/pages/Config/AppearancePage.tsx`, which
- * writes the same two columns.
- */
-/**
- * The appearances the desktop's file preview can highlight code in. `auto` is the
- * default, and the only one most people need — the two pinned values exist because
- * reading code is not reading UI.
- */
-export const CODE_THEME_OPTIONS: KeyedOption[] = [
-  { value: 'auto', labelKey: 'settings.appearance.codeTheme.auto' },
-  { value: 'light', labelKey: 'settings.appearance.codeTheme.light' },
-  { value: 'dark', labelKey: 'settings.appearance.codeTheme.dark' },
-]
-
-export const PANEL_FORMAT_OPTIONS: KeyedOption[] = [
-  { value: 'full', labelKey: 'settings.sidebars.format.full' },
-  { value: 'minimized', labelKey: 'settings.sidebars.format.minimized' },
-]
-
-export const POLL_INTERVAL_OPTIONS: KeyedOption[] = [
-  { value: '30000', labelKey: 'settings.prWatcher.interval30s' },
-  { value: '60000', labelKey: 'settings.prWatcher.interval1m' },
-  { value: '120000', labelKey: 'settings.prWatcher.interval2m' },
-  { value: '300000', labelKey: 'settings.prWatcher.interval5m' },
 ]

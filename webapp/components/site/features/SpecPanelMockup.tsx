@@ -95,7 +95,7 @@ export function SpecPanelMockup() {
                 controls to its right — `StatusPill` at `planned`, and a `Maximize2` that
                 expands the document — and both are gone from this drawing.
                 They were the two things in it that looked pressable, and a control that
-                cannot be pressed is worse in a marketing illustration than an absent
+                cannot be pressed is worse in a showcase illustration than an absent
                 one: a reader who tries the chevron learns the picture is a picture.
                 The ticket id is a fact, so it stays.
 

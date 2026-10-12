@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from 'lucide-react'
-import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
+import { Plus, Trash2, Save, Share2, FolderInput, Info, Sparkles, PenTool, GitFork, Wand2, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
+import { Banner, Button, FormField, ImageField, Loader, SkillsOverview, SkillsRail, Text, type BannerAction, type NoticeCardProps, type SkillBudgetBanner, type SkillBudgetProps, type SkillsOverviewCard, type SkillsRailGroup } from '@ds/desktop'
+import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo, type Listing, type ListingEntry } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
-import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
+import { VSCode } from '@ds/desktop/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
+import { useStore, type SkillsContextWindow } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
 import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, formatWindow } from './contextWindow'
 
 /**
@@ -26,16 +26,17 @@ import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, form
  *
  * The fraction is `skillListingBudgetFraction` in settings.json, and
  * `SLASH_COMMAND_TOOL_CHAR_BUDGET` overrides the whole computation with a fixed
- * character count. We mirror the shipped defaults; the window itself is read off
- * the running agents (see contextWindow.ts), and the switch above the gauges
+ * character count. Both are honoured when the main process finds them (see
+ * main/skills-listing.ts), the shipped defaults otherwise; the window itself is read
+ * off the running agents (see contextWindow.ts), and the switch above the gauges
  * forces one of the two presets when you want to size against another model.
  */
 const CHARS_PER_TOKEN = 4
 const BUDGET_FRACTION = 0.01
 
 /**
- * `skillListingMaxDescChars` — the per-skill cap on `description` + `when_to_use`
- * combined. Text past it never reaches the model, so a 4 000-character
+ * `skillListingMaxDescChars`, the per-skill cap on `description` + `when_to_use`
+ * combined, by default. Text past it never reaches the model, so a 4 000-character
  * description costs 1 536, not 4 000. Counting the raw length would bill skills
  * for characters Claude never sees.
  */
@@ -44,62 +45,20 @@ const MAX_DESC_CHARS = 1536
 /** The two windows worth comparing. Order is the order of the switch, after Auto. */
 const CONTEXT_WINDOWS: readonly SkillsContextWindow[] = [200_000, 1_000_000]
 
-// One class per slot the switch's highlight can travel to, in the same order as
-// the segments below (Auto, then CONTEXT_WINDOWS). Indexed rather than derived
-// from a chain of `value === ...` checks, so a slot added or reordered here is
-// the only place that has to change. Written as literal classes, not a computed
-// `translate-x-[${...}%]`: Tailwind's build-time scan only picks up class names
-// that appear verbatim in the source.
-const HIGHLIGHT_OFFSETS = ['translate-x-0', 'translate-x-full', 'translate-x-[200%]'] as const
-
-function charBudgetFor(contextWindow: number): number {
-  return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
-}
-
-function BudgetBar({ label, value, max, unit, barColor }: { label: string; value: number; max: number; unit: string; barColor: string }) {
-  const percentage = Math.min(Math.round((value / max) * 100), 100)
-  // Over budget is not a shade of "nearly full": past the line Claude Code stops
-  // listing descriptions, so the bar changes colour rather than just filling up.
-  const fill = value > max ? 'bg-red' : barColor
-  // A bare toLocaleString() follows the OS locale, which is not the language the
-  // app is showing — a French UI on an English machine would group with commas.
-  const locale = useLocale()
-
-  return (
-    <div className="flex-1 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-secondary/60">{label}</span>
-        <span className="text-xs font-medium text-text-secondary">
-          {value.toLocaleString(locale)} / {max.toLocaleString(locale)} {unit}
-        </span>
-      </div>
-      <div className="w-full h-2 rounded-full bg-surface overflow-hidden">
-        <div
-          className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${fill}`}
-          style={{ width: `${percentage}%` }}
-        >
-          <div
-            className="absolute inset-y-0 w-[30%] rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-              animation: 'shimmer-sweep 5s ease-in-out infinite',
-            }}
-          />
-        </div>
-      </div>
-      <div className="mt-1.5 text-xs text-text-secondary/40 text-right">{percentage}%</div>
-    </div>
-  )
+function charBudgetFor(contextWindow: number, fraction: number): number {
+  return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * fraction))
 }
 
 interface SkillTokenEntry {
   name: string
   tokens: number
-  /** What this skill actually spends — its description, capped at MAX_DESC_CHARS. */
+  /** What this skill actually spends: its name, plus its description capped at the per-skill cap. */
   chars: number
   /** Its description is longer than the cap, so the listing shows a cut version. */
   truncated: boolean
-  source: 'built-in' | 'custom' | 'repo'
+  /** `name-only` in skillOverrides: listed by its name, the description dropped. */
+  nameOnly: boolean
+  source: ListingEntry['source']
   weight: 'high' | 'medium' | 'low'
 }
 
@@ -110,16 +69,66 @@ interface DuplicateSkillEntry {
 
 // Anchored to the per-skill cap rather than to round numbers: "high" is a skill
 // spending the entire allowance a single description is allowed.
-function getWeight(chars: number): 'high' | 'medium' | 'low' {
-  if (chars >= MAX_DESC_CHARS) return 'high'
-  if (chars >= MAX_DESC_CHARS / 2) return 'medium'
+function getWeight(chars: number, cap: number): 'high' | 'medium' | 'low' {
+  if (chars >= cap) return 'high'
+  if (chars >= cap / 2) return 'medium'
   return 'low'
 }
 
-const weightStyles: Record<string, { className: string; labelKey: MessageKey }> = {
-  high: { className: 'bg-red/10 text-red', labelKey: 'skills.weight.high' },
-  medium: { className: 'bg-orange/10 text-orange', labelKey: 'skills.weight.medium' },
-  low: { className: 'bg-green/10 text-green', labelKey: 'skills.weight.low' },
+/**
+ * The listing as the page alone knows it, for as long as `skills:listingEntries` has not
+ * answered (or on a build whose main process predates it): the skills this page manages,
+ * each fully listed. Narrower than the truth, never wider.
+ */
+function fallbackListing(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Listing {
+  return {
+    entries: [
+      ...skills.map((s): ListingEntry => ({ name: s.name, text: s.description, source: s.isBuiltIn ? 'built-in' : 'custom', mode: 'full' })),
+      ...repoSkills.map((s): ListingEntry => ({ name: s.name, text: s.description, source: 'repo', mode: 'full', origin: s.repoName })),
+    ],
+    settings: {},
+  }
+}
+
+/**
+ * WHICH HUE EACH ORIGIN WEARS, as a value rather than a class.
+ *
+ * THE PAGE'S AND NOT THE DESIGN SYSTEM'S: that built-in is the accent, a repository
+ * is blue and a custom skill is green is a fact about how this product talks about
+ * skills, and the shared components take `Label`'s contract — a CSS value — precisely
+ * so the meaning stays here. The fallback triple is the one the Tailwind config
+ * carries, and it is not decoration: an undefined variable invalidates the whole
+ * `color-mix` and the plate disappears rather than coming out slightly wrong.
+ *
+ * THE THIRD KEY IS `custom` AND IT WAS `local`, which matched nothing: a skill's
+ * source is `built-in | custom | repo` throughout this file, so every green plate was
+ * asking for a colour that is not in the table and getting the neutral ground.
+ */
+const SOURCE_COLOR: Record<string, string> = {
+  'built-in': 'rgb(var(--c-accent, 0 122 252))',
+  repo: 'rgb(var(--c-blue, 59 130 246))',
+  custom: 'rgb(var(--c-green, 34 197 94))',
+  plugin: 'rgb(var(--c-purple, 168 85 247))',
+}
+
+/**
+ * The disc beside a repository that has chosen no colour of its own. A grey, and a
+ * VALUE rather than a class for `SOURCE_COLOR`'s reason — `SectionHeader.dot` paints it
+ * inline, so Tailwind never sees it.
+ */
+const REPO_FALLBACK_COLOR = 'rgb(var(--c-text-secondary, 107 114 128))'
+
+/** How loud a skill's share of the budget is. Same contract as `SOURCE_COLOR`. */
+const WEIGHT_COLOR: Record<string, string> = {
+  high: 'rgb(var(--c-red, 239 68 68))',
+  medium: 'rgb(var(--c-orange, 249 115 22))',
+  low: 'rgb(var(--c-green, 34 197 94))',
+}
+
+const WEIGHT_LABELS: Record<string, MessageKey> = {
+  high: 'skills.weight.high',
+  medium: 'skills.weight.medium',
+  low: 'skills.weight.low',
 }
 
 // A skill's origin, shown as a badge. Keys rather than the raw union member, so
@@ -128,6 +137,7 @@ const SOURCE_KEYS: Record<string, MessageKey> = {
   'built-in': 'skills.source.builtIn',
   custom: 'skills.source.custom',
   repo: 'skills.source.repo',
+  plugin: 'skills.source.plugin',
 }
 
 function sourceLabel(source: string, t: Translate): string {
@@ -136,131 +146,69 @@ function sourceLabel(source: string, t: Translate): string {
 }
 
 /**
- * Auto / 200K / 1M. Drawn as a segmented control rather than a select: the
- * reading of every gauge below depends on which one is active, so all three
- * stay visible.
+ * THE GAUGE, AS `SkillBudget` WANTS IT. The drawing is the design system's now; what stays
+ * here is the arithmetic above and which window it runs against.
  *
- * `Auto` is not a value, it is a source — so its label carries the window it
- * resolved to (`Auto · 1M`), and a line under the switch says where that number
- * came from. Without it, a gauge scaled to a window nobody typed is a surprise
- * with no explanation on screen.
+ * Auto / 200K / 1M is a segmented control, and `Auto` is not a value but a source — so its
+ * label carries the window it resolved to (`Auto · 1M`), and the hint under the switch
+ * says where that number came from.
  */
-function ContextWindowSwitch({
-  value,
-  detected,
-  effectiveWindow,
-  onChange,
-}: {
-  value: SkillsContextWindowSetting
-  /** The window the running agents report, or undefined when none does. */
-  detected: number | undefined
-  /** What the gauges are actually scaled to, once auto and the fallback resolve. */
-  effectiveWindow: number
-  onChange: (next: SkillsContextWindowSetting) => void
-}) {
-  const t = useT()
-
-  // One segment per switch position, in the order they are drawn: Auto, then
-  // the two forced presets. Auto's label is not a fixed string — it carries
-  // the window it resolved to (`Auto · 1M`) once `detected` is known.
-  const segments: { value: SkillsContextWindowSetting; label: string }[] = [
-    {
-      value: 'auto',
-      label: detected !== undefined
-        ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
-        : t('skills.budget.window.auto'),
-    },
-    { value: CONTEXT_WINDOWS[0], label: t('skills.budget.window.small') },
-    { value: CONTEXT_WINDOWS[1], label: t('skills.budget.window.large') },
-  ]
-  const activeIndex = Math.max(0, segments.findIndex((segment) => segment.value === value))
-
-  const hint = value === 'auto'
-    ? detected !== undefined
-      ? t('skills.budget.window.autoDetected')
-      : t('skills.budget.window.autoNoAgent', { window: formatWindow(DEFAULT_CONTEXT_WINDOW) })
-    : t('skills.budget.window.forced', { window: formatWindow(effectiveWindow) })
-
-  return (
-    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-text-secondary/50 whitespace-nowrap">{t('skills.budget.window.label')}</span>
-        <div className="relative grid grid-cols-3 bg-surface rounded-full p-px border border-line-subtle" role="group" aria-label={t('skills.budget.window.label')}>
-          <div
-            className={`absolute top-px bottom-px left-px w-[calc((100%_-_2px)/3)] bg-surface-strong rounded-full transition-transform duration-200 ${HIGHLIGHT_OFFSETS[activeIndex]}`}
-          />
-          {segments.map((segment) => (
-            <button
-              key={String(segment.value)}
-              onClick={() => onChange(segment.value)}
-              aria-pressed={value === segment.value}
-              className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center whitespace-nowrap ${
-                value === segment.value ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
-              }`}
-            >
-              {segment.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="text-[10px] text-text-secondary/40 text-right">{hint}</p>
-    </div>
-  )
-}
-
-function InfoCard({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-surface-subtle border border-line-subtle">
-      <div className="flex items-center gap-1.5">
-        <Icon className="w-3.5 h-3.5 text-text-secondary/50 flex-shrink-0" />
-        <span className="text-[11px] font-medium text-text-secondary">{title}</span>
-      </div>
-      <p className="text-[11px] text-text-secondary/40 leading-relaxed">{body}</p>
-    </div>
-  )
-}
-
-function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
-  const [showBreakdown, setShowBreakdown] = useState(false)
-  const [showHow, setShowHow] = useState(false)
+function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): SkillBudgetProps {
   const t = useT()
   const locale = useLocale()
   const contextWindow = useStore((s) => s.skillsContextWindow)
   const setContextWindow = useStore((s) => s.setSkillsContextWindow)
 
-  // One selector, resolved to a primitive inside the store rather than in a
-  // useMemo over `terminals`: the terminal array is replaced on every statusline
-  // tick (several times a second, per agent), so selecting it would re-render the
-  // whole gauge continuously. Selecting the number means a re-render only when
-  // the detected window itself moves. The inspected agent is resolved the way the
-  // info sidebar does it, so both panels talk about the same agent.
+  // One selector, resolved to a primitive inside the store rather than in a useMemo over
+  // `terminals`: the terminal array is replaced on every statusline tick (several times a
+  // second, per agent), so selecting it would re-render the whole gauge continuously.
+  // Selecting the number means a re-render only when the detected window itself moves.
+  // The inspected agent is resolved the way the info sidebar does it, so both panels talk
+  // about the same agent.
   const detected = useStore((s) => detectContextWindow(
     s.terminals,
     s.isSplitMode && s.focusedPane === 'secondary' ? s.splitTerminalId : s.activeTerminalId,
   ))
 
+  // What Claude Code actually lists, plugins included. Re-read whenever the page's own
+  // skills move, since an edit here changes the listing too.
+  const [listing, setListing] = useState<Listing | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const fetchListing = window.electronAPI?.skills?.listingEntries as (() => Promise<Listing>) | undefined
+    if (!fetchListing) return
+    fetchListing().then((result) => { if (!cancelled) setListing(result) }).catch(() => { /* keep the fallback */ })
+    return () => { cancelled = true }
+  }, [skills, repoSkills])
+  const effectiveListing = useMemo(() => listing ?? fallbackListing(skills, repoSkills), [listing, skills, repoSkills])
+  const { settings } = effectiveListing
+  const fraction = settings.budgetFraction ?? BUDGET_FRACTION
+  const maxDesc = settings.maxDescChars ?? MAX_DESC_CHARS
+
   const effectiveWindow = resolveContextWindow(contextWindow, detected)
-  const charBudget = charBudgetFor(effectiveWindow)
+  const charBudget = settings.fixedCharBudget ?? charBudgetFor(effectiveWindow, fraction)
   const tokenBudget = Math.floor(charBudget / CHARS_PER_TOKEN)
 
   const { totalTokens, totalChars, truncatedCount, breakdown } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
-    const add = (name: string, description: string, source: SkillTokenEntry['source']) => {
-      const raw = (description || '').length
-      // Only what survives the per-skill cap reaches the model, so only that is
-      // billed here.
-      const chars = Math.min(raw, MAX_DESC_CHARS)
+    for (const entry of effectiveListing.entries) {
+      // Hidden skills (disable-model-invocation, `off`, `user-invocable-only`) are not in
+      // the listing at all, so they cost nothing.
+      if (entry.mode === 'hidden') continue
+      const raw = entry.mode === 'full' ? entry.text.length : 0
+      // The name is always listed. Only the part of the description that survives the
+      // per-skill cap reaches the model, so only that is billed.
+      const chars = entry.name.length + Math.min(raw, maxDesc)
       entries.push({
-        name,
+        name: entry.name,
         chars,
         tokens: Math.ceil(chars / CHARS_PER_TOKEN),
-        truncated: raw > MAX_DESC_CHARS,
-        source,
-        weight: getWeight(chars),
+        truncated: raw > maxDesc,
+        nameOnly: entry.mode === 'name-only',
+        source: entry.source,
+        weight: getWeight(chars, maxDesc),
       })
     }
-    for (const s of skills) add(s.name, s.description, s.isBuiltIn ? 'built-in' : 'custom')
-    for (const rs of repoSkills) add(rs.name, rs.description, 'repo')
 
     entries.sort((a, b) => b.tokens - a.tokens)
     let tc = 0, cc = 0, cut = 0
@@ -269,443 +217,160 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
       if (e.truncated) cut += 1
     }
     return { totalTokens: tc, totalChars: cc, truncatedCount: cut, breakdown: entries }
-  }, [skills, repoSkills])
+  }, [effectiveListing, maxDesc])
 
-  const overBudget = totalChars > charBudget
   const n = (value: number) => value.toLocaleString(locale)
 
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Gauge className="w-4 h-4" />
-            <span>{t('skills.budget.section')}</span>
-          </div>
-          <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.budget.help')}</p>
-        </div>
-        <ContextWindowSwitch
-          value={contextWindow}
-          detected={detected}
-          effectiveWindow={effectiveWindow}
-          onChange={setContextWindow}
-        />
-      </div>
+  const banners: SkillBudgetBanner[] = []
+  if (totalChars > charBudget) {
+    banners.push({ id: 'over', variant: 'danger', text: t('skills.budget.over', { over: n(totalChars - charBudget) }) })
+  }
+  if (truncatedCount > 0) {
+    // `Scissors` over the variant's own mark: the warning is about a specific thing that
+    // happened to the descriptions, not about severity in general.
+    banners.push({
+      id: 'truncated',
+      variant: 'warning',
+      icon: Scissors,
+      text: t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
+        count: truncatedCount,
+        max: n(maxDesc),
+      }),
+    })
+  }
 
-      <div className="grid grid-cols-2 gap-3">
-        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} barColor="bg-accent" />
-        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} barColor="bg-orange" />
-      </div>
-
-      {overBudget && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red/10 border border-red/20">
-          <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-red leading-relaxed">
-            {t('skills.budget.over', { over: n(totalChars - charBudget) })}
-          </p>
-        </div>
-      )}
-
-      {truncatedCount > 0 && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange/10 border border-orange/20">
-          <Scissors className="w-3.5 h-3.5 text-orange flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-orange leading-relaxed">
-            {t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
-              count: truncatedCount,
-              max: n(MAX_DESC_CHARS),
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* How this is computed — collapsed by default, because it answers a
-          question you only ask once, but it has to be answerable in place. */}
-      <div>
-        <button
-          onClick={() => setShowHow((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
-        >
-          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showHow ? 'rotate-90' : ''}`} />
-          <span>{t('skills.budget.how')}</span>
-        </button>
-        {showHow && (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <InfoCard
-              icon={FileText}
-              title={t('skills.budget.card.scope.title')}
-              body={t('skills.budget.card.scope.body')}
-            />
-            <InfoCard
-              icon={Calculator}
-              title={t('skills.budget.card.formula.title')}
-              body={t('skills.budget.card.formula.body', {
-                // Formatted, not grouped: the detected window is whatever the
-                // model reports, so "1M" reads where "1 048 576" would not.
-                context: formatWindow(effectiveWindow),
-                percent: `${BUDGET_FRACTION * 100}`,
-                chars: n(charBudget),
-                tokens: n(tokenBudget),
-              })}
-            />
-            <InfoCard
-              icon={Scissors}
-              title={t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) })}
-              body={t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) })}
-            />
-            <InfoCard
-              icon={EyeOff}
-              title={t('skills.budget.card.overflow.title')}
-              body={t('skills.budget.card.overflow.body')}
-            />
-            <InfoCard
-              icon={SlidersHorizontal}
-              title={t('skills.budget.card.why.title')}
-              body={t('skills.budget.card.why.body')}
-            />
-            <InfoCard
-              icon={Info}
-              title={t('skills.budget.card.override.title')}
-              body={t('skills.budget.card.override.body')}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Breakdown toggle */}
-      {breakdown.length > 0 && (
-        <div>
-          <button
-            onClick={() => setShowBreakdown((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
-          >
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} />
-            <span>{t('skills.budget.details')}</span>
-          </button>
-          {showBreakdown && (
-            <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
-              <div className="flex flex-col gap-1.5">
-                {breakdown.map((entry) => {
-                  const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
-                  const ws = weightStyles[entry.weight]
-                  return (
-                    <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{sourceLabel(entry.source, t)}</span>
-                      <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-                      {entry.truncated && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 bg-orange/10 text-orange">
-                          {t('skills.budget.cut')}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{t('skills.budget.tok', { count: entry.tokens })}</span>
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{t(ws.labelKey)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+  return {
+    title: t('skills.budget.section'),
+    help: t('skills.budget.help'),
+    window: {
+      label: t('skills.budget.window.label'),
+      items: [
+        {
+          key: 'auto',
+          label: detected !== undefined
+            ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
+            : t('skills.budget.window.auto'),
+        },
+        { key: String(CONTEXT_WINDOWS[0]), label: t('skills.budget.window.small') },
+        { key: String(CONTEXT_WINDOWS[1]), label: t('skills.budget.window.large') },
+      ],
+      activeKey: String(contextWindow),
+      // The key comes back as a string because a tab's identity is a string. `auto` is the
+      // one non-numeric position, so it is the only branch.
+      onSelect: (key) => setContextWindow(key === 'auto' ? 'auto' : (Number(key) as SkillsContextWindow)),
+      hint: contextWindow === 'auto'
+        ? detected !== undefined
+          ? t('skills.budget.window.autoDetected')
+          : t('skills.budget.window.autoNoAgent', { window: formatWindow(DEFAULT_CONTEXT_WINDOW) })
+        : t('skills.budget.window.forced', { window: formatWindow(effectiveWindow) }),
+    },
+    meters: [
+      { label: t('skills.budget.chars'), value: totalChars, max: charBudget, unit: t('skills.budget.unitChars'), locale, tone: 'accent' },
+      { label: t('skills.budget.tokens'), value: totalTokens, max: tokenBudget, unit: t('skills.budget.unitTokens'), locale, tone: 'warning' },
+    ],
+    banners,
+    how: {
+      label: t('skills.budget.how'),
+      notes: [
+        { id: 'scope', icon: FileText, title: t('skills.budget.card.scope.title'), body: t('skills.budget.card.scope.body') },
+        {
+          id: 'formula',
+          icon: Calculator,
+          title: t('skills.budget.card.formula.title'),
+          body: settings.fixedCharBudget !== undefined
+            ? t('skills.budget.card.formula.fixed', { chars: n(charBudget), tokens: n(tokenBudget) })
+            : t('skills.budget.card.formula.body', {
+              // Formatted, not grouped: the detected window is whatever the model reports,
+              // so "1M" reads where "1 048 576" would not.
+              context: formatWindow(effectiveWindow),
+              percent: `${Math.round(fraction * 10_000) / 100}`,
+              chars: n(charBudget),
+              tokens: n(tokenBudget),
+            }),
+        },
+        { id: 'cap', icon: Scissors, title: t('skills.budget.card.cap.title', { max: n(maxDesc) }), body: t('skills.budget.card.cap.body', { max: n(maxDesc) }) },
+        { id: 'overflow', icon: EyeOff, title: t('skills.budget.card.overflow.title'), body: t('skills.budget.card.overflow.body') },
+        { id: 'why', icon: SlidersHorizontal, title: t('skills.budget.card.why.title'), body: t('skills.budget.card.why.body') },
+        { id: 'override', icon: Info, title: t('skills.budget.card.override.title'), body: t('skills.budget.card.override.body') },
+      ],
+    },
+    breakdown: {
+      label: t('skills.budget.details'),
+      rows: breakdown.map((entry) => ({
+        id: `${entry.source}-${entry.name}`,
+        lead: { label: sourceLabel(entry.source, t), color: SOURCE_COLOR[entry.source] },
+        name: entry.name,
+        ...(entry.truncated ? { tags: [{ label: t('skills.budget.cut'), color: WEIGHT_COLOR.medium }] } : {}),
+        ...(entry.nameOnly ? { tags: [{ label: t('skills.budget.nameOnly'), color: WEIGHT_COLOR.low }] } : {}),
+        detail: t('skills.budget.tok', { count: entry.tokens }),
+        verdict: { label: t(WEIGHT_LABELS[entry.weight]), color: WEIGHT_COLOR[entry.weight] },
+      })),
+    },
+  }
 }
 
-function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {
-  const t = useT()
-  if (duplicates.length === 0) return null
+type LongDescription = { name: string; source: string; wordCount: number; filePath: string }
 
-  return (
-    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
-        <p className="text-xs text-orange">
-          {t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length })}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5 ml-6">
-        {duplicates.map((dup) => (
-          <div key={dup.name} className="flex items-center gap-2">
-            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{dup.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.duplicates.times', { count: dup.sources.length })}</span>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {dup.sources.map((s, i) => {
-                const sourceColor = s.source === 'built-in'
-                  ? 'bg-accent/10 text-accent'
-                  : s.source === 'repo'
-                    ? 'bg-blue/10 text-blue'
-                    : 'bg-green/10 text-green'
-                const label = s.source === 'repo' && s.repoName
-                  ? t('skills.source.repoNamed', { name: s.repoName })
-                  : sourceLabel(s.source, t)
-                return (
-                  <span
-                    key={`${s.source}-${s.repoName || ''}-${i}`}
-                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${sourceColor}`}
-                  >
-                    {label}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFix: () => void }) {
-  const t = useT()
-  if (longDescriptions.length === 0) return null
-
-  return (
-    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
-        <p className="text-xs text-orange">
-          {t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length })}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5 ml-6">
-        {longDescriptions.map((entry) => (
-          <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.longDesc.words', { count: entry.wordCount })}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2.5 ml-6 flex justify-end gap-2">
-        <button
-          onClick={() => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath))}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
-        >
-          <VSCodeIcon className="w-3.5 h-3.5" />
-          {t('skills.openInVSCode')}
-        </button>
-        <button
-          onClick={onFix}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
-        >
-          <Wand2 className="w-3.5 h-3.5" />
-          {t('skills.fixWithAgent')}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }: { duplicates: DuplicateSkillEntry[]; longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFixLongDescriptions: () => void }) {
-  const t = useT()
-  if (duplicates.length === 0 && longDescriptions.length === 0) return null
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
-        <AlertTriangle className="w-4 h-4" />
-        <span>{t('skills.warnings')}</span>
-      </div>
-      <DuplicateSkillsAlert duplicates={duplicates} />
-      <LongDescriptionsAlert longDescriptions={longDescriptions} onFix={onFixLongDescriptions} />
-    </div>
-  )
-}
-
-function SkillCard({
-  skill,
-  imageUrl,
-  badge,
-  onClick,
-}: {
-  skill: SkillInfo | RepoSkillInfo
-  imageUrl: string | null
-  badge?: { label: string; className: string }
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-surface border border-line-strong hover:bg-surface-strong hover:border-line-strong transition-all group"
-    >
-      {/* Avatar */}
-      <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center overflow-hidden flex-shrink-0">
-        {imageUrl ? (
-          <img src={imageUrl} alt={skill.name} className="w-full h-full object-cover" />
-        ) : (
-          <Image className="w-5 h-5 text-text-secondary" />
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0 text-left">
-        <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-ink truncate capitalize">{skill.name}</span>
-          {badge && (
-            <span className={`px-1.5 py-0.5 text-xs font-medium rounded flex-shrink-0 ${badge.className}`}>{badge.label}</span>
-          )}
-        </div>
-        {skill.description && (
-          <p className="text-sm text-text-secondary/60 truncate mt-1">{skill.description}</p>
-        )}
-      </div>
-
-      {/* Arrow */}
-      <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors flex-shrink-0" />
-    </button>
-  )
+/**
+ * The two warnings, as `NoticeCard`s. Their buttons are DATA — the card draws them, ranks
+ * them and paints them in the warning's own orange. Fixing is the point of reading this;
+ * opening the files is the way round it.
+ */
+function buildWarnings(
+  duplicates: DuplicateSkillEntry[],
+  longDescriptions: LongDescription[],
+  onFix: () => void,
+  t: Translate,
+): (NoticeCardProps & { id: string })[] {
+  const notices: (NoticeCardProps & { id: string })[] = []
+  if (duplicates.length > 0) {
+    notices.push({
+      id: 'duplicates',
+      variant: 'warning',
+      rows: duplicates.map((dup) => ({
+        id: dup.name,
+        name: dup.name,
+        detail: t('skills.duplicates.times', { count: dup.sources.length }),
+        tags: dup.sources.map((s) => ({
+          label: s.source === 'repo' && s.repoName ? t('skills.source.repoNamed', { name: s.repoName }) : sourceLabel(s.source, t),
+          color: SOURCE_COLOR[s.source],
+        })),
+      })),
+      children: t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length }),
+    })
+  }
+  if (longDescriptions.length > 0) {
+    const actions: BannerAction[] = [
+      {
+        label: t('skills.openInVSCode'),
+        icon: VSCode,
+        onClick: () => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath)),
+      },
+      { label: t('skills.fixWithAgent'), icon: Wand2, onClick: onFix, primary: true },
+    ]
+    notices.push({
+      id: 'long',
+      variant: 'warning',
+      actions,
+      rows: longDescriptions.map((entry) => ({
+        id: `${entry.source}-${entry.name}`,
+        name: entry.name,
+        detail: t('skills.longDesc.words', { count: entry.wordCount }),
+      })),
+      children: t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length }),
+    })
+  }
+  return notices
 }
 
 /**
- * Permanent left rail: every skill, grouped by origin, so you can move from one
- * to the next without going back to the list first. "All skills" at the top is
- * a destination of its own — the overview with the gauges and the warnings.
- * Mirrors the settings rail: same width, same surface, same active pill.
+ * Where a rail key sends the page. The rail hands back KEYS and knows nothing of routes;
+ * this is the one place the two are paired.
  */
-function SkillsRail({
-  builtInSkills,
-  customSkills,
-  repoSkillsByRepo,
-  imageCache,
-  activeKey,
-  onSelect,
-  onNew,
-}: {
-  builtInSkills: SkillInfo[]
-  customSkills: SkillInfo[]
-  repoSkillsByRepo: Record<string, { color?: string; skills: RepoSkillInfo[] }>
-  imageCache: Record<string, string | null>
-  activeKey: string
-  onSelect: (hash: string) => void
-  onNew: () => void
-}) {
-  const t = useT()
-  // The active row can sit far down a long rail — a skill opened from the list
-  // would otherwise be selected off-screen.
-  const activeRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [activeKey])
-
-  const renderRow = (key: string, label: string, hash: string, leading: React.ReactNode) => {
-    const isActive = activeKey === key
-    return (
-      <button
-        key={key}
-        ref={isActive ? activeRef : undefined}
-        onClick={() => onSelect(hash)}
-        className={`w-full flex items-center gap-2 text-left px-2.5 py-1.5 mt-0.5 text-sm rounded-lg transition-all ${
-          isActive ? 'bg-accent/15 text-ink font-medium' : 'text-text-secondary hover:text-ink hover:bg-surface'
-        }`}
-      >
-        {leading}
-        <span className="truncate capitalize">{label}</span>
-      </button>
-    )
-  }
-
-  // `first` rather than a `first:` variant: the repository groups each sit in
-  // their own wrapper, so a CSS first-child rule would fire on every one of them
-  // and eat the separation instead of only skipping it at the top of the rail.
-  const groupHeader = (
-    icon: React.ReactNode,
-    label: string,
-    count: number,
-    { action, first }: { action?: React.ReactNode; first?: boolean } = {}
-  ) => (
-    <div className={`flex items-center gap-1.5 px-2.5 mb-1.5 ${first ? 'mt-3' : 'mt-7'} text-[11px] uppercase tracking-wider text-text-secondary/50`}>
-      {icon}
-      <span className="truncate">{label}</span>
-      <span className="text-text-secondary/30">{count}</span>
-      {action && <span className="ml-auto">{action}</span>}
-    </div>
-  )
-
-  const avatar = (dirName: string, name: string) => {
-    const url = imageCache[dirName] ?? null
-    return url ? (
-      <img src={url} alt={name} className="w-5 h-5 rounded object-cover shrink-0" />
-    ) : (
-      <span className="w-5 h-5 rounded bg-surface-strong flex items-center justify-center shrink-0">
-        <Image className="w-3 h-3 text-icon" />
-      </span>
-    )
-  }
-
-  return (
-    <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
-      <div className="px-2 pt-3 pb-1 border-b border-line-field">
-        <button
-          onClick={() => onSelect('#/')}
-          className={`w-full flex items-center gap-2 px-2.5 py-1.5 mb-2 text-sm font-medium rounded-lg transition-colors ${
-            activeKey === 'all'
-              ? 'bg-accent/15 text-ink'
-              : 'text-text-secondary hover:bg-surface hover:text-ink'
-          }`}
-        >
-          <LayoutGrid className="w-4 h-4 shrink-0" />
-          <span className="truncate">{t('skills.allSkills')}</span>
-        </button>
-      </div>
-
-      {/* No `space-y` here: its `> * + *` rule outranks a plain `mt-*` class, so
-          it would flatten every group header's separation back to 2px. The rows
-          carry their own `mt-0.5` instead, and sibling margins collapse — a
-          header's `mt-7` wins over the 2px above it. */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-3">
-        {builtInSkills.length > 0 && (
-          <>
-            {groupHeader(<Sparkles className="w-3 h-3" />, t('skills.builtIn'), builtInSkills.length, { first: true })}
-            {builtInSkills.map((s) =>
-              renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
-            )}
-          </>
-        )}
-
-        {groupHeader(<PenTool className="w-3 h-3" />, t('skills.custom'), customSkills.length, {
-          first: builtInSkills.length === 0,
-          action: (
-            <button
-              onClick={onNew}
-              title={t('skills.new')}
-              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          ),
-        })}
-        {customSkills.length === 0 ? (
-          <p className="px-2.5 py-1 text-xs text-text-secondary/40">{t('skills.customEmpty')}</p>
-        ) : (
-          customSkills.map((s) =>
-            renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
-          )
-        )}
-        {activeKey === 'new' && (
-          <div className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-0.5 text-sm rounded-lg bg-accent/15 text-ink font-medium">
-            <Plus className="w-4 h-4 shrink-0" />
-            <span className="truncate">{t('skills.editor.newTitle')}</span>
-          </div>
-        )}
-
-        {Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
-          <div key={repoName}>
-            {groupHeader(
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color || '#6B7280' }} />,
-              repoName,
-              rSkills.length
-            )}
-            {rSkills.map((rs) =>
-              renderRow(
-                `repo-skill:${rs.filePath}`,
-                rs.name,
-                `#/repo-skill/${encodeURIComponent(rs.filePath)}`,
-                <GitFork className="w-4 h-4 shrink-0 text-icon-muted" />
-              )
-            )}
-          </div>
-        ))}
-      </nav>
-    </div>
-  )
+function hashForKey(key: string): string {
+  if (key.startsWith('skill:')) return `#/skill/${encodeURIComponent(key.slice('skill:'.length))}`
+  if (key.startsWith('repo-skill:')) return `#/repo-skill/${encodeURIComponent(key.slice('repo-skill:'.length))}`
+  return '#/'
 }
 
 function SkillEditor({
@@ -819,140 +484,96 @@ function SkillEditor({
     : t('skills.editor.editTitle', { name: skill?.name ?? '' })
 
   return (
-    <div className="flex flex-col gap-6 max-w-[62rem] w-full">
+    <div className="flex flex-col gap-6 w-full">
       {/* Header — no back arrow: the rail is always there to navigate from */}
       <div className="flex items-center gap-3">
-        <h2 className="text-xl font-semibold capitalize flex-1">
+        <Text size="xl" weight="bold" className="flex-1 capitalize">
           {headerTitle}
-        </h2>
+        </Text>
         {!isNew && onShare && (
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className={`${BTN} disabled:opacity-50`}
-          >
-            <Share2 className="w-3.5 h-3.5" />
+          <Button size="sm" tone="neutral" icon={Share2} busy={sharing} onClick={handleShare}>
             {sharing ? t('skills.editor.sharing') : t('skills.editor.share')}
-          </button>
+          </Button>
         )}
       </div>
 
+      {/* A `Banner` and not a red box of its own: it states a fact about the form
+          under it, which is the whole of what a banner is for. */}
       {error && (
-        <div className="px-4 py-3 bg-red/10 border border-red/20 rounded-lg text-red text-sm">
+        <Banner variant="danger" bordered>
           {error}
-        </div>
+        </Banner>
       )}
 
       {/* Form */}
       <div className="flex flex-col gap-4">
-        {/* Name */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.name')}</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!isNew}
-            placeholder="my-skill"
-            className={`${INPUT} w-full disabled:opacity-50`}
-          />
-          {isNew && (
-            <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
-          )}
-        </div>
+        <FormField
+          label={t('skills.editor.name')}
+          hint={isNew ? t('skills.editor.nameHelp') : undefined}
+          input={{ value: name, onChange: setName, disabled: !isNew, placeholder: 'my-skill' }}
+        />
 
-        {/* Description */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.description')}</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('skills.editor.descriptionPlaceholder')}
-            rows={3}
-            className={`${INPUT} w-full disabled:opacity-50 resize-none`}
-          />
-        </div>
+        <FormField
+          label={t('skills.editor.description')}
+          input={{
+            multiline: true,
+            value: description,
+            onChange: setDescription,
+            placeholder: t('skills.editor.descriptionPlaceholder'),
+            rows: 3,
+          }}
+        />
 
-        {/* Allowed Tools */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.allowedTools')}</label>
-          <input
-            type="text"
-            value={allowedTools}
-            onChange={(e) => setAllowedTools(e.target.value)}
-            placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
-            className={`${INPUT} w-full disabled:opacity-50`}
-          />
-        </div>
+        <FormField
+          label={t('skills.editor.allowedTools')}
+          input={{ value: allowedTools, onChange: setAllowedTools, placeholder: 'Bash(*), Read, Edit, Write, Glob, Grep' }}
+        />
 
-        {/* Image */}
+        {/* The one field whose control is not a box. `FormField` draws an `Input` from
+            data and nothing else, so the label here is its own — a field component that
+            also took arbitrary controls would be `SettingRow` with a different layout. */}
         <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.image')}</label>
-          <div className="flex items-center gap-3">
-            {imagePreview ? (
-              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
-                <img src={imagePreview} alt="Skill" className="w-full h-full object-cover" />
-                <button
-                  onClick={handleRemoveImage}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-red rounded-full flex items-center justify-center"
-                >
-                  <X className="w-3 h-3 text-ink" />
-                </button>
-              </div>
-            ) : imagePath ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line rounded-lg">
-                <ImagePlus className="w-4 h-4 text-accent" />
-                <span className="text-xs text-text-secondary truncate max-w-[200px]">{imagePath.split('/').pop()}</span>
-                <button onClick={handleRemoveImage} className="text-text-secondary hover:text-red">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : null}
-            <button
-              onClick={handlePickImage}
-              className={BTN}
-            >
-              <ImagePlus className="w-3.5 h-3.5" />
-              {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
-            </button>
-          </div>
-        </div>
-
-        {/* Content (markdown body) */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">
-            {t('skills.editor.content')}
-          </label>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={t('skills.editor.contentPlaceholder')}
-            rows={16}
-            className={`${INPUT} w-full font-mono disabled:opacity-50 resize-y`}
+          <Text size="sm" tone="secondary" className="mb-1.5 block">
+            {t('skills.editor.image')}
+          </Text>
+          <ImageField
+            src={imagePreview}
+            filename={imagePath?.split('/').pop() ?? null}
+            pickLabel={t('skills.editor.upload')}
+            changeLabel={t('skills.editor.change')}
+            removeLabel={t('common.remove')}
+            onPick={handlePickImage}
+            onRemove={handleRemoveImage}
           />
         </div>
+
+        <FormField
+          label={t('skills.editor.content')}
+          // The one field that IS the page, so it is the one allowed to grow.
+          input={{
+            multiline: true,
+            value: body,
+            onChange: setBody,
+            placeholder: t('skills.editor.contentPlaceholder'),
+            rows: 16,
+            mono: true,
+            resize: 'vertical',
+          }}
+        />
       </div>
 
-      {/* Actions */}
+      {/* Actions. `BTN_PRIMARY` and `BTN_DANGER` are gone with them: `Button`'s tones
+          say the same thing, and its `busy` spins the mark where the old constants only
+          dimmed the whole control. */}
       <div className="flex items-center gap-3 pb-6">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`${BTN_PRIMARY} disabled:opacity-50`}
-        >
-          <Save className="w-3.5 h-3.5" />
+        <Button size="sm" tone="accent" icon={Save} busy={saving} onClick={handleSave}>
           {saving ? t('common.saving') : t('common.save')}
-        </button>
+        </Button>
 
         {!isNew && onDelete && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className={`${BTN_DANGER} disabled:opacity-50`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
+          <Button size="sm" tone="danger" icon={Trash2} busy={deleting} onClick={handleDelete}>
             {deleting ? t('skills.editor.deleting') : t('common.remove')}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -1191,170 +812,140 @@ export function SkillsPage() {
     // The detail is still loading (getSkill resolves a tick after the route).
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+        <Loader variant="spin" size="xl" tone="accent" />
       </div>
     )
   })()
 
+  /**
+   * CREATE AND IMPORT, declared ONCE for the two places that offer them.
+   *
+   * They used to be four hand-built buttons: two beside the section heading and two
+   * more inside the empty state, each spelling `px-2.5 py-1.5 text-xs font-medium
+   * text-text-secondary bg-surface border border-line-strong rounded-lg` — and the
+   * empty state's pair had drifted to `px-3`. `SectionHeader` and `EmptyState` both
+   * take their controls as data and draw them at one rung, so this is the list and
+   * neither of them decides what a button looks like.
+   */
+  const newAction = useMemo(
+    () => ({ id: 'new', label: t('skills.new'), icon: Plus, onClick: () => { window.location.hash = '#/new' } }),
+    [t],
+  )
+  const importAction = useMemo(
+    () => ({ id: 'import', label: t('skills.import'), icon: FolderInput, onClick: handleImport }),
+    [t, handleImport],
+  )
+  // The heading reads import-then-new; the empty state leads with creating, which is
+  // what somebody with no skills at all is nearly always there to do.
+  const customActions = useMemo(() => [importAction, newAction], [importAction, newAction])
+  const emptyActions = useMemo(
+    () => [
+      { ...newAction, label: t('skills.create') },
+      { ...importAction, label: t('skills.importFolder') },
+    ],
+    [newAction, importAction, t],
+  )
+
+  const budget = useSkillBudget(skills, repoSkills)
+  const warnings = useMemo(
+    () => buildWarnings(duplicateSkills, longDescriptions, handleFixLongDescriptions, t),
+    [duplicateSkills, longDescriptions, handleFixLongDescriptions, t],
+  )
+
+  const cardFor = (skill: SkillInfo, badge?: boolean): SkillsOverviewCard => ({
+    key: skill.dirName,
+    name: skill.name,
+    description: skill.description,
+    imageUrl: imageCache[skill.dirName] ?? null,
+    ...(badge ? { badge: { label: t('skills.source.builtIn'), color: SOURCE_COLOR['built-in'] } } : {}),
+    onClick: () => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` },
+  })
+
   // Overview — the "All skills" destination: warnings, budget, and the cards.
   const overview = (
-    <div className="flex flex-col gap-10 max-w-[62rem] mx-auto w-full">
-      {/* Warnings */}
-      {!loading && (
-        <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />
-      )}
-
-      {/* Token Budget Gauge */}
-      {!loading && (skills.length > 0 || repoSkills.length > 0) && (
-        <TokenBudgetGauge skills={skills} repoSkills={repoSkills} />
-      )}
-
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {!loading && (
-        <>
-          {/* Built-in section */}
-          {builtInSkills.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Sparkles className="w-4 h-4" />
-                <span>{t('skills.builtIn')}</span>
-              </div>
-              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.builtInHelp')}</p>
-              <div className="grid grid-cols-3 gap-2">
-                {builtInSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.dirName}
-                    skill={skill}
-                    imageUrl={imageCache[skill.dirName] ?? null}
-                    badge={{ label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }}
-                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Custom section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <PenTool className="w-4 h-4" />
-                  <span>{t('skills.custom')}</span>
-                </div>
-                <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.customHelp')}</p>
-              </div>
-              {customSkills.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleImport}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <FolderInput className="w-3 h-3" />
-                    <span>{t('skills.import')}</span>
-                  </button>
-                  <button
-                    onClick={() => { window.location.hash = '#/new' }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t('skills.new')}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-            {customSkills.length === 0 ? (
-              <div className="w-full py-8 border border-dashed border-border/50 rounded-xl">
-                <div className="text-sm text-text-secondary/50 mb-3 text-center">{t('skills.customEmpty')}</div>
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => { window.location.hash = '#/new' }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t('skills.create')}</span>
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <FolderInput className="w-3 h-3" />
-                    <span>{t('skills.importFolder')}</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {customSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.dirName}
-                    skill={skill}
-                    imageUrl={imageCache[skill.dirName] ?? null}
-                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Repository Skills section */}
-          <div>
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <GitFork className="w-4 h-4" />
-              <span>{t('skills.repos')}</span>
-            </div>
-            <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
-            {repoSkillsLoading && (
-              <div className="flex items-center justify-center py-6">
-                <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
-              </div>
-            )}
-            {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
-              <p className="text-sm text-text-secondary/40">{t('skills.reposEmpty')}</p>
-            )}
-            {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
-              <div key={repoName} className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color || '#6B7280' }}
-                  />
-                  <span className="text-sm font-medium text-text-secondary">{repoName}</span>
-                  <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {rSkills.map((rs) => (
-                    <SkillCard
-                      key={rs.filePath}
-                      skill={rs}
-                      imageUrl={null}
-                      onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <SkillsOverview
+      loading={loading}
+      warnings={{ title: t('skills.warnings'), notices: warnings }}
+      {...(skills.length > 0 || repoSkills.length > 0 ? { budget } : {})}
+      sections={[
+        ...(builtInSkills.length > 0
+          ? [{
+            id: 'built-in',
+            icon: Sparkles,
+            title: t('skills.builtIn'),
+            hint: t('skills.builtInHelp'),
+            cards: builtInSkills.map((skill) => cardFor(skill, true)),
+          }]
+          : []),
+        {
+          id: 'custom',
+          icon: PenTool,
+          title: t('skills.custom'),
+          hint: t('skills.customHelp'),
+          // The two controls only exist once there is a list to act on: with no custom
+          // skills the same two verbs are the empty state's, and offering them twice on
+          // one screen is two answers to one question.
+          actions: customSkills.length > 0 ? customActions : [],
+          cards: customSkills.map((skill) => cardFor(skill)),
+          empty: { text: t('skills.customEmpty'), actions: emptyActions },
+        },
+        {
+          id: 'repos',
+          icon: GitFork,
+          title: t('skills.repos'),
+          hint: t('skills.reposHelp'),
+          loading: repoSkillsLoading,
+          repos: Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => ({
+            id: repoName,
+            name: repoName,
+            color: color || REPO_FALLBACK_COLOR,
+            cards: rSkills.map((rs) => ({
+              key: rs.filePath,
+              name: rs.name,
+              description: rs.description,
+              onClick: () => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` },
+            })),
+          })),
+          empty: { text: t('skills.reposEmpty') },
+        },
+      ]}
+    />
   )
+
+  const railGroups: SkillsRailGroup[] = [
+    ...(builtInSkills.length > 0
+      ? [{
+        id: 'built-in',
+        label: t('skills.builtIn'),
+        icon: Sparkles,
+        rows: builtInSkills.map((s) => ({ key: `skill:${s.dirName}`, label: s.name, thumb: { src: imageCache[s.dirName] ?? null, alt: s.name } })),
+      }]
+      : []),
+    {
+      id: 'custom',
+      label: t('skills.custom'),
+      icon: PenTool,
+      rows: customSkills.map((s) => ({ key: `skill:${s.dirName}`, label: s.name, thumb: { src: imageCache[s.dirName] ?? null, alt: s.name } })),
+      empty: t('skills.customEmpty'),
+      action: { icon: Plus, title: t('skills.new'), onClick: () => { window.location.hash = '#/new' } },
+      ...(activeKey === 'new' ? { draft: t('skills.editor.newTitle') } : {}),
+    },
+    ...Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => ({
+      id: `repo:${repoName}`,
+      label: repoName,
+      repoColor: color || REPO_FALLBACK_COLOR,
+      rows: rSkills.map((rs) => ({ key: `repo-skill:${rs.filePath}`, label: rs.name, icon: GitFork })),
+    })),
+  ]
 
   return (
     <div className="h-full flex animate-fade-in">
       <SkillsRail
-        builtInSkills={builtInSkills}
-        customSkills={customSkills}
-        repoSkillsByRepo={repoSkillsByRepo}
-        imageCache={imageCache}
+        overviewLabel={t('skills.allSkills')}
+        groups={railGroups}
         activeKey={activeKey}
-        onSelect={(hash) => { window.location.hash = hash }}
-        onNew={() => { window.location.hash = '#/new' }}
+        onSelect={(key) => { window.location.hash = hashForKey(key) }}
+        ariaLabel={t('skills.allSkills')}
       />
       <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
         <SweepPane pageKey={activeKey} order={railPosition} scrollRef={contentScrollRef}>

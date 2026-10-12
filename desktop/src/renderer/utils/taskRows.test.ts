@@ -13,6 +13,8 @@ import {
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  hasAgentedIssues,
+  mergeSearchIssues,
   NO_FILTER,
   rowKey,
   sortIssues,
@@ -324,7 +326,7 @@ describe('counters', () => {
   // could read — a floor, and the same claim a failed GitHub group already made.
   it('counts a truncated sprint as the tickets it could show', () => {
     const rows = build([
-      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })], truncated: true }),
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })], truncatedColumns: ['backlog'] }),
       group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue()], totalOpen: 214 }),
     ])
     expect(countOpenIssues(rows)).toEqual(3)
@@ -474,7 +476,7 @@ describe('buildTaskRows — two repositories on one tracker target', () => {
   it('offers both repositories to the filter and keeps the card for either', () => {
     const rows = build([shared('magic-slash'), shared('poppins-pex')])
 
-    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'magic-slash' })).toHaveLength(1)
     expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'poppins-pex' })).toHaveLength(1)
     expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'jira-only' })).toHaveLength(0)
   })
@@ -662,22 +664,22 @@ describe('filterTaskRows', () => {
 })
 
 describe('taskFilterRepos', () => {
-  it('offers each repository once, whatever its card count', () => {
-    const rows = build([
-      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
-      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
-      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue({ number: 9 })] }),
-    ])
+  it('offers what the read named, in its order', () => {
+    const options = [{ configKey: 'poppins-pex', name: 'PEX' }, { configKey: 'magic-slash', name: 'magic-slash' }]
 
-    // In the order the CARDS are in, which is `buildTaskRows`' sort and not the order
-    // they were declared here: equal backlogs, so alphabetical decides.
-    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    expect(taskFilterRepos(options, {}).map((repo) => repo.configKey)).toEqual(['poppins-pex', 'magic-slash'])
   })
 
   it('carries the dot colour the cards are drawn with', () => {
-    const rows = build([group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })])
+    const repositories = { 'my-side-project': repo({ name: 'my-side-project' }), other: repo({ name: 'other' }) }
+    const rows = buildTaskRows(
+      [group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })],
+      repositories,
+      {},
+    )
 
-    expect(taskFilterRepos(rows)[0].color).toBe(rows[0].color)
+    expect(taskFilterRepos([{ configKey: 'my-side-project', name: 'my-side-project' }], repositories)[0].color)
+      .toBe(rows[0].color)
   })
 })
 
@@ -749,6 +751,132 @@ describe('filterTaskRows, by epic', () => {
     ])
 
     expect(filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100' })).toHaveLength(1)
+  })
+})
+
+describe('filterTaskRows, by agent', () => {
+  /** One GitHub card and one Jira card, with an agent on one ticket of each. */
+  function backlog(): TaskRow[] {
+    return build(
+      [
+        group({
+          configKey: 'poppins-pex',
+          name: 'poppins-pex',
+          issues: [issue({ number: 234 }), issue({ number: 1023 })],
+        }),
+        jiraGroup({
+          configKey: 'jira-only',
+          name: 'jira-only',
+          issues: [jiraIssue({ key: 'PER-1234' }), jiraIssue({ key: 'PER-77' })],
+        }),
+      ],
+      REPOS,
+      // As `buildAgentedIssues` produces it: normalised ids, per repository config key.
+      { 'poppins-pex': new Set(['234']), 'jira-only': new Set(['PER-1234']) },
+    )
+  }
+
+  function shown(rows: TaskRow[]): string[] {
+    return rows.flatMap((row) => row.issues.map((i) => ('key' in i ? i.key : `#${i.number}`)))
+  }
+
+  it('keeps only the tickets somebody is on, across both trackers', () => {
+    // Sorted, because the card order is `buildTaskRows`' business and not this rule's.
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, agent: 'with' })).sort()).toEqual(['#234', 'PER-1234'])
+  })
+
+  it('keeps only the tickets nobody is on', () => {
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, agent: 'without' })).sort()).toEqual(['#1023', 'PER-77'])
+  })
+
+  it('leaves the board alone when it is not set', () => {
+    const rows = backlog()
+    // Identity, for `filterTaskRows`' own reason: the page memoises on this.
+    expect(filterTaskRows(rows, NO_FILTER)).toBe(rows)
+  })
+
+  it('folds a Jira key the agent was started under in another casing', () => {
+    // `/magic:start` writes whatever was typed, and Jira browses `per-1234` to
+    // `PER-1234`. The filter has to see one ticket, not two.
+    const rows = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-1234' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-1234']) },
+    )
+
+    expect(shown(filterTaskRows(rows, { ...NO_FILTER, agent: 'with' }))).toEqual(['PER-1234'])
+  })
+
+  it('drops a card whose every ticket the filter took, and never a failed one', () => {
+    const rows = build(
+      [
+        group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue({ number: 234 })] }),
+        jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [], error: { error: 'offline', message: 'x' } }),
+      ],
+      REPOS,
+      {},
+    )
+
+    const kept = filterTaskRows(rows, { ...NO_FILTER, agent: 'with' })
+
+    // The GitHub card had one ticket and nobody on it; the failed card has no issues
+    // to narrow and goes on saying it could not be read.
+    expect(kept.map((row) => row.tracker)).toEqual(['jira'])
+  })
+
+  it('narrows on the agent AND the search together', () => {
+    const rows = build(
+      [
+        group({
+          configKey: 'poppins-pex',
+          name: 'poppins-pex',
+          issues: [
+            issue({ number: 234, title: 'Fix the export' }),
+            issue({ number: 1023, title: 'Fix the import' }),
+          ],
+        }),
+      ],
+      REPOS,
+      { 'poppins-pex': new Set(['234', '1023']) },
+    )
+
+    expect(shown(filterTaskRows(rows, { ...NO_FILTER, agent: 'with', query: 'export' }))).toEqual(['#234'])
+  })
+})
+
+describe('hasAgentedIssues', () => {
+  it('answers on the VISIBLE tickets, not on the size of the index', () => {
+    // The index holds every ticket of the repository somebody is on, including ones
+    // this sprint does not contain — on its size alone the page would offer a picker
+    // whose "with an agent" entry empties the board.
+    const rows = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-77' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-1234']) },
+    )
+
+    expect(rows[0].agentedIssues.size).toBe(1)
+    expect(hasAgentedIssues(rows)).toBe(false)
+  })
+
+  it('says yes on either tracker', () => {
+    const jira = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-77' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-77']) },
+    )
+    const github = build(
+      [group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue({ number: 234 })] })],
+      REPOS,
+      { 'poppins-pex': new Set(['234']) },
+    )
+
+    expect(hasAgentedIssues(jira)).toBe(true)
+    expect(hasAgentedIssues(github)).toBe(true)
+  })
+
+  it('says no on a board nobody is on', () => {
+    expect(hasAgentedIssues(build([group({ issues: [issue()] })]))).toBe(false)
   })
 })
 
@@ -887,5 +1015,64 @@ describe('sortTaskRows', () => {
 
     expect(sorted[0]).toBe(rows[0])
     expect(sorted[0].issues.map((i) => 'number' in i && i.number)).toEqual([2, 1])
+  })
+})
+
+describe('mergeSearchIssues', () => {
+  // The sprint search reaches PAST the board's per-column budgets. Its findings are
+  // merged into the row they belong to rather than drawn beside the columns, so every
+  // rule downstream — which column a ticket lands in, whether an agent is on it, the
+  // counts — goes on reading one list.
+
+  it('adds what the search found to the row of the picked repository', () => {
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1' })] })])
+
+    const merged = mergeSearchIssues(rows, 'jira-only', [jiraIssue({ key: 'PROJ-900' })])
+
+    expect(merged[0].issues.map((issue) => 'key' in issue && issue.key)).toEqual(['PROJ-1', 'PROJ-900'])
+  })
+
+  it('adds rather than replaces, because the two searches match differently', () => {
+    // The site matches whole words with a trailing wildcard where the box matches
+    // substrings, so `ploy` finds "deployment" among the loaded rows and nothing at all
+    // on the site. Replacing would take away a match the reader already had.
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1', title: 'redeployment' })] })])
+
+    expect(mergeSearchIssues(rows, 'jira-only', []) [0].issues).toHaveLength(1)
+  })
+
+  it('keeps the loaded copy of a ticket the search also returned', () => {
+    // Both are the same ticket read the same way, so the choice is nearly arbitrary —
+    // but taking the loaded one means the row's issues keep their object identity,
+    // which is what stops every memoised card re-rendering on a keystroke.
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1', title: 'loaded' })] })])
+
+    const merged = mergeSearchIssues(rows, 'jira-only', [jiraIssue({ key: 'PROJ-1', title: 'fetched' })])
+
+    expect(merged[0].issues).toHaveLength(1)
+    expect(merged[0].issues[0].title).toBe('loaded')
+    // Nothing changed, so nothing was rebuilt: the same array, by identity.
+    expect(merged).toBe(rows)
+  })
+
+  it('leaves a GitHub row alone', () => {
+    // The search names one Jira project. A GitHub row on the same board has its own
+    // cap and its own admission — a number, off `totalCount` — and nothing to merge.
+    const rows = build([
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue()] }),
+      jiraGroup({ issues: [] }),
+    ])
+
+    const merged = mergeSearchIssues(rows, 'magic-slash', [jiraIssue({ key: 'PROJ-900' })])
+
+    expect(merged).toBe(rows)
+  })
+
+  it('does nothing at all when there is nothing to merge', () => {
+    // An idle page rebuilds no rows: same array, same identity.
+    const rows = build([jiraGroup({ issues: [jiraIssue()] })])
+
+    expect(mergeSearchIssues(rows, 'jira-only', [])).toBe(rows)
+    expect(mergeSearchIssues(rows, '', [jiraIssue({ key: 'PROJ-900' })])).toBe(rows)
   })
 })

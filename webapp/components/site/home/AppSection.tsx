@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
-import { ArrowRight, BotMessageSquare, ListTodo, Route } from 'lucide-react'
+import { ArrowRight, BotMessageSquare, ListTodo, NotebookPen, Route } from 'lucide-react'
 import { ButtonNavLink, FeaturePoints, SplitFeature } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
 import { DESKTOP_PATH } from '@/lib/siteNav'
@@ -93,8 +93,9 @@ import { HomeHeading, HomeSection } from './Shell'
  * crop given back — 73% of the window's height is in frame at the top rung where 58% was
  * — and what it costs is that the plate is now the taller of the two columns, which is
  * the shape that arrangement expects ("a drawing tall enough to be worth this much of a
- * band is taller than three paragraphs", `components/ui.tsx`). Every rung still crops the
- * bottom; the scales are untouched, so the right-hand crop is exactly where it was.
+ * band is taller than three paragraphs", `components/ui.tsx`). The bottom crop has since
+ * gone altogether — see `PLATE` — and the scales are untouched, so the right-hand crop is
+ * exactly where it was.
  *
  * THE LAST COLUMN IS WHAT PICKED EVERY SCALE, and it is the detail that separates a crop
  * from a botched fit. The window's two side columns are FIXED — a 230px agents rail and a
@@ -112,9 +113,8 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * WHAT STAYS ON SCREEN at every rung is therefore the same composition: the titlebar, the
  * agents rail with its five rows, and the terminal — the three things the paragraph beside
- * it is about. A quarter to a third of the window's height still goes, which is why the
- * usage gauges at the rail's foot are never in frame; they are on `/desktop`, where the
- * window is whole.
+ * it is about — and, now that the plate shows the whole height, the usage gauges at the
+ * rail's foot as well.
  *
  * EVERY RUNG IS A `min-[…]` VARIANT, including the ones that coincide with a Tailwind
  * screen: the breakpoints are derived from the DRAWING and the column, not from the
@@ -125,12 +125,23 @@ import { HomeHeading, HomeSection } from './Shell'
  * Both lists are written out as literal strings because Tailwind reads SOURCE: a height
  * or a scale assembled from a number at runtime is a class that was never generated.
  */
+/**
+ * THE WHOLE HEIGHT NOW, at the owner's ask ("affiche la en entier en hauteur, laisse la
+ * coupe largeur"): each rung's height is its inset, the window's full `800 × scale`, and
+ * the same inset again below it, so the bottom crop is gone and a strip of `sky` closes
+ * the plate under the window. The SCALES ARE UNTOUCHED, so the right-hand crop — the one
+ * the last column of the table above picked — is exactly where it was.
+ *
+ *     320   16 + 280 + 16 = 312      1024   24 + 520 + 24 = 568
+ *     528   20 + 520 + 20 = 560      1148   32 + 600 + 32 = 664
+ *     768   20 + 400 + 20 = 440
+ */
 const PLATE = [
-  'h-[240px] pl-4 pt-4',
-  'min-[528px]:h-[340px] min-[528px]:pl-5 min-[528px]:pt-5',
-  'min-[768px]:h-[320px]',
-  'min-[1024px]:h-[400px] min-[1024px]:pl-6 min-[1024px]:pt-6',
-  'min-[1148px]:h-[470px] min-[1148px]:pl-8 min-[1148px]:pt-8',
+  'h-[312px] pl-4 pt-4',
+  'min-[528px]:h-[560px] min-[528px]:pl-5 min-[528px]:pt-5',
+  'min-[768px]:h-[440px]',
+  'min-[1024px]:h-[568px] min-[1024px]:pl-6 min-[1024px]:pt-6',
+  'min-[1148px]:h-[664px] min-[1148px]:pl-8 min-[1148px]:pt-8',
 ].join(' ')
 
 const WINDOW_ZOOM = [
@@ -142,7 +153,7 @@ const WINDOW_ZOOM = [
 ].join(' ')
 
 /**
- * THE THREE ROWS UNDER THE PARAGRAPH, and they are a caption to the window beside them.
+ * THE FOUR ROWS UNDER THE PARAGRAPH, and they are a caption to the window beside them.
  *
  * ASKED FOR AS "une liste avec icon bleu comme le block 8 skills", which is exactly what
  * this is: the same `FeaturePoints` recipe `SkillsSection` calls, at the same `mt-10`,
@@ -151,10 +162,10 @@ const WINDOW_ZOOM = [
  * one list and not two that resemble each other.
  *
  * WHY IT IS A MODULE CONST AND NOT AN INLINE `.map()`: the component below is already a
- * composition of four things, and a three-row array in the middle of it would be the only
+ * composition of four things, and a four-row array in the middle of it would be the only
  * data in a file that is otherwise arrangement. `SkillsSection` splits the same way; the
  * difference is that its rows live in `lib/skillsBand.ts` because they are ALSO read by a
- * test that runs outside `webapp/`. These three are not, so they stay here, beside the
+ * test that runs outside `webapp/`. These four are not, so they stay here, beside the
  * band that prints them — a module in `lib/` for one caller and no second reader would be
  * a file to keep in step for nothing.
  *
@@ -168,12 +179,15 @@ const WINDOW_ZOOM = [
  * the eight commands looks like, and it is not `Activity` or `LineChart` on purpose —
  * this band is not claiming a dashboard of metrics.
  *
- * TWO OF THE THREE ROWS NAME A PRODUCT, and they name it as a chip rather than as a
+ * TWO OF THE FOUR ROWS NAME A PRODUCT, and they name it as a chip rather than as a
  * word: the trackers on the first row, Claude Code on the second. Their labels are
  * therefore assembled by `points()` below instead of being taken straight from the
  * catalogue. See `ProductChip`.
  */
 const POINTS = [
+  // FIRST, because the plan comes before the tasks in the cycle. `NotebookPen` is the
+  // app's own Plans glyph — the sidebar's and the page overlay's tab.
+  { icon: NotebookPen, label: 'site.appBand.pointPlans' },
   { icon: ListTodo, label: 'site.appBand.pointTasks' },
   { icon: BotMessageSquare, label: 'site.appBand.pointAgents' },
   { icon: Route, label: 'site.appBand.pointTracking' },

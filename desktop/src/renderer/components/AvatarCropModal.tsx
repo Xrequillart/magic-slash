@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ZoomIn, ZoomOut, Check } from 'lucide-react'
+import { ZoomIn, ZoomOut, Check } from '@ds/desktop/icons'
 import { Modal } from './Modal'
 import { useT } from '../i18n'
 import { BTN, BTN_ICON, BTN_PRIMARY } from '../theme/controls'

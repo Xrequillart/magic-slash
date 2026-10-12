@@ -37,7 +37,18 @@ export const PAGE_CHROME = {
   title: 'site.changelog.title',
   /** The one line under it. */
   lead: 'site.changelog.lead',
-  /** The hero's link out to the file this page is rendered from. */
+  /**
+   * The hero's CTA. It names the newest version, so the button says where it goes
+   * rather than "jump to the list" — hence the `{version}` placeholder.
+   */
+  seeLatest: 'site.changelog.seeLatest',
+  /**
+   * The link out to the file this page is rendered from.
+   *
+   * It used to sit in the hero as well, under the lead. It is the EMPTY STATE's only
+   * now: with a list on screen the button above points at it, and with no list there is
+   * nothing to point at but the file.
+   */
   readOnGithub: 'site.changelog.readOnGithub',
   /** The button under the list, while there are older versions left to show. */
   showMore: 'site.changelog.showMore',

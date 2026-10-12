@@ -67,9 +67,12 @@ export function LanguagesArt() {
   return (
     <div
       aria-hidden
-      className="flex h-full min-h-44 items-center justify-center overflow-hidden rounded-xl bg-tone-mist px-6 py-6"
+      // The integrations' plate (`LogoPlate`): our own ground, the flag on a white tile.
+      className="flex h-full min-h-44 items-center justify-center overflow-hidden rounded-xl bg-plate-magic p-6"
     >
-      <RoundFlag lang={lang} className="h-24 w-24 rounded-full shadow-card" />
+      <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white shadow-lift">
+        <RoundFlag lang={lang} className="h-16 w-16 rounded-full" />
+      </span>
     </div>
   );
 }

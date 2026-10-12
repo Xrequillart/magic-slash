@@ -1,8 +1,12 @@
+import { quickLaunchRepo } from '../quickLaunchRepo'
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
+import { FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
+import { ConfirmDialog, Loader } from '@ds/desktop'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
+import type { ModalId } from './store'
+import type { LucideIcon } from '@ds/desktop/icons'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
 import { useOrderedTerminals } from './hooks/useOrderedTerminals'
@@ -10,13 +14,15 @@ import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
+import { UpdateModal } from './components/UpdateModal'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ScriptTerminalModal } from './components/ScriptTerminalModal'
+import { SettingsModal } from './components/SettingsModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
-import { DashboardPage } from './pages/Dashboard'
+import { PlansPage } from './pages/Plans'
 import { TasksPage } from './pages/Tasks'
 import { PageModal } from './components/PageModal'
 import { LiveIndicator } from './components/LiveIndicator'
@@ -25,17 +31,49 @@ import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { SetupWizard } from './components/SetupWizard'
 import { RepoSetupWizard } from './components/RepoSetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
+import { useOrgList } from './hooks/useOrg'
 import FilePreviewPanel from './components/FilePreviewPanel'
 import PRCommentsPanel from './components/pr-comments/PRCommentsPanel'
 import { useT, type MessageKey } from './i18n'
 import { BTN_PRIMARY } from './theme/controls'
+import { dismissSplash } from './utils/splash'
+
+/**
+ * The app's four page overlays, in the order the sidebar's top group lists them — which
+ * is also the order the work runs in: you plan, the plan files tickets, the skills are
+ * what act on them, and the settings are how all three behave.
+ *
+ * MODULE SCOPE, not built inside the component. `TabStrip` takes `items` as a prop and
+ * measures its pill against them; an array rebuilt on every render would be a new
+ * identity every time, and this one is a constant apart from its translations. The
+ * LABELS are keys rather than strings for the same reason the rail's are — a module-level
+ * `t()` would be evaluated once at import and pin the strip to whatever language the app
+ * started in.
+ *
+ * Keyed by `ModalId`, because the tab IS the open modal: there is no second piece of
+ * state saying which page is showing, which is what lets every `openModal` deep link
+ * double as a tab switch.
+ */
+const PAGE_TABS: { key: ModalId; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { key: 'plans', labelKey: 'plans.title', icon: NotebookPen },
+  { key: 'tasks', labelKey: 'tasks.title', icon: ListTodo },
+  { key: 'skills', labelKey: 'sidebar.skills', icon: Sparkles },
+  // Settings is LAST, and it is the REPOSITORIES — a folder mark and the word, not a
+  // gear and not a face. It was drawn as whoever was signed in, with their photo and
+  // their name, on the grounds that Settings was the one page about the reader rather
+  // than about the work. It is not any more: the account moved to the title bar's own
+  // sheet, and what is left in this window is the list of repositories. A tab wearing
+  // somebody's photograph would now be a promise about a page that is not there.
+  { key: 'settings', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
+]
+
 
 function LoadingScreen() {
   const t = useT()
   return (
     <div className="flex items-center justify-center h-screen bg-transparent">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-3 border-line-strong border-t-accent rounded-full animate-spin" />
+        <Loader variant="spin" size="2xl" tone="accent" label={t('common.loading')} />
         <p className="text-ink/60">{t('common.loading')}</p>
       </div>
     </div>
@@ -61,11 +99,14 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal, openModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
   useWindowSplitMode()
+  // The organization list is read all over the app (the repository list groups by
+  // it) but was only ever fetched by the pages that manage it, so it belongs here.
+  useOrgList()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showProfileWizard, setShowProfileWizard] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
@@ -94,6 +135,12 @@ export function App() {
     didLandRef.current = true
     setActiveTerminal(first.id)
   }, [flatVisualOrder, rightPaneTerminalIds, setActiveTerminal])
+
+  // The launch splash stands in for the loading screen: it leaves once the config
+  // has landed, on the app or on its error screen.
+  useEffect(() => {
+    if (!configLoading) dismissSplash()
+  }, [configLoading])
 
   // Check if user profile exists on mount
   useEffect(() => {
@@ -168,9 +215,17 @@ export function App() {
     }
   }, [closeAgentModal, killTerminal, closeCloseAgentModal])
 
+  // Settings → Agents can turn the question off. The request still goes through the
+  // modal's state, so ⌘W and the title bar's button keep one road, and is answered here
+  // at once instead of being drawn. Absent means ask, which is what it always did.
+  const skipArchiveConfirm = config?.confirmAgentArchive === false
+  useEffect(() => {
+    if (closeAgentModal && skipArchiveConfirm) handleCloseAgent()
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent])
+
   // Focus confirm button and listen for Enter/Escape when close agent modal is shown
   useEffect(() => {
-    if (!closeAgentModal) return
+    if (!closeAgentModal || skipArchiveConfirm) return
 
     setTimeout(() => confirmCloseButtonRef.current?.focus(), 0)
 
@@ -186,7 +241,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closeAgentModal, handleCloseAgent, closeCloseAgentModal])
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent, closeCloseAgentModal])
 
   // Listen for tray:focusAgent IPC events
   useEffect(() => {
@@ -224,26 +279,34 @@ export function App() {
         case 'skills':
           store.openModal('skills')
           break
-        case 'team':
-          store.openModal('team')
+        case 'plans':
+          store.openModal('plans')
           break
         case 'account':
-          store.openSettingsModal('account')
+          // Straight to the dialog rather than to the dropdown that normally opens it:
+          // somebody who picked "Account" in the menu bar asked for the page, not for a
+          // list of pages.
+          store.setSettingsTab('account')
           break
       }
     })
     return () => { unsubscribe() }
   }, [])
 
-  // Reset the shared hash route on close so the next open lands on the modal's
-  // home rather than a stale sub-page. Both Settings (#/repo/<name>) and Skills
-  // (#/skill/<name>, #/new, #/repo-skill/<path>) route off window.location.hash.
-  const handleCloseModal = useCallback(() => {
-    closeModal()
-    if (window.location.hash && window.location.hash !== '#/') {
-      window.location.hash = '#/'
-    }
-  }, [closeModal])
+  /**
+   * The page the overlay is on, as its row of `PAGE_TABS` — what the header's title and
+   * mark are both drawn from.
+   *
+   * Falls back to the first row rather than going undefined: `activeModal` is a `ModalId`
+   * and every one of them is in the table, so a miss is impossible today and would be a
+   * table that lost a row tomorrow. A header with no name at all is a worse answer than
+   * the wrong one.
+   */
+  const activePage = PAGE_TABS.find((tab) => tab.key === activeModal) ?? PAGE_TABS[0]
+
+  // The hash reset that used to be spelled out here is in `closeModal` itself now:
+  // this handler only covered the close button and Escape, and the shared route was
+  // left stale by every other way out of the overlay. See the store.
 
   // Listen for quicklaunch:dispatch IPC events
   useEffect(() => {
@@ -252,17 +315,16 @@ export function App() {
       const store = useStore.getState()
       store.closeModal()
 
-      // Find first repo to use as cwd
-      const repos = store.config?.repositories || {}
-      const firstRepo = Object.values(repos)[0]
-      const cwd = firstRepo?.path || '~/Documents'
+      // Which repository: Settings → Quick Launch (the first one unless told otherwise).
+      const repo = quickLaunchRepo(store.config?.repositories, store.config?.quickLaunchRepo, prompt)
+      const cwd = repo?.path || '~/Documents'
 
       // Name the agent "Claude N" like Cmd+N does
       const count = store.terminals.length + 1
       const agentName = `Claude ${count}`
 
       // Launch agent with the prompt passed directly as a CLI argument
-      await launchClaudeTerminal(agentName, cwd, prompt)
+      await launchClaudeTerminal(agentName, cwd, prompt, undefined, undefined, store.config?.quickLaunchLaunchMode)
     })
     return () => { unsubscribe() }
   }, [launchClaudeTerminal])
@@ -415,7 +477,7 @@ export function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
-        if (isWideScreen && splitEnabled && terminals.length >= 2) {
+        if (isWideScreen && terminals.length >= 2) {
           e.preventDefault()
           toggleSplitActive()
         }
@@ -424,7 +486,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isWideScreen, splitEnabled, terminals.length, toggleSplitActive])
+  }, [isWideScreen, terminals.length, toggleSplitActive])
 
   if (configLoading) {
     return <LoadingScreen />
@@ -439,8 +501,12 @@ export function App() {
       {/* Title Bar */}
       <TitleBar />
 
-      {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Layout. `app-body` is what the quick-settings sheet blurs while it is down —
+          see `index.css` and the note on `ControlCenter`: a `backdrop-filter` in this
+          transparent window renders almost no blur, so the sheet asks the app to blur this
+          region instead. The title bar stays outside it, sharp, because the button that
+          closes the sheet is on it. */}
+      <div className="app-body flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <Sidebar />
 
@@ -472,79 +538,92 @@ export function App() {
       <FilePreviewPanel />
       <PRCommentsPanel />
 
-      {/* Page overlays — Settings, Skills, Team and Tasks */}
-      {activeModal === 'settings' && (
-        <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
-          <ConfigPage />
-        </PageModal>
-      )}
+      {/* EVERY PAGE OVERLAY IS ONE MODAL WITH FOUR TABS, and the single `<PageModal>`
+          element below is what makes it one: switching tabs changes its children and
+          nothing else, so React keeps the same instance mounted — the backdrop does not
+          fade, the panel does not replay its entrance, and full screen stays where the
+          reader put it. Four sibling `{activeModal === '…' && …}` blocks, which is what
+          this was, could not do that: they are different positions in the tree, so every
+          switch unmounted one modal and mounted another, exit animation and all.
 
-      {activeModal === 'skills' && (
-        <PageModal title={t('sidebar.skills')} onClose={handleCloseModal}>
-          <SkillsPage />
-        </PageModal>
-      )}
+          THE STRIP IS THE SIDEBAR'S TOP GROUP, in its order. Those four buttons are the
+          whole of this app outside the agents list, and they were already read as a
+          group; turning them into tabs of one overlay only says out loud what the
+          sidebar already said. It also means the reader crossing between them — a plan's
+          ticket rows open the board, a ticket's page names the plan it came out of, a
+          skill's page and the repository settings that configure it — never watches an
+          overlay close and another open.
 
-      {activeModal === 'team' && (
-        <PageModal title={t('sidebar.team')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
-          <DashboardPage />
-        </PageModal>
-      )}
+          `activeModal` IS the selected tab. No second piece of state, which is what keeps
+          every existing deep link working untouched: `openTasksModal`, `openPlansModal`
+          and `openSettingsModal` still call `openModal`, and with the overlay already up
+          that call now reads as "switch to this tab" without any of the three wrappers
+          knowing.
 
-      {activeModal === 'tasks' && (
-        <PageModal title={t('tasks.title')} onClose={handleCloseModal}>
-          <TasksPage />
+          The live indicator rides with the Plans tab alone. On the LIST it reports the
+          connection, not the list: the list has no subscription of its own, so a plan a
+          teammate starts while it is open arrives on the next read, and what the dot says
+          is whether the backend is reachable at all. On an OPEN PLAN it reports that
+          plan's channels (#306, 20260929110000): who else is on it, and their edits and
+          comments, arrive live while the dot is green — see `LiveIndicator`.
+
+          Only the ACTIVE tab's page is mounted. Each is a full page with its own reads —
+          the board alone asks every tracked repository for its issues — and keeping the
+          other three alive to preserve a filter would mean paying for four on every open
+          of any. It is also what keeps each one's own navigation honest: Settings and
+          Skills have rails of their own, and reopening a tab lands on its default rather
+          than wherever it was abandoned. */}
+      {activeModal && (
+        <PageModal
+          title={t(activePage.labelKey)}
+          // The ACTIVE TAB'S OWN ICON, so the mark and the word name the same page. The
+          // component draws it — see `titleIcon` — which is what keeps every one of the
+          // four at the same rung and in the same tone.
+          titleIcon={activePage.icon}
+          onClose={closeModal}
+          headerRight={activeModal === 'plans' ? <LiveIndicator /> : undefined}
+          tabs={{
+            ariaLabel: t('workspace.tabs.aria'),
+            activeKey: activeModal,
+            items: PAGE_TABS.map(({ key, labelKey, icon }) => ({ key, label: t(labelKey), icon })),
+            // The cast holds because TabStrip only ever reports back a key it was
+            // handed, and every key here is a `ModalId` by construction.
+            onSelect: (key) => openModal(key as ModalId),
+          }}
+        >
+          {activeModal === 'plans' && <PlansPage />}
+          {activeModal === 'tasks' && <TasksPage />}
+          {activeModal === 'skills' && <SkillsPage />}
+          {activeModal === 'settings' && <ConfigPage />}
         </PageModal>
       )}
 
       {/* Mounted unconditionally on purpose — see the component. */}
       <ScriptTerminalModal />
 
+      {/* THE TITLE BAR'S TWO DIALOGS, at the app's root and not under the bar that leads
+          to them: each is opened from three or four places — the quick settings sheet,
+          the account dropdown, the app menu, the Tasks page — and a dialog rendered
+          inside one of its openers would go when that opener did. Both read their own
+          open state from the store, so mounting them costs a null render. */}
+      <SettingsModal />
+
       {/* Toast Notifications */}
       <ToastContainer />
 
-      {/* Global Close Agent Confirmation Modal */}
-      {closeAgentModal && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
-          onClick={closeCloseAgentModal}
-        >
-          <div
-            className="bg-bg-secondary border border-line rounded-xl mx-4 max-w-sm animate-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-              <div className="p-2 bg-yellow/10 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-yellow" />
-              </div>
-              <h3 className="text-base font-semibold">{t('app.closeAgent.title')}</h3>
-            </div>
-
-            {/* Body */}
-            <div className="px-5 pb-5">
-              <p className="text-text-secondary text-sm mb-4">
-                {t('app.closeAgent.body')}
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={closeCloseAgentModal}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  ref={confirmCloseButtonRef}
-                  onClick={handleCloseAgent}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all focus:outline-none"
-                >
-                  {t('app.closeAgent.confirm')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Global Close Agent Confirmation Modal. Enter and Escape are answered above. */}
+      {closeAgentModal && !skipArchiveConfirm && (
+        <ConfirmDialog
+          title={t('app.closeAgent.title')}
+          body={t('app.closeAgent.body')}
+          confirmLabel={t('app.closeAgent.confirm')}
+          cancelLabel={t('common.cancel')}
+          onConfirm={handleCloseAgent}
+          onCancel={closeCloseAgentModal}
+          confirmRef={confirmCloseButtonRef}
+          backdropClassName="animate-modal-backdrop"
+          className="animate-modal-content"
+        />
       )}
 
       {/* Profile Onboarding Wizard */}
@@ -569,7 +648,12 @@ export function App() {
           pending payload when the user closes it, so it comes back on its own. */}
       {!showRepoWizard && <WhatsNewModal />}
 
-      {/* Update Overlay */}
+      {/* The update flow, from a check or the release found at launch to the relaunch.
+          A splash that takes the window for the whole of it, so it is drawn last. */}
+      <UpdateModal />
+
+      {/* What is left of the overlay: the one failure that has to take the window on
+          its own, a restart that did not happen. */}
       <UpdateOverlay />
     </div>
   )

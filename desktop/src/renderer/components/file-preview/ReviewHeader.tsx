@@ -1,4 +1,4 @@
-import { FolderGit2 } from 'lucide-react'
+import { FolderGit2 } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 import ChangeCountChip from './ChangeCountChip'
 import { DRAWER_HEADER, DrawerCloseButton } from './FileHeader'

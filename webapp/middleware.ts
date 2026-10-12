@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { canonicalHost, resolveRewrite, retiredPath } from '@/lib/hostRouting'
+import { canonicalHost, movedPage, resolveRewrite, retiredPath } from '@/lib/hostRouting'
 
 /**
- * One Next.js deployment, four sites — the apex plus the app, admin and invite
+ * One Next.js deployment, four sites — the apex plus the app, invite and design
  * subdomains. Which host serves which route, and why each rule exists, is in
  * `lib/hostRouting.ts`; this is the framework wiring around it.
  *
@@ -22,6 +22,13 @@ export function middleware(request: NextRequest) {
   const successor = retiredPath(host, pathname)
   if (successor) {
     return NextResponse.redirect(new URL(`${successor}${search}`, request.url), 308)
+  }
+
+  // A PAGE THAT MOVED HOST: `/design-system` is `design.magic-slash.io` now. 308, for
+  // the reason the retired paths above get one. `search` is carried the same way.
+  const moved = movedPage(host, pathname)
+  if (moved) {
+    return NextResponse.redirect(`${moved}${search}`, 308)
   }
 
   // Wrong host next: a rewrite would render the page right here, which is the thing

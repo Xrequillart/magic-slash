@@ -1,5 +1,5 @@
 import { ipcMain, type BrowserWindow } from 'electron'
-import type { AuthStatus } from '../../types'
+import type { AccountSession, AuthStatus } from '../../types'
 import {
   signIn,
   signUp,
@@ -11,7 +11,15 @@ import {
   requestEmailChange,
   confirmEmailChange,
   deleteAccount,
+  listSessions,
+  revokeSession,
+  revokeOtherSessions,
 } from '../cloud/auth'
+import {
+  resumeEmailChangeWatch,
+  startEmailChangeWatch,
+  stopEmailChangeWatch,
+} from '../cloud/email-change-watcher'
 import { resetHydration } from '../store/hydrate'
 import { refreshConnectivity } from './connectivity-handlers'
 import { teardownAgentSessions } from './terminal-handlers'
@@ -60,6 +68,10 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
 
   ipcMain.handle('auth:logout', async (): Promise<AuthStatus> => {
     const status = await signOut()
+    // A watch belongs to the session that started it. Left running, it would keep
+    // asking with a cleared session and, worse, could report the previous account's
+    // address as a change to whoever signs in next.
+    stopEmailChangeWatch()
     await teardownSession()
     emit(status)
     return status
@@ -82,19 +94,61 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
 
   ipcMain.handle('auth:requestEmailChange', async (_event, { newEmail }: RequestEmailChangeArgs): Promise<void> => {
     await requestEmailChange(newEmail)
+    // The confirmation happens in a browser, on a machine this process knows nothing
+    // about, and nothing pushes the result back. So from here on we ask — see
+    // `email-change-watcher`. Started only after the request SUCCEEDED: a refused
+    // address has nothing in flight to watch for.
+    startEmailChangeWatch(emit)
   })
 
   ipcMain.handle('auth:confirmEmailChange', async (_event, { newEmail, code }: ConfirmEmailChangeArgs): Promise<AuthStatus> => {
     const status = await confirmEmailChange(newEmail, code)
+    // Typed here, so there is nothing left for the watcher to discover. Kept for the
+    // day a code comes back — see the note on `cloud.email.linkHelp`.
+    stopEmailChangeWatch()
     emit(status)
     return status
+  })
+
+  // Security & Access: the other devices and browsers signed in to the account. None of
+  // these change THIS device's session, so no statusChanged is emitted.
+  ipcMain.handle('auth:listSessions', async (): Promise<AccountSession[]> => listSessions())
+
+  ipcMain.handle('auth:revokeSession', async (_event, { sessionId }: { sessionId: string }): Promise<void> => {
+    await revokeSession(sessionId)
+  })
+
+  ipcMain.handle('auth:revokeOtherSessions', async (): Promise<void> => {
+    await revokeOtherSessions()
   })
 
   // Account deletion (GDPR) — signs the user out; emit the logged-out transition.
   ipcMain.handle('auth:deleteAccount', async (): Promise<AuthStatus> => {
     const status = await deleteAccount()
+    // Nothing to watch for on an account that no longer exists, and the poller would
+    // otherwise keep asking a dead session for its email every fifteen seconds.
+    stopEmailChangeWatch()
     await teardownSession()
     emit(status)
     return status
+  })
+
+  /**
+   * A change confirmed while the app was CLOSED — which is the ordinary case, since the
+   * link is clicked in a browser and there is no reason the app was running.
+   *
+   * Asked once at startup rather than trusted to the stored session, and it resumes the
+   * watch if the server says one is still in flight. Not awaited: the window must not
+   * wait on a network call to open, and the answer arrives as a `statusChanged` like
+   * every other.
+   *
+   * `.catch()` AND NOT `void`, which is what it was. `void` on a promise nobody awaits
+   * turns any rejection into an unhandled one — and in Electron's main process that is
+   * a process-level event, raised while the app is still opening its window, for a
+   * background read whose entire purpose is to be optional. Nothing here is worth
+   * failing a launch over: the address is re-read at the next tick, or the next start.
+   */
+  resumeEmailChangeWatch(emit).catch((error) => {
+    console.error('[auth] could not resume the email-change watch:', error)
   })
 }

@@ -22,6 +22,9 @@ import {
   updateRepositoryJiraSettings,
   updateRepositoryLanguages,
   updateRepositoryPlanSettings,
+  updateRepositoryPullRequestSettings,
+  updateRepositoryReviewSettings,
+  updateRepositoryStartSettings,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -378,6 +381,13 @@ describe('updateRepositoryCommitSettings', () => {
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBe(true)
   })
 
+  it('persists pushAfterCommit in both directions', () => {
+    expect(updateRepositoryCommitSettings('api', { pushAfterCommit: true })
+      .repositories.api.commit?.pushAfterCommit).toBe(true)
+    updateRepositoryCommitSettings('api', { pushAfterCommit: false })
+    expect(readConfig().repositories.api.commit?.pushAfterCommit).toBe(false)
+  })
+
   it('leaves the other commit settings alone', () => {
     updateRepositoryCommitSettings('api', { format: 'gitmoji', coAuthor: true })
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: false })
@@ -390,6 +400,157 @@ describe('updateRepositoryCommitSettings', () => {
   it('ignores a non-boolean, rather than storing it', () => {
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryReviewSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both settings', () => {
+    updateRepositoryReviewSettings('api', { confidenceScore: false, mode: 'post' })
+    expect(readConfig().repositories.api.review).toEqual({ confidenceScore: false, mode: 'post' })
+  })
+
+  it('ignores a mode the skill does not know, rather than storing it', () => {
+    updateRepositoryReviewSettings('api', { mode: 'sometimes' })
+    expect(readConfig().repositories.api.review?.mode).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryPullRequestSettings — templateCheckboxes', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  // applySetting is a per-key whitelist. A key missing from it is dropped silently,
+  // which reads as "the select in Settings does not save".
+  it('persists each of the three modes', () => {
+    expect(updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'all' })
+      .repositories.api.pullRequest?.templateCheckboxes).toBe('all')
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('all')
+
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('type')
+
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'never' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('never')
+  })
+
+  it('ignores a value outside the enum, rather than storing it', () => {
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'sometimes' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBeUndefined()
+  })
+
+  it('leaves the sibling pull request settings alone', () => {
+    updateRepositoryPullRequestSettings('api', { testAccounts: 'reference' })
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest?.testAccounts).toBe('reference')
+    expect(pullRequest?.templateCheckboxes).toBe('type')
+  })
+
+  // The absent key IS the default: materialising 'never' here would pin the value
+  // locally and stop an org-shared one ever reaching this repo (mergeOrgSharedConfig
+  // only fills what is undefined). The renderer falls back to 'never' at read time.
+  it('never materialises the default on a repo that saved another setting', () => {
+    updateRepositoryPullRequestSettings('api', { testAccounts: 'inline' })
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest).toEqual({ testAccounts: 'inline' })
+    expect('templateCheckboxes' in (pullRequest ?? {})).toBe(false)
+  })
+})
+
+describe('updateRepositoryPullRequestSettings — bodyVerbosity', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists each of the three levels', () => {
+    expect(updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'detailed' })
+      .repositories.api.pullRequest?.bodyVerbosity).toBe('detailed')
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('detailed')
+
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'normal' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('normal')
+
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'concise' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('concise')
+  })
+
+  it('ignores a value outside the enum, rather than storing it', () => {
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'verbose' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBeUndefined()
+  })
+
+  // Same rule as templateCheckboxes: the absent key IS the default, so that an
+  // org-shared value can still reach a repo that never opened the setting.
+  it('never materialises the default on a repo that saved another setting', () => {
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest).toEqual({ templateCheckboxes: 'type' })
+    expect('bodyVerbosity' in (pullRequest ?? {})).toBe(false)
+  })
+})
+
+describe('updateRepositoryPullRequestSettings — hideIrrelevantSections', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both values and ignores a non-boolean', () => {
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: false })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(false)
+
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: 'no' as unknown as boolean })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(false)
+
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: true })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(true)
+  })
+})
+
+describe('updateRepositoryPullRequestSettings — draft', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both values and ignores a non-boolean', () => {
+    updateRepositoryPullRequestSettings('api', { draft: true })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(true)
+
+    updateRepositoryPullRequestSettings('api', { draft: 'yes' as unknown as boolean })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(true)
+
+    updateRepositoryPullRequestSettings('api', { draft: false })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(false)
   })
 })
 
@@ -616,5 +777,38 @@ describe('updateRepositoryPlanSettings', () => {
   it('throws on an unknown repository', () => {
     expect(() => updateRepositoryPlanSettings('nope', { tracker: 'jira' }))
       .toThrow("Repository 'nope' not found")
+  })
+})
+
+describe('updateRepositoryStartSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists every setting', () => {
+    updateRepositoryStartSettings('api', {
+      exploration: 'always', plan: false, planReview: false, planApproval: false,
+      execution: 'solo', simplify: false, criticIterations: 0, criticMinScore: 6,
+    })
+    expect(readConfig().repositories.api.start).toEqual({
+      exploration: 'always', plan: false, planReview: false, planApproval: false,
+      execution: 'solo', simplify: false, criticIterations: 0, criticMinScore: 6,
+    })
+  })
+
+  it('ignores a value the skill does not know, or a count out of its range', () => {
+    updateRepositoryStartSettings('api', { execution: 'swarm', criticIterations: 9, criticMinScore: 0.5 as number })
+    expect(readConfig().repositories.api.start).toBeUndefined()
+  })
+
+  it('drops a setting reset to its default', () => {
+    updateRepositoryStartSettings('api', { simplify: false })
+    updateRepositoryStartSettings('api', { simplify: null as unknown as boolean })
+    expect(readConfig().repositories.api.start).toBeUndefined()
   })
 })

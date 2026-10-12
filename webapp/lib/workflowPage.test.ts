@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isLiteralTitle } from './features'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { COMMAND_DESCRIPTIONS, WORKFLOW_STEPS } from './workflow'
 import {
   ART_COPY,
@@ -22,8 +22,8 @@ import {
  * real, and the module under test may import nothing that would stop it resolving here.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -119,15 +119,13 @@ describe('the /workflow page', () => {
     }
   })
 
-  it('anchors each step where the hero sends the reader', () => {
-    // The rail and the secondary button link to `#step-{id}`, and the band carries the
-    // same id through the same function, so the two cannot disagree. Pinned anyway, so a
-    // refactor that spells one of them by hand shows up here.
+  it('anchors each step through the one function', () => {
+    // The rail links to `#step-{id}`, and the band carries the same id through the same
+    // function, so the two cannot disagree. Pinned anyway, so a refactor that spells one
+    // of them by hand shows up here. (The hero's "steps" button that also used it is gone.)
     expect(stepAnchor('plan')).toBe('step-plan')
     const bands = readFileSync(webapp('../components/site/workflow/StepBand.tsx'), 'utf8')
-    const hero = readFileSync(webapp('../components/site/workflow/WorkflowHero.tsx'), 'utf8')
     expect(bands).toContain('id={stepAnchor(step.id)}')
-    expect(hero).toContain('stepAnchor(WORKFLOW_STEPS[0].id)')
   })
 
   it('names the trackers as chips, in both languages', () => {

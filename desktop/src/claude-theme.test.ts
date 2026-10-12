@@ -95,10 +95,11 @@ describe('claudeThemeFile', () => {
   })
 
   it('flattens translucent surfaces rather than passing the alpha through', () => {
-    // dark's `surface` is rgba(255,255,255,0.06) over a bgRgb of '10 10 11'.
-    // red and green: 255 × 0.06 + 10 × 0.94 = 24.7 → 25 → 0x19
-    // blue:          255 × 0.06 + 11 × 0.94 = 25.6 → 26 → 0x1a
-    expect(claudeThemeFile('dark').overrides.userMessageBackground).toBe('#19191a')
+    // dark's `surface` is rgba(255,255,255,0.06) over a bgRgb of '11 12 14'.
+    // red:   255 × 0.06 + 11 × 0.94 = 25.6 → 26 → 0x1a
+    // green: 255 × 0.06 + 12 × 0.94 = 26.6 → 27 → 0x1b
+    // blue:  255 × 0.06 + 14 × 0.94 = 28.5 → 28 → 0x1c
+    expect(claudeThemeFile('dark').overrides.userMessageBackground).toBe('#1a1b1c')
   })
 
   it('names a slug the settings reference agrees with', () => {

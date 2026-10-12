@@ -114,6 +114,10 @@ export const LITERAL_TITLES = [
   // also how "Split View" and "Spotlight" below have always been handled.
   'Tasks',
   'Agents',
+  // The window's own name for the list of planning sessions, and `plans.title` in the
+  // app's FRENCH catalogue is "Plans" too — translating it here would be the page and
+  // the app using two words for one screen.
+  'Plans',
   // The window's own title bar, and the rail heading inside it. `sidebar.skills` is
   // "Skills" in the app's French catalogue too, so translating it here would be the page
   // and the app using two words for one screen.
@@ -311,10 +315,11 @@ export type Feature = {
    * is read. Both are facts about the COMMAND rather than about its position in a grid —
    * reorder the eight and each should keep its ground, which a positional tone would not.
    *
-   * TWO, AND THAT IS THE NUMBER TO DEFEND. A third named tone is where the palette stops
-   * being a rhythm and starts being a key the reader has to learn, and it would arrive as
-   * a one-word edit with nothing on screen to argue with it — hence the exact assertion
-   * in `features.test.ts`.
+   * IT USED TO BE TWO, AND TWO WAS THE NUMBER TO DEFEND — past that, the palette stops
+   * being a rhythm and starts being a key the reader has to learn. It is four now, all
+   * four asked for by the owner card by card; see `CARD_TONES_BY_COMMAND` for what each
+   * one cost. The defence that remains is the exact assertion in `features.test.ts`: a
+   * fifth cannot arrive as a one-word edit with nothing on screen to argue with it.
    *
    * A STRING AND NOT `CardTone`, the same trick `icon` and `visual` use: `CardTone`
    * lives in `components/ui.tsx`, which imports React, and this module has to stay
@@ -345,18 +350,26 @@ export type Feature = {
 }
 
 /**
- * The tones a card on THIS page may ask for by name. A deliberate subset of `CARD_TONES`
- * in `components/ui.tsx` — only the ones that mean something here — kept as its own union
- * for the purity reason above.
+ * The tones a card on THIS page may ask for by name. A subset of `CARD_TONES` in
+ * `components/ui.tsx`, kept as its own union for the purity reason above.
  *
- * `CARD_TONES` declares eight grounds and this union admits two. That gap is the design
- * rather than a lag: four of the eight are the positional cycle and must not be nameable
- * (naming one would defeat the point of cycling them), and `rose` and `lemon` are grounds
- * the palette offers that mean nothing about a command — widening this union to include
- * them would make "which colour is `/magic:review`?" a question with an answer, which is
- * exactly the legend the cycle exists to avoid.
+ * IT USED TO ADMIT TWO, and the argument for that is worth keeping in view because it was
+ * a good one: `mint` and `amber` sit outside the positional cycle, so naming them says
+ * something about a command without turning the palette into a key. The four cycle tones
+ * were deliberately NOT nameable, on the grounds that naming one defeats the point of
+ * cycling it.
+ *
+ * `sky` IS NAMEABLE NOW, at the owner's request, so that `/magic:continue` can wear
+ * `/magic:review`'s ground. That is a real cost and not a technicality: half the skills
+ * grid is named after it, the cycle deals to four cards instead of six, and "which colour
+ * is this command?" is closer to being a question with an answer than it was.
+ *
+ * `rose` and `lemon` stay out, and `mist` / `indigo` / `midnight` with them. The line to
+ * hold is no longer "the cycle is not nameable" — it is that each addition is a decision
+ * somebody made on purpose, which `features.test.ts` pins as an exact list precisely so
+ * the next one cannot arrive as a one-word edit.
  */
-export type FeatureTone = 'mint' | 'amber'
+export type FeatureTone = 'mint' | 'amber' | 'sky'
 
 /**
  * The plates a row may sit its mark on. A subset of `PLATE_GROUNDS` in
@@ -392,6 +405,10 @@ export type FeaturePlateFit = 'inset' | 'bleed'
  * answers is a real one: a capability with nothing to photograph, in a family where
  * everything else is a screen. On a row with a visual it changes nothing, since `block` is
  * what an omitted shape already means.
+ *
+ * ON A FULL-WIDTH CARD, `block` STACKS: the visual under the copy rather than beside it,
+ * for a drawing that needs the card's whole width (the workflow canvas). Without it, a
+ * full card with a visual puts the two side by side.
  */
 export type FeatureShape = 'block' | 'showcase' | 'card'
 
@@ -420,13 +437,16 @@ export type FeatureVisual =
   | 'agentsSidebar'
   | 'macNotification'
   | 'menuBar'
+  | 'planModal'
   | 'tasksModal'
-  | 'reposSettings'
-  | 'commitConfig'
-  | 'prConfig'
+  | 'workflowZoom'
+  | 'repoStack'
+  | 'commitFormats'
+  | 'prDescription'
+  | 'commitGuards'
   | 'profileArt'
   | 'languagesArt'
-  | 'launchModes'
+  | 'launchModesMenu'
   | 'ticketCard'
   | 'usageCard'
 
@@ -526,17 +546,30 @@ const CARD_VISUALS: Partial<Record<MagicCommandId, FeatureVisual>> = {
 }
 
 /**
- * The commands whose card ground is chosen rather than cycled: the two BOOKENDS, and
- * nothing between them. `start` opens the loop and `done` closes it, so the grid runs
- * warm to green — see the note on `Feature.tone` for why two is the number to defend,
- * and `features.test.ts` for the assertion that keeps it there.
+ * The commands whose card ground is chosen rather than cycled.
  *
- * They are also the two commands whose ground would otherwise be an accident of the
- * cycle: `start` sits at index 1 and `done` at index 7, which is `sky` and `midnight`,
- * and neither says anything about the command underneath it.
+ * TWO BOOKENDS AND ONE PAIR. `start` opens the loop and `done` closes it, so the grid
+ * runs warm to green; both would otherwise take an accident of the cycle (`sky` at index
+ * 1, `midnight` at index 7) that says nothing about the command underneath.
+ *
+ * `resolve` AND `continue` ARE THE OTHER TWO, both at the owner's request, and neither
+ * introduces a colour: `resolve` takes `start`'s `amber`, `continue` takes `review`'s
+ * `sky`. So the four named cards are two warm and two blue, in pairs across the grid.
+ *
+ * WHAT IT COSTS is that `amber` no longer marks the ONE point where work enters the loop,
+ * and that `sky` is now a name rather than a position — see `FeatureTone`. WHAT IT BUYS
+ * is the dark cards: `continue` and `resolve` were both `indigo`, at opposite ends of the
+ * grid, and two identical dark cards at a distance read as a pairing the loop does not
+ * have. `commit` is the only dark card left, which is the rhythm the owner wanted.
+ *
+ * NAMING A TONE COSTS THE OTHER CARDS NOTHING: the cycle is indexed on a card's position
+ * in the family (`FeaturesContent`'s `index % CARD_TONE_CYCLE.length`), not on a counter
+ * over the unnamed ones, so each of these changes its own card and no other.
  */
 const CARD_TONES_BY_COMMAND: Partial<Record<MagicCommandId, FeatureTone>> = {
   start: 'amber',
+  continue: 'sky',
+  resolve: 'amber',
   done: 'mint',
 }
 
@@ -678,6 +711,27 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
     intro: 'site.features.desktopDesc',
     layout: 'rows',
     features: [
+      {
+        // THE FAMILY OPENS ON THE PLANNING, which is the order the work happens in: a
+        // plan is written before there is a ticket to pick up, and the row under this
+        // one is the board those tickets land on. It was the last screen of the app
+        // with nothing on this page about it at all.
+        //
+        // A BLOCK, like the two rows under it. The claim is that your team's planning
+        // sessions are one chronology you can read and reopen, and a drawing of the
+        // list is what makes that concrete — a sentence can say "shared" and cannot
+        // show an author column.
+        //
+        // "Plans" AND NOT "The Plans page", the call `Tasks`, `Skills` and `Agents`
+        // below all make: it is the word on the window's own title bar, in both
+        // languages, and heading the row with anything else would be the page and the
+        // app disagreeing about the name of a screen.
+        id: 'plans',
+        icon: 'NotebookPen',
+        title: 'Plans',
+        description: 'site.features.plansDesc',
+        visual: 'planModal',
+      },
       {
         // MOVED OUT OF `integrations`, where it sat because its contents are read from
         // Jira and GitHub. But what the row describes is a SURFACE — `pages/Tasks/` in
@@ -929,11 +983,10 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         icon: 'Plug',
         title: 'site.features.machineSetupTitle',
         description: 'site.features.machineSetupDesc',
-        // `app-icon-desktop.png` — the icon that actually ships on the dock today, and
-        // the one file in `public/img/` that is it. `app-icon.png` is the OLD mascot on
-        // a white field (the `/admin` device panel still draws it, and still calls it
-        // "the REAL icon", which it has not been for some time), and `mascot.png` is the
-        // bare rabbit with no ground.
+        // `app-icon-desktop.png` — the icon that actually ships on the dock, and now
+        // the only one in `public/img/`. It used to share the directory with
+        // `app-icon.png` (the old mascot on a white field) and `mascot.png` (the bare
+        // rabbit); both are gone, so there is nothing left to pick wrong.
         //
         // It brings its own square, so it bleeds to the tile's edge like Jira's.
         picto: '/img/app-icon-desktop.png',
@@ -947,86 +1000,87 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
     anchor: 'configuration',
     title: 'site.features.configurationTitle',
     intro: 'site.features.configurationDesc',
-    layout: 'rows',
+    // A BENTO OF TONE CARDS NOW, the skills grid's own shape, where it was rows carrying
+    // three whole settings windows. Each card shows the one thing its sentence claims,
+    // drawn from the app's design system (`ConventionsArt`) or one of the site's
+    // illustrations: a zoom on the workflow, a commit list in four formats, folders. One wide card to
+    // open on the workflow, three pairs, one wide card to close on the launch modes.
+    layout: 'cards',
     features: [
       {
-        // THE FAMILY'S OPENING CLAIM, drawn — the same call `tasks` makes at the top of
-        // the desktop family. "One GitHub repository is one configuration, and the
-        // organization owns it" is a sentence about a SCREEN: the Settings modal open
-        // on Repositories, with a personal section and the organization's under it.
-        // So the row promotes itself to a block with that screen redrawn beneath it,
-        // and the four rows after it stay the compact inventory they were.
+        // THE FAMILY'S OPENING CLAIM, and its newest: a repository draws its own flow.
+        // A zoom on the default one (start, commit, pr, resolve) on the editor's own
+        // canvas, wide and STACKED (`shape: 'block'`), since a flow needs the card's
+        // whole width and a panel beside the copy would be a third of it.
+        id: 'repoWorkflow',
+        icon: 'GitBranch',
+        title: 'site.features.repoWorkflowTitle',
+        description: 'site.features.repoWorkflowDesc',
+        span: 'full',
+        shape: 'block',
+        visual: 'workflowZoom',
+      },
+      {
         id: 'multiRepo',
         icon: 'Layers',
         title: 'site.features.multiRepoTitle',
         description: 'site.features.multiRepoDesc',
-        visual: 'reposSettings',
+        visual: 'repoStack',
       },
       {
-        // A BLOCK, like the row above it: the claim is about a settings tab, so the tab
-        // is drawn under it — and the four formats the select offers are tabled under
-        // the drawing, since a closed select shows one of them.
         id: 'commitFormat',
         icon: 'GitCommitHorizontal',
         title: 'site.features.commitFormatTitle',
         description: 'site.features.commitFormatDesc',
-        visual: 'commitConfig',
+        visual: 'commitFormats',
       },
       {
-        // THE PULL REQUEST'S OWN ROW, beside the commit's, and drawn the same way: the
-        // Pull Request tab of the same page, with the five things it configures listed
-        // under the drawing. `GitPullRequest` is in the union through the `pr`
-        // command's icon.
         id: 'pullRequests',
         icon: 'GitPullRequest',
         title: 'site.features.pullRequestsTitle',
         description: 'site.features.pullRequestsDesc',
-        visual: 'prConfig',
+        visual: 'prDescription',
       },
       {
-        // THE LANGUAGES ROW'S TWIN, and built as one on purpose: same `showcase` shape,
-        // same plate, same 96px mark centred on it. The two are a pair — who the app is
-        // talking to, and which language it says it in — and a pair reads as one only if
-        // both halves are drawn the same way.
-        //
-        // IT SITS ABOVE `languages`, which is the other half of that: who is being
-        // spoken to comes before which language it is said in. Read the other way round,
-        // the profile arrives as an afterthought to a settings list it is in fact the
-        // premise of.
-        //
-        // IT WAS A BARE HEADING, and the reason it could not stay one is the pairing. The
-        // onboarding form is a six-step wizard and the profile itself is a markdown file,
-        // so there is no screen to reproduce here — which is why this row spent a long
-        // time as the one heading in the family with nothing under it, and read as a
-        // footnote to its neighbour rather than its equal. `profileArt` answers with a
-        // sign rather than a surface; see the note in that file.
+        // The commit guard rail and the push after commit: two switches of the Commit
+        // tab's Branches card, which are the two things /magic:commit decides about the
+        // branch rather than about the message.
+        id: 'commitGuards',
+        icon: 'ShieldCheck',
+        title: 'site.features.commitGuardsTitle',
+        description: 'site.features.commitGuardsDesc',
+        visual: 'commitGuards',
+      },
+      {
+        // The profile before the languages: who the app is talking to comes before
+        // which language it says it in.
+        // SHOWCASE, like the integrations' "Configured at startup": copy on the left, the
+        // mark on a white tile on our own plate. Full width, a showcase needs the row.
         id: 'profile',
         icon: 'UserRound',
         title: 'site.features.profileTitle',
         description: 'site.features.profileDesc',
-        visual: 'profileArt',
+        span: 'full',
         shape: 'showcase',
+        visual: 'profileArt',
       },
       {
-        // SHOWCASE, the quieter of the two shapes: the sentence lists the five surfaces
-        // a language is set on, and the art is one glyph beside it rather than a tab
-        // that would list them again.
         id: 'languages',
         icon: 'Languages',
         title: 'site.features.languagesTitle',
         description: 'site.features.languagesDesc',
-        visual: 'languagesArt',
+        span: 'full',
         shape: 'showcase',
+        visual: 'languagesArt',
       },
       {
-        // A BLOCK WITH NO WINDOW IN IT: the visual is the five launch modes, two to a
-        // row, each with the app's own help line. The setting is one select in the
-        // Claude Code tab, and a drawing of it would show one mode out of five.
+        // The closing wide card, beside: the five modes as the picker lists them.
         id: 'permissionModes',
         icon: 'ShieldCheck',
         title: 'site.features.permissionModesTitle',
         description: 'site.features.permissionModesDesc',
-        visual: 'launchModes',
+        span: 'full',
+        visual: 'launchModesMenu',
       },
     ],
   },

@@ -7,7 +7,6 @@ import type { WorkflowStep, WorkflowStepId } from '@/lib/workflow'
 import { STEP_CLAIMS, stepAnchor } from '@/lib/workflowPage'
 import { DESKTOP_ICONS } from '../desktop/icons'
 import { withChips } from '../home/AppSection'
-import { SpecPanelMockup } from '../features/SpecPanelMockup'
 import { HomeHeading, HomeSection } from '../home/Shell'
 import { Reveal } from '../Reveal'
 import { StepTerminal } from './StepTerminal'
@@ -35,8 +34,9 @@ import { StepTerminal } from './StepTerminal'
  * (`SPLIT_MEDIA` in `components/ui.tsx` says why the side is an option at all); alternating
  * them is what makes five bands read as one page walking down a list.
  *
- * THE DRAWINGS. The plan step keeps `/features`' spec panel, the document the command
- * produces, cropped on the right as it is over there. The four steps after it are each a
+ * THE DRAWINGS. The plan step is an ILLUSTRATION from the site's set, two people and an
+ * idea over a table, set straight on the band with no plate: the owner's call, and it
+ * replaced `/features`' spec panel. The four steps after it are each a
  * TERMINAL, whole on its plate, running the step's command(s) with a loader on every line
  * and ending on the artefact: the plan and the choice to build it, the pull request card
  * the sidebar shows, the approved state, the cleanup ticked off. That is the product
@@ -52,7 +52,7 @@ import { StepTerminal } from './StepTerminal'
  * sixth step is a compile error at the map that forgot to draw it.
  */
 const ART: Record<WorkflowStepId, () => React.ReactElement> = {
-  plan: SpecPanelMockup,
+  plan: PlanIllustration,
   start: () => <StepTerminal step="start" />,
   commit: () => <StepTerminal step="commit" />,
   review: () => <StepTerminal step="review" />,
@@ -60,21 +60,23 @@ const ART: Record<WorkflowStepId, () => React.ReactElement> = {
 }
 
 /**
- * HOW A DRAWING SITS ON ITS PLATE. `center` is `ToneCard`'s own slot: a panel drawn with
+ * HOW A DRAWING SITS ON ITS PLATE. `bare` has no plate at all: the drawing sits on the
+ * band's own white, which is what a line illustration wants — a tinted card around it
+ * would frame a picture that already has its own edges. `center` is `ToneCard`'s own slot: a panel drawn with
  * its own insets and cropped on one side, centred in the plate's height and magnified. `frame`
  * is for a drawing shown WHOLE: the plate pads it on all four sides and it takes the width,
  * nothing cropped and nothing scaled, which is what a terminal a reader is meant to read
  * from top to bottom wants.
  */
 const VISUAL: Record<WorkflowStepId, PlateVisual> = {
-  plan: 'center',
+  plan: 'bare',
   start: 'frame',
   commit: 'frame',
   review: 'frame',
   done: 'frame',
 }
 
-type PlateVisual = 'center' | 'frame'
+type PlateVisual = 'bare' | 'center' | 'frame'
 
 const COMMAND = Object.fromEntries(MAGIC_COMMANDS.map((c) => [c.id, c.command])) as Record<
   MagicCommandId,
@@ -93,9 +95,13 @@ export function StepBand({ step, index }: { step: WorkflowStep; index: number })
         media={index % 2 === 0 ? 'right' : 'left'}
         art={
           <Reveal order={2}>
-            <StepPlate tone={step.tone} visual={VISUAL[step.id]}>
+            {VISUAL[step.id] === 'bare' ? (
               <Art />
-            </StepPlate>
+            ) : (
+              <StepPlate tone={step.tone} visual={VISUAL[step.id]}>
+                <Art />
+              </StepPlate>
+            )}
           </Reveal>
         }
       >
@@ -116,6 +122,15 @@ export function StepBand({ step, index }: { step: WorkflowStep; index: number })
       </SplitFeature>
     </HomeSection>
   )
+}
+
+/**
+ * The plan step's picture. Its `viewBox` is cropped to the drawing's measured box
+ * (`23 29 954 942` out of 1000²), so the column's width is all illustration. `alt=""`: the
+ * heading beside it says what the step is.
+ */
+function PlanIllustration() {
+  return <img src="/img/illustration-brainstorm.svg" alt="" className="mx-auto w-full max-w-md" />
 }
 
 /**

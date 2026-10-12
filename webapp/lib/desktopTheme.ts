@@ -1,0 +1,333 @@
+/**
+ * The desktop app's theme registry, copied.
+ *
+ * `/design-system` renders the shared components from `design-system/desktop/`, and
+ * those name colour ROLES — `bg-green/10`, `text-ink` — that only mean something
+ * once a theme's `--c-*` variables are on the element above them. This file is
+ * where the page gets them.
+ *
+ * A COPY, and reluctantly. The webapp cannot import from `desktop/` — two builds,
+ * two `node_modules`, no workspaces (see `vitest.config.ts`) — and unlike a
+ * component, a theme registry is read by the Electron main process as well as the
+ * renderer, so it cannot simply move into `design-system/` without dragging
+ * `claude-theme.ts` with it. It should still move, and this file should die when it
+ * does.
+ *
+ * Until then the copy is held honest by `desktopTheme.test.ts`, which imports the
+ * real registry — vitest runs at the repo root and has no such boundary — and fails
+ * the moment a value here drifts by one channel. Same arrangement as
+ * `desktopRelease.ts`.
+ *
+ * GENERATED from `desktop/src/themes.ts`. Do not hand-edit: re-derive it.
+ */
+
+export type DesktopThemeId =
+  | 'dark'
+  | 'midnight'
+  | 'espresso'
+  | 'high-contrast'
+  | 'light'
+  | 'mist'
+  | 'sepia'
+  | 'daylight'
+
+export interface DesktopTheme {
+  label: string
+  /** What the theme is built on, which is what the preview ground has to be. */
+  appearance: 'light' | 'dark'
+  /** CSS custom properties, ready for a `style` prop. */
+  vars: Record<string, string>
+}
+
+export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
+  dark: {
+    label: 'Dark',
+    appearance: 'dark',
+    vars: {
+      '--c-bg': '11 12 14',
+      '--c-bg-secondary': '21 22 25',
+      '--c-bg-tertiary': '29 31 35',
+      '--c-ink': '255 255 255',
+      '--c-text-secondary': '160 164 174',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '137 141 151',
+      '--c-icon-muted': '100 104 113',
+      '--c-surface-subtle': 'rgba(255, 255, 255, 0.04)',
+      '--c-surface': 'rgba(255, 255, 255, 0.06)',
+      '--c-surface-strong': 'rgba(255, 255, 255, 0.1)',
+      '--c-surface-sunken': 'rgba(0, 0, 0, 0.3)',
+      '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.2)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(255, 255, 255, 0.05)',
+      '--c-line-field': 'rgba(255, 255, 255, 0.08)',
+      '--c-line': 'rgba(255, 255, 255, 0.1)',
+      '--c-line-strong': 'rgba(255, 255, 255, 0.15)',
+      '--c-border': '40 42 47',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '51 149 253',
+      '--c-purple': '168 85 247',
+      '--c-green': '34 197 94',
+      '--c-red': '239 68 68',
+      '--c-yellow': '234 179 8',
+      '--c-blue': '59 130 246',
+      '--c-orange': '249 115 22',
+      '--c-cyan': '34 211 238',
+      '--c-teal': '45 212 191',
+    },
+  },
+  midnight: {
+    label: 'Midnight',
+    appearance: 'dark',
+    vars: {
+      '--c-bg': '7 16 31',
+      '--c-bg-secondary': '12 24 45',
+      '--c-bg-tertiary': '18 33 59',
+      '--c-ink': '234 242 252',
+      '--c-text-secondary': '142 162 192',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '122 141 170',
+      '--c-icon-muted': '88 106 134',
+      '--c-surface-subtle': 'rgba(255, 255, 255, 0.045)',
+      '--c-surface': 'rgba(255, 255, 255, 0.07)',
+      '--c-surface-strong': 'rgba(255, 255, 255, 0.12)',
+      '--c-surface-sunken': 'rgba(2, 7, 18, 0.35)',
+      '--c-surface-sunken-soft': 'rgba(2, 7, 18, 0.22)',
+
+      '--c-plate-lift': '4%',
+      '--c-line-subtle': 'rgba(255, 255, 255, 0.06)',
+      '--c-line-field': 'rgba(255, 255, 255, 0.09)',
+      '--c-line': 'rgba(255, 255, 255, 0.12)',
+      '--c-line-strong': 'rgba(255, 255, 255, 0.17)',
+      '--c-border': '33 51 82',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '51 149 253',
+      '--c-purple': '192 132 252',
+      '--c-green': '52 211 153',
+      '--c-red': '248 113 113',
+      '--c-yellow': '250 204 21',
+      '--c-blue': '96 165 250',
+      '--c-orange': '251 146 60',
+      '--c-cyan': '34 211 238',
+      '--c-teal': '45 212 191',
+    },
+  },
+  espresso: {
+    label: 'Graphite',
+    appearance: 'dark',
+    vars: {
+      '--c-bg': '32 33 36',
+      '--c-bg-secondary': '41 42 46',
+      '--c-bg-tertiary': '50 52 57',
+      '--c-ink': '238 239 242',
+      '--c-text-secondary': '172 175 183',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '148 151 159',
+      '--c-icon-muted': '112 115 123',
+      '--c-surface-subtle': 'rgba(255, 255, 255, 0.045)',
+      '--c-surface': 'rgba(255, 255, 255, 0.07)',
+      '--c-surface-strong': 'rgba(255, 255, 255, 0.12)',
+      '--c-surface-sunken': 'rgba(18, 19, 21, 0.35)',
+      '--c-surface-sunken-soft': 'rgba(18, 19, 21, 0.22)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(255, 255, 255, 0.06)',
+      '--c-line-field': 'rgba(255, 255, 255, 0.09)',
+      '--c-line': 'rgba(255, 255, 255, 0.12)',
+      '--c-line-strong': 'rgba(255, 255, 255, 0.17)',
+      '--c-border': '63 65 71',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '51 149 253',
+      '--c-purple': '192 132 252',
+      '--c-green': '52 211 153',
+      '--c-red': '248 113 113',
+      '--c-yellow': '250 204 21',
+      '--c-blue': '96 165 250',
+      '--c-orange': '251 146 60',
+      '--c-cyan': '34 211 238',
+      '--c-teal': '45 212 191',
+    },
+  },
+  'high-contrast': {
+    label: 'High contrast',
+    appearance: 'dark',
+    vars: {
+      '--c-bg': '0 0 0',
+      '--c-bg-secondary': '0 0 0',
+      '--c-bg-tertiary': '18 18 18',
+      '--c-ink': '255 255 255',
+      '--c-text-secondary': '224 224 224',
+      '--c-on-brand': '0 0 0',
+      '--c-icon': '224 224 224',
+      '--c-icon-muted': '176 176 176',
+      '--c-surface-subtle': 'rgba(255, 255, 255, 0.08)',
+      '--c-surface': 'rgba(255, 255, 255, 0.12)',
+      '--c-surface-strong': 'rgba(255, 255, 255, 0.2)',
+      '--c-surface-sunken': 'rgba(0, 0, 0, 0.6)',
+      '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.45)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(255, 255, 255, 0.35)',
+      '--c-line-field': 'rgba(255, 255, 255, 0.55)',
+      '--c-line': 'rgba(255, 255, 255, 0.65)',
+      '--c-line-strong': 'rgba(255, 255, 255, 0.85)',
+      '--c-border': '212 212 216',
+      '--c-accent': '77 163 255',
+      '--c-accent-hover': '133 192 255',
+      '--c-purple': '216 180 254',
+      '--c-green': '74 222 128',
+      '--c-red': '255 123 123',
+      '--c-yellow': '253 224 71',
+      '--c-blue': '125 179 255',
+      '--c-orange': '253 168 94',
+      '--c-cyan': '103 232 249',
+      '--c-teal': '94 234 212',
+    },
+  },
+  light: {
+    label: 'Light',
+    appearance: 'light',
+    vars: {
+      '--c-bg': '255 255 255',
+      '--c-bg-secondary': '250 250 249',
+      '--c-bg-tertiary': '244 244 245',
+      '--c-ink': '24 24 27',
+      '--c-text-secondary': '82 82 91',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '108 108 116',
+      '--c-icon-muted': '151 151 157',
+      '--c-surface-subtle': 'rgba(0, 0, 0, 0.03)',
+      '--c-surface': 'rgba(0, 0, 0, 0.045)',
+      '--c-surface-strong': 'rgba(0, 0, 0, 0.08)',
+      '--c-surface-sunken': 'rgba(0, 0, 0, 0.05)',
+      '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.035)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(0, 0, 0, 0.07)',
+      '--c-line-field': 'rgba(0, 0, 0, 0.12)',
+      '--c-line': 'rgba(0, 0, 0, 0.14)',
+      '--c-line-strong': 'rgba(0, 0, 0, 0.2)',
+      '--c-border': '228 228 231',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '0 104 214',
+      '--c-purple': '147 51 234',
+      '--c-green': '21 128 61',
+      '--c-red': '220 38 38',
+      '--c-yellow': '161 98 7',
+      '--c-blue': '37 99 235',
+      '--c-orange': '194 65 12',
+      '--c-cyan': '12 99 121',
+      '--c-teal': '14 102 96',
+    },
+  },
+  mist: {
+    label: 'Sky',
+    appearance: 'light',
+    vars: {
+      '--c-bg': '238 246 255',
+      '--c-bg-secondary': '246 250 255',
+      '--c-bg-tertiary': '228 239 252',
+      '--c-ink': '12 27 48',
+      '--c-text-secondary': '64 86 116',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '92 112 140',
+      '--c-icon-muted': '138 155 178',
+      '--c-surface-subtle': 'rgba(12, 40, 80, 0.035)',
+      '--c-surface': 'rgba(12, 40, 80, 0.05)',
+      '--c-surface-strong': 'rgba(12, 40, 80, 0.09)',
+      '--c-surface-sunken': 'rgba(12, 40, 80, 0.055)',
+      '--c-surface-sunken-soft': 'rgba(12, 40, 80, 0.04)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(12, 40, 80, 0.08)',
+      '--c-line-field': 'rgba(12, 40, 80, 0.13)',
+      '--c-line': 'rgba(12, 40, 80, 0.15)',
+      '--c-line-strong': 'rgba(12, 40, 80, 0.21)',
+      '--c-border': '196 216 240',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '0 104 214',
+      '--c-purple': '126 34 206',
+      '--c-green': '21 128 61',
+      '--c-red': '220 38 38',
+      '--c-yellow': '161 98 7',
+      '--c-blue': '29 78 216',
+      '--c-orange': '194 65 12',
+      '--c-cyan': '21 94 117',
+      '--c-teal': '17 94 89',
+    },
+  },
+  sepia: {
+    label: 'Sepia',
+    appearance: 'light',
+    vars: {
+      '--c-bg': '250 246 238',
+      '--c-bg-secondary': '246 240 229',
+      '--c-bg-tertiary': '240 232 217',
+      '--c-ink': '43 35 26',
+      '--c-text-secondary': '109 94 76',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '130 117 100',
+      '--c-icon-muted': '165 155 141',
+      '--c-surface-subtle': 'rgba(74, 54, 28, 0.035)',
+      '--c-surface': 'rgba(74, 54, 28, 0.05)',
+      '--c-surface-strong': 'rgba(74, 54, 28, 0.09)',
+      '--c-surface-sunken': 'rgba(74, 54, 28, 0.055)',
+      '--c-surface-sunken-soft': 'rgba(74, 54, 28, 0.04)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(74, 54, 28, 0.09)',
+      '--c-line-field': 'rgba(74, 54, 28, 0.14)',
+      '--c-line': 'rgba(74, 54, 28, 0.16)',
+      '--c-line-strong': 'rgba(74, 54, 28, 0.22)',
+      '--c-border': '226 214 195',
+      '--c-accent': '0 122 252',
+      '--c-accent-hover': '0 104 214',
+      '--c-purple': '126 34 206',
+      '--c-green': '21 115 71',
+      '--c-red': '185 28 28',
+      '--c-yellow': '146 64 14',
+      '--c-blue': '29 78 216',
+      '--c-orange': '154 52 18',
+      '--c-cyan': '21 94 117',
+      '--c-teal': '17 94 89',
+    },
+  },
+  daylight: {
+    label: 'Daylight',
+    appearance: 'light',
+    vars: {
+      '--c-bg': '255 255 255',
+      '--c-bg-secondary': '255 255 255',
+      '--c-bg-tertiary': '245 245 245',
+      '--c-ink': '0 0 0',
+      '--c-text-secondary': '38 38 38',
+      '--c-on-brand': '255 255 255',
+      '--c-icon': '71 71 71',
+      '--c-icon-muted': '125 125 125',
+      '--c-surface-subtle': 'rgba(0, 0, 0, 0.06)',
+      '--c-surface': 'rgba(0, 0, 0, 0.09)',
+      '--c-surface-strong': 'rgba(0, 0, 0, 0.14)',
+      '--c-surface-sunken': 'rgba(0, 0, 0, 0.07)',
+      '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.05)',
+
+      '--c-plate-lift': '9%',
+      '--c-line-subtle': 'rgba(0, 0, 0, 0.45)',
+      '--c-line-field': 'rgba(0, 0, 0, 0.6)',
+      '--c-line': 'rgba(0, 0, 0, 0.7)',
+      '--c-line-strong': 'rgba(0, 0, 0, 0.85)',
+      '--c-border': '82 82 82',
+      '--c-accent': '0 88 184',
+      '--c-accent-hover': '0 65 138',
+      '--c-purple': '88 28 135',
+      '--c-green': '20 83 45',
+      '--c-red': '153 27 27',
+      '--c-yellow': '113 63 18',
+      '--c-blue': '30 58 138',
+      '--c-orange': '124 45 18',
+      '--c-cyan': '22 78 99',
+      '--c-teal': '19 78 74',
+    },
+  },
+}
+
+export const DESKTOP_THEME_IDS = Object.keys(DESKTOP_THEMES) as DesktopThemeId[]

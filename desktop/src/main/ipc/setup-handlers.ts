@@ -1,10 +1,11 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import type { McpServerId, PrerequisiteId, SetupStatus } from '../../types'
+import type { GhCliStatus, McpHealthReport, McpServerId, McpServerState, PrerequisiteId, SetupStatus } from '../../types'
 import { getSetupStatus } from '../setup/status'
-import { provisionMcpServer, removeMcpServer } from '../setup/mcp'
+import { checkMcpHealth, lastMcpHealth, mcpServerStates, provisionMcpServer, removeMcpServer } from '../setup/mcp'
 import { installPrerequisite } from '../setup/installers'
+import { checkGhCli } from '../setup/cli'
 import { updateSkills } from '../skills-updater'
-import { setIntegration } from '../config/config'
+import { readConfig, setIntegration } from '../config/config'
 import { configureClaudeHooks } from '../hooks/claude-hooks-config'
 
 /**
@@ -15,7 +16,7 @@ import { configureClaudeHooks } from '../hooks/claude-hooks-config'
  * launch-time provisioning is still running must not end up with a broken config.
  */
 
-const MCP_IDS: McpServerId[] = ['atlassian', 'github']
+const MCP_IDS: McpServerId[] = ['atlassian', 'github', 'slack']
 const PREREQUISITE_IDS: PrerequisiteId[] = ['claude', 'node', 'git', 'jq', 'gh']
 
 export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
@@ -31,6 +32,23 @@ export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
     if (!MCP_IDS.includes(id)) return { ok: false, error: `unknown MCP server: ${id}` }
     return removeMcpServer(id)
   })
+
+  /**
+   * The servers of the Connections tab (Atlassian and GitHub when their integration is on,
+   * then Slack), with the health the last check found. Instant: it reads the registry and
+   * the cached report, never `claude mcp list`.
+   */
+  ipcMain.handle('setup:getMcpServers', async (): Promise<{ servers: McpServerState[]; report: McpHealthReport | null }> =>
+    ({ servers: mcpServerStates(readConfig().integrations), report: lastMcpHealth() }))
+
+  /** Ask every server for its health (`claude mcp list`): seconds, so only on the user's Check. */
+  ipcMain.handle('setup:checkMcpHealth', async (): Promise<{ servers: McpServerState[]; report: McpHealthReport }> => {
+    const report = await checkMcpHealth()
+    return { servers: mcpServerStates(readConfig().integrations, report), report }
+  })
+
+  /** Is `gh` installed and logged in: the GitHub MCP server signs in with its token. */
+  ipcMain.handle('setup:checkGhCli', async (): Promise<GhCliStatus> => checkGhCli())
 
   /**
    * Install a prerequisite, streaming its output to the panel.

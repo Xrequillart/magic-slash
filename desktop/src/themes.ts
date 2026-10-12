@@ -29,9 +29,6 @@ export interface ThemeTokens {
   bgRgb: string
   bgSecondaryRgb: string
   bgTertiaryRgb: string
-  /** Wash painted over the native window vibrancy by `body`. */
-  windowWash: string
-
   // Text
   /** Primary text — what `text-white` used to be. */
   inkRgb: string
@@ -65,6 +62,13 @@ export interface ThemeTokens {
   surfaceSunken: string
   /** Same idea, one step quieter (the settings rail). */
   surfaceSunkenSoft: string
+  /**
+   * How far `RAISED_PLATE` (the sidebar cards, the chat composer, the Control Center's
+   * tiles) is lifted from `bgTertiary` towards the ink, as a `color-mix` percentage.
+   * A theme value because the same lift does not read the same on every ground: on
+   * midnight's blue, 9% read as a fog over a much darker sidebar.
+   */
+  plateLift: string
 
   // Borders, faintest to strongest
   lineSubtle: string
@@ -141,16 +145,15 @@ export const THEMES: Record<ThemeId, Theme> = {
     labelKey: 'theme.dark',
     descriptionKey: 'theme.dark.help',
     tokens: {
-      bgRgb: '10 10 11',
-      bgSecondaryRgb: '20 20 22',
-      bgTertiaryRgb: '28 28 31',
-      windowWash: 'rgba(0, 0, 0, 0.3)',
+      bgRgb: '11 12 14',
+      bgSecondaryRgb: '21 22 25',
+      bgTertiaryRgb: '29 31 35',
 
       inkRgb: '255 255 255',
-      textSecondaryRgb: '161 161 170',
+      textSecondaryRgb: '160 164 174',
       onBrandRgb: '255 255 255',
-      iconRgb: '138 138 146',
-      iconMutedRgb: '101 101 106',
+      iconRgb: '137 141 151',
+      iconMutedRgb: '100 104 113',
 
       surfaceSubtle: 'rgba(255, 255, 255, 0.04)',
       surface: 'rgba(255, 255, 255, 0.06)',
@@ -158,14 +161,16 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.3)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.2)',
 
+      plateLift: '9%',
+
       lineSubtle: 'rgba(255, 255, 255, 0.05)',
       lineField: 'rgba(255, 255, 255, 0.08)',
       line: 'rgba(255, 255, 255, 0.1)',
       lineStrong: 'rgba(255, 255, 255, 0.15)',
-      borderRgb: '39 39 42',
+      borderRgb: '40 42 47',
 
-      accentRgb: '99 102 241',
-      accentHoverRgb: '129 140 248',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '168 85 247',
       greenRgb: '34 197 94',
       redRgb: '239 68 68',
@@ -182,7 +187,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#ef4444',
         green: '#22c55e',
         yellow: '#eab308',
-        blue: '#6366f1',
+        blue: '#007afc',
         magenta: '#a855f7',
         cyan: '#06b6d4',
         white: '#ffffff',
@@ -190,7 +195,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#f87171',
         brightGreen: '#4ade80',
         brightYellow: '#facc15',
-        brightBlue: '#818cf8',
+        brightBlue: '#3d9bff',
         brightMagenta: '#c084fc',
         brightCyan: '#22d3ee',
         brightWhite: '#ffffff',
@@ -202,33 +207,35 @@ export const THEMES: Record<ThemeId, Theme> = {
     labelKey: 'theme.midnight',
     descriptionKey: 'theme.midnight.help',
     tokens: {
-      bgRgb: '11 16 32',
-      bgSecondaryRgb: '17 23 43',
-      bgTertiaryRgb: '23 30 54',
-      windowWash: 'rgba(6, 10, 24, 0.45)',
+      bgRgb: '7 16 31',
+      bgSecondaryRgb: '12 24 45',
+      bgTertiaryRgb: '18 33 59',
 
-      inkRgb: '237 240 252',
-      textSecondaryRgb: '148 158 190',
+      inkRgb: '234 242 252',
+      textSecondaryRgb: '142 162 192',
       onBrandRgb: '255 255 255',
-      iconRgb: '127 137 166',
-      iconMutedRgb: '93 101 127',
+      iconRgb: '122 141 170',
+      iconMutedRgb: '88 106 134',
 
       // A blue window is lighter than a near-black one, so each level carries a
       // touch more alpha to keep the same separation.
       surfaceSubtle: 'rgba(255, 255, 255, 0.045)',
       surface: 'rgba(255, 255, 255, 0.07)',
       surfaceStrong: 'rgba(255, 255, 255, 0.12)',
-      surfaceSunken: 'rgba(3, 6, 18, 0.35)',
-      surfaceSunkenSoft: 'rgba(3, 6, 18, 0.22)',
+      surfaceSunken: 'rgba(2, 7, 18, 0.35)',
+      surfaceSunkenSoft: 'rgba(2, 7, 18, 0.22)',
+      // Half of everyone else's: see `plateLift`.
+
+      plateLift: '4%',
 
       lineSubtle: 'rgba(255, 255, 255, 0.06)',
       lineField: 'rgba(255, 255, 255, 0.09)',
       line: 'rgba(255, 255, 255, 0.12)',
       lineStrong: 'rgba(255, 255, 255, 0.17)',
-      borderRgb: '38 47 74',
+      borderRgb: '33 51 82',
 
-      accentRgb: '129 140 248',
-      accentHoverRgb: '165 180 252',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '192 132 252',
       greenRgb: '52 211 153',
       redRgb: '248 113 113',
@@ -239,21 +246,21 @@ export const THEMES: Record<ThemeId, Theme> = {
       tealRgb: '45 212 191',
 
       terminal: {
-        foreground: '#edf0fc',
-        selectionBackground: '#818cf840',
-        black: '#4c5578',
+        foreground: '#eaf2fc',
+        selectionBackground: '#3d9bff40',
+        black: '#46597a',
         red: '#f87171',
         green: '#34d399',
         yellow: '#fcd34d',
-        blue: '#818cf8',
+        blue: '#3d9bff',
         magenta: '#c084fc',
         cyan: '#22d3ee',
-        white: '#edf0fc',
+        white: '#eaf2fc',
         brightBlack: '#94a3b8',
         brightRed: '#fca5a5',
         brightGreen: '#6ee7b7',
         brightYellow: '#fde68a',
-        brightBlue: '#a5b4fc',
+        brightBlue: '#8cc4ff',
         brightMagenta: '#d8b4fe',
         brightCyan: '#67e8f9',
         brightWhite: '#ffffff',
@@ -265,61 +272,62 @@ export const THEMES: Record<ThemeId, Theme> = {
     labelKey: 'theme.espresso',
     descriptionKey: 'theme.espresso.help',
     tokens: {
-      bgRgb: '26 21 18',
-      bgSecondaryRgb: '35 28 24',
-      bgTertiaryRgb: '45 36 30',
-      windowWash: 'rgba(16, 12, 10, 0.4)',
+      bgRgb: '32 33 36',
+      bgSecondaryRgb: '41 42 46',
+      bgTertiaryRgb: '50 52 57',
 
-      inkRgb: '245 238 230',
-      textSecondaryRgb: '176 160 145',
+      inkRgb: '238 239 242',
+      textSecondaryRgb: '172 175 183',
       onBrandRgb: '255 255 255',
-      iconRgb: '154 139 126',
-      iconMutedRgb: '116 104 94',
+      iconRgb: '148 151 159',
+      iconMutedRgb: '112 115 123',
 
-      // Tinted warm rather than pure white, so the shading belongs to the wood
-      // rather than sitting on top of it as grey.
-      surfaceSubtle: 'rgba(255, 245, 230, 0.045)',
-      surface: 'rgba(255, 245, 230, 0.07)',
-      surfaceStrong: 'rgba(255, 245, 230, 0.12)',
-      surfaceSunken: 'rgba(12, 9, 7, 0.35)',
-      surfaceSunkenSoft: 'rgba(12, 9, 7, 0.22)',
+      // A lighter ground than the other dark themes, so each level carries a touch
+      // more alpha to keep the same separation.
+      surfaceSubtle: 'rgba(255, 255, 255, 0.045)',
+      surface: 'rgba(255, 255, 255, 0.07)',
+      surfaceStrong: 'rgba(255, 255, 255, 0.12)',
+      surfaceSunken: 'rgba(18, 19, 21, 0.35)',
+      surfaceSunkenSoft: 'rgba(18, 19, 21, 0.22)',
 
-      lineSubtle: 'rgba(255, 240, 225, 0.06)',
-      lineField: 'rgba(255, 240, 225, 0.09)',
-      line: 'rgba(255, 240, 225, 0.12)',
-      lineStrong: 'rgba(255, 240, 225, 0.17)',
-      borderRgb: '61 49 41',
+      plateLift: '9%',
 
-      accentRgb: '129 140 248',
-      accentHoverRgb: '165 180 252',
+      lineSubtle: 'rgba(255, 255, 255, 0.06)',
+      lineField: 'rgba(255, 255, 255, 0.09)',
+      line: 'rgba(255, 255, 255, 0.12)',
+      lineStrong: 'rgba(255, 255, 255, 0.17)',
+      borderRgb: '63 65 71',
+
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '192 132 252',
       greenRgb: '52 211 153',
       redRgb: '248 113 113',
-      yellowRgb: '251 191 36',
+      yellowRgb: '250 204 21',
       blueRgb: '96 165 250',
       orangeRgb: '251 146 60',
       cyanRgb: '34 211 238',
       tealRgb: '45 212 191',
 
       terminal: {
-        foreground: '#f5eee6',
-        selectionBackground: '#fbbf2440',
-        black: '#6b5a4c',
+        foreground: '#eeeff2',
+        selectionBackground: '#3d9bff40',
+        black: '#5c5f66',
         red: '#f87171',
         green: '#34d399',
-        yellow: '#fbbf24',
-        blue: '#818cf8',
+        yellow: '#fcd34d',
+        blue: '#3d9bff',
         magenta: '#c084fc',
-        cyan: '#2dd4bf',
-        white: '#f5eee6',
-        brightBlack: '#b0a091',
+        cyan: '#22d3ee',
+        white: '#eeeff2',
+        brightBlack: '#acafb7',
         brightRed: '#fca5a5',
         brightGreen: '#6ee7b7',
-        brightYellow: '#fcd34d',
-        brightBlue: '#a5b4fc',
+        brightYellow: '#fde68a',
+        brightBlue: '#8cc4ff',
         brightMagenta: '#d8b4fe',
-        brightCyan: '#5eead4',
-        brightWhite: '#fffaf3',
+        brightCyan: '#67e8f9',
+        brightWhite: '#ffffff',
       },
     },
   },
@@ -333,7 +341,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgTertiaryRgb: '18 18 18',
       // Nearly opaque: the window's vibrancy lets the desktop through, and
       // whatever is behind it eats exactly the contrast this theme exists for.
-      windowWash: 'rgba(0, 0, 0, 0.92)',
 
       inkRgb: '255 255 255',
       // Not a muted grey: secondary text still has to clear a comfortable ratio.
@@ -351,6 +358,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.6)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.45)',
 
+      plateLift: '9%',
+
       // Borders are structure here, not decoration.
       lineSubtle: 'rgba(255, 255, 255, 0.35)',
       lineField: 'rgba(255, 255, 255, 0.55)',
@@ -358,8 +367,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(255, 255, 255, 0.85)',
       borderRgb: '212 212 216',
 
-      accentRgb: '147 157 255',
-      accentHoverRgb: '186 193 255',
+      accentRgb: '77 163 255',
+      accentHoverRgb: '133 192 255',
       purpleRgb: '216 180 254',
       greenRgb: '74 222 128',
       redRgb: '255 123 123',
@@ -376,7 +385,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#ff7b7b',
         green: '#4ade80',
         yellow: '#fde047',
-        blue: '#939dff',
+        blue: '#4da3ff',
         magenta: '#d8b4fe',
         cyan: '#67e8f9',
         white: '#ffffff',
@@ -384,7 +393,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#ffa8a8',
         brightGreen: '#86efac',
         brightYellow: '#fef08a',
-        brightBlue: '#bac1ff',
+        brightBlue: '#85c0ff',
         brightMagenta: '#e9d5ff',
         brightCyan: '#a5f3fc',
         brightWhite: '#ffffff',
@@ -399,7 +408,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '255 255 255',
       bgSecondaryRgb: '250 250 249',
       bgTertiaryRgb: '244 244 245',
-      windowWash: 'rgba(255, 255, 255, 0.62)',
 
       inkRgb: '24 24 27',
       textSecondaryRgb: '82 82 91',
@@ -415,14 +423,16 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.05)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.035)',
 
+      plateLift: '9%',
+
       lineSubtle: 'rgba(0, 0, 0, 0.07)',
       lineField: 'rgba(0, 0, 0, 0.12)',
       line: 'rgba(0, 0, 0, 0.14)',
       lineStrong: 'rgba(0, 0, 0, 0.2)',
       borderRgb: '228 228 231',
 
-      accentRgb: '79 70 229',
-      accentHoverRgb: '67 56 202',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '147 51 234',
       greenRgb: '21 128 61',
       redRgb: '220 38 38',
@@ -439,7 +449,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#dc2626',
         green: '#15803d',
         yellow: '#a16207',
-        blue: '#4f46e5',
+        blue: '#0062cc',
         magenta: '#9333ea',
         cyan: '#0e7490',
         white: '#52525b',
@@ -447,7 +457,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#b91c1c',
         brightGreen: '#166534',
         brightYellow: '#854d0e',
-        brightBlue: '#4338ca',
+        brightBlue: '#007afc',
         brightMagenta: '#7e22ce',
         brightCyan: '#155e75',
         brightWhite: '#27272a',
@@ -459,31 +469,32 @@ export const THEMES: Record<ThemeId, Theme> = {
     labelKey: 'theme.mist',
     descriptionKey: 'theme.mist.help',
     tokens: {
-      bgRgb: '244 247 251',
-      bgSecondaryRgb: '250 252 254',
-      bgTertiaryRgb: '237 242 249',
-      windowWash: 'rgba(244, 247, 251, 0.72)',
+      bgRgb: '238 246 255',
+      bgSecondaryRgb: '246 250 255',
+      bgTertiaryRgb: '228 239 252',
 
-      inkRgb: '15 23 42',
-      textSecondaryRgb: '71 85 105',
+      inkRgb: '12 27 48',
+      textSecondaryRgb: '64 86 116',
       onBrandRgb: '255 255 255',
-      iconRgb: '97 109 127',
-      iconMutedRgb: '140 150 163',
+      iconRgb: '92 112 140',
+      iconMutedRgb: '138 155 178',
 
-      surfaceSubtle: 'rgba(15, 23, 42, 0.035)',
-      surface: 'rgba(15, 23, 42, 0.05)',
-      surfaceStrong: 'rgba(15, 23, 42, 0.09)',
-      surfaceSunken: 'rgba(15, 23, 42, 0.055)',
-      surfaceSunkenSoft: 'rgba(15, 23, 42, 0.04)',
+      surfaceSubtle: 'rgba(12, 40, 80, 0.035)',
+      surface: 'rgba(12, 40, 80, 0.05)',
+      surfaceStrong: 'rgba(12, 40, 80, 0.09)',
+      surfaceSunken: 'rgba(12, 40, 80, 0.055)',
+      surfaceSunkenSoft: 'rgba(12, 40, 80, 0.04)',
 
-      lineSubtle: 'rgba(15, 23, 42, 0.08)',
-      lineField: 'rgba(15, 23, 42, 0.13)',
-      line: 'rgba(15, 23, 42, 0.15)',
-      lineStrong: 'rgba(15, 23, 42, 0.21)',
-      borderRgb: '203 213 225',
+      plateLift: '9%',
 
-      accentRgb: '67 56 202',
-      accentHoverRgb: '55 48 163',
+      lineSubtle: 'rgba(12, 40, 80, 0.08)',
+      lineField: 'rgba(12, 40, 80, 0.13)',
+      line: 'rgba(12, 40, 80, 0.15)',
+      lineStrong: 'rgba(12, 40, 80, 0.21)',
+      borderRgb: '196 216 240',
+
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '126 34 206',
       greenRgb: '21 128 61',
       redRgb: '220 38 38',
@@ -500,7 +511,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#dc2626',
         green: '#15803d',
         yellow: '#a16207',
-        blue: '#1d4ed8',
+        blue: '#0062cc',
         magenta: '#7e22ce',
         cyan: '#0e7490',
         white: '#64748b',
@@ -508,7 +519,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#b91c1c',
         brightGreen: '#166534',
         brightYellow: '#854d0e',
-        brightBlue: '#1e40af',
+        brightBlue: '#007afc',
         brightMagenta: '#6b21a8',
         brightCyan: '#155e75',
         brightWhite: '#334155',
@@ -523,7 +534,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '250 246 238',
       bgSecondaryRgb: '246 240 229',
       bgTertiaryRgb: '240 232 217',
-      windowWash: 'rgba(250, 246, 238, 0.72)',
 
       inkRgb: '43 35 26',
       textSecondaryRgb: '109 94 76',
@@ -538,6 +548,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(74, 54, 28, 0.055)',
       surfaceSunkenSoft: 'rgba(74, 54, 28, 0.04)',
 
+      plateLift: '9%',
+
       lineSubtle: 'rgba(74, 54, 28, 0.09)',
       lineField: 'rgba(74, 54, 28, 0.14)',
       line: 'rgba(74, 54, 28, 0.16)',
@@ -545,8 +557,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       borderRgb: '226 214 195',
 
       // The accent stays the product's indigo: it is brand, not decoration.
-      accentRgb: '79 70 229',
-      accentHoverRgb: '67 56 202',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '126 34 206',
       greenRgb: '21 115 71',
       redRgb: '185 28 28',
@@ -563,7 +575,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#b91c1c',
         green: '#157347',
         yellow: '#92400e',
-        blue: '#4f46e5',
+        blue: '#0062cc',
         magenta: '#7e22ce',
         cyan: '#0f766e',
         white: '#78716c',
@@ -571,7 +583,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#dc2626',
         brightGreen: '#15803d',
         brightYellow: '#a16207',
-        brightBlue: '#4338ca',
+        brightBlue: '#007afc',
         brightMagenta: '#9333ea',
         brightCyan: '#0e7490',
         brightWhite: '#44403c',
@@ -588,7 +600,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgTertiaryRgb: '245 245 245',
       // Nearly opaque, like its dark counterpart: whatever the vibrancy lets
       // through eats exactly the contrast this theme exists for.
-      windowWash: 'rgba(255, 255, 255, 0.95)',
 
       inkRgb: '0 0 0',
       // Near-black, not a muted grey: secondary text has to stay comfortable.
@@ -603,6 +614,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.07)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.05)',
 
+      plateLift: '9%',
+
       // Borders are structure here, not decoration.
       lineSubtle: 'rgba(0, 0, 0, 0.45)',
       lineField: 'rgba(0, 0, 0, 0.6)',
@@ -610,8 +623,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(0, 0, 0, 0.85)',
       borderRgb: '82 82 82',
 
-      accentRgb: '49 46 129',
-      accentHoverRgb: '30 27 75',
+      accentRgb: '0 88 184',
+      accentHoverRgb: '0 65 138',
       purpleRgb: '88 28 135',
       greenRgb: '20 83 45',
       redRgb: '153 27 27',
@@ -628,7 +641,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         red: '#991b1b',
         green: '#14532d',
         yellow: '#713f12',
-        blue: '#1e3a8a',
+        blue: '#0058b8',
         magenta: '#581c87',
         cyan: '#164e63',
         white: '#52525b',
@@ -636,7 +649,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         brightRed: '#7f1d1d',
         brightGreen: '#052e16',
         brightYellow: '#422006',
-        brightBlue: '#172554',
+        brightBlue: '#0062cc',
         brightMagenta: '#3b0764',
         brightCyan: '#083344',
         brightWhite: '#000000',

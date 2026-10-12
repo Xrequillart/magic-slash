@@ -5,6 +5,7 @@ import { addHistoryEntry } from '../config/activity-history'
 import { fetchPRStatus, parsePRUrl } from '../github'
 import { prReviewNotification } from '../notifications/pr-review-message'
 import { shouldEmitMerged } from './merge-detection'
+import { reviewNotificationEvent } from './review-notification'
 import {
   nextInterval,
   nextBackoff,
@@ -115,7 +116,11 @@ export class PRReviewWatcher {
   private pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS
   private lastTickAt: number | null = null
   private watchingCount: number = 0
-  private lastNotifiedAt = new Map<string, number>()
+  /**
+   * Per PR URL: when the last notification went out, and which event it was. The
+   * event id is what stops two cards sharing one PR from announcing it twice.
+   */
+  private lastNotified = new Map<string, { at: number; eventId: string }>()
   private lastKnownStatus = new Map<string, LastKnown>()
   /** Attempt count + earliest next read, per failing PR. Always written and cleared together. */
   private retries = new Map<string, RetryState>()
@@ -436,6 +441,7 @@ export class PRReviewWatcher {
         // The card lists the checks by name now, so their individual outcomes are
         // part of what a "changed" snapshot means: see `snapshotKey`.
         checkStates: snapshot.checks.map((check) => `${check.name}:${check.state}`),
+        latestFeedbackAt: snapshot.latestFeedback?.at,
       },
     )
     // Keyed by TARGET, not by URL: one PR can feed several cards, and a URL-wide
@@ -481,6 +487,9 @@ export class PRReviewWatcher {
       // Already deduped and capped by `mapPullRequestToSnapshot`.
       prCommentAuthors: snapshot.commentAuthors,
       prLastCheckedAt: now,
+      // 0, not absent, when nobody else has spoken: absent means "never recorded"
+      // and would keep the next first comment from being announced.
+      prLastFeedbackAt: snapshot.latestFeedback?.at ?? 0,
     }
     // Absent, not `undefined`: GitHub reporting UNKNOWN must render as "unknown",
     // and the metadata merge only strips undefined at the top level.
@@ -493,8 +502,10 @@ export class PRReviewWatcher {
       repositoryMetadata: { [repoPath]: repoMeta },
     })
 
-    // History entry on transition
-    const prevStatus = previous?.status
+    // History entry on transition. The persisted status is the baseline when the
+    // in-memory map is empty, otherwise every launch re-logged the verdict of every
+    // PR already approved.
+    const prevStatus = previous?.status ?? existing.prReviewStatus
     if (prevStatus !== snapshot.status) {
       if (snapshot.status === 'approved' || snapshot.status === 'changes-requested') {
         const terminal = terminals.find(t => t.id === terminalId)
@@ -525,13 +536,12 @@ export class PRReviewWatcher {
       })
     }
 
-    // Notify only if window is not focused, on a real transition, respecting cooldown.
+    // Notify only if the window is not focused, on something new since the last
+    // PERSISTED read — see `reviewNotificationEvent` for why not the in-memory map.
     //
-    // `previous` must EXIST for this to count as a transition. Without that test,
-    // the first read of a PR compared `undefined` to whatever GitHub reports and
-    // fired — so switching the watcher on notified once per open PR, and so did
-    // every app restart, since `lastKnownStatus` lives in memory. Nothing changed
-    // in those cases; the app had simply never looked before.
+    // A verdict change always goes out. New feedback alone respects a cooldown, so
+    // a reviewer leaving five comments one by one is one notification, not five.
+    // The event id makes a second card on the same PR a no-op either way.
     //
     // Opting out is per kind and read here rather than at the sink: the master
     // switch in main/index.ts silences everything, this one silences only the
@@ -539,27 +549,29 @@ export class PRReviewWatcher {
     // chosen, which is ON.
     const mainWindow = this.getMainWindow()
     const windowFocused = mainWindow?.isFocused() ?? false
-    const lastNotified = this.lastNotifiedAt.get(prUrl) || 0
+    const event = reviewNotificationEvent(existing, snapshot)
     const notifyAllowed = readConfig().notifications?.prReview !== false
-    if (
-      notifyAllowed
-      && !windowFocused
-      && now - lastNotified > NOTIFICATION_COOLDOWN_MS
-      && previous !== undefined
-      && prevStatus !== snapshot.status
-    ) {
-      this.lastNotifiedAt.set(prUrl, now)
-      // A URL is not a message: this used to read `<pr url>: changes-requested`,
-      // untranslated and unreadable at a glance. The agent's ticket (or its title)
-      // plus the PR number is how the person thinks about the same object.
-      const terminal = terminals.find(t => t.id === terminalId)
-      const { title, body } = prReviewNotification(t, {
-        status: snapshot.status,
-        reviewers: snapshot.reviewers,
-        label: terminal?.metadata?.ticketId || terminal?.metadata?.title || terminal?.name,
-        prNumber: parsePRUrl(prUrl)?.number,
-      })
-      this.showNotification(title, body)
+    if (event && notifyAllowed && !windowFocused) {
+      const eventId = event.kind === 'status' ? `status:${event.status}` : `feedback:${event.at}`
+      const last = this.lastNotified.get(prUrl)
+      const cooling = event.kind === 'feedback' && last !== undefined && now - last.at < NOTIFICATION_COOLDOWN_MS
+      if (last?.eventId !== eventId && !cooling) {
+        this.lastNotified.set(prUrl, { at: now, eventId })
+        // A URL is not a message: this used to read `<pr url>: changes-requested`,
+        // untranslated and unreadable at a glance. The agent's ticket (or its title)
+        // plus the PR number is how the person thinks about the same object.
+        const terminal = terminals.find(t => t.id === terminalId)
+        const { title, body } = prReviewNotification(t, {
+          ...(event.kind === 'status'
+            ? { status: event.status, reviewers: snapshot.reviewers }
+            // New feedback under an unchanged verdict reads as a comment, credited
+            // to whoever wrote it — the one login that is certain here.
+            : { status: 'commented' as const, reviewers: [event.author] }),
+          label: terminal?.metadata?.ticketId || terminal?.metadata?.title || terminal?.name,
+          prNumber: parsePRUrl(prUrl)?.number,
+        })
+        this.showNotification(title, body)
+      }
     }
 
     this.lastKnownStatus.set(targetKey, {

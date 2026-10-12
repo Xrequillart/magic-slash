@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AuthStatus } from '../../types'
+import type { AccountSession, AuthStatus } from '../../types'
 import { AVATAR_BUCKET, avatarObjectPath } from '../../avatar'
 import { getSupabaseClient, isCloudEnabled } from './supabase-client'
+import { stampPasswordChange } from './password-stamp'
+import { lookupIpLocation } from './ipLocation'
 import {
   saveSession,
   loadSession,
@@ -25,10 +27,15 @@ function toStatus(stored: StoredSession): AuthStatus {
  * Best-effort server-side sign-out. Local teardown (clearSession) is the
  * caller's responsibility; a failure here is logged and swallowed so it never
  * blocks the local state change.
+ *
+ * `scope: 'local'` — THIS session only. supabase-js defaults to `global`, which
+ * revokes every session of the account: signing out of the dev build signed the
+ * packaged app out too, and every browser with it. The Security & Access page is
+ * where the other sessions are signed out, on purpose.
  */
 async function signOutQuietly(client: SupabaseClient, context: string): Promise<void> {
   try {
-    await client.auth.signOut()
+    await client.auth.signOut({ scope: 'local' })
   } catch (error) {
     console.error(`[cloud] signOut ${context} (ignored):`, error)
   }
@@ -254,8 +261,16 @@ export async function confirmPasswordReset(email: string, code: string, newPassw
   })
   if (verifyError) throw new Error(verifyError.message)
 
-  const { error: updateError } = await client.auth.updateUser({ password: newPassword })
+  const { data: updated, error: updateError } = await client.auth.updateUser({ password: newPassword })
   if (updateError) throw new Error(updateError.message)
+
+  // BEFORE the sign-out, and that ordering is the whole reason this line is here
+  // rather than in the IPC handler: a stamp attempted after `clearSession()` has no
+  // session to write through, and somebody who reset a forgotten password would be
+  // told afterwards that nothing had changed since they created the account. The uid
+  // comes from the update's own response because the recovery session was never
+  // persisted, so `loadSession()` has nothing to offer here.
+  if (updated.user) await stampPasswordChange(client, updated.user.id)
 
   // Recovery session is transient — drop it so the user logs in cleanly.
   await signOutQuietly(client, 'after password reset')
@@ -271,8 +286,13 @@ export async function updatePassword(newPassword: string): Promise<void> {
   const client = await getAuthedClient()
   if (!client) throw new Error('You must be signed in to change your password')
 
-  const { error } = await client.auth.updateUser({ password: newPassword })
+  const { data, error } = await client.auth.updateUser({ password: newPassword })
   if (error) throw new Error(error.message)
+
+  // The account card's password line reads this back. It never throws and it is not
+  // awaited for its result — the password has already changed, and a failed stamp is a
+  // missing sentence, not a failed operation. See `stampPasswordChange`.
+  if (data.user) await stampPasswordChange(client, data.user.id)
 }
 
 /**
@@ -324,6 +344,55 @@ export async function confirmEmailChange(newEmail: string, code: string): Promis
   const stored = toStored(data.session)
   saveSession(stored)
   return toStatus(stored)
+}
+
+/**
+ * What the server says about us now, and whether that differs from what we stored.
+ *
+ * WHY THIS EXISTS: an email change is confirmed by clicking a link in a mailbox, which
+ * happens in a BROWSER, on a machine this app knows nothing about. Nothing pushes the
+ * result back — no webhook, no realtime channel on `auth.users` — so the only way the
+ * desktop learns its own address changed is to go and ask. `confirmEmailChange` used to
+ * be that moment, because the user typed the code here; with a link, there is no moment.
+ *
+ * `getUser()` AND NOT `refreshSession()`, which would also pick the new address up. A
+ * refresh ROTATES the refresh token, and this file's own notes explain what that costs:
+ * handing Supabase a token it has already rotated trips reuse detection and revokes the
+ * whole session family. This runs on a timer, so it would be doing that every few
+ * seconds. `getUser()` is a plain read against the access token we already hold.
+ *
+ * `pending` IS THE POLLER'S STOP CONDITION. GoTrue keeps the requested address in
+ * `new_email` until it is confirmed, so "is there still a change in flight" is a fact
+ * the server holds rather than something this app has to remember across restarts.
+ *
+ * NEVER THROWS. It runs unattended; a network blip must leave the stored session exactly
+ * as it was and be indistinguishable from "nothing has changed yet".
+ */
+export async function refreshUser(): Promise<{ changed: boolean; pending: boolean; status: AuthStatus }> {
+  const stored = loadSession()
+  if (!stored) return { changed: false, pending: false, status: LOGGED_OUT }
+
+  const unchanged = { changed: false, pending: false, status: toStatus(stored) }
+
+  try {
+    const client = await getAuthedClient()
+    if (!client) return unchanged
+
+    const { data, error } = await client.auth.getUser()
+    if (error || !data.user) return unchanged
+
+    // `new_email` is typed as optional on the user; an empty string is GoTrue's "none".
+    const pending = Boolean(data.user.new_email)
+    const email = data.user.email
+    if (!email || email === stored.user?.email) return { ...unchanged, pending }
+
+    const next: StoredSession = { ...stored, user: { id: data.user.id, email } }
+    saveSession(next)
+    return { changed: true, pending, status: toStatus(next) }
+  } catch (error) {
+    console.error('[cloud] refreshUser failed:', error)
+    return unchanged
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -442,4 +511,58 @@ export async function deleteAccount(): Promise<AuthStatus> {
   await signOutQuietly(client, 'after account deletion')
   clearSession()
   return isCloudEnabled() ? LOGGED_OUT : DISABLED
+}
+
+// ---------------------------------------------------------------------------
+// Sessions (Settings → Security & Access)
+// ---------------------------------------------------------------------------
+
+interface AccountSessionRow {
+  id: string
+  user_agent: string | null
+  ip: string | null
+  created_at: string | null
+  last_used_at: string | null
+  is_current: boolean
+}
+
+/** Every device and browser signed in to the account, this one first. */
+export async function listSessions(): Promise<AccountSession[]> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to list your sessions')
+
+  const { data, error } = await client.rpc('list_account_sessions')
+  if (error) throw new Error(error.message)
+
+  // Located in parallel, and never failing the list: a lookup that fails is a row
+  // without a city, not a page that cannot load.
+  return Promise.all(
+    ((data ?? []) as AccountSessionRow[]).map(async (row) => ({
+      id: row.id,
+      userAgent: row.user_agent,
+      ip: row.ip,
+      location: await lookupIpLocation(row.ip),
+      createdAt: row.created_at,
+      lastUsedAt: row.last_used_at,
+      isCurrent: row.is_current,
+    })),
+  )
+}
+
+/** Sign one other device or browser out. The server refuses this device's own session. */
+export async function revokeSession(sessionId: string): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to sign a device out')
+
+  const { error } = await client.rpc('revoke_account_session', { p_session_id: sessionId })
+  if (error) throw new Error(error.message)
+}
+
+/** Sign every device and browser out except this one — GoTrue's own `others` scope. */
+export async function revokeOtherSessions(): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to sign other devices out')
+
+  const { error } = await client.auth.signOut({ scope: 'others' })
+  if (error) throw new Error(error.message)
 }

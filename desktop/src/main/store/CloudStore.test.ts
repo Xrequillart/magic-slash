@@ -144,6 +144,9 @@ function makeClient(
       order: (...args: unknown[]) => { record('order', args); return b },
       limit: (...args: unknown[]) => { record('limit', args); return b },
       maybeSingle: (...args: unknown[]) => { record('maybeSingle', args); return b },
+      // A request header, not a filter — recorded all the same so a test can say which
+      // query carried it (the plan history's source, 20260923120000).
+      setHeader: (...args: unknown[]) => { record('setHeader', args); return b },
       insert: (payload: unknown) => {
         record('insert', [payload])
         ;(inserts[table] ??= []).push(payload)
@@ -1038,7 +1041,41 @@ describe('agents', () => {
     expect(meta).not.toHaveProperty('baseBranch')
     // What has no column of its own still travels in the jsonb.
     expect(meta.title).toBe('kept in the jsonb')
-    expect(meta.__app).toEqual({ id: 'claude-1', tsCreate: undefined, splitPane: undefined })
+    expect(meta.__app).toEqual({
+      id: 'claude-1', tsCreate: undefined, splitPane: undefined, infoSidebarOpen: undefined,
+    })
+  })
+
+  // The info panel is per agent, and `agents` is where an agent lives. It rides in the
+  // jsonb beside splitPane rather than in a column of its own, so the round trip is
+  // the only thing standing between "closed on this agent" and a panel that reopens on
+  // the next launch.
+  it('carries the info panel state through the __app jsonb, false included', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk })
+    h.state.client = client
+
+    await new CloudStore().saveAgents([
+      { id: 'claude-1', name: 'A', repositories: [], infoSidebarOpen: false },
+    ])
+
+    const row = (upserts.agents[0] as Array<Record<string, unknown>>)[0]
+    const meta = row.metadata as Record<string, unknown>
+    expect((meta.__app as Record<string, unknown>).infoSidebarOpen).toBe(false)
+  })
+
+  it('reads the info panel state back, and leaves an undecided agent undecided', async () => {
+    const rows = [
+      { ...agentRow('uuid-1', 'claude-1', UID), metadata: { __app: { id: 'claude-1', infoSidebarOpen: false } } },
+      { ...agentRow('uuid-2', 'claude-2', UID), metadata: { __app: { id: 'claude-2' } } },
+    ]
+    const { client } = makeClient({ memberships: membershipsOk, agents: { data: rows, error: null } })
+    h.state.client = client
+
+    const agents = await new CloudStore().loadAgents()
+    expect(agents[0].infoSidebarOpen).toBe(false)
+    // Undefined, NOT false: an agent nobody has toggled has to keep following the app
+    // setting, and a default stamped here would take that away for good.
+    expect(agents[1].infoSidebarOpen).toBeUndefined()
   })
 
   it('loadAgents reads the columns, not the jsonb', async () => {
@@ -1943,6 +1980,157 @@ describe('updateRepository', () => {
   })
 })
 
+describe('loadRepositoryWorkflows', () => {
+  it('returns each row\'s definition with its updated_at as the revision', async () => {
+    const OVERLAY = { version: 1, steps: [], kinds: {} }
+    const { client, calls } = makeClient({
+      repository_workflows: { data: [{ repo_id: 'r1', definition: OVERLAY, updated_at: '2026-09-30T10:00:00.123456+00:00' }], error: null },
+    })
+    h.state.client = client
+
+    expect(await new CloudStore().loadRepositoryWorkflows()).toEqual({
+      r1: { definition: OVERLAY, revision: '2026-09-30T10:00:00.123456+00:00' },
+    })
+    expect(calls.find((c) => c.table === 'repository_workflows' && c.method === 'select')?.args[0]).toBe('repo_id, definition, updated_at')
+  })
+
+  it('answers null on a failed read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client } = makeClient({ repository_workflows: { data: null, error: { message: 'offline' } } })
+    h.state.client = client
+    expect(await new CloudStore().loadRepositoryWorkflows()).toBeNull()
+  })
+})
+
+describe('saveRepositoryWorkflow', () => {
+  const OVERLAY = {
+    version: 2 as const,
+    steps: [{ skill: 'check', mode: 'advisory' as const }],
+    links: [{ from: 'commit', to: 'custom:check', kind: 'suggest' as const }],
+    kinds: {},
+    positions: {},
+  }
+  const has = (calls: RecordedCall[], method: string, ...args: unknown[]) =>
+    calls.some((c) => c.table === 'repository_workflows' && c.method === method && args.every((a, i) => c.args[i] === a))
+
+  describe('with no row expected (the default flow)', () => {
+    it('inserts, never upserts, and resolves to the new revision', async () => {
+      const { client, inserts, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1', updated_at: 't1' }], error: null } })
+      h.state.client = client
+
+      expect(await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).toBe('t1')
+
+      expect(inserts.repository_workflows[0]).toEqual({ repo_id: 'r1', definition: OVERLAY })
+      expect(has(calls, 'upsert')).toBe(false)
+    })
+
+    it('rejects as a conflict when someone created the row meanwhile (23505)', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '23505', message: 'duplicate key' } } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as forbidden on a 42501, and when the insert returns no row', async () => {
+      const denied = makeClient({ repository_workflows: { data: null, error: { code: '42501', message: 'rls' } } })
+      h.state.client = denied.client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'forbidden' })
+
+      const empty = makeClient({ repository_workflows: { data: [], error: null } })
+      h.state.client = empty.client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('rejects any other failure as a plain error', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '08006', message: 'offline' } } })
+      h.state.client = client
+      const failure = await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null).catch((e) => e)
+      expect(failure).toBeInstanceOf(Error)
+      expect(failure.code).toBeUndefined()
+    })
+
+    it('has nothing to write going back to the default when there is still no row', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [], error: null } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, null)).resolves.toBeNull()
+      expect(has(calls, 'delete')).toBe(false)
+    })
+
+    it('rejects going back to the default as a conflict when a row appeared since', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [{ updated_at: 't9' }], error: null } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, null)).rejects.toMatchObject({ code: 'conflict' })
+      expect(has(calls, 'delete')).toBe(false)
+    })
+  })
+
+  describe('with a row expected at a revision', () => {
+    it('updates only the row still at that revision, and resolves to the new one', async () => {
+      const { client, updates, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1', updated_at: 't2' }], error: null } })
+      h.state.client = client
+
+      expect(await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).toBe('t2')
+
+      expect(updates.repository_workflows[0]).toEqual({ definition: OVERLAY })
+      expect(has(calls, 'eq', 'repo_id', 'r1')).toBe(true)
+      expect(has(calls, 'eq', 'updated_at', 't1')).toBe(true)
+      expect(has(calls, 'upsert')).toBe(false)
+    })
+
+    it('rejects as a conflict when the update matched nothing because the row moved on', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't9' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as a conflict when the update matched nothing because the row was deleted', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as forbidden when the update matched nothing and the row is still at our revision', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't1' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('rejects as forbidden on a 42501', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '42501', message: 'rls' } } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('deletes the row still at that revision on null, which is the default flow', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1' }], error: null } })
+      h.state.client = client
+
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).resolves.toBeNull()
+
+      expect(has(calls, 'delete')).toBe(true)
+      expect(has(calls, 'eq', 'repo_id', 'r1')).toBe(true)
+      expect(has(calls, 'eq', 'updated_at', 't1')).toBe(true)
+    })
+
+    it('takes a delete that matched nothing as done when the row is already gone', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).resolves.toBeNull()
+    })
+
+    it('rejects a delete that matched nothing as a conflict when the row moved on', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't9' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects a delete that matched nothing as forbidden when the row is still at our revision', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't1' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+  })
+})
+
 describe('createRepository / setRepositoryRemoteUrl', () => {
   it('writes the clone address on creation, so it round-trips as remote_url', async () => {
     const { client, inserts } = makeClient({
@@ -2267,6 +2455,7 @@ describe('user settings', () => {
       agent_context_enabled: null,
       agent_context_minimized: null,
       usage_logs_enabled: null,
+      info_sidebar_on_create: null,
       plan_sync_enabled: null,
       daily_digest_enabled: true,
       notifications_enabled: null,
@@ -2287,11 +2476,35 @@ describe('user settings', () => {
       default_agent_type: null,
       agent_sort: null,
       tasks_repo: null,
+      plans_repo: null,
+      workflow_confirm_chain: null,
+      workflow_chain_limit: null,
+      workflow_missing_skill: null,
+      workflow_run_actions: null,
       atlassian_integration_enabled: null,
       theme: null,
       language: null,
       sync_claude_theme: null,
-      code_theme: null,
+      code_syntax: null,
+      code_font_size: null,
+      default_model: null,
+      confirm_agent_archive: null,
+      split_new_agent_pane: null,
+      default_display_mode: null,
+      chat_sticky_prompt: null,
+      chat_send_key: null,
+      chat_tool_detail: null,
+      chat_diffs: null,
+      chat_timestamps: null,
+      quick_launch_repo: null,
+      quick_launch_background: null,
+      quick_launch_launch_mode: null,
+      quick_settings_enabled: null,
+      quick_settings_items: null,
+      sidebar_order: null,
+      sidebar_hidden: null,
+      sidebar_shown: null,
+      sidebar_compact: null,
     })
   })
 
@@ -2685,7 +2898,41 @@ describe('avatar', () => {
     // replaces the photo in place instead of being refused as a duplicate key —
     // and the contentType is what a later download hands back as its data URL
     // prefix, so it has to be the stored format rather than whatever was picked.
-    expect(upload?.args).toEqual([PATH, BYTES, { upsert: true, contentType: 'image/webp' }])
+    expect(upload?.args).toEqual([
+      PATH,
+      BYTES,
+      { upsert: true, contentType: 'image/webp', cacheControl: '0' },
+    ])
+  })
+
+  /**
+   * The regression this locks: an avatar that saves and then comes back as the
+   * PREVIOUS one for an hour.
+   *
+   * `cacheControl` has to be passed EXPLICITLY, because the option storage-js picks
+   * when it is absent is '3600' and it is written onto the stored object. Paired with
+   * a key that never changes (one blessed object per user, pinned by the write
+   * policies) that default means a change is invisible to every later read until the
+   * hour is out — the user's own next launch, and the members list beside their name.
+   * Nothing reports an error, because nothing failed: the bytes really were stored.
+   *
+   * Asserted as its own test rather than only inside the options above, so that a
+   * future edit to that object literal has to answer for this specifically.
+   */
+  it('stores the object so that nothing may serve it from cache', async () => {
+    const { client, calls } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().setAvatar(DATA_URL)
+
+    const upload = calls.find((c) => c.table === 'storage:avatars' && c.method === 'upload')
+    const options = upload?.args[2] as { cacheControl?: string } | undefined
+    expect(options?.cacheControl).toBe('0')
   })
 
   it('writes the pointer as an upsert of the two avatar columns only', async () => {
@@ -2808,6 +3055,33 @@ describe('avatar', () => {
     expect(download?.args).toEqual([PATH])
   })
 
+  /**
+   * THE `Cmd+R` REGRESSION, in one test.
+   *
+   * Reloading the window restarts the RENDERER, not this process, so a save made a
+   * moment earlier is still known here. It has to be, because a download of the path at
+   * that instant is answered by the CDN with the PREVIOUS version — which is exactly
+   * what made a saved avatar revert the moment the window reloaded.
+   *
+   * The download mock therefore hands back DIFFERENT bytes on purpose: it stands in for
+   * the stale copy production really serves, and the assertion is that we do not take
+   * it.
+   */
+  it('getAvatarDataUrl answers with the just-saved photo, not the stale object', async () => {
+    const stale = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x99, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50])
+    const { client } = makeClient(
+      { profiles: { data: { avatar_url: PATH }, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null }, download: { data: blobOf(stale), error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: true })
+    await expect(store.getAvatarDataUrl()).resolves.toBe(DATA_URL)
+  })
+
   it('getAvatarDataUrl returns null without a download when the column is empty', async () => {
     const { client, calls } = makeClient({ profiles: { data: { avatar_url: null }, error: null } })
     h.state.client = client
@@ -2832,24 +3106,53 @@ describe('avatar', () => {
     await expect(new CloudStore().getAvatarDataUrl()).resolves.toBeNull()
   })
 
-  it('all three answer neutrally and touch nothing when there is no session', async () => {
+  it('reports a write it did make', async () => {
+    const { client } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null }, remove: { data: null, error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: true })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: true })
+  })
+
+  /**
+   * THE READ MAY ANSWER NEUTRALLY; THE TWO WRITES MAY NOT.
+   *
+   * `getAvatarDataUrl` returning null with no session is the honest answer to a
+   * question — there is nothing to show, and the card draws the generic face. The
+   * writes are not questions. Resolving quietly told the IPC layer above that an
+   * upload had completed, so it answered `{ ok: true }` and the Account tab published
+   * the bytes it was holding to every surface that draws a face: the change looked
+   * saved, in the card and in the sidebar, and was gone at the next read.
+   *
+   * `calls` staying empty is asserted alongside, because the two claims are different
+   * and both matter: `offline` says no write happened, and this says none was even
+   * attempted.
+   */
+  it('reports a write it did not make, and touches nothing, when there is no session', async () => {
     const { client, calls } = makeClient({ profiles: { data: null, error: null } })
     h.state.client = client
     h.state.session = null // userContext() bails after the client resolves
 
     const store = new CloudStore()
-    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
-    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: false, reason: 'offline' })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: false, reason: 'offline' })
+    // The read is the one of the three that MAY answer with nothing.
     await expect(store.getAvatarDataUrl()).resolves.toBeNull()
     expect(calls).toEqual([])
   })
 
-  it('all three answer neutrally when there is no authed client at all', async () => {
+  it('reports a write it did not make when there is no authed client at all', async () => {
     h.state.client = null // getAuthedClient() → null → userContext() bails
 
     const store = new CloudStore()
-    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
-    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: false, reason: 'offline' })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: false, reason: 'offline' })
     await expect(store.getAvatarDataUrl()).resolves.toBeNull()
   })
 })
@@ -2952,31 +3255,46 @@ describe('loadAvatarDataUrls', () => {
     expect(downloads).toEqual([pathOf('u1')])
   })
 
-  it('forgets the caller own photo the moment they change it', async () => {
+  /**
+   * THE CALLER'S OWN FACE IS KNOWN, NOT RE-FETCHED — and re-fetching is the bug.
+   *
+   * The object key is a constant, so nothing about the PATH says the bytes moved on,
+   * and the bucket is served through a CDN that purges asynchronously. Measured against
+   * production: for the first seconds after a save, a download of the path is answered
+   * with the PREVIOUS version. So going back to the network here does not merely cost a
+   * request — it loses a race, and caches the old face for the rest of the TTL, right
+   * after the user watched themselves upload a new one.
+   *
+   * There is nothing to fetch. `setAvatar` was handed the bytes, the server took them,
+   * and the assertion is on the VALUE rather than on a download count for that reason:
+   * what matters is that the roster shows the face that was just saved.
+   */
+  it('shows the caller the face they just saved, without asking the bucket', async () => {
     const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
     h.state.client = client
 
     const store = new CloudStore()
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({ [UID]: urlOf(1) })
     await store.setAvatar(urlOf(9))
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
 
-    // The object key is a constant, so nothing about the PATH says the bytes moved on.
-    // Without this the user would keep seeing their previous face in the roster for
-    // the rest of the TTL, right after watching themselves upload a new one.
-    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({ [UID]: urlOf(9) })
+    // One download, from before the save. The second read is answered from what the
+    // save already knew.
+    expect(downloads).toEqual([pathOf(UID)])
   })
 
-  it('forgets it on removal too', async () => {
+  it('stops showing a face the caller just removed, without asking the bucket', async () => {
     const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
     h.state.client = client
 
     const store = new CloudStore()
     await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
     await store.removeAvatar()
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
 
-    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+    // The same race wearing the other sign: a re-fetch here can still be handed the
+    // object that was just deleted, putting the removed face back on screen.
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({})
+    expect(downloads).toEqual([pathOf(UID)])
   })
 
   it('asks for nothing when there is no session', async () => {
@@ -3026,5 +3344,35 @@ describe('saveConfig', () => {
     // Shared projection derived from the in-memory repos is still mirrored top-level.
     expect(savedBlob.repoKeywords).toEqual({ demo: ['kw'] })
     expect(savedBlob.commit).toEqual({ format: 'angular' })
+  })
+})
+
+describe('savePlanSpec — the plan history', () => {
+  // The revision itself is the database's (the record_revision trigger, covered by
+  // supabase/tests/plan_revisions.test.sql). What the app owes it is one header, on the
+  // agent's upload and nowhere else: without it the planner's rewrites read as hand edits.
+  it('marks the spec upload as the agent\'s with x-magic-plan-source', async () => {
+    const { client, calls } = makeClient({}, {}, { plan_sessions: { data: [{ id: 'session-1' }], error: null } })
+    h.state.client = client
+
+    await new CloudStore().savePlanSpec({ agentId: 'claude-1', specPath: '/r/.magic/spec-x.md', spec: '# Spec', specOversize: false })
+
+    const planCalls = calls.filter((c) => c.table === 'plan_sessions')
+    expect(planCalls.map((c) => c.method)).toEqual(['upsert', 'select', 'setHeader'])
+    expect(planCalls[2].args).toEqual(['x-magic-plan-source', 'agent'])
+  })
+
+  // Who may see and edit the plan is the column's default on the first insert ('personal',
+  // 20260924090000) and the author's choice after that. The upload must never carry it: an
+  // `edit_policy` in the upsert would land in its `DO UPDATE SET` and overwrite that choice
+  // on every save.
+  it('never sends edit_policy, so the default applies and a later choice is kept', async () => {
+    const { client, calls } = makeClient({}, {}, { plan_sessions: { data: [{ id: 'session-1' }], error: null } })
+    h.state.client = client
+
+    await new CloudStore().savePlanSpec({ agentId: 'claude-1', specPath: '/r/.magic/spec-x.md', spec: '# Spec', specOversize: false })
+
+    const upsert = calls.find((c) => c.table === 'plan_sessions' && c.method === 'upsert')
+    expect(upsert?.args[0]).not.toHaveProperty('edit_policy')
   })
 })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MessagesSquare } from 'lucide-react'
+import { MessagesSquare } from '@ds/desktop/icons'
 import { useStore } from '../../store'
 import { DRAWER_HEADER, DrawerCloseButton } from '../file-preview/FileHeader'
 import { cumulativeOffsetTop } from '../../utils/scrollGeometry'

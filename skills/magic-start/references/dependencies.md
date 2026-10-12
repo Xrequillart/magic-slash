@@ -77,6 +77,8 @@ context" would be read as a hard block on PROJ-9, and the gate would stop a tick
 
 Both checks are kept: adjacency alone misses `no longer blocked by PROJ-1`, which does carry an ID.
 
+**Note on `SKILL.md` Step 2.4's pre-filter.** This pre-filter must never be narrower than §2.3, only looser: it skips the adjacency window and the full negation skip-list, both of which §2.3 applies afterwards and which can still conclude that nothing is declared — a `none` verdict, handled exactly like this early exit. Dropping a keyword here instead early-exits a ticket that §2.3 would have matched, and the reference file is never read to catch it. `after PROJ-4` is the case that makes this concrete: it is a detection case the ticket names explicitly, and it fires on `after` alone.
+
 ## 3. Resolving the blockers
 
 ### 3.1 Deriving `owner/repo`
@@ -266,7 +268,7 @@ Display `MSG_BLOCKER_IN_FLIGHT` and offer to base the new worktree on the blocke
 that PR propagates into the user's worktree — that is the real cost of the convenience, and it is stated
 before the choice, not after.
 
-`SKILL.md` Step 4.1 owns the question; this file only returns the candidate branch and the repo it belongs to
+`SKILL.md` Step 4.1 owns the question (asked through `references/blocker-followup.md` §2); this file only returns the candidate branch and the repo it belongs to
 (see `## Usage`). `{blocker_line}` stays **empty** on this path: the message is a multi-line block with a choice
 in it, so it cannot be folded into the summary box. The blocker still reaches the user, through `blockers` →
 `{attention_points}`. The same holds for §5.3 when the user starts the ticket anyway.
@@ -274,7 +276,7 @@ in it, so it cannot be folded into the summary box. The blocker still reaches th
 ### 5.3 🔴 Hard blocked
 
 Display `MSG_BLOCKER_HARD` (no PR found) or `MSG_BLOCKER_ABANDONED_PR` (closed unmerged), then ask with
-`AskUserQuestion`. `SKILL.md` Step 2.4 owns the question, its three options and their mechanics — including
+`AskUserQuestion`. `SKILL.md` Step 2.4 owns the question, its three options (listed in `references/blocker-followup.md` §1) and their mechanics — including
 that nothing is created before the answer.
 
 ## 6. Degradation — never fabricate a verdict

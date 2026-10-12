@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { progressTone } from '@ds/desktop/progressTones'
 import {
   canCloseAgent,
   formatTimestamp,
   formatRelativeDate,
-  contextColors,
   detectTicketProvider,
   buildTicketLink,
   getSpecPanelMode,
@@ -12,7 +12,6 @@ import {
   SPEC_SCROLL_TOLERANCE_PX,
   STATUSES_BY_TYPE,
   resolveAgentType,
-  canChangeAgentType,
 } from './utils'
 import { t as translate, type MessageKey } from '../../../i18n'
 
@@ -85,20 +84,28 @@ describe('formatRelativeDate', () => {
   })
 })
 
-describe('contextColors', () => {
+describe('the context gauge thresholds', () => {
+  // `contextColors` is gone: `ProgressBar` owns the fill and `progressTone` owns the
+  // steps. What must not move is WHERE they fall — 40 and 70, far earlier than the
+  // plan limits' 65 and 85, because filling a context window triggers a compaction.
+  //
+  // The warning step is ORANGE and the app's plan gauges used to say yellow; both say
+  // orange now, which is the rule `Banner` states — yellow is a PENDING state here.
+  const CONTEXT = { warning: 40, danger: 70 }
+
   it('stays green below 40%', () => {
-    expect(contextColors(0)).toEqual({ bar: 'bg-green', text: 'text-green' })
-    expect(contextColors(39.9)).toEqual({ bar: 'bg-green', text: 'text-green' })
+    expect(progressTone(0, CONTEXT)).toBe('success')
+    expect(progressTone(39.9, CONTEXT)).toBe('success')
   })
 
-  it('turns orange from 40% up to 70%', () => {
-    expect(contextColors(40)).toEqual({ bar: 'bg-orange', text: 'text-orange' })
-    expect(contextColors(69.9)).toEqual({ bar: 'bg-orange', text: 'text-orange' })
+  it('warns from 40%', () => {
+    expect(progressTone(40, CONTEXT)).toBe('warning')
+    expect(progressTone(69.9, CONTEXT)).toBe('warning')
   })
 
-  it('turns red from 70%', () => {
-    expect(contextColors(70)).toEqual({ bar: 'bg-red', text: 'text-red' })
-    expect(contextColors(100)).toEqual({ bar: 'bg-red', text: 'text-red' })
+  it('is danger from 70%', () => {
+    expect(progressTone(70, CONTEXT)).toBe('danger')
+    expect(progressTone(100, CONTEXT)).toBe('danger')
   })
 })
 
@@ -329,20 +336,5 @@ describe('canCloseAgent', () => {
   it('treats a missing kind as a coder', () => {
     expect(canCloseAgent('PR merged', undefined)).toBe(true)
     expect(canCloseAgent('planned', undefined)).toBe(false)
-  })
-})
-
-describe('canChangeAgentType', () => {
-  it('allows the switch only before the agent has done anything', () => {
-    expect(canChangeAgentType(undefined)).toBe(true)
-    expect(canChangeAgentType('')).toBe(true)
-  })
-
-  it('refuses once any status has been reported', () => {
-    // Once a workflow has started the status would be stranded outside the list the
-    // new kind offers, so the control is hidden rather than made to strand it.
-    for (const status of ['planning', 'planned', 'in progress', 'PR merged']) {
-      expect(canChangeAgentType(status), status).toBe(false)
-    }
   })
 })

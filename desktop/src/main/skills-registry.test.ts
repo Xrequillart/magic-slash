@@ -3,8 +3,8 @@ import { readdirSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 // The shipped skill list is duplicated in eight places, and nothing used to hold them
-// together. Adding the eighth skill meant editing all eight by hand; the ninth is how
-// one of them gets forgotten, and the failure is quiet on every side — a skill absent
+// together. Adding a skill meant editing all eight by hand, and that is how one of them
+// gets forgotten, and the failure is quiet on every side — a skill absent
 // from skills-updater is never downloaded, absent from setup/status never reported as
 // missing, absent from skills-handlers renders as a user skill rather than a built-in,
 // absent from either TRACKED_SKILLS array simply has no tile on a dashboard that looks
@@ -22,10 +22,11 @@ import { join } from 'path'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
 
-// The two dashboard rows, named once each: every test below wants one or both of them,
-// and these files have moved before (`docs/` → `webapp/`). A rename fixed at one of
-// three literals would leave the others asserting over a path that no longer exists.
-const DESKTOP_TILES = 'desktop/src/renderer/pages/Dashboard/SkillStats.tsx'
+// The two TRACKED_SKILLS rows, named once each: every test below wants one or both of
+// them, and these files have moved before (`docs/` → `webapp/`, and the desktop one out
+// of the deleted Team page). A rename fixed at one of three literals would leave the
+// others asserting over a path that no longer exists.
+const DESKTOP_TILES = 'desktop/src/renderer/utils/trackedSkills.ts'
 const WEBAPP_TILES = 'webapp/lib/skills.ts'
 
 // The two command rows: what a user can type in the launcher, and what the landing page
@@ -36,14 +37,42 @@ const WEBAPP_TILES = 'webapp/lib/skills.ts'
 // `webapp/components/site/home/HowSection.tsx`, and #268 lifted it OUT of the component
 // into `webapp/lib/commands.ts` so the webapp's own test suite could read it without
 // pulling React in. That is why the path is a named constant.
+// The skill list the desktop's code builds on. It lived in skills-updater.ts until #328
+// lifted it into a pure module, so the default workflow could be derived from the same
+// list the updater downloads rather than from a ninth copy.
+const DESKTOP_SKILLS = 'desktop/src/workflow/skills.ts'
 const LAUNCHER_COMMANDS = 'desktop/src/renderer/pages/QuickLaunch/index.tsx'
 const LANDING_COMMANDS = 'webapp/lib/commands.ts'
 
-// The three tile rows that spell their own column count out as a Tailwind literal. The
-// number is the length of an array the row already maps over, so nothing connects the two:
-// add a skill, forget the class, and the row silently wraps one tile onto a second line.
+// The one sanctioned hole in the eight lists, and only in the landing row. The landing
+// page tells the development cycle as a story, one command per step, and its copy says
+// so in words ("eight commands"). `/magic:plan-change` is not a step of that cycle: it
+// reworks a plan that `/magic:plan` already filed, so it is a side door off the first
+// step rather than a ninth one. Every other list, the launcher included, still carries
+// it, because a skill missing from those is a skill that is not installed, not counted
+// or not typeable.
+//
+// Named rather than filtered inline so the exception is a decision someone can read and
+// revisit, and scoped to LANDING_COMMANDS alone so it cannot quietly widen: a skill that
+// should be on the landing but is not still fails below.
+const OFF_CYCLE_SKILLS = ['magic-plan-change']
+
+// The skills nobody types: shipped, installed, reported missing and removed like any
+// other, but never a command (launcher, landing) nor a tile (TRACKED_SKILLS). `magic-action`
+// is invoked by the skill that reached a workflow action, never by the user, and its own
+// SKILL.md keeps it out of the `/` menu. Mirrors HIDDEN_SKILLS in desktop/src/workflow/skills.ts.
+const HIDDEN_SKILLS = ['magic-action']
+
+// The tile rows that spell their own column count out as a Tailwind literal. The number
+// is the length of an array the row already maps over, so nothing connects the two: add a
+// skill, forget the class, and the row silently wraps one tile onto a second line.
+//
+// The desktop used to be a third entry here. It no longer draws tiles at all — the Team
+// page that held them was replaced by Plans, and only its TRACKED_SKILLS list survives
+// (as `desktop/src/renderer/utils/trackedSkills.ts`, still checked by every list test
+// above). A data module has no grid to assert, so the entry is gone rather than pointed
+// at a file with no class in it, which would fail for the wrong reason.
 const TILE_GRIDS = [
-  DESKTOP_TILES,
   'webapp/components/SkillStats.tsx',
   'webapp/app/admin/organizations/[orgId]/page.tsx',
 ]
@@ -131,15 +160,21 @@ function uninstallLoop(source: string): string[] {
 function commandSkills(relativePath: string): string[] {
   const match = read(relativePath).match(/COMMANDS[^=]*=\s*\[([\s\S]*?)\n\]/)
   if (!match) return []
-  return [...match[1].matchAll(/(?:name|command):\s*'\/magic:([a-z]+)'/g)].map(
+  return [...match[1].matchAll(/(?:name|command):\s*'\/magic:([a-z-]+)'/g)].map(
     (m) => `magic-${m[1]}`,
   )
 }
 
-const LISTS: { where: string; read: () => string[] }[] = [
+/**
+ * What a list is expected to hold: every shipped skill, minus the ones it is allowed to
+ * leave out: the landing row its OFF_CYCLE_SKILLS, the command and tile rows HIDDEN_SKILLS.
+ */
+const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
-    where: 'desktop/src/main/skills-updater.ts SKILLS',
-    read: () => flatArray(read('desktop/src/main/skills-updater.ts'), 'SKILLS'),
+    // The desktop's pure copy, which the updater imports and the default workflow is
+    // derived from. See the skills-updater test below: the updater must keep reading it.
+    where: `${DESKTOP_SKILLS} SKILLS`,
+    read: () => flatArray(read(DESKTOP_SKILLS), 'SKILLS'),
   },
   {
     where: 'desktop/src/main/setup/status.ts SKILLS',
@@ -152,10 +187,12 @@ const LISTS: { where: string; read: () => string[] }[] = [
   {
     where: `${DESKTOP_TILES} TRACKED_SKILLS`,
     read: () => trackedSkills(DESKTOP_TILES),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: `${WEBAPP_TILES} TRACKED_SKILLS`,
     read: () => trackedSkills(WEBAPP_TILES),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: 'install/uninstall.sh removal loop',
@@ -164,10 +201,12 @@ const LISTS: { where: string; read: () => string[] }[] = [
   {
     where: `${LAUNCHER_COMMANDS} COMMANDS`,
     read: () => commandSkills(LAUNCHER_COMMANDS),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: `${LANDING_COMMANDS} COMMANDS`,
     read: () => commandSkills(LANDING_COMMANDS),
+    omits: [...OFF_CYCLE_SKILLS, ...HIDDEN_SKILLS],
   },
 ]
 
@@ -184,8 +223,24 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     expect(read().length).toBeGreaterThan(5)
   })
 
-  it.each(LISTS)('$where lists exactly the skills that ship', ({ read }) => {
-    expect([...read()].sort()).toEqual(shippedSkills())
+  it.each(LISTS)('$where lists exactly the skills that ship', ({ read, omits = [] }) => {
+    expect([...read()].sort()).toEqual(shippedSkills().filter((skill) => !omits.includes(skill)))
+  })
+
+  it('keeps skills-updater downloading the checked list rather than a copy of its own', () => {
+    // The updater's list moved to DESKTOP_SKILLS, which the row above checks. That check
+    // only protects the updater while it imports that list: a local `SKILLS = [...]`
+    // reintroduced there would drift unseen, and a skill missing from it is never
+    // downloaded. So: the import is there, and no declaration of its own is.
+    const source = read('desktop/src/main/skills-updater.ts')
+    expect(source).toMatch(/import\s*\{[^}]*\bSKILLS\b[^}]*\}\s*from\s*'\.\.\/workflow\/skills'/)
+    expect(source).not.toMatch(/\bSKILLS\s*=/)
+  })
+
+  it('keeps the landing exception to skills that actually ship', () => {
+    // An exception naming a skill that was renamed or removed would excuse nothing and
+    // mislead whoever reads it next, so it has to stay pointed at a real folder.
+    for (const skill of [...OFF_CYCLE_SKILLS, ...HIDDEN_SKILLS]) expect(shippedSkills()).toContain(skill)
   })
 
   it('excludes the evals folder, which is not a skill', () => {
@@ -195,7 +250,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     for (const { read } of LISTS) expect(read()).not.toContain('evals')
   })
 
-  it('keeps the two dashboard rows in the same order, so the tiles match across surfaces', () => {
+  it('keeps the two TRACKED_SKILLS rows in the same order, so the cycle reads alike across surfaces', () => {
     // Both arrays are documented as "the order the development cycle runs them", and
     // the point of that ordering is that a user finds the same tile in the same place
     // whichever surface they opened. Sorted equality above cannot see a reordering.
@@ -210,7 +265,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     { file: WEBAPP_TILES, prefix: '/magic:' },
   ])('labels every $file tile after the skill it reports', ({ file, prefix }) => {
     const pairs = trackedPairs(file)
-    expect(pairs.length).toBe(shippedSkills().length)
+    expect(pairs.length).toBe(shippedSkills().filter((skill) => !HIDDEN_SKILLS.includes(skill)).length)
     for (const { skill, label } of pairs) {
       expect(label).toBe(`${prefix}${skill.replace(/^magic-/, '')}`)
     }
@@ -220,7 +275,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     // Asserted as a literal rather than by parsing the class list: Tailwind only emits a
     // class it can see spelled out, so `grid-cols-${n}` built at runtime would not exist
     // in the CSS at all. The literal IS the contract, so the literal is what is checked.
-    expect(read(file)).toContain(`grid-cols-${shippedSkills().length}`)
+    expect(read(file)).toContain(`grid-cols-${shippedSkills().filter((skill) => !HIDDEN_SKILLS.includes(skill)).length}`)
   })
 
   it('names every shipped skill in the uninstall.sh listing it prints to the user', () => {

@@ -29,6 +29,9 @@ const STATUSLINE_DEFAULT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-default
 // time rather than baking in the path of whoever installed the app.
 const SPOOL_DIR_RELATIVE = '.config/magic-slash'
 const SKILL_SPOOL_RELATIVE = `${SPOOL_DIR_RELATIVE}/pending-skills.ndjson`
+// The port the running app publishes (status-server.ts, publishPort), relative for the
+// same reason. The stable dir, as the skills' own port lookup reads it.
+const PORT_FILE_RELATIVE = `${SPOOL_DIR_RELATIVE}/port`
 
 
 /**
@@ -93,7 +96,7 @@ function buildStatusLineScript(innerCommand: string): string {
 input=$(cat)
 if [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ]; then
   printf '%s' "$input" | curl -s -X POST --data-binary @- \\
-    "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID" >/dev/null 2>&1 || true
+    "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" >/dev/null 2>&1 || true
 fi
 # Relay the user's original statusline. The env var (set by the desktop app) wins;
 # otherwise fall back to the command baked in at configuration time.
@@ -202,6 +205,10 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'mcp__github__issue_write',
   'mcp__github__sub_issue_write',
   'mcp__github__get_me',
+  // /magic:plan-change reads whether a filed story is already being worked on before it
+  // proposes to rework or close it, and an open PR naming the issue is one of the signals.
+  // Read-only, and it runs while the user waits for the diff.
+  'mcp__github__search_pull_requests',
   // ── git ────────────────────────────────────────────────────────────────────
   // The subcommands the skills run, and only those. `git config` is deliberately
   // absent: an alias is a stored shell command, so granting it grants everything.
@@ -224,18 +231,6 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'Bash(git worktree:*)',
   'Bash(git rebase:*)',
   'Bash(git reset:*)',
-  // The multi-repo flows address a sibling worktree as `git -C <path> <subcommand>`,
-  // always read-only (branch, check-ignore, log, ls-files, status). A rule with the
-  // path in the MIDDLE is a glob rather than a prefix, and whether the matcher honours
-  // one is a Claude Code detail this file cannot verify. Included because the failure
-  // is safe in the direction that matters: a rule that never matches costs a prompt,
-  // never a wider grant. If these turn out to be dead weight, the durable fix is for
-  // the skills to `cd` into the worktree instead of reaching into it with `-C`.
-  'Bash(git -C * status:*)',
-  'Bash(git -C * branch:*)',
-  'Bash(git -C * log:*)',
-  'Bash(git -C * ls-files:*)',
-  'Bash(git -C * check-ignore:*)',
   // ── package managers ───────────────────────────────────────────────────────
   // Bare `install` — restoring the dependencies a freshly created worktree is missing,
   // from the repository's own lockfile. NOT `install <package>`, which fetches and runs
@@ -299,6 +294,11 @@ const MAGIC_SLASH_ATLASSIAN_PERMISSIONS = [
   'mcp__atlassian__getTransitionsForJiraIssue',
   'mcp__atlassian__transitionJiraIssue',
   'mcp__atlassian__addCommentToJiraIssue',
+  // /magic:plan-change edits the summary and description of stories already filed. Safe to
+  // pre-approve for the same reason issue_write is on the GitHub side: the skill reaches it
+  // only after the user has approved the exact list of ticket changes, and a prompt there
+  // would interrupt the run right after that approval.
+  'mcp__atlassian__editJiraIssue',
 ]
 
 /**
@@ -323,6 +323,17 @@ const LEGACY_MAGIC_SLASH_PERMISSIONS = [
   'Bash(bun *)',
   'Bash(jq *)',
   'Bash(gh *)',
+  // The multi-repo flows' `git -C <path> <subcommand>`, granted until Claude Code began
+  // warning about them in yellow on every launch. As written, `*` then `:*`, the `*` is
+  // matched literally, so they never approved anything. Spelled as a glob they would,
+  // and too much: a wildcard before the subcommand also swallows `-c core.pager=…`,
+  // which runs any command without a prompt. No safe spelling exists; the multi-repo
+  // steps take the prompt, which is all they ever had.
+  'Bash(git -C * status:*)',
+  'Bash(git -C * branch:*)',
+  'Bash(git -C * log:*)',
+  'Bash(git -C * ls-files:*)',
+  'Bash(git -C * check-ignore:*)',
   `Read(${path.join(os.homedir(), '.config', 'magic-slash', '*')})`,
 ]
 
@@ -368,6 +379,8 @@ interface HookConfig {
   hooks: Array<{
     type: string
     command: string
+    /** Seconds before Claude Code gives up on the hook. */
+    timeout?: number
   }>
 }
 
@@ -386,6 +399,16 @@ interface ClaudeSettings {
   statusLine?: StatusLineConfig
   [key: string]: unknown
 }
+
+/**
+ * The notifications that mean the agent is blocked on the user: a permission prompt, or
+ * an MCP server asking for input. NOT `idle_prompt`, which Claude Code sends a minute
+ * after a turn ends with nothing typed: the agent is done and idle, it needs nobody, and
+ * reporting it as `waiting` turned every finished agent into one calling for the terminal.
+ * A Claude Code too old to match on Notification ignores the matcher and fires on all of
+ * them, as before.
+ */
+const NEEDS_THE_USER = 'permission_prompt|elicitation_dialog'
 
 function getHookConfig(event: string): HookConfig {
   // Use curl to notify our status server
@@ -417,9 +440,10 @@ function getHookConfig(event: string): HookConfig {
       state = 'working'
   }
 
-  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/status?id=$MAGIC_SLASH_TERMINAL_ID&state=${state}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/status?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID&state=${state}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
+    ...(event === 'Notification' ? { matcher: NEEDS_THE_USER } : {}),
     hooks: [{
       type: 'command',
       command
@@ -544,6 +568,48 @@ function getPromptSkillHookConfig(): HookConfig {
 }
 
 /**
+ * How long the AskUserQuestion hook may wait on a person, in seconds. Past it, Claude
+ * Code drops the hook and shows its own dialog, which is the right way to fail.
+ */
+const ASK_HOOK_TIMEOUT_S = 3600
+
+/**
+ * The AskUserQuestion capture, which may also ANSWER it.
+ *
+ * Same POST as the other captures, to `/question/ask`, but its stdout is the hook's
+ * output rather than noise: when the agent is shown as a chat, the app holds the
+ * request until the user answers there, and answers with `permissionDecision: allow`
+ * and the tool input with its `answers` filled in. Claude Code then shows no dialog
+ * and takes the answer as typed. Otherwise the app answers nothing at once, and the
+ * TUI asks as it always did (see holdAsk in main/questions/pending-questions.ts).
+ *
+ * Hence no `--max-time 2`: the wait is the point. The hook's own `timeout`, and curl's
+ * just under it, bound it; either way an empty output is the TUI's dialog. `-f` keeps
+ * an error page out of stdout, where Claude Code would read it as the hook's answer.
+ */
+function getAskHookConfig(): HookConfig {
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time ${ASK_HOOK_TIMEOUT_S - 10} -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/question/ask?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" 2>/dev/null || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  return {
+    matcher: 'AskUserQuestion',
+    hooks: [{ type: 'command', command, timeout: ASK_HOOK_TIMEOUT_S }],
+  }
+}
+
+/**
+ * What a shell command changed on disk, for the chat (see main/chat/command-diff.ts).
+ *
+ * `before` is synchronous by design: Claude Code waits for a PreToolUse hook, so the app
+ * writes the working tree as it was before the command runs. It is bounded by
+ * `--max-time` like every hook here, and a timeout only loses that one diff. `after`
+ * answers at once and measures behind it. Both send the hook's stdin, which carries
+ * the tool use id, the cwd and the command.
+ */
+function getCommandDiffHookConfig(phase: 'before' | 'after'): HookConfig {
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time 5 -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/command-diff/${phase}?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  return { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 10 }] }
+}
+
+/**
  * The hooks that drive the menu bar panel's pending-question card.
  *
  * `question` ships the hook's own stdin to the app, so the panel can show WHAT the
@@ -578,10 +644,78 @@ function getQuestionHookConfig(
   options: { post?: boolean; matcher?: string } = {}
 ): HookConfig {
   const body = options.post ? '-X POST --data-binary @- ' : ''
-  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s --max-time 2 ${body}"http://127.0.0.1:$MAGIC_SLASH_PORT/${route}?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s --max-time 2 ${body}"http://127.0.0.1:$MAGIC_SLASH_PORT/${route}?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     ...(options.matcher ? { matcher: options.matcher } : {}),
+    hooks: [{
+      type: 'command',
+      command
+    }]
+  }
+}
+
+/**
+ * Hands a custom skill its workflow context the moment the model invokes it (#333).
+ *
+ * A PostToolUse hook on the Skill tool: it fires once Claude Code has loaded the
+ * skill, and what it prints as `hookSpecificOutput.additionalContext` reaches the
+ * model before the skill's body. The app decides everything (see POST
+ * /workflow/context in status-server.ts and workflow/skillContext.ts): for a custom
+ * skill placed on a node of its repository's flow it answers the hook JSON, and for
+ * any other skill, magic ones included, an empty 204. So this command's stdout is not
+ * noise to silence like every other hook's here: it IS the injected context, and it
+ * must never be redirected to /dev/null.
+ *
+ * WHY THE GUARD DIFFERS FROM THE OTHER HOOKS
+ * ---------------------------------------------------------------------------
+ * The status and question hooks need MAGIC_SLASH_TERMINAL_ID: they report on an agent
+ * of the app, and a terminal the app did not spawn has none. This one reports on
+ * nothing. It asks the app about a repository, as a magic skill does when it reads
+ * `/workflow` from any terminal, so it finds the port the same way the skills do:
+ * `$MAGIC_SLASH_PORT` inside the app, else the port file the app publishes. A custom
+ * skill run in a plain `claude` session then ends on its flow's next step exactly as a
+ * magic skill run there would.
+ *
+ * WHY `-f`
+ * ---------------------------------------------------------------------------
+ * An app that predates the route answers 404 with a "Not found" body, and without
+ * `-f` curl would print it: a hook stdout that is not JSON, shown after every Skill
+ * call in every session until the app is updated. `-f` prints nothing on an HTTP
+ * error, which Claude Code reads as a hook with nothing to say. `--max-time 2` for
+ * the reason given on the question hooks (a socket that accepts and never answers),
+ * and `|| true` so that a closed app, refusing the connection, is a no-op too.
+ *
+ * WHY NO magic-* FILTER HERE, UNLIKE THE TELEMETRY HOOK
+ * ---------------------------------------------------------------------------
+ * The telemetry hook filters in jq because what it keeps is written down. This one
+ * sends every skill's name, and must: a custom skill is exactly what it is for. The
+ * name only travels to 127.0.0.1, where the route answers from the in-memory flow
+ * and records nothing: no spool, no telemetry, no log line, no Supabase write.
+ *
+ * NO PERMISSION ENTRY
+ * ---------------------------------------------------------------------------
+ * Hooks are run by Claude Code itself, not through the Bash tool, so they are never
+ * matched against the allowlist and never prompt. MAGIC_SLASH_BASE_PERMISSIONS is
+ * deliberately left as it is: a grant for this command would approve nothing, and
+ * would widen every session for it.
+ */
+/**
+ * WHY TWO EVENTS
+ * ---------------------------------------------------------------------------
+ * The Skill tool only fires when the MODEL invokes a skill. A user typing `/check-types`
+ * is the other path (see getPromptSkillHookConfig): Claude Code expands the command
+ * itself and no tool call happens, so the same command is also registered on
+ * UserPromptSubmit, with no matcher, and the app reads the command off the prompt. It
+ * answers 204 for any prompt that does not open on a custom step's command, so an
+ * ordinary message costs one local request and injects nothing.
+ */
+function getCustomSkillContextHookConfig(event: 'PostToolUse' | 'UserPromptSubmit' = 'PostToolUse'): HookConfig {
+  const portFile = `"$HOME/${PORT_FILE_RELATIVE}"`
+  const command = `PORT="\${MAGIC_SLASH_PORT:-$(cat ${portFile} 2>/dev/null)}"; [ -n "$PORT" ] && curl -sf --max-time 2 -X POST --data-binary @- "http://127.0.0.1:$PORT/workflow/context" || true # ${MAGIC_SLASH_HOOK_MARKER}`
+
+  return {
+    ...(event === 'PostToolUse' ? { matcher: 'Skill' } : {}),
     hooks: [{
       type: 'command',
       command
@@ -638,7 +772,7 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
       'UserPromptSubmit', // User sends a message → working
       'PreToolUse',       // Before tool use → working
       'PostToolUse',      // After tool use → working
-      'Notification',     // Claude needs attention → waiting
+      'Notification',     // Claude is blocked on the user → waiting
       'Stop',             // Claude finished → idle
       'SessionStart',     // Session started → idle
     ]
@@ -664,6 +798,12 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     settings.hooks.PreToolUse!.push(getSkillHookConfig())
     settings.hooks.UserPromptSubmit!.push(getPromptSkillHookConfig())
 
+    // A custom skill's workflow context, on the same Skill tool, AFTER it is loaded:
+    // PostToolUse, so what it injects lands before the skill's body (see the builder).
+    settings.hooks.PostToolUse!.push(getCustomSkillContextHookConfig())
+    // And on the prompt, for a custom skill typed by hand, which never reaches the Skill tool.
+    settings.hooks.UserPromptSubmit!.push(getCustomSkillContextHookConfig('UserPromptSubmit'))
+
     // Pending questions, for the menu bar panel. Five more ADDITIONAL entries on
     // events already hooked above — pushed, never assigned, or the state reporting
     // that shares those events would be replaced by these.
@@ -671,7 +811,11 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     // Capture: the AskUserQuestion tool call (scoped by matcher, since PreToolUse
     // fires on every tool), and Notification, which is how a permission prompt
     // announces itself.
-    settings.hooks.PreToolUse!.push(getQuestionHookConfig('question', { post: true, matcher: 'AskUserQuestion' }))
+    settings.hooks.PreToolUse!.push(getAskHookConfig())
+
+    // What a shell command changed on disk, for the chat: measured around every Bash call.
+    settings.hooks.PreToolUse!.push(getCommandDiffHookConfig('before'))
+    settings.hooks.PostToolUse!.push(getCommandDiffHookConfig('after'))
     settings.hooks.Notification!.push(getQuestionHookConfig('question', { post: true }))
     // Clear: the question was answered in the terminal (its PostToolUse), the user
     // moved on to something else, or the turn ended.

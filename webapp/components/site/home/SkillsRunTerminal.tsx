@@ -26,7 +26,7 @@ import { beat, PHASE_MS, REST_MS, type TerminalStep, took, TYPE_MS, useCueRun } 
  * page was repositioned (`98587f3f`). What came back is the CHOREOGRAPHY and not the code:
  * that version was ~560 lines of imperative timers ported verbatim out of `docs/script.js`,
  * mutating ~30 elements through class changes, and its markup was dressed entirely by
- * `marketing.css` — the stylesheet the `(marketing)` layout deliberately no longer imports
+ * `showcase.css` — the stylesheet the `(showcase)` layout deliberately no longer imports
  * (`lib/homepageStylesheet.test.ts` fails the build on that import coming back).
  *
  * ── WHY THIS IS DRIVEN BY JAVASCRIPT, HAVING SHIPPED ON CSS ───────────────────────

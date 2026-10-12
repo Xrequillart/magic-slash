@@ -24,20 +24,25 @@ import {
   getServerPort,
   setConfigProvider,
   setAgentProvider,
+  setWorkflowProvider, setWorkflowNextProvider,
+  setCustomSkillContextProvider,
   setWorktreeFilesWriter,
   setSkillCallback,
   setQuestionCallback,
+  setAskCallback,
   setClearQuestionCallback,
   setMetadataCallback,
   setSpecPathCallback,
   setPlanSpecCallback,
   setPlanTicketsCallback,
   setJiraCallbackHandler,
+  setReporterCheck,
   parsePlanTickets,
 } from './status-server'
 
 describe('parseStatusLinePayload', () => {
   const fullPayload = JSON.stringify({
+    version: '2.1.3',
     model: { id: 'claude-opus-4-8', display_name: 'Opus 4.8' },
     context_window: {
       total_input_tokens: 140000,
@@ -65,6 +70,7 @@ describe('parseStatusLinePayload', () => {
     expect(usage.durationMs).toBe(754321)
     expect(usage.linesAdded).toBe(120)
     expect(usage.linesRemoved).toBe(45)
+    expect(usage.version).toBe('2.1.3')
   })
 
   it('uses the exact total_input_tokens (not derived from the rounded percentage)', () => {
@@ -225,6 +231,192 @@ describe('read-back endpoints', () => {
     expect(JSON.parse(found.body)).toEqual({ id: 'term-1', metadata: { ticketId: 'PROJ-9' } })
     const missing = await httpGet('/agent?id=nope')
     expect(missing.body).toBe('null')
+  })
+
+  describe('GET /workflow', () => {
+    it('passes the skill\'s path and name to the provider and returns its payload', async () => {
+      const calls: [string | null, string | null][] = []
+      setWorkflowProvider((path, skill) => {
+        calls.push([path, skill])
+        return { repository: 'api', source: 'default', node: { id: 'commit' }, links: [] }
+      })
+      const { status, body } = await httpGet(`/workflow?path=${encodeURIComponent('/tmp/api-PROJ-1')}&skill=magic-commit`)
+      expect(status).toBe(200)
+      expect(JSON.parse(body)).toEqual({ repository: 'api', source: 'default', node: { id: 'commit' }, links: [] })
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'magic-commit']])
+    })
+
+    it('passes null for a missing parameter', async () => {
+      const calls: [string | null, string | null][] = []
+      setWorkflowProvider((path, skill) => {
+        calls.push([path, skill])
+        return null
+      })
+      const { body } = await httpGet('/workflow')
+      expect(body).toBe('null')
+      expect(calls).toEqual([[null, null]])
+    })
+
+    it('answers 200 null when the provider throws', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      setWorkflowProvider(() => {
+        throw new Error('boom')
+      })
+      const { status, body } = await httpGet('/workflow?path=/tmp/api&skill=magic-pr')
+      expect(status).toBe(200)
+      expect(body).toBe('null')
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
+  })
+
+  describe('GET /workflow/next', () => {
+    it('hands the path, skill, outcome and reason to the provider and returns its answer', async () => {
+      const calls: unknown[][] = []
+      setWorkflowNextProvider((...args) => {
+        calls.push(args)
+        return { lines: [], chain: { skill: 'magic-resolve', command: '/magic:resolve', text: 'go' } }
+      })
+      const { status, body } = await httpGet(`/workflow/next?path=${encodeURIComponent('/tmp/api')}&skill=magic-pr&outcome=failed&reason=${encodeURIComponent('push refused')}`)
+      expect(status).toBe(200)
+      expect(JSON.parse(body).chain.skill).toBe('magic-resolve')
+      expect(calls).toEqual([['/tmp/api', 'magic-pr', 'failed', 'push refused']])
+    })
+
+    it('answers nothing to show without an outcome, or when the provider throws', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const calls: unknown[] = []
+      setWorkflowNextProvider((...args) => {
+        calls.push(args)
+        throw new Error('boom')
+      })
+      expect(JSON.parse((await httpGet('/workflow/next?skill=magic-pr')).body)).toEqual({ lines: [], chain: null, actions: [] })
+      expect(calls).toEqual([])
+      expect(JSON.parse((await httpGet('/workflow/next?skill=magic-pr&outcome=ci_green')).body)).toEqual({ lines: [], chain: null, actions: [] })
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
+  })
+
+  it('hands an empty outcome over as one: a custom step that ended on none of its own', async () => {
+    const calls: unknown[][] = []
+    setWorkflowNextProvider((...args) => {
+      calls.push(args)
+      return { lines: [], chain: null }
+    })
+    await httpGet('/workflow/next?path=/tmp/api&skill=check-types&outcome=&reason=')
+    expect(calls).toEqual([['/tmp/api', 'check-types', '', '']])
+  })
+
+  describe('POST /workflow/context', () => {
+    const hookInput = (skill: unknown, cwd: unknown = '/tmp/api-PROJ-1') =>
+      JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', cwd, tool_input: { skill }, tool_response: { success: true } })
+
+    let calls: [string, string][] = []
+    let skillCalls: string[] = []
+
+    beforeEach(() => {
+      calls = []
+      skillCalls = []
+      setCustomSkillContextProvider((cwd, skill) => {
+        calls.push([cwd, skill])
+        return skill === 'check-types' ? 'Magic Slash workflow context: check-types' : null
+      })
+      setSkillCallback((_id, skill) => skillCalls.push(skill))
+    })
+
+    it('answers the hook JSON carrying the context of a custom skill on a node', async () => {
+      const { status, body } = await httpPost('/workflow/context', hookInput('check-types'))
+      expect(status).toBe(200)
+      expect(JSON.parse(body)).toEqual({
+        hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Magic Slash workflow context: check-types' },
+      })
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+    })
+
+    describe('for a command typed by hand (UserPromptSubmit)', () => {
+      const promptInput = (prompt: string, cwd = '/tmp/api-PROJ-1') =>
+        JSON.stringify({ hook_event_name: 'UserPromptSubmit', cwd, prompt })
+
+      it('reads the command the prompt opens on, and answers for that event', async () => {
+        const { status, body } = await httpPost('/workflow/context', promptInput('  /check-types src/ --strict'))
+        expect(status).toBe(200)
+        expect(JSON.parse(body)).toEqual({
+          hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'Magic Slash workflow context: check-types' },
+        })
+        expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+      })
+
+      it('keeps a plugin prefix, which is part of the skill\'s name', async () => {
+        await httpPost('/workflow/context', promptInput('/plugin:lint'))
+        expect(calls).toEqual([['/tmp/api-PROJ-1', 'plugin:lint']])
+      })
+
+      it('says nothing for a prompt that only mentions a command, or none', async () => {
+        for (const prompt of ['please run /check-types', 'hello', '/', '']) {
+          expect((await httpPost('/workflow/context', promptInput(prompt))).status).toBe(204)
+        }
+        expect(calls).toEqual([])
+      })
+    })
+
+    it('drops a leading slash from the skill name', async () => {
+      const { status } = await httpPost('/workflow/context', hookInput('/check-types'))
+      expect(status).toBe(200)
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+    })
+
+    // An empty body is an empty hook stdout: the skill runs as if the app were not
+    // there. Anything else (`null`, `OK`) would be a malformed hook output.
+    it('answers 204 with no body when the provider has nothing to say', async () => {
+      const { status, body } = await httpPost('/workflow/context', hookInput('magic-commit'))
+      expect(status).toBe(204)
+      expect(body).toBe('')
+    })
+
+    it('answers 204 without asking the provider for a body it cannot use', async () => {
+      for (const body of ['', 'not json', 'null', '[]', hookInput(42), hookInput(''), hookInput('/'), hookInput('check-types', null), JSON.stringify({ cwd: '/tmp/api' })]) {
+        const res = await httpPost('/workflow/context', body)
+        expect({ body, status: res.status, text: res.body }).toEqual({ body, status: 204, text: '' })
+      }
+      expect(calls).toEqual([])
+    })
+
+    it('answers 204 when the provider throws, and logs nothing that names the skill', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      setCustomSkillContextProvider(() => {
+        throw new Error('boom')
+      })
+      try {
+        const { status, body } = await httpPost('/workflow/context', hookInput('acme-secret-deploy'))
+        expect(status).toBe(204)
+        expect(body).toBe('')
+        const logged = [...error.mock.calls, ...log.mock.calls, ...warn.mock.calls].flat().map(String).join(' ')
+        expect(logged).not.toContain('acme-secret-deploy')
+      } finally {
+        error.mockRestore()
+        log.mockRestore()
+        warn.mockRestore()
+      }
+    })
+
+    it('never reaches the skill telemetry callback', async () => {
+      await httpPost('/workflow/context', hookInput('check-types'))
+      await httpPost('/workflow/context', hookInput('magic-commit'))
+      expect(skillCalls).toEqual([])
+    })
+
+    it('refuses a body over 256KB without asking the provider', async () => {
+      const huge = hookInput(`check-types${' '.repeat(300 * 1024)}`)
+      // The server drops the connection once the cap is crossed, which curl turns into
+      // an empty stdout just like a 204: either is "nothing injected".
+      const res = await httpPost('/workflow/context', huge).catch(() => ({ status: 0, body: '' }))
+      expect([0, 204]).toContain(res.status)
+      expect(res.body).toBe('')
+      expect(calls).toEqual([])
+    })
   })
 
   describe('GET /config/worktree-files', () => {
@@ -596,6 +788,21 @@ describe('read-back endpoints', () => {
       setClearQuestionCallback((id) => cleared.push(id))
     })
 
+    it('POST /question/ask answers with what the ask resolves to, and nothing on null', async () => {
+      setAskCallback(async (id, body) => (id === 'term-1' ? `{"echo":${body}}` : null))
+      const answered = await httpPost('/question/ask?id=term-1', '{"a":1}')
+      expect(answered).toEqual({ status: 200, body: '{"echo":{"a":1}}' })
+      const released = await httpPost('/question/ask?id=term-2', '{"a":1}')
+      expect(released).toEqual({ status: 200, body: '' })
+    })
+
+    // An empty answer is Claude Code's own dialog: the right way for anything to fail.
+    it('POST /question/ask answers nothing when the ask throws', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      setAskCallback(async () => { throw new Error('boom') })
+      expect(await httpPost('/question/ask?id=term-1', '{}')).toEqual({ status: 200, body: '' })
+    })
+
     it('POST /question forwards the raw hook payload, unparsed', async () => {
       const payload = JSON.stringify({
         hook_event_name: 'PreToolUse',
@@ -636,6 +843,30 @@ describe('read-back endpoints', () => {
     it('GET /question/clear ignores sidebar terminals', async () => {
       await httpGet('/question/clear?id=sidebar-1')
       expect(cleared).toHaveLength(0)
+    })
+
+    // A `claude` the agent ran itself inherits its terminal id: its hooks must not
+    // report on the agent.
+    describe('from a claude the agent started', () => {
+      beforeEach(() => setReporterCheck((_id, pid) => pid === 100))
+      afterEach(() => setReporterCheck(() => true))
+
+      it('drops its reports, and listens to the agent\'s own and to one without a pid', async () => {
+        await httpGet('/question/clear?id=term-1&pid=200')
+        await httpPost('/question?id=term-1&pid=200', '{"a":1}')
+        expect(cleared).toHaveLength(0)
+        expect(received).toHaveLength(0)
+        await httpGet('/question/clear?id=term-1&pid=100')
+        await httpGet('/question/clear?id=term-2')
+        expect(cleared).toEqual(['term-1', 'term-2'])
+      })
+
+      it('answers its ask with nothing, so it shows its own dialog', async () => {
+        const ask = vi.fn(async () => '{"answer":1}')
+        setAskCallback(ask)
+        expect(await httpPost('/question/ask?id=term-1&pid=200', '{}')).toEqual({ status: 200, body: '' })
+        expect(ask).not.toHaveBeenCalled()
+      })
     })
   })
 })

@@ -123,11 +123,3 @@ export function formatRelative(iso: string, lang: LanguageId = DEFAULT_LANGUAGE)
 export function formatDevicePlatform(device: { platform: string | null; arch: string | null }): string {
   return [device.platform, device.arch].filter(Boolean).join(' · ')
 }
-
-/**
- * Version comparison lives in `./versions`, which imports nothing — the root
- * vitest run covers `webapp/lib/**` without installing `webapp/`'s dependencies,
- * so anything a test reaches must not pull in the Supabase client this module
- * imports. Re-exported here because this is where callers already look for it.
- */
-export { compareVersions, highestVersion } from './versions'

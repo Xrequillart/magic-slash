@@ -158,6 +158,103 @@ export function hasGitHubRemote(repoPath: string): boolean {
   }
 }
 
+/**
+ * Undo the double-quoted form git falls back to for any path it considers unusual (a
+ * space, a quote, a control character). The quotes have to come off before the string
+ * is handed to anything that opens a file.
+ */
+export function unquoteGitPath(raw: string): string {
+  if (!raw.startsWith('"') || !raw.endsWith('"') || raw.length < 2) return raw
+
+  // C-style unescaping, as `git help status` describes the quoted form. A run of octal
+  // escapes is one UTF-8 sequence, so it is decoded as bytes rather than per character.
+  const escapes: Record<string, string> = { n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', v: '\v', a: '\x07' }
+  return raw
+    .slice(1, -1)
+    .replace(/(?:\\[0-7]{3})+|\\(.)/g, (match, escaped: string | undefined) => {
+      if (escaped !== undefined) return escapes[escaped] ?? escaped
+      const bytes = Uint8Array.from(match.split('\\').filter(Boolean).map(o => parseInt(o, 8)))
+      return new TextDecoder().decode(bytes)
+    })
+}
+
+/**
+ * The path half of a `git status --porcelain` line. A rename reads `old -> new`, and
+ * only the new path exists on disk.
+ */
+export function parsePorcelainPath(rest: string, isRename: boolean): string {
+  let raw = rest.trim()
+
+  if (isRename) {
+    const arrow = raw.lastIndexOf(' -> ')
+    if (arrow !== -1) raw = raw.slice(arrow + 4).trim()
+  }
+
+  return unquoteGitPath(raw)
+}
+
+/**
+ * The path field of a `git diff --numstat` line. A rename is spelled `old => new`, and
+ * git compresses the common parts into braces: `src/{old => new}/file.ts`. Either way
+ * only the right-hand side names a file on disk.
+ */
+export function parseNumstatPath(raw: string): string {
+  const filePath = unquoteGitPath(raw.trim())
+  if (!filePath.includes(' => ')) return filePath
+
+  const braced = filePath.match(/^(.*)\{(.*) => (.*)\}(.*)$/)
+  if (braced) return `${braced[1]}${braced[3]}${braced[4]}`
+
+  return filePath.slice(filePath.indexOf(' => ') + 4)
+}
+
+/**
+ * How many bytes one pass over a repository may read to count the lines of untracked
+ * files. This runs on a 5s poll, so the reading has to stay bounded: a file bigger than
+ * what is left of the budget is skipped rather than allowed to consume it.
+ */
+const UNTRACKED_READ_BUDGET_BYTES = 8 * 1024 * 1024
+
+export interface ReadBudget {
+  remaining: number
+}
+
+export function newReadBudget(): ReadBudget {
+  return { remaining: UNTRACKED_READ_BUDGET_BYTES }
+}
+
+/**
+ * Lines in a file git has no diff for. An untracked file is entirely new, so each of its
+ * lines is an addition — but `git status` never says so, which is why a new file used to
+ * show no `+N` at all next to its name.
+ *
+ * Counted the way git counts: a last line with no trailing newline still counts. Returns
+ * 0 for anything not countable as text — a binary blob, an unreadable path, or a file
+ * that no longer fits the budget.
+ */
+export function countAddedLines(fullPath: string, budget: ReadBudget): number {
+  try {
+    const stat = fs.statSync(fullPath)
+    if (!stat.isFile() || stat.size === 0 || stat.size > budget.remaining) return 0
+
+    const content = fs.readFileSync(fullPath)
+    budget.remaining -= content.length
+
+    // A NUL byte is what git itself reads as "binary", and a binary file has no lines.
+    if (content.includes(0)) return 0
+
+    let lines = 0
+    for (const byte of content) {
+      if (byte === 0x0a) lines++
+    }
+    if (content[content.length - 1] !== 0x0a) lines++
+
+    return lines
+  } catch {
+    return 0
+  }
+}
+
 export interface GitFileStatus {
   path: string
   status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
@@ -196,8 +293,10 @@ export function getGitStatus(repoPath: string): GitStatusResult | null {
       // Ignore errors for ahead/behind
     }
 
-    // Get file statuses using porcelain format
-    const statusOutput = execGitSync('git status --porcelain', expandedPath)
+    // Get file statuses using porcelain format. `-uall` matters: without it git
+    // collapses a whole untracked directory into one `dir/` entry, which the UI then
+    // shows as a nameless row it cannot open.
+    const statusOutput = execGitSync('git -c core.quotepath=false status --porcelain -uall', expandedPath)
 
     const files: GitFileStatus[] = []
     const lines = statusOutput.split('\n').filter(line => line.trim())
@@ -205,7 +304,7 @@ export function getGitStatus(repoPath: string): GitStatusResult | null {
     for (const line of lines) {
       const indexStatus = line[0]
       const workTreeStatus = line[1]
-      const filePath = line.slice(3).trim()
+      const filePath = parsePorcelainPath(line.slice(3), indexStatus === 'R' || workTreeStatus === 'R')
 
       // Determine status
       let status: GitFileStatus['status'] = 'modified'
@@ -273,7 +372,7 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
     // Get numstat for tracked files (staged + unstaged changes)
     // This gives us additions and deletions per file
     try {
-      const numstat = execGitSync('git diff --numstat HEAD', expandedPath)
+      const numstat = execGitSync('git -c core.quotepath=false diff --numstat HEAD', expandedPath)
 
       const lines = numstat.split('\n').filter(line => line.trim())
       for (const line of lines) {
@@ -281,7 +380,7 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
         if (parts.length >= 3) {
           const add = parseInt(parts[0], 10)
           const del = parseInt(parts[1], 10)
-          const filePath = parts[2]
+          const filePath = parseNumstatPath(parts[2])
           if (!isNaN(add)) additions += add
           if (!isNaN(del)) deletions += del
           filesChanged++
@@ -296,7 +395,7 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
     } catch {
       // If HEAD doesn't exist (new repo), try without HEAD
       try {
-        const numstat = execGitSync('git diff --numstat', expandedPath)
+        const numstat = execGitSync('git -c core.quotepath=false diff --numstat', expandedPath)
 
         const lines = numstat.split('\n').filter(line => line.trim())
         for (const line of lines) {
@@ -304,7 +403,7 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
           if (parts.length >= 3) {
             const add = parseInt(parts[0], 10)
             const del = parseInt(parts[1], 10)
-            const filePath = parts[2]
+            const filePath = parseNumstatPath(parts[2])
             if (!isNaN(add)) additions += add
             if (!isNaN(del)) deletions += del
             filesChanged++
@@ -321,15 +420,17 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
       }
     }
 
-    // Get file statuses to determine added/deleted/renamed
+    // Get file statuses to determine added/deleted/renamed. `-uall` lists untracked
+    // files individually instead of collapsing their directory into one `dir/` entry.
+    const readBudget = newReadBudget()
     try {
-      const statusOutput = execGitSync('git status --porcelain', expandedPath)
+      const statusOutput = execGitSync('git -c core.quotepath=false status --porcelain -uall', expandedPath)
       const statusLines = statusOutput.split('\n').filter(line => line.trim())
 
       for (const line of statusLines) {
         const indexStatus = line[0]
         const workTreeStatus = line[1]
-        const filePath = line.slice(3).trim()
+        const filePath = parsePorcelainPath(line.slice(3), indexStatus === 'R' || workTreeStatus === 'R')
 
         // Determine status
         let status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' = 'modified'
@@ -349,9 +450,13 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
         if (existingFile) {
           existingFile.status = status
         } else if (status === 'untracked') {
+          // Every line of a file git does not track yet is new, so it counts as an
+          // addition — both on the file's own row and in the repository total.
+          const addedLines = countAddedLines(path.join(expandedPath, filePath), readBudget)
+          additions += addedLines
           files.push({
             path: filePath,
-            additions: 0,
+            additions: addedLines,
             deletions: 0,
             status: 'untracked'
           })

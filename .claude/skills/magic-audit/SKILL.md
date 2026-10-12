@@ -12,7 +12,7 @@ allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Agent, AskUserQuestion, mcp_
 > Il auditait les pages statiques de `docs/`, un dossier qui a ete supprime : le site
 > public est desormais servi par `webapp/`, ou la documentation est un composant React
 > (`webapp/components/site/documentation/DocContent.tsx`) dont le texte vit dans des
-> catalogues i18n (`webapp/lib/i18n/marketing/doc-en.ts` et `doc-fr.ts`).
+> catalogues i18n (`webapp/lib/i18n/showcase/doc-en.ts` et `doc-fr.ts`).
 >
 > Presque chaque etape ci-dessous lit un fichier HTML qui n'existe plus. Les `grep`
 > ne renverront rien, ce qui se lit comme « aucune divergence » — un faux negatif,
@@ -442,7 +442,6 @@ echo "---"
 echo "desktop/package.json: $(jq -r .version desktop/package.json)"
 echo "README.md: $(grep -Eo '"version": *"[^"]+"' README.md | head -1 | sed 's/.*"version": *"//;s/"//')"
 echo "docs/documentation.html count: $(grep -c "\"version\": \"$ROOT_VERSION\"" docs/documentation.html)"
-echo "Sidebar.tsx: $(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' desktop/src/renderer/components/Sidebar.tsx | head -1)"
 for f in skills/*/SKILL.md; do
   V=$(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' "$f" | head -1)
   echo "$f: $V"

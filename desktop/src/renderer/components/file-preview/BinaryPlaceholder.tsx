@@ -1,4 +1,4 @@
-import { FileX2 } from 'lucide-react'
+import { FileX2 } from '@ds/desktop/icons'
 import { formatSize } from '../../utils/formatSize'
 import { useT } from '../../i18n'
 

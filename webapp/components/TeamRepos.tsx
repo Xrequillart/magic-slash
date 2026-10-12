@@ -189,8 +189,8 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
           the repository list, so they can no longer sit under the one section
           they happened to precede.
 
-          Same strip as the Application page's tabs — one control for "pick a tab"
-          across the app, rather than a second, smaller-looking one here. `null` is a
+          `TabStrip`, the app's one control for "pick a tab", rather than a
+          second, smaller-looking one here. `null` is a
           legitimate scope (the personal tab) and cannot be a React key or a callback
           argument, so 'personal' stands in for it on the way through TabStrip and is
           resolved back to the scope on the way out. */}

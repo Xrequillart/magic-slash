@@ -235,14 +235,14 @@ function cacheEntryChars(value: FileResult): number {
 const readQueue = createTaskQueue(3)
 
 /**
- * `appearance` is part of the key, not an afterthought: the highlighted HTML comes
- * back from the main process already painted in one appearance, so an entry cached
- * under the dark one is not an answer to a question asked in the light one. Keying on
- * it is also what makes switching theme repaint the file already on screen — the key
- * changes, the cache misses, the read runs again.
+ * The shiki theme is part of the key, not an afterthought: the highlighted HTML comes
+ * back from the main process already painted in one palette, so an entry cached under
+ * GitHub Dark is not an answer to a question asked in Catppuccin Latte. Keying on it is
+ * also what makes switching theme or palette repaint the file already on screen — the
+ * key changes, the cache misses, the read runs again.
  */
-function cacheKeyFor(repoPath: string, filePath: string, status: string, appearance: string) {
-  return `${repoPath}\u0000${filePath}\u0000${status}\u0000${appearance}`
+function cacheKeyFor(repoPath: string, filePath: string, status: string, shikiTheme: string) {
+  return `${repoPath}\u0000${filePath}\u0000${status}\u0000${shikiTheme}`
 }
 
 function remember(key: string, value: FileResult) {
@@ -311,8 +311,8 @@ function changesOnlyOf(result: FileResult | null): string | undefined {
 
 function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange, onFingerprintChange, commentable = false }: Props) {
   const t = useT()
-  const { appearance, blend } = useCodeAppearance()
-  const key = cacheKeyFor(repoPath, filePath, status, appearance)
+  const { appearance, blend, shikiTheme } = useCodeAppearance()
+  const key = cacheKeyFor(repoPath, filePath, status, shikiTheme)
   // Seeded from the cache so a remount on a known file paints immediately; the read
   // below still runs and replaces this the moment it resolves.
   const [result, setResult] = useState<FileResult | null>(() => readCache.get(key) ?? null)

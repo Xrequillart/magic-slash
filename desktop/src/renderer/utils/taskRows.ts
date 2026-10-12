@@ -1,6 +1,7 @@
-import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup } from '../../types'
+import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup, TaskRepoOption } from '../../types'
+import { fold } from '../../text'
 import { getProjectColorMap } from './projectColors'
-import { NO_AGENTS } from './taskAgents'
+import { normalizeTicketId, NO_AGENTS } from './taskAgents'
 
 /**
  * One repository's card on the Tasks page: the group the main process read, plus
@@ -248,6 +249,17 @@ export function buildTaskRows(
 export type TaskSort = 'recent' | 'priority'
 
 /**
+ * Whether the board is narrowed to the tickets somebody is already on, to the ones
+ * nobody is, or to neither.
+ *
+ * A THIRD STATE rather than a checkbox, because "who is free to pick up" is as real a
+ * question as "what is being worked on" — a sprint's unclaimed tickets are what a
+ * stand-up is about, and a toggle can only ever ask one of the two. `''` is the board
+ * as it comes, and it is the only value that adds nothing to what the reader sees.
+ */
+export type TaskAgentFilter = '' | 'with' | 'without'
+
+/**
  * What the controls at the top of the page are set to.
  *
  * One object rather than an argument each, so a caller cannot pass them the wrong way
@@ -261,6 +273,15 @@ export interface TaskFilter {
   /** The Jira epic to keep, by epic key. `''` is every epic AND every ticket without one. */
   epicKey: string
   /**
+   * Whether to keep only the tickets that have an agent, only the ones that do not, or
+   * all of them. See `TaskAgentFilter`.
+   *
+   * It narrows ISSUES and not cards, like the search and the epic beside it: an agent is
+   * on a ticket, not on a repository, and a card whose every ticket is filtered out goes
+   * the same way a card that matches no search does.
+   */
+  agent: TaskAgentFilter
+  /**
    * The order the tickets inside each card are in.
    *
    * Carried in the same object as the three narrowing controls even though
@@ -273,30 +294,19 @@ export interface TaskFilter {
 }
 
 /** Neither control touched — the shape the page starts in, and a stable identity. */
-export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', sort: 'recent' }
+export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', agent: '', sort: 'recent' }
 
 /**
- * A string in the one form the search compares on: case-folded and stripped of
- * accents.
+ * The search's normalisation, re-exported from `src/text.ts`.
  *
- * The accents are the half worth explaining. Ticket titles here are written in
- * French as often as in English, and a search box that will not find `création`
- * when you type `creation` is a search box people stop using — the more so on a
- * keyboard where the accented character is the harder one to reach. NFD splits an
- * accented letter into its base and a combining mark, and the range below is
- * exactly those marks, so `é` folds onto `e` and nothing else is touched.
- *
- * `toLowerCase` and not `toLocaleLowerCase`: the query and the title are folded by
- * the SAME function and only ever compared with each other, so a locale-specific
- * casing rule could only make the two disagree in a language nobody is searching in.
- *
- * Exported for `taskBoard.ts`, which asks the same question of a status name and a
- * label — "is this word 'blocked', however it is spelled and whatever language the
- * board is in". Two copies of this would be two answers to it.
+ * It moved out of this file when the MAIN process needed the same folding to decide
+ * which of a site's Jira statuses mean "blocked" (see `src/blocked.ts`). Re-exported
+ * rather than merely relocated because it is part of this module's surface — the
+ * board asks it the same question of a status name and a label, and callers should
+ * not have to know which file the rule happens to live in.
  */
-export function fold(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+export { fold }
+
 
 /**
  * A ticket's identity as the search sees it — `#234` for a GitHub issue, `PROJ-123`
@@ -324,7 +334,37 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
 }
 
 /**
- * The rows the two controls leave on screen.
+ * Whether any ticket ON THESE ROWS has an agent — which is what decides whether the
+ * agent picker is drawn at all.
+ *
+ * Asked of the ISSUES and not of `row.agentedIssues.size`, and the difference is a real
+ * board: the index holds every ticket of the repository somebody is on, including ones
+ * this sprint does not contain, so a non-empty set is no promise that any VISIBLE ticket
+ * has an agent. On the set alone the page would offer a control whose "with an agent"
+ * entry empties the board.
+ *
+ * Through the same two id forms `filterTaskRows` and `buildBoard` use, per tracker: one
+ * fold, three readers.
+ */
+export function hasAgentedIssues(rows: TaskRow[]): boolean {
+  return rows.some((row) => (row.tracker === 'jira'
+    ? row.issues.some((issue) => row.agentedIssues.has(normalizeTicketId(issue.key)))
+    : row.issues.some((issue) => row.agentedIssues.has(String(issue.number)))))
+}
+
+/**
+ * Whether a ticket survives the agent filter.
+ *
+ * `''` keeps everything, which is what makes the unset control cost nothing: the board
+ * as it comes is the board this returns true for, ticket by ticket.
+ */
+function keepsAgent(agent: TaskFilter['agent'], hasAgent: boolean): boolean {
+  if (!agent) return true
+  return agent === 'with' ? hasAgent : !hasAgent
+}
+
+/**
+ * The rows the controls leave on screen.
  *
  * A function rather than two `.filter()`s in the page, for `buildTaskRows`' reason:
  * the suite runs in Node with no jsdom, so logic left in a `useMemo` is logic no
@@ -343,6 +383,12 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  * not be read, which is the only true thing available. Every other row with nothing
  * left in it goes.
  *
+ * THE AGENT FILTER IS THE ONE CONTROL THAT READS SOMETHING OTHER THAN THE TICKET. It
+ * asks `row.agentedIssues`, which is the same set the card's marker and the ticket
+ * page's banner read, so the three can never disagree about who is on what. It applies
+ * to both trackers — an agent is started on a ticket, and neither tracker knows about
+ * it — which is why it sits in both arms below rather than in the Jira one.
+ *
  * THE EPIC FILTER IS JIRA-ONLY AND SAYS SO BY EMPTYING THE GITHUB CARDS. An epic is
  * a Jira relationship with no GitHub counterpart — an issue's `parent` is another
  * issue, not a container — so a GitHub card has nothing that can match, and the same
@@ -352,12 +398,17 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  */
 export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
   const query = fold(filter.query.trim())
-  if (!filter.configKey && !query && !filter.epicKey) return rows
+  // Whether anything here narrows the ISSUES inside a card, as opposed to picking which
+  // cards are on the page. Named rather than repeated, because every one of the three
+  // tests below has to list the same set and one of them forgetting a control is a
+  // filter that silently does nothing.
+  const narrows = !!query || !!filter.epicKey || !!filter.agent
+  if (!filter.configKey && !narrows) return rows
 
   const kept: TaskRow[] = []
   for (const row of rows) {
     if (filter.configKey && !row.repos.some((repo) => repo.configKey === filter.configKey)) continue
-    if (!query && !filter.epicKey) {
+    if (!narrows) {
       kept.push(row)
       continue
     }
@@ -372,7 +423,13 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
     // `TaskIssue[] | JiraTaskIssue[]`, which fits neither member of the row union.
     if (row.tracker === 'jira') {
       const issues = row.issues.filter(
-        (issue) => (!query || matches(issue, query)) && (!filter.epicKey || issue.epic?.key === filter.epicKey),
+        (issue) => (!query || matches(issue, query))
+          && (!filter.epicKey || issue.epic?.key === filter.epicKey)
+          // Through `normalizeTicketId`, which is the form the index was built in — the
+          // same fold `buildBoard` puts a card's marker on. Comparing the raw key here
+          // would hide a ticket whose agent was started as `per-1234` from the very
+          // filter that exists to find it.
+          && keepsAgent(filter.agent, row.agentedIssues.has(normalizeTicketId(issue.key))),
       )
       if (issues.length > 0) kept.push({ ...row, issues })
     } else {
@@ -380,11 +437,58 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
       // outright — see the note above. Written as an early `continue` rather than a
       // predicate that is always false, which would read as an oversight.
       if (filter.epicKey) continue
-      const issues = row.issues.filter((issue) => matches(issue, query))
+      const issues = row.issues.filter(
+        (issue) => (!query || matches(issue, query))
+          && keepsAgent(filter.agent, row.agentedIssues.has(String(issue.number))),
+      )
       if (issues.length > 0) kept.push({ ...row, issues })
     }
   }
   return kept
+}
+
+/**
+ * The rows, with a sprint search's findings folded into the Jira row they belong to.
+ *
+ * WHY A MERGE AND NOT A SECOND LIST. The board is built from rows, and every rule that
+ * matters — which column a ticket lands in, whether an agent is on it, how the counts
+ * add up — reads the row. Drawing search results beside the columns would be a second
+ * answer to "what is in this sprint", and the two would disagree the moment a ticket
+ * appeared in both. Merged, the search widens the SAME list and everything downstream
+ * is unchanged.
+ *
+ * THE SEARCH IS A SUPERSET, NOT A REPLACEMENT. What the site returned is added to what
+ * the board already loaded, never swapped for it: the server matches whole words with a
+ * trailing wildcard where the box matches substrings, so typing `ploy` finds
+ * "deployment" among the loaded rows and nothing at all on the site. Keeping both means
+ * the reader never loses a match they already had. `filterTaskRows` then applies the
+ * substring rule to the union, so what they see is one rule over a wider candidate set
+ * rather than two searches with two behaviours.
+ *
+ * Issues already on the row WIN over the fetched copy. Both are the same ticket read the
+ * same way, so the choice is nearly arbitrary; taking the loaded one means a row's object
+ * identity survives a search, which is what keeps the memoised cards from all re-rendering
+ * on a keystroke.
+ *
+ * Untouched — the same array, by identity — when there is nothing to merge, so an idle
+ * page rebuilds no rows at all.
+ */
+export function mergeSearchIssues(rows: TaskRow[], configKey: string, found: JiraTaskIssue[]): TaskRow[] {
+  if (found.length === 0 || !configKey) return rows
+  let merged = false
+  const next = rows.map((row) => {
+    // The Jira row OF THE PICKED REPOSITORY, and only it: the search names one project,
+    // and a repository sharing the board (see `TaskRow.repos`) is reached through its
+    // own `configKey` on its own search.
+    if (row.tracker !== 'jira') return row
+    if (!row.repos.some((repo) => repo.configKey === configKey)) return row
+    const known = new Set(row.issues.map((issue) => issue.key))
+    const extra = found.filter((issue) => !known.has(issue.key))
+    if (extra.length === 0) return row
+    merged = true
+    return { ...row, issues: [...row.issues, ...extra] }
+  })
+  return merged ? next : rows
 }
 
 /**
@@ -448,38 +552,30 @@ export function sortTaskRows(rows: TaskRow[], sort: TaskSort): TaskRow[] {
 }
 
 /**
- * The repositories the control can offer, in the order the cards are in.
+ * The repositories the control can offer, in config order, each with its dot.
  *
- * Built from the ROWS and not from the config: the control filters what is on
- * screen, and offering a repository whose card is not there — one tracked nowhere,
- * or whose group never arrived — is an entry that can only ever empty the page.
+ * From the snapshot's `repos` and NOT from the rows: the page reads one repository at
+ * a time, so the rows only ever hold the one on screen (and any sibling sharing its
+ * tracker target). The main process names every repository that would produce a card,
+ * which is the same set the rows used to be deduplicated down to.
  *
- * Deduplicated, because an undecided repository contributes two rows and is still
- * one repository to choose.
- *
- * Every repository of a row and not just its first: a card shared by two of them is
- * still two entries in the picker, and offering only the one the card is named after
- * would leave the other unselectable while its tickets are on screen.
+ * The colour comes off the map `buildTaskRows` draws the cards with, built from the
+ * same full config, so an entry and its card cannot disagree.
  */
-export function taskFilterRepos(rows: TaskRow[]): TaskRowRepo[] {
-  const seen = new Set<string>()
-  const repos: TaskRowRepo[] = []
-  for (const row of rows) {
-    for (const repo of row.repos) {
-      if (seen.has(repo.configKey)) continue
-      seen.add(repo.configKey)
-      repos.push(repo)
-    }
-  }
-  return repos
+export function taskFilterRepos(
+  options: TaskRepoOption[],
+  repositories: Record<string, RepositoryConfig>,
+): TaskRowRepo[] {
+  const colorMap = getProjectColorMap(Object.keys(repositories), repositories)
+  return options.map((option) => ({ ...option, color: colorMap[option.configKey] }))
 }
 
 /**
  * The epics the control can offer, in the order the cards are in.
  *
- * `taskFilterRepos`' twin one relationship down, and built from the ROWS for its
- * reason: the control filters what is on screen, so an epic that no visible ticket
- * hangs off is an entry that can only ever empty the page. That is also what keeps
+ * Built from the ROWS, unlike `taskFilterRepos`: the control filters what is on
+ * screen, so an epic that no visible ticket hangs off is an entry that can only ever
+ * empty the page. That is also what keeps
  * the list short — a project has hundreds of epics and a sprint touches four.
  *
  * Deduplicated by KEY and not by title. Two epics can legitimately share a summary
@@ -534,8 +630,8 @@ export function countOpenIssues(rows: TaskRow[]): number {
  * How many tickets those repositories actually HAVE.
  *
  * Different from `countOpenIssues` the moment any repository hit the query's
- * `first: 50` cap. The page shows both, so the header can say "showing 50 of 214"
- * rather than presenting a capped page as the whole backlog.
+ * `OPEN_PAGE_SIZE` cap. The page shows both, so the header can say "showing 100 of
+ * 412" rather than presenting a capped page as the whole backlog.
  *
  * A group with no `totalOpen` — one that failed, or one read before the count was
  * asked for — contributes what it could show, never less. EVERY Jira group is in

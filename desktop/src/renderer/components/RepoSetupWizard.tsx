@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, FolderGit2, FolderOpen, Loader2, X } from 'lucide-react'
+import { Check, FolderGit2, FolderOpen, Loader2, X } from '@ds/desktop/icons'
 import type { RepoSetup, RepoSetupReason } from '../utils/repoSetup'
 import { REASON_META, mergeRepoSetup } from '../utils/repoSetup'
 import { useConfig } from '../hooks/useConfig'

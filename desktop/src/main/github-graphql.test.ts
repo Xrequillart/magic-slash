@@ -269,6 +269,8 @@ describe('fetchPRStatusGraphQL', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('https://api.github.com/graphql')
     expect(init.method).toBe('POST')
+    // The thread's newest comment is what dates a reply, next to its first one.
+    expect(JSON.parse(init.body).query).toContain('latestComment: comments(last:1)')
     expect(JSON.parse(init.body).variables).toEqual({ owner: 'acme', repo: 'web', number: 42 })
   })
 
@@ -329,6 +331,104 @@ describe('fetchPRStatusGraphQL', () => {
 
     expect(snapshot.status).toBe('pending')
     expect(snapshot.reviewers).toEqual([])
+  })
+
+  it('dates the newest feedback by someone other than the author, across reviews, threads and comments', async () => {
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          reviews: {
+            nodes: [
+              { author: { login: 'alice' }, state: 'COMMENTED', submittedAt: '2025-01-01T09:00:00Z', body: '' },
+              // A PENDING review has no timestamp yet.
+              { author: { login: 'bob' }, state: 'PENDING', submittedAt: null, body: '' },
+            ],
+          },
+          reviewThreads: {
+            nodes: [
+              {
+                comments: { totalCount: 2, nodes: [{ author: { login: 'alice' } }] },
+                latestComment: { nodes: [{ author: { login: 'bob' }, createdAt: '2025-01-01T11:00:00Z' }] },
+              },
+            ],
+          },
+          comments: {
+            totalCount: 2,
+            nodes: [
+              { author: { login: 'alice' }, createdAt: '2025-01-01T10:00:00Z' },
+              // The author's own reply is newer, and is not news to them.
+              { author: { login: 'xavier' }, createdAt: '2025-01-01T12:00:00Z' },
+            ],
+          },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.latestFeedback).toEqual({ at: Date.parse('2025-01-01T11:00:00Z'), author: 'bob' })
+  })
+
+  it('reports no feedback when only the author has spoken', async () => {
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          reviews: { nodes: [] },
+          reviewThreads: { nodes: [] },
+          comments: { totalCount: 1, nodes: [{ author: { login: 'xavier' }, createdAt: '2025-01-01T12:00:00Z' }] },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.latestFeedback).toBeUndefined()
+  })
+
+  it('keeps only the newest run of a job, per workflow and event, as GitHub lists them', async () => {
+    const mep = (databaseId: number, event: string, conclusion: string) => ({
+      databaseId,
+      name: 'check-mep-config-reviewer',
+      status: 'COMPLETED',
+      conclusion,
+      detailsUrl: `https://ci/mep/${databaseId}`,
+      checkSuite: { workflowRun: { event, workflow: { name: 'Protect MEP config' } } },
+    })
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          commits: {
+            nodes: [
+              {
+                commit: {
+                  statusCheckRollup: {
+                    state: 'SUCCESS',
+                    contexts: {
+                      nodes: [
+                        mep(1, 'pull_request', 'SUCCESS'),
+                        mep(2, 'pull_request_review', 'FAILURE'),
+                        mep(4, 'pull_request_review', 'SUCCESS'),
+                        mep(3, 'pull_request_review', 'FAILURE'),
+                        { databaseId: 5, name: 'Greptile Review', status: 'COMPLETED', conclusion: 'SUCCESS', checkSuite: { workflowRun: null } },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.checks).toEqual([
+      { name: 'check-mep-config-reviewer', state: 'passed', url: 'https://ci/mep/1' },
+      { name: 'check-mep-config-reviewer', state: 'passed', url: 'https://ci/mep/4' },
+      { name: 'Greptile Review', state: 'passed' },
+    ])
+    expect(snapshot.checksSummary).toEqual({ total: 3, passed: 3, failed: 0, running: 0, skipped: 0 })
   })
 
   it('tolerates a head commit with no checks at all', async () => {

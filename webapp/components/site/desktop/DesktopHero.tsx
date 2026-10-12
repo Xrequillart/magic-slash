@@ -1,13 +1,12 @@
 'use client'
 
-import { Columns, Download, Plug, ScrollText, Sparkles } from 'lucide-react'
-import { ButtonNavLink } from '@/components/ui'
+import { useRef } from 'react'
+import { Columns, Plug, ScrollText, Sparkles } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DOWNLOAD_PATH } from '@/lib/siteNav'
-import { WORKFLOW_PATH } from '@/lib/workflow'
 import { Reveal } from '../Reveal'
 import { RichText } from '../RichText'
+import { WaitlistForm } from '../WaitlistForm'
 import { AppWindowMockup } from '../home/AppWindowMockup'
 import { HomeSection, STRUCK_WORD } from '../home/Shell'
 
@@ -42,11 +41,32 @@ import { HomeSection, STRUCK_WORD } from '../home/Shell'
  */
 export function DesktopHero() {
   const { t } = useT()
+  // The before/after row: every part of it watches THIS, so the sequence is `order` alone.
+  const row = useRef<HTMLDivElement>(null)
 
   return (
-    <HomeSection padding="hero" backdrop={<Aura />}>
+    <HomeSection padding="hero">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+        {/* THE PAIN, DRAWN, above the pill: a hand dropping more tickets on a desk someone
+            is already buried at. From the site's illustration set, in place of the aura
+            of blurred discs this band used to sit on (the owner's call: plain white, and
+            the picture on top). `viewBox` cropped to the drawing (`72 120 856 680` of
+            1000², cut through the cuff at the top and at the chair's seat, and faded at BOTH ends so the cuff dissolves into the top of the page the way the desk dissolves at the foot), and the foot faded as `/download` fades its jetpack, so the desk's legs
+            dissolve into the band rather than stopping on a line. Same stacking fix as
+            there: the pill is `relative z-10` so it paints over the faded foot.
+
+            33rem TALL, THE WIDTH IT HAD AT 38rem before the top was cut, AND PULLED UP INTO THE BAND'S TOP PADDING (`md:-mt-20`), at the
+            owner's request: wider, and the hand arriving from the top of the page, as if
+            from the sky, rather than sitting in a margin under the header. */}
         <Reveal order={1}>
+          <img
+            src="/img/illustration-overload.svg"
+            alt=""
+            className="mx-auto h-auto w-auto max-w-full [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_70%,transparent)] md:-mb-16 md:-mt-20 md:h-[33rem]"
+          />
+        </Reveal>
+
+        <Reveal order={1} className="relative z-10">
           <span className="inline-flex items-center rounded-full border border-hairline bg-white px-3.5 py-1.5 text-xs font-bold text-muted">
             {t('site.desktop.eyebrow')}
           </span>
@@ -66,14 +86,11 @@ export function DesktopHero() {
           </p>
         </Reveal>
 
-        <Reveal order={4} className="flex flex-wrap items-center justify-center gap-3">
-          {/* The download PAGE, not the .dmg — same call as the homepage hero's primary. */}
-          <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
-            {t('site.hero.downloadCta')}
-          </ButtonNavLink>
-          <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">
-            {t('site.desktop.howCta')}
-          </ButtonNavLink>
+        {/* The waitlist form where the download button was, as on the homepage hero:
+            nobody can sign up yet, and `/download` keeps its own button. The "how it
+            works" secondary went by request. */}
+        <Reveal order={4} className="flex flex-col items-center gap-3">
+          <WaitlistForm source="desktop" align="center" />
         </Reveal>
 
         <Reveal order={5}>
@@ -108,24 +125,25 @@ export function DesktopHero() {
           piled into a phone's width read as clutter rather than as the clutter the
           drawing is ABOUT, and the entrance that makes the picture land is exactly what
           `lib/stillness.ts` switches off there. */}
-      <div className="mt-12 hidden items-stretch gap-6 lg:mt-16 lg:grid lg:grid-cols-[0.85fr_1.15fr]">
+      <div ref={row} className="mt-12 hidden items-stretch gap-6 lg:mt-16 lg:grid lg:grid-cols-[0.85fr_1.15fr]">
         <div className="flex flex-col">
-          <Reveal order={6}>
+          <Reveal order={0} watch={row}>
             <Caption>{t('site.desktop.beforeLabel')}</Caption>
           </Reveal>
-          <Before />
+          <Before watch={row} />
         </div>
         <div className="flex flex-col">
-          <Reveal order={6}>
+          <Reveal order={0} watch={row}>
             <Caption tone="after">{t('site.desktop.afterLabel')}</Caption>
           </Reveal>
-          <Reveal order={AFTER_ORDER} className="flex flex-1 flex-col">
+          <Reveal order={AFTER_ORDER} watch={row} className="flex flex-1 flex-col">
             <After />
           </Reveal>
         </div>
       </div>
 
-      <Reveal order={AFTER_ORDER + 2} className="mt-16 sm:mt-20">
+      {/* Its own trigger, a screen further down: `order={2}` from its own arrival. */}
+      <Reveal order={2} className="mt-16 sm:mt-20">
         <Highlights />
       </Reveal>
     </HomeSection>
@@ -162,25 +180,29 @@ function Caption({ tone = 'before', children }: { tone?: 'before' | 'after'; chi
  * where there is no window beside it to set that height — a single column, under `md`.
  */
 /**
- * The beats of the entrance. `BEAT` is three rungs of `Reveal`'s 80ms grid, so a window is
- * a little over half-way through its 400ms rise when the next one starts: one by one, but
- * not one after the other has finished, which would read as a slideshow. (It was two rungs
- * of a 150ms grid; the grid tightened and the beat took a rung to keep the same feel.) The first pane starts at rung
- * 7, right after the captions; the bubbles follow the last pane; the app's window takes the
- * rung after the second bubble has fully landed.
+ * The beats of the entrance, counted from the moment the ROW crosses into view: every
+ * part watches the row (`Reveal`'s `watch`), because since the hero opened on an
+ * illustration the row sits below the fold, and each part watching itself made the
+ * bottom bubble cross last and land after the app's window it is meant to precede.
+ *
+ * `BEAT` is two rungs of `Reveal`'s 80ms grid: a window is under half-way through its
+ * 400ms rise when the next starts. It was three rungs after seven of lead-in, which the
+ * owner found far too slow ("beaucoup trop lente"): the app's window took 2.2s to show.
+ * Captions at 0, the four panes from rung 1, the two bubbles after them, and the app's
+ * window once the second bubble has all but landed (~1.2s).
  */
-const BEAT = 3
-const FIRST_PANE = 7
+const BEAT = 2
+const FIRST_PANE = 1
 const FIRST_BUBBLE = FIRST_PANE + 4 * BEAT
-const AFTER_ORDER = FIRST_BUBBLE + 2 * BEAT + 2
+const AFTER_ORDER = FIRST_BUBBLE + BEAT + 4
 
-function Before() {
+function Before({ watch }: { watch: React.RefObject<HTMLDivElement | null> }) {
   const { t } = useT()
 
   return (
     <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-2xl md:min-h-0">
       <div className="absolute inset-0 opacity-75 grayscale">
-        <Reveal order={FIRST_PANE} className="absolute left-0 top-[7%] h-[62%] w-[62%]">
+        <Reveal order={FIRST_PANE} watch={watch} className="absolute left-0 top-[7%] h-[62%] w-[62%]">
           <Pane title="Terminal — zsh">
           ❯ claude
           <br />…
@@ -189,7 +211,7 @@ function Before() {
           <br />▍
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 1 * BEAT} className="absolute left-[18%] top-[20%] h-[62%] w-[62%]">
+        <Reveal order={FIRST_PANE + 1 * BEAT} watch={watch} className="absolute left-[18%] top-[20%] h-[62%] w-[62%]">
           <Pane title="Terminal — zsh (2)">
           ❯ git status
           <br />
@@ -200,7 +222,7 @@ function Before() {
           <span className="text-red-400">✗ 2 tests failed</span>
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 2 * BEAT} className="absolute left-[38%] top-[33%] h-[58%] w-[60%]">
+        <Reveal order={FIRST_PANE + 2 * BEAT} watch={watch} className="absolute left-[38%] top-[33%] h-[58%] w-[60%]">
           <Pane title="Jira — MS-268" light>
           MS-268 · In progress
           <br />
@@ -213,7 +235,7 @@ function Before() {
           MS-274 · To do
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 3 * BEAT} className="absolute left-[8%] top-[50%] h-[40%] w-[55%]">
+        <Reveal order={FIRST_PANE + 3 * BEAT} watch={watch} className="absolute left-[8%] top-[50%] h-[40%] w-[55%]">
           <Pane title="Terminal — zsh (3)">
           ❯ gh pr view 409
           <br />
@@ -222,10 +244,10 @@ function Before() {
         </Pane>
         </Reveal>
       </div>
-      <Reveal order={FIRST_BUBBLE} className="absolute right-[6%] top-[8%]">
+      <Reveal order={FIRST_BUBBLE} watch={watch} className="absolute right-[6%] top-[8%]">
         <Bubble>{t('site.desktop.bubbleWhich')}</Bubble>
       </Reveal>
-      <Reveal order={FIRST_BUBBLE + BEAT} className="absolute bottom-[5%] left-[4%]">
+      <Reveal order={FIRST_BUBBLE + BEAT} watch={watch} className="absolute bottom-[5%] left-[4%]">
         <Bubble>{t('site.desktop.bubbleBranch')}</Bubble>
       </Reveal>
     </div>
@@ -346,26 +368,5 @@ function Highlights() {
         </li>
       ))}
     </ul>
-  )
-}
-
-function Aura() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      {/* The violet core, widest and centred on the window's own axis. */}
-      <div className="absolute left-1/2 top-1/4 h-2/3 w-[80%] -translate-x-1/2 rounded-full bg-purple/30 blur-3xl" />
-      {/* The pink and the amber, thrown out to either side so the field has a hue
-          gradient across it rather than one colour at two strengths. */}
-      <div className="absolute -left-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-red/25 blur-3xl" />
-      <div className="absolute -right-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-orange/25 blur-3xl" />
-      {/* The page's own blue, under the middle of the window. */}
-      <div className="absolute left-1/2 top-[45%] h-1/2 w-2/5 -translate-x-1/2 rounded-full bg-accent/25 blur-3xl" />
-      {/* Gone before the band ends — into WHITE, which is the ground of the band under it.
-          It faded to `canvas` while the page under the hero was the homepage's blue tint;
-          `/desktop`'s bands are on white, and the product owner saw the seam ("une vraie
-          diff entre le dégradé et le fond blanc"). The fade also starts higher (`h-1/2`)
-          so the last of the colour is gone well before the edge rather than at it. */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-white" />
-    </div>
   )
 }

@@ -1,17 +1,19 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { useStore } from '../store'
+import { SidebarAgentCoderInfo, SidebarAgentPlannerInfo, type CoderRepository } from '@ds/desktop'
+import { useStore, selectInfoSidebarOpen, selectInspectedTerminalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
-import { TicketHeader } from './agent-info-sidebar/TicketHeader'
-import { SpecPanel } from './agent-info-sidebar/SpecPanel'
-import { UsageCard } from './agent-info-sidebar/UsageCard'
-import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
-import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
-import { buildTicketLink, getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
+import { useTicketCard } from './agent-info-sidebar/ticketCard'
+import { useSpecCard } from './agent-info-sidebar/specCard'
+import { useUsageCard } from './agent-info-sidebar/usageCard'
+import { toCoderRepository } from './agent-info-sidebar/coderRepository'
+import { useRepoColors } from './agent-info-sidebar/RepoMark'
+import { useScriptsMenus } from './agent-info-sidebar/useScriptsMenu'
+import { useRepositorySelector } from './agent-info-sidebar/repositorySelector'
+import { getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
 import { usePlanSpec } from '../hooks/usePlanSpec'
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
-import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
 import { withoutShadowedCheckouts } from '../../repoMatch'
 import { resolveTaskSelection } from '../utils/taskSelection'
 
@@ -43,7 +45,8 @@ function sidebarWidth(viewportWidth: number, planning: boolean) {
 }
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, terminals, activeTerminalId, config, setConfig, isSplitMode, focusedPane, splitTerminalId } = useStore()
+  const { terminals, config, setConfig } = useStore()
+  const isOpen = useStore(selectInfoSidebarOpen)
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const t = useT()
 
@@ -51,9 +54,7 @@ export function AgentInfoSidebar() {
   // on whether the inspected agent is a planning one.
   // Named `inspected` rather than `focused` because it is what the panel DESCRIBES, which
   // is the same thing now that a script terminal is never selected.
-  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
-    ? splitTerminalId
-    : activeTerminalId
+  const inspectedTerminalId = useStore(selectInspectedTerminalId)
   const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
   const metadata = activeTerminal?.metadata
   const specMode = getSpecPanelMode(metadata?.type)
@@ -72,15 +73,12 @@ export function AgentInfoSidebar() {
   // Git data per repository
   const [repoGitData, setRepoGitData] = useState<Record<string, RepoGitData>>({})
 
-  const sidebarRef = useRef<HTMLDivElement>(null)
 
   // Editing states
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const titleInputRef = useRef<HTMLInputElement>(null)
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false)
   const [copiedCommitHash, setCopiedCommitHash] = useState<string | null>(null)
   const [copiedBranch, setCopiedBranch] = useState<string | null>(null)
@@ -88,7 +86,7 @@ export function AgentInfoSidebar() {
   // The live `/magic:plan` spec for the agent being inspected. The panel only
   // exists for a planning agent, and only while the sidebar it lives in is open —
   // `usePlanSpec` subscribes to nothing and refreshes nothing when that is false.
-  const isOpen = rightSidebar === 'info'
+  // `isOpen` is read at the top of the component, off the inspected agent.
   const { specPath, refreshToken: specRefreshToken } = usePlanSpec(
     inspectedTerminalId ?? undefined,
     metadata?.specPath,
@@ -198,17 +196,6 @@ export function AgentInfoSidebar() {
     setConfig(result.config)
   }, [setConfig])
 
-  // Get jira/github URL config from first repo (for ticket link)
-  //
-  // Both answers are fallback chains — the Jira site moved to its own block and is
-  // still read from the legacy key, and the GitHub issues URL is an override that
-  // derives from `remoteUrl` when unset — so they are resolved in tracker.ts rather
-  // than here. That derivation used to live inline in this file, which is exactly
-  // why a GitHub issue rendered as dead text everywhere else.
-  const firstRepoConfig = attachedRepos.length > 0 ? getRepoConfig(attachedRepos[0]) : null
-  const jiraUrl = resolveJiraSite(firstRepoConfig)
-  const githubIssuesUrl = resolveGitHubIssuesUrl(firstRepoConfig)
-
   // Handle toggling a repository (add or remove)
   const handleToggleRepository = useCallback((repoPath: string) => {
     if (!inspectedTerminalId || !activeTerminal) return
@@ -220,14 +207,6 @@ export function AgentInfoSidebar() {
       updateTerminalRepositories(inspectedTerminalId, [...currentRepos, repoPath])
     }
   }, [inspectedTerminalId, activeTerminal, updateTerminalRepositories])
-
-  // Lives in utils.ts, where it is unit-tested: the shapes it accepts are the
-  // contract between this panel and what /magic:start writes, and that contract
-  // was silently wrong for GitHub issues until it had tests.
-  const ticketLink = useMemo(
-    () => buildTicketLink(metadata?.ticketId, { jiraUrl, githubIssuesUrl }),
-    [metadata?.ticketId, jiraUrl, githubIssuesUrl],
-  )
 
   /**
    * The row the Tasks modal opens on when the ticket id is clicked. Null when the
@@ -338,26 +317,18 @@ export function AgentInfoSidebar() {
     }
   }, [activeTerminal?.repositories, getRepoConfig, metadata?.baseBranch])
 
-  // Listen for Command+P keyboard shortcut to open repositories modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-        if (rightSidebar === 'info' && activeTerminal) {
-          e.preventDefault()
-          setIsRepoModalOpen(true)
-        }
-      }
-    }
+  // ⌘P USED TO OPEN THIS PANEL'S REPOSITORY PICKER, and only while the info sidebar
+  // happened to be out — which meant the chord silently did nothing most of the time,
+  // and did two different things depending on a panel the reader may have collapsed
+  // and forgotten. It is the global repositories window's now (`Sidebar`), and the
+  // picker keeps its button, which was always the way people actually reached it.
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [rightSidebar, activeTerminal])
-
-  // Start editing title
+  // Start editing title. The FOCUS is `EditableText`'s own — it holds the input, so it
+  // is the only thing that can focus it on the frame the input first exists. This had a
+  // ref and a `setTimeout(…, 0)` here for exactly that reason, and both are gone.
   const startEditingTitle = useCallback(() => {
     setEditTitle(metadata?.title || '')
     setIsEditingTitle(true)
-    setTimeout(() => titleInputRef.current?.focus(), 0)
   }, [metadata?.title])
 
   // Save title
@@ -368,11 +339,10 @@ export function AgentInfoSidebar() {
     setIsEditingTitle(false)
   }, [inspectedTerminalId, editTitle, metadata?.title, updateTerminalMetadata])
 
-  // Start editing description
+  // Start editing description — same as the title above, focus included.
   const startEditingDescription = useCallback(() => {
     setEditDescription(metadata?.description || '')
     setIsEditingDescription(true)
-    setTimeout(() => descriptionInputRef.current?.focus(), 0)
   }, [metadata?.description])
 
   // Save description
@@ -401,8 +371,6 @@ export function AgentInfoSidebar() {
     saveDescription,
     setIsEditingTitle,
     setIsEditingDescription,
-    titleInputRef,
-    descriptionInputRef,
   }), [
     metadata?.title, metadata?.description,
     isEditingTitle, isEditingDescription, editTitle, editDescription,
@@ -437,133 +405,151 @@ export function AgentInfoSidebar() {
     setTimeout(() => setCopiedBranch(null), 2000)
   }, [])
 
-  return (
-    <div
-      ref={sidebarRef}
-      className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${
-        animateWidth ? 'transition-[width] duration-300 ease-in-out' : ''
-      }`}
-      style={{ width: isOpen ? `${width}px` : 0 }}
-    >
-      <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
-      {/* Content */}
-      {/* In `replace` mode this container does NOT scroll: the spec card fills the
-          column and owns the only scroll region, so there is never a scrollbar
-          inside a scrollbar. Every other mode keeps the ordinary scrolling column. */}
-      <div
-        className={`flex-1 min-h-0 ${spec?.mode === 'replace' ? 'overflow-hidden' : 'overflow-y-auto'}`}
-        style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}
-      >
-        {!activeTerminal ? (
-          <div className="px-4 py-8 text-center text-text-secondary text-xs">
-            {t('agentInfo.noActiveAgent')}
-          </div>
-        ) : (
-          <div className={spec?.mode === 'replace' ? 'p-4 flex flex-col gap-4 h-full min-h-0' : 'p-4 space-y-4'}>
-            {/* Usage Card (context, cost, model). Switched off from Appearance →
-                Sidebars; on by default, and shown for the whole life of the agent
-                once on. That second part is deliberate: the usage feed only lands
-                after Claude's first response, and a bar that appears out of nowhere
-                mid-session reads as a glitch. With no usage yet the card degrades to
-                the gauge alone — every other row inside it is already conditional. */}
-            {config?.agentContextEnabled !== false && (
-              <UsageCard
-                usage={metadata?.usage ?? {}}
-                minimized={config?.agentContextMinimized === true}
-                onMinimizedChange={setAgentContextMinimized}
-              />
-            )}
+  /**
+   * THE CARDS, AS DATA. Every hook below answers one region of the column, and every one
+   * of them runs UNCONDITIONALLY — React's rule, and the reason each returns props rather
+   * than a decision. Whether a region is shown at all is decided at the call site a few
+   * lines down, where it is a condition and not a hook.
+   */
+  const usageCard = useUsageCard({
+    terminalId: inspectedTerminalId ?? '',
+    usage: metadata?.usage ?? {},
+    minimized: config?.agentContextMinimized === true,
+    onMinimizedChange: setAgentContextMinimized,
+  })
+  const ticketCard = useTicketCard({
+    metadata,
+    // '' when nothing is inspected, which no card ever sees: the region is dropped below.
+    agentId: inspectedTerminalId ?? '',
+    taskSelection,
+    identity,
+    onStatusChange: handleStatusChange,
+  })
 
-            {/* At `planning` the spec REPLACES the ticket header — no ticket exists
-                yet, so the header would be an empty card above the only thing there
-                is to read. At `planned` both are shown, header first: the ticket has
-                just been created and the spec is what it came from. Anywhere else the
-                header stands alone, exactly as it always has. */}
-            {spec?.mode !== 'replace' && (
-              <TicketHeader
-                metadata={metadata}
-                ticketLink={ticketLink}
-                taskSelection={taskSelection}
-                identity={identity}
-                onStatusChange={handleStatusChange}
-              />
-            )}
-            {spec && (
-              <SpecPanel
-                // A new file starts fresh: expanded, and pinned to its own bottom
-                // rather than wherever the previous spec had been left.
-                key={specPath}
-                // The agent the panel is open FOR, which is where its comments are sent.
-                // Non-null wherever `spec` is: the path came off this terminal's own metadata,
-                // the same assertion `RepositoryCard` makes below for the same reason.
-                agentId={inspectedTerminalId!}
-                identity={identity}
-                repoNames={configuredAttachedRepos.map(getRepoName)}
-                status={metadata?.status ?? ''}
-                repoPath={spec.repoPath}
-                filePath={spec.filePath}
-                refreshToken={specRefreshToken}
-                ticketId={metadata?.ticketId}
-                ticketLink={ticketLink}
-                taskSelection={taskSelection}
-                onStatusChange={handleStatusChange}
-              />
-            )}
+  /* `repoPath`/`filePath` are '' when there is no spec, which no card ever sees: the
+     planner column below is only rendered when `spec` is there. */
+  const specCard = useSpecCard({
+    agentId: inspectedTerminalId ?? '',
+    identity,
+    repoNames: configuredAttachedRepos.map(getRepoName),
+    status: metadata?.status ?? '',
+    planId: metadata?.planId,
+    planNumber: metadata?.planNumber,
+    repoPath: spec?.repoPath ?? '',
+    filePath: spec?.filePath ?? '',
+    refreshToken: specRefreshToken,
+    onStatusChange: handleStatusChange,
+  })
 
-            {/* Repository cards with git stats. Gone entirely at `planning`: a planning
-                agent has no branch, no diff and no PR, so every row in these cards is
-                empty — the repository NAME is all that is left to say, and the spec
-                header says it. */}
-            {spec?.mode !== 'replace' && configuredAttachedRepos.length > 0 && (
-              <div className="space-y-3">
-                {configuredAttachedRepos.map((repoPath) => (
-                  <RepositoryCard
-                    key={repoPath}
-                    repoPath={repoPath}
-                    repoName={getRepoName(repoPath)}
-                    agentId={inspectedTerminalId!}
-                    agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
-                    gitData={repoGitData[repoPath]}
-                    baseBranch={metadata?.baseBranch}
-                    prUrl={getRepoPrUrl(repoPath)}
-                    repoUrl={getRepoUrl(repoPath)}
-                    repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
-                    copiedCommitHash={copiedCommitHash}
-                    copiedBranch={copiedBranch}
-                    onCopyCommitHash={copyCommitHash}
-                    onCopyBranchName={copyBranchName}
-                    onRemove={() => handleToggleRepository(repoPath)}
-                  />
-                ))}
-              </div>
-            )}
+  const repositorySelector = useRepositorySelector({
+    isOpen: isRepoModalOpen,
+    onClose: () => setIsRepoModalOpen(false),
+    availableRepos,
+    attachedRepos,
+    onToggleRepository: handleToggleRepository,
+  })
 
-            {/* Hidden at `planning` along with the cards it belongs to: it is the only
-                other thing competing for the height the spec now fills, and attaching
-                a repository is not a planning-time action. */}
-            {spec?.mode !== 'replace' && (
-            <button
-              onClick={() => setIsRepoModalOpen(true)}
-              className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-surface transition-colors"
-            >
-              <div className="text-xs text-text-secondary/50">
-                {t('agentInfo.addRepository')}
-              </div>
-            </button>
-            )}
-          </div>
-        )}
-      </div>
+  // The two things a repository row needs that only the app can answer, both resolved for
+  // the WHOLE list at once — a hook cannot run inside the `.map()` that builds the cards.
+  const repoColors = useRepoColors()
+  const scriptsRepos = useMemo(
+    () => configuredAttachedRepos.map(path => ({ path, name: getRepoName(path) })),
+    [configuredAttachedRepos, getRepoName],
+  )
+  const scriptsMenus = useScriptsMenus({
+    repos: scriptsRepos,
+    agentId: inspectedTerminalId ?? '',
+    agentName: activeTerminal?.metadata?.title || activeTerminal?.name || '',
+  })
+  const openRepoSettings = useStore(s => s.openRepoSettings)
+  const openRepoReview = useStore(s => s.openRepoReview)
 
-      {/* Repository Selector Modal */}
-      <RepositorySelector
-        isOpen={isRepoModalOpen}
-        onClose={() => setIsRepoModalOpen(false)}
-        availableRepos={availableRepos}
-        attachedRepos={attachedRepos}
-        onToggleRepository={handleToggleRepository}
-      />
-      </div>
-    </div>
+  /* Gone entirely at `planning`: a planning agent has no branch, no diff and no PR, so
+     every row in these cards is empty — the repository NAME is all that is left to say,
+     and the spec header says it. */
+  const repositories: CoderRepository[] = useMemo(() => {
+    // Not for a planner: the planner column below has no repository cards at all.
+    if (!activeTerminal || spec) return []
+    return configuredAttachedRepos.map(repoPath => {
+      const repoName = getRepoName(repoPath)
+      const gitData = repoGitData[repoPath]
+      return toCoderRepository({
+        repoPath,
+        repoName,
+        agentId: inspectedTerminalId!,
+        gitData,
+        baseBranch: metadata?.baseBranch,
+        prUrl: getRepoPrUrl(repoPath),
+        repoUrl: getRepoUrl(repoPath),
+        repoMetadata: metadata?.repositoryMetadata?.[repoPath],
+        copiedCommitHash,
+        copiedBranch,
+        repoColor: repoColors[repoName],
+        scripts: scriptsMenus[repoPath],
+        onCopyCommitHash: copyCommitHash,
+        onCopyBranchName: copyBranchName,
+        onRemove: () => handleToggleRepository(repoPath),
+        onOpenSettings: openRepoSettings,
+        onOpenReview: file =>
+          openRepoReview({ repoPath, repoName, files: gitData!.stats!.files }, file),
+        t,
+      })
+    })
+  }, [
+    activeTerminal, spec, configuredAttachedRepos, getRepoName, repoGitData,
+    inspectedTerminalId, metadata, getRepoPrUrl, getRepoUrl, copiedCommitHash, copiedBranch,
+    repoColors, scriptsMenus, copyCommitHash, copyBranchName, handleToggleRepository,
+    openRepoSettings, openRepoReview, t,
+  ])
+
+  /**
+   * WHICH COLUMN, and it is a choice between two components rather than a mode inside one.
+   *
+   * A planner that has announced a spec file gets the planner column: no ticket card, no
+   * repository cards, no add-repository box — it has no branch, no diff and no PR, so those
+   * would be four empty cards above the one thing worth reading.
+   *
+   * A planner that has NOT announced one yet keeps the ordinary column, which is why this
+   * is keyed on `spec` and not on the agent's type: an empty frame where the document will
+   * be is worse than the header the agent already has.
+   */
+  const planning = Boolean(activeTerminal && spec)
+  /* THE COLUMN AND EVERY CARD IN IT are the design system's — the ground, the fold, the face,
+     the order of the regions, the cards themselves, and the repository picker the column's
+     own box opens. What is left in this file is which agent this is and what each region
+     SAYS. */
+  return planning ? (
+    <SidebarAgentPlannerInfo
+      // A new file starts fresh: at the top of the NEW spec rather than wherever the
+      // previous one had been left.
+      key={specPath}
+      width={width}
+      collapsed={!isOpen}
+      animate={animateWidth}
+      usage={config?.agentContextEnabled !== false ? usageCard : undefined}
+      spec={specCard}
+    />
+  ) : (
+    <SidebarAgentCoderInfo
+      width={width}
+      collapsed={!isOpen}
+      animate={animateWidth}
+      emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
+      /* Switched off from Appearance → Sidebars; on by default, and shown for the whole life
+         of the agent once on. That second part is deliberate: the usage feed only lands after
+         Claude's first response, and a bar that appears out of nowhere mid-session reads as a
+         glitch. */
+      usage={activeTerminal && config?.agentContextEnabled !== false ? usageCard : undefined}
+      ticket={activeTerminal ? ticketCard : undefined}
+      repositories={repositories}
+      addRepository={
+        activeTerminal
+          ? { label: t('agentInfo.addRepository'), onClick: () => setIsRepoModalOpen(true) }
+          : undefined
+      }
+      /* The dialog the box above opens. The column renders it — it is the column's own
+         dialog, and it portals out regardless of where it is declared. */
+      repositorySelector={repositorySelector}
+    />
   )
 }

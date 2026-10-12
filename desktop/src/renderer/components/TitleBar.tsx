@@ -1,51 +1,52 @@
-import { useState, useEffect } from 'react'
-import { Archive } from 'lucide-react'
-import { useStore } from '../store'
-import { canChangeAgentType, canCloseAgent, resolveAgentType } from './agent-info-sidebar/utils'
-import { useTerminals } from '../hooks/useTerminals'
+import { useEffect } from 'react'
+import { AppTitleBar, type TitleBarTitle } from '@ds/desktop'
+import { useStore, selectInfoSidebarOpen } from '../store'
+import { canCloseAgent } from './agent-info-sidebar/utils'
 import { useIsFullScreen } from '../hooks/useIsFullScreen'
-import type { AgentType } from '../../types'
 import { useT } from '../i18n'
+import { ControlCenterMenu } from './ControlCenterMenu'
+import { AccountMenu, useAccountTitleBarControl } from './AccountMenu'
+import { LoginScreen } from './LoginScreen'
+import { BellOff, MessageSquare, SquareTerminal } from '@ds/desktop/icons'
+import { useConfig } from '../hooks/useConfig'
+import { useZoom } from '../hooks/useZoom'
+import { useSessionHistory } from '../hooks/useSessionHistory'
+import { resolveDisplayMode } from '../utils/displayMode'
+import { DEFAULT_ZOOM } from '../../types'
 
-// Inline SVG components for left sidebar toggle icons
-const LeftSidebarOpenIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
-
-const LeftSidebarCloseIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
-
-// Inline SVG components for right sidebar toggle icons (rotated 180deg)
-const RightSidebarOpenIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(180deg)' }}>
-    <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
-
-const RightSidebarCloseIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(180deg)' }}>
-    <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
+/**
+ * THE BAR IS `AppTitleBar` NOW — `@ds/desktop/AppTitleBar.tsx` — and what is left here is
+ * the wiring: the store, the translator, the fullscreen probe and ⌘W.
+ *
+ * The drawing that used to live here went whole, four inline SVGs included. Those SVGs
+ * are gone rather than moved: a panel with three rules down one edge was a custom vector
+ * standing in for a state, and the component says the same thing with lucide's own
+ * `PanelLeftOpen`/`PanelLeftClose` pair — the chevron points at the edge the panel would
+ * fold into, so the mark announces what the CLICK does instead of what the panel is.
+ * `ButtonIcon`'s `active` carries the state that the old icon was also trying to carry.
+ *
+ * The showcase site's `AppWindowMockup` had copied those SVGs path for path. It renders
+ * the component now, so the drawing and the app cannot disagree again.
+ *
+ * THE VIEW SWITCH IS GONE from the bar too: the split view is a tile on the quick
+ * settings sheet, which turns it on outright rather than only allowing it.
+ *
+ * THE CODER/PLANNER SWITCH IS GONE from the bar — the product's call, it earned nothing
+ * there. What a new agent is now answers in Settings → Application, and `canChangeAgentType`,
+ * the gate the bar's switch read, went with the last surface that called it.
+ */
 
 export function TitleBar() {
   const t = useT()
-  const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
-  const { updateTerminalMetadata } = useTerminals()
+  const { terminals, activeTerminalId, leftSidebarVisible, toggleInfoSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane } = useStore()
+  // Per AGENT, not per window: the toggle reports the inspected agent's own state,
+  // so switching agents moves this button with them.
+  const infoSidebarOpen = useStore(selectInfoSidebarOpen)
+  const setDisplayMode = useStore((s) => s.setDisplayMode)
   const isFullScreen = useIsFullScreen()
+  // Absent means never chosen, which is on — the reading the main process makes.
+  const { config } = useConfig()
+  const notificationsOff = config?.notifications?.enabled === false
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
@@ -56,15 +57,6 @@ export function TitleBar() {
   const closeableTerminal = inspectedTerminal && canCloseAgent(inspectedTerminal.metadata?.status, inspectedTerminal.metadata?.type)
     ? inspectedTerminal
     : null
-
-  // The kind switcher is offered only while the agent has done nothing. After that the
-  // status belongs to a workflow, and switching would strand it outside the list the
-  // new kind offers — so the control disappears rather than being shown disabled:
-  // there is nothing the user could do to bring it back.
-  const switchableTerminal = inspectedTerminal && canChangeAgentType(inspectedTerminal.metadata?.status)
-    ? inspectedTerminal
-    : null
-  const currentAgentType = resolveAgentType(inspectedTerminal?.metadata?.type)
 
   // ⌘W lives here rather than in the sidebar now that the button does: it used to be
   // gated on the info sidebar being open, which meant the shortcut silently did
@@ -91,163 +83,144 @@ export function TitleBar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeableTerminal, openCloseAgentModal])
 
-  const splitToggleVisible = isWideScreen && splitEnabled && terminals.length >= 2
-  const [showSplitToggle, setShowSplitToggle] = useState(splitToggleVisible)
-  const [splitToggleExiting, setSplitToggleExiting] = useState(false)
+  // THE QUICK SETTINGS, in the STORE and no longer here: ⌘, opens the sheet from a
+  // window-level listener in `Sidebar`, and the settings dialog closes it on the way
+  // out. The button in the bar is one of three things that move this value.
+  const quickSettingsOpen = useStore((s) => s.quickSettingsOpen)
+  const setQuickSettingsOpen = useStore((s) => s.setQuickSettingsOpen)
+  const setSettingsTab = useStore((s) => s.setSettingsTab)
+  // Settings → Quick settings can take the sheet away; the bar then has no button for it.
+  const quickSettingsEnabled = useStore((s) => s.config?.quickSettingsEnabled !== false)
 
+  // THE ACCOUNT — the label at the far right, the element its dropdown hangs from, and
+  // the login overlay the signed-out label needs. Mutual exclusion with the sheet is the
+  // store's, not this file's: both controls set the other to false, so a surface that
+  // opens either one from somewhere else cannot forget to.
+  const { account, anchor: accountAnchor, login } = useAccountTitleBarControl()
+
+  // THE INTERFACE SCALE, shown only while it is not 100%: a window nobody resized has
+  // nothing to say about it. Rounded the way Settings → Appearance prints it, which also
+  // absorbs a factor that arrives as 0.9999. The click puts it back.
+  const { zoom, set: setZoom } = useZoom()
+
+  // ⌘E FLIPS THE INSPECTED AGENT between its chat and its terminal, the view switch's own
+  // click. ⇧⌘A opens the settings window on the account, and puts it away again: ⌘, is
+  // the quick settings sheet's and ⌘P the repositories', so the window takes the letter
+  // of the page it opens on. Ctrl aimed at a terminal is the shell's (Ctrl+E is
+  // end-of-line in readline), the same guard as ⌘W above.
+  const settingsTab = useStore((s) => s.settingsTab)
+  const viewTerminal = inspectedTerminal
   useEffect(() => {
-    if (splitToggleVisible) {
-      setShowSplitToggle(true)
-      setSplitToggleExiting(false)
-    } else if (showSplitToggle) {
-      setSplitToggleExiting(true)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return
+      if (!e.metaKey && e.target instanceof Element && e.target.closest('.xterm')) return
+      const key = e.key.toLowerCase()
+      if (key === 'e' && !e.shiftKey && !e.altKey && viewTerminal) {
+        e.preventDefault()
+        setDisplayMode(viewTerminal.id, resolveDisplayMode(viewTerminal, config) === 'chat' ? 'terminal' : 'chat')
+        return
+      }
+      if (key === 'a' && e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSettingsTab(settingsTab ? null : 'account')
+      }
     }
-  }, [splitToggleVisible])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewTerminal, config, setDisplayMode, settingsTab, setSettingsTab])
+
+  // The agent's Claude Code sessions, beside its view switch: one of them resumed in place.
+  const history = useSessionHistory(inspectedTerminal?.id)
+  const zoomPercent = Math.round(zoom * 100)
+
+  // One title normally, two when the window is split: the component draws a rule between
+  // the pair and dims whichever is not being typed into.
+  const titles: TitleBarTitle[] = []
+  if (activeTerminal) {
+    titles.push({
+      id: activeTerminal.id,
+      label: activeTerminal.metadata?.title || activeTerminal.name,
+      focused: focusedPane === 'primary',
+    })
+  }
+  if (isSplitMode && splitTerminal) {
+    titles.push({
+      id: splitTerminal.id,
+      label: splitTerminal.metadata?.title || splitTerminal.name,
+      focused: focusedPane === 'secondary',
+    })
+  }
 
   return (
-    <div
-      className="h-10 bg-surface-sunken select-none flex items-center justify-between px-3 relative"
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-    >
-      {/* Left side - Traffic lights space + Left sidebar toggle */}
-      <div className="flex items-center gap-2">
-        {/* Space for macOS traffic lights. In native fullscreen they are gone, and
-            the gutter with them — otherwise the toggle sits behind a hole nothing
-            fills. The flex gap disappears with the element, so the button lands
-            flush against the title bar's own padding. */}
-        {!isFullScreen && <div className="w-16 flex-shrink-0" />}
-
-        {/* Left sidebar toggle + Split view toggle */}
-        <div
-          className="flex items-center gap-1"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-            <button
-              onClick={() => toggleLeftSidebar()}
-              className={`p-[5px] rounded-full bg-surface transition-colors ${
-                leftSidebarVisible
-                  ? 'text-ink'
-                  : 'text-text-secondary hover:text-ink'
-              }`}
-              title={t('titlebar.toggleAgentsList')}
-            >
-              {leftSidebarVisible ? <LeftSidebarOpenIcon /> : <LeftSidebarCloseIcon />}
-            </button>
-
-            {/* Split view segmented toggle */}
-            {showSplitToggle && (
-              <div
-                className={`relative grid grid-cols-2 bg-surface rounded-full p-px ${splitToggleExiting ? 'animate-slide-out' : 'animate-slide-in'}`}
-                onAnimationEnd={() => {
-                  if (splitToggleExiting) {
-                    setShowSplitToggle(false)
-                    setSplitToggleExiting(false)
-                  }
-                }}
-              >
-                <div className={`absolute top-px bottom-px left-px right-1/2 bg-surface-strong rounded-full transition-transform duration-200 ${
-                  splitActive ? 'translate-x-full' : 'translate-x-0'
-                }`} />
-                <button
-                  onClick={() => { if (splitActive) toggleSplitActive() }}
-                  className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
-                    !splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
-                  }`}
-                  title={t('titlebar.normalViewTitle')}
-                >
-                  {t('titlebar.normalView')}
-                </button>
-                <button
-                  onClick={() => { if (!splitActive) toggleSplitActive() }}
-                  className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
-                    splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
-                  }`}
-                  title={t('titlebar.splitViewTitle')}
-                >
-                  {t('titlebar.splitView')}
-                </button>
-              </div>
-            )}
-        </div>
-      </div>
-
-      {/* Center - Active agent name(s). Absolutely positioned, so a width cap is
-          the only thing keeping it clear of the left controls; 36% rather than 40%
-          because the split toggle beside it is wider in French. */}
-      <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[36%]">
-        {isSplitMode && splitTerminal ? (
-          <div className="flex items-center gap-2">
-            <span className={focusedPane === 'primary' ? 'text-ink' : 'text-text-secondary/50'}>
-              {activeTerminal?.metadata?.title || activeTerminal?.name}
-            </span>
-            <span className="text-text-secondary/30">|</span>
-            <span className={focusedPane === 'secondary' ? 'text-ink' : 'text-text-secondary/50'}>
-              {splitTerminal?.metadata?.title || splitTerminal?.name}
-            </span>
-          </div>
-        ) : (
-          <span className="text-text-secondary">
-            {activeTerminal?.metadata?.title || activeTerminal?.name}
-          </span>
-        )}
-      </div>
-
-      {/* Right side - Sidebar toggle (only with at least one agent) */}
-      {terminals.length > 0 && (
-        <div
-          className="flex items-center gap-1"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          {/* Two segments rather than a dropdown, following the split-view toggle in the
-              left group: two mutually exclusive values, both worth naming. */}
-          {switchableTerminal && (
-            <div className="flex items-center rounded-full bg-surface p-0.5">
-              {(['coder', 'planner'] as AgentType[]).map(type => (
-                <button
-                  key={type}
-                  onClick={() => updateTerminalMetadata(switchableTerminal.id, { type })}
-                  className={`px-2 py-0.5 rounded-full text-[11px] transition-colors ${
-                    currentAgentType === type
-                      ? 'bg-surface-strong text-ink'
-                      : 'text-text-secondary hover:text-ink'
-                  }`}
-                  title={t(type === 'coder' ? 'agentType.coderHint' : 'agentType.plannerHint')}
-                >
-                  {t(type === 'coder' ? 'agentType.coder' : 'agentType.planner')}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Closing the agent is offered here, next to the sidebar toggle, because the
-              info sidebar no longer has a header to carry it — and the action belongs
-              to the agent, not to a panel that may be collapsed. */}
-          {closeableTerminal && (
-            <button
-              onClick={() => openCloseAgentModal({
-                terminalId: closeableTerminal.id,
-                terminalName: closeableTerminal.name,
-              })}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface text-[11px] text-text-secondary hover:text-ink transition-colors"
-              title={`${t('agentInfo.closeAgent')} ⌘W`}
-            >
-              <Archive className="w-3.5 h-3.5 flex-shrink-0" />
-              {t('agentInfo.closeAgent')}
-            </button>
-          )}
-          <button
-            onClick={() => toggleRightSidebar('info')}
-            className={`p-[5px] rounded-full bg-surface transition-colors ${
-              rightSidebar === 'info'
-                ? 'text-ink'
-                : 'text-text-secondary hover:text-ink'
-            }`}
-            title={t('titlebar.info')}
-          >
-            {rightSidebar === 'info' ? <RightSidebarOpenIcon /> : <RightSidebarCloseIcon />}
-          </button>
-        </div>
-      )}
-    </div>
+    <>
+    <AppTitleBar
+      // In native fullscreen the traffic lights are gone, and their gutter with them.
+      trafficLightGutter={!isFullScreen}
+      left={{
+        open: leftSidebarVisible,
+        title: t('titlebar.toggleAgentsList'),
+        onToggle: () => toggleLeftSidebar(),
+      }}
+      // THE VIEW SWITCH IS GONE FROM THE BAR — the split view is a tile on the quick
+      // settings now, and it turns the split ON rather than merely allowing it. ⌘/ still
+      // toggles it from `App.tsx`.
+      titles={titles}
+      // Closing the agent is offered here, next to the sidebar toggle, because the
+      // info sidebar no longer has a header to carry it — and the action belongs
+      // to the agent, not to a panel that may be collapsed.
+      // The agent's view, beside its archive: the mark is where the click takes you.
+      history={history}
+      view={inspectedTerminal ? (resolveDisplayMode(inspectedTerminal, config) === 'chat'
+        ? { icon: SquareTerminal, title: `${t('chat.mode.toTerminal')} ⌘E`, onClick: () => setDisplayMode(inspectedTerminal.id, 'terminal') }
+        : { icon: MessageSquare, title: `${t('chat.mode.toChat')} ⌘E`, onClick: () => setDisplayMode(inspectedTerminal.id, 'chat') }
+      ) : undefined}
+      action={closeableTerminal ? {
+        label: t('agentInfo.closeAgent'),
+        title: `${t('agentInfo.closeAgent')} ⌘W`,
+        onClick: () => openCloseAgentModal({
+          terminalId: closeableTerminal.id,
+          terminalName: closeableTerminal.name,
+        }),
+      } : undefined}
+      // The info panel's toggle is the one control here that depends on there being an
+      // agent at all: with an empty window there is nothing for it to show.
+      right={terminals.length > 0 ? {
+        open: infoSidebarOpen,
+        title: t('titlebar.info'),
+        onToggle: () => toggleInfoSidebar(),
+      } : undefined}
+      // Last in the bar, where the platform keeps its Control Center. The sheet it
+      // pulls down is `ControlCenterMenu`, portalled to the body so the bar's own
+      // stacking never clips it — and starting UNDER the bar, so this button is still
+      // there to close it.
+      // Standing while notifications are off, and pressing it opens the sheet where the
+      // switch is — the same sheet the sliders beside it open.
+      notice={notificationsOff ? {
+        label: t('controlCenter.notificationsOff'),
+        title: t('controlCenter.notificationsOff'),
+        icon: BellOff,
+        // With the sheet switched off, straight to the page that holds the switch.
+        onClick: () => (quickSettingsEnabled ? setQuickSettingsOpen(true) : setSettingsTab('notifications')),
+      } : undefined}
+      settings={quickSettingsEnabled ? {
+        open: quickSettingsOpen,
+        title: t('titlebar.quickSettings'),
+        onToggle: () => setQuickSettingsOpen(!quickSettingsOpen),
+      } : undefined}
+      zoom={zoomPercent !== 100 ? {
+        label: `${zoomPercent}%`,
+        title: t('settings.appearance.zoomReset'),
+        onClick: () => setZoom(DEFAULT_ZOOM),
+      } : undefined}
+      // Past the sliders, where the platform keeps its own account: the person, and the
+      // sheet of everything they are signed in to.
+      account={account}
+    />
+    <ControlCenterMenu open={quickSettingsOpen} onClose={() => setQuickSettingsOpen(false)} />
+    <AccountMenu anchor={accountAnchor} />
+    {/* Signed out with the cloud on, the label is a way in — see `useAccountTitleBarControl`.
+        Rendered here because the hook hands back state, not overlays. */}
+    <LoginScreen isOpen={login.open} onClose={login.onClose} />
+    </>
   )
 }

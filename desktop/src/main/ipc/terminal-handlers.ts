@@ -1,5 +1,5 @@
 import os from 'os'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 // Aliased: `t` is already the local name for a terminal throughout this file.
 import { t as translate } from '../i18n'
 import {
@@ -16,26 +16,38 @@ import {
   updateTerminalMetadataFromHook,
   updateTerminalRepositoriesFromHook,
   noteTerminalUserInput,
+  settleInterruptedTurn,
   syncTerminalCwd,
   relaunchTerminalInResolvedCwd,
+  listTerminalSessions,
+  resumeTerminalSession,
+  newTerminalSession,
+  countContextSessions,
+  writeContextDigest,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
-import { noteTerminalInput, isUserInput } from '../questions/pending-questions'
+import { readEmojiCompletion } from '../claude-emoji-completion'
+import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
+import { resumableSessionId } from '../pty/resume-session'
 import {
   saveAgent,
   archiveAgent,
   readAgents,
+  updateAgentInfoSidebar,
+  updateAgentDisplayMode,
   updateAgentSplitPane,
 } from '../config/agents'
 import { addHistoryEntry } from '../config/activity-history'
 import { recordUsageSnapshot } from '../usage/usage-events'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
-import { isValidAgentType, DEFAULT_AGENT_TYPE } from '../config/defaults'
+import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
+import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt, watchTranscript } from '../chat/transcript-watcher'
+import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction, LaunchMetadata } from '../../types'
 
@@ -45,6 +57,12 @@ import type { HistoryAction, LaunchMetadata } from '../../types'
  * exists AND has .git). Throws a descriptive error otherwise so the renderer can
  * prompt the user to re-point the folder instead of creating a broken agent.
  */
+/**
+ * How long after Escape the transcript is read for what it did. Claude Code writes its
+ * "[Request interrupted…]" line within milliseconds; this is room for a busy disk.
+ */
+const INTERRUPT_GRACE_MS = 500
+
 function assertLaunchTargetValid(cwd: unknown): void {
   if (typeof cwd !== 'string' || cwd.length === 0) return
   const expanded = expandPath(cwd)
@@ -443,6 +461,8 @@ export function restoreAgents() {
 
     for (const agent of agents) {
       const cwd = resolveAgentCwd(agent.repositories, os.homedir())
+      // The conversation the app was quit on, when this machine still has it.
+      const resumeId = resumableSessionId(agent.metadata?.claudeTranscriptPath, cwd)
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
       const terminal = launchClaude(
@@ -456,8 +476,17 @@ export function restoreAgents() {
         callbacks.onMetadataChange,
         agent.metadata as TerminalMetadata | undefined,
         callbacks.onRepositoriesChange,
-        agent.repositories
+        agent.repositories,
+        undefined,
+        undefined,
+        undefined,
+        resumeId ?? undefined
       )
+      // The chat reads that conversation NOW, from the file the agent recorded, rather
+      // than when the resumed Claude Code's statusLine first names it, seconds later:
+      // until then the chat stood empty, then filled at once. `--resume` goes on writing
+      // to the same file, so the statusLine's report is a no-op when it comes.
+      if (resumeId && agent.metadata?.claudeTranscriptPath) watchTranscript(agent.id, agent.metadata.claudeTranscriptPath)
 
       // Save the TERMINAL's metadata, not the agent's. launchClaude folds the
       // branch it just detected into the metadata it returns (initialMetadataFor),
@@ -522,7 +551,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType, metadata }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType, metadata, launchMode }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -559,7 +588,9 @@ export function setupTerminalHandlers(
       callbacks.onRepositoriesChange,
       undefined,
       typeof initialPrompt === 'string' ? initialPrompt : undefined,
-      undefined,
+      // A caller's own launch mode (Quick Launch's, when one is set there), validated
+      // like everything crossing IPC. Absent, the configured one applies at spawn.
+      isValidLaunchMode(launchMode) ? launchMode : undefined,
       // Validated rather than forwarded: this crosses the IPC boundary, and `run` is
       // the mode that must survive any junk arriving here — it is what every caller
       // but the Tasks page's "Discuss" button wants.
@@ -689,6 +720,10 @@ export function setupTerminalHandlers(
       tsCreate: agentMap.get(t.id)?.tsCreate,
       metadata: t.metadata,
       splitPane: agentMap.get(t.id)?.splitPane,
+      // Undefined is meaningful here — see Agent.infoSidebarOpen — so it is passed
+      // through rather than defaulted on the way out.
+      infoSidebarOpen: agentMap.get(t.id)?.infoSidebarOpen,
+      displayMode: agentMap.get(t.id)?.displayMode,
     }))
   })
 
@@ -709,6 +744,62 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:updateSplitPane', async (_event, { id, pane }) => {
     return updateAgentSplitPane(id, pane)
   })
+
+  // Remember whether this agent shows the info panel
+  ipcMain.handle('terminal:updateInfoSidebar', async (_event, { id, open }) => {
+    if (typeof id !== 'string' || typeof open !== 'boolean') return
+    return updateAgentInfoSidebar(id, open)
+  })
+
+  ipcMain.handle('terminal:updateDisplayMode', async (_event, { id, mode }) => {
+    if (typeof id !== 'string' || (mode !== 'terminal' && mode !== 'chat')) return
+    // Back to the terminal: a question the chat was holding is the TUI's to ask now.
+    if (mode === 'terminal') releaseHeld(id)
+    return updateAgentDisplayMode(id, mode)
+  })
+
+  // Files to attach to a chat message: any kind, several at once. [] when dismissed.
+  ipcMain.handle('chat:pickFiles', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return []
+    const result = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'] })
+    return result.canceled ? [] : result.filePaths
+  })
+
+  // An image pasted into the chat's box, which has no path until it is written down.
+  ipcMain.handle('chat:savePastedImage', async (_event, { bytes, mime }) => savePastedImage(bytes, mime))
+
+  // The chat view's entries and queue so far; later ones arrive as `terminal:chat` events.
+  ipcMain.handle('terminal:getChat', async (_event, { id }) => {
+    if (typeof id !== 'string') return { entries: [], queue: [] }
+    return getChatSnapshot(id)
+  })
+
+  // Escape from the chat view, and what it did. Answers the prompt it took back, if any.
+  //
+  // Escape after Claude has started answering writes an "[Request interrupted…]" line,
+  // which the transcript watcher turns into a settled turn (see settleInterruptedTurn).
+  // Escape BEFORE anything came back leaves no line at all: Claude Code takes the prompt
+  // back into its input box, as if it had never been sent, and fires no hook either. So
+  // a transcript still ending on that prompt, once Escape has had time to land, is the
+  // sign: the turn is settled here, the prompt leaves the chat, and the input box it
+  // went back to is emptied (Ctrl+C, which clears it whole, however many lines it has)
+  // so that it is the chat's composer that holds it, not text the next send would be
+  // typed after.
+  ipcMain.handle('terminal:interrupt', async (_event, { id }) => {
+    if (typeof id !== 'string' || !writeToTerminal(id, '\x1b')) return null
+    await new Promise((resolve) => setTimeout(resolve, INTERRUPT_GRACE_MS))
+    if (!hasUnansweredPrompt(id) || !settleInterruptedTurn(id, Date.now())) return null
+    clearPendingQuestion(id)
+    writeToTerminal(id, '\x03')
+    return dropUnansweredPrompt(id)
+  })
+
+  // Claude Code's `:emoji:` typeahead as this agent's session merges it, from its cwd (see
+  // claude-emoji-completion.ts); without an id, the user's own value. Written from Settings
+  // by `claude:setEmojiCompletion` in config-handlers.
+  ipcMain.handle('claude:getEmojiCompletion', (_event, { terminalId }: { terminalId?: unknown } = {}) =>
+    readEmojiCompletion(typeof terminalId === 'string' ? getTerminalCwd(terminalId) : null))
 
   // Get terminal display buffer (for reconnection after refresh)
   ipcMain.handle('terminal:getBuffer', async (_event, { id }) => {
@@ -752,6 +843,35 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:relaunchInCwd', async (_event, { id }) => {
     if (typeof id !== 'string') return null
     return relaunchTerminalInResolvedCwd(id)
+  })
+
+  // The title bar's session history: every Claude Code session the agent has been on,
+  // and resuming one of them in its terminal.
+  ipcMain.handle('terminal:listSessions', async (_event, { id }) => {
+    if (typeof id !== 'string') return []
+    return listTerminalSessions(id)
+  })
+
+  ipcMain.handle('terminal:resumeSession', async (_event, { id, transcriptPath }) => {
+    if (typeof id !== 'string' || typeof transcriptPath !== 'string') return false
+    return resumeTerminalSession(id, transcriptPath)
+  })
+
+  ipcMain.handle('terminal:newSession', async (_event, { id }) => {
+    if (typeof id !== 'string') return false
+    return newTerminalSession(id)
+  })
+
+  // A new session's offer to hand Claude the agent's earlier conversations: how many
+  // there are, then the digest of them, written to a file the prompt mentions.
+  ipcMain.handle('terminal:contextSessions', async (_event, { id }) => {
+    if (typeof id !== 'string') return 0
+    return countContextSessions(id)
+  })
+
+  ipcMain.handle('terminal:writeContextDigest', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
+    return writeContextDigest(id)
   })
 }
 

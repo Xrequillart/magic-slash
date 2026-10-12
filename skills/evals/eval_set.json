@@ -404,5 +404,40 @@
     "expected_skill": "magic:plan",
     "notes": "FR 'réfléchir à' plus a hypothetical. No tracker reference anywhere, so plan is the only skill that applies",
     "difficulty": "medium"
+  },
+  {
+    "id": 59,
+    "query": "change the plan for SSO: split the login story per provider and update the tickets",
+    "expected_skill": "magic:plan-change",
+    "notes": "EN rework of a plan whose tickets exist, with an explicit ticket update ask",
+    "difficulty": "easy"
+  },
+  {
+    "id": 60,
+    "query": "/Users/me/api/.magic/spec-sso-login-20260922-101500.md drop the audit export story, we won't do it",
+    "expected_skill": "magic:plan-change",
+    "notes": "The shape the desktop button produces: a spec path followed by the change request. The path alone is the discriminator from magic:plan",
+    "difficulty": "medium"
+  },
+  {
+    "id": 61,
+    "query": "on a changé d'avis sur le plan d'export, faut retravailler la spec et mettre à jour les tickets",
+    "expected_skill": "magic:plan-change",
+    "notes": "FR 'retravailler la spec' plus 'mettre à jour les tickets': the plan already produced tickets",
+    "difficulty": "medium"
+  },
+  {
+    "id": 62,
+    "query": "j'ai une idée : un export CSV des factures, tu peux planifier ça ?",
+    "expected_skill": "magic:plan",
+    "notes": "Boundary with magic:plan-change: a brand new idea with no spec and no tickets behind it is a first plan, not a rework",
+    "difficulty": "medium"
+  },
+  {
+    "id": 63,
+    "query": "PROJ-412 changed scope, start working on it",
+    "expected_skill": "magic:start",
+    "notes": "Boundary with magic:plan-change: 'changed scope' is about a ticket to work on, not a plan to rework. A ticket id plus 'start' is magic:start",
+    "difficulty": "hard"
   }
 ]

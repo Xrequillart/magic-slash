@@ -3,4 +3,12 @@
 .temp
 
 # Local secrets
-.env
+.env*
+# …except the local values, which are committed on purpose: not a secret among
+# them, only the addresses this stack answers on, and a developer who has to
+# invent them before `supabase start` will run is a developer who guesses.
+!.env
+# The example is committed too. The filled-in copy is not — nothing in it is
+# secret either, but it is pushed to a live project, and a file arriving
+# half-filled from a merge is a file that pushes half a configuration.
+!.env.production.example

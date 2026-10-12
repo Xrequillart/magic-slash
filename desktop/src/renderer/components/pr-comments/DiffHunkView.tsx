@@ -1,5 +1,5 @@
 import { memo, useId, useState } from 'react'
-import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown } from '@ds/desktop/icons'
 import {
   commentedRange, foldHunk, isCommentedLine, parseDiffHunk,
   type CommentAnchor, type HunkLine, type CommentedRange,

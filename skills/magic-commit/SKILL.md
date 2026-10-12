@@ -1,10 +1,10 @@
 ---
 name: magic:commit
 description: This skill should be used when the user says "commit", "je suis pret a committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "pret a committer", "ready to commit", or indicates they want to save their current changes as a commit.
-allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, AskUserQuestion
+allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill, AskUserQuestion
 ---
 
-# magic-slash v0.91.1 - /commit
+# magic-slash v0.118.4 - /commit
 
 You are an assistant that creates atomic commits with conventional messages.
 
@@ -45,6 +45,7 @@ unactionable and say so rather than inventing a change for it.
 - `references/messages.md` — All bilingual message templates (EN/FR). Read this file to get the exact wording for user-facing messages.
 - `references/node-setup.md` — Node.js version manager detection (nvm/fnm/volta). Read this before any Node.js-dependent command.
 - `references/glossary.md` — EN/FR terminology reference.
+- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: how the end of the skill asks the app (`/workflow/next`) what follows, and shows or chains into it. Read §2 in Step 7.5.
 
 ---
 
@@ -220,6 +221,7 @@ The config was already loaded in Step 0.2. Extract these parameters (repo config
 | Co-Author | `.repositories.<name>.commit.coAuthor` | `false` |
 | Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false` |
 | Allow commits on a main branch | `.repositories.<name>.commit.allowOnProtectedBranch` | `true` |
+| Push after commit | `.repositories.<name>.commit.pushAfterCommit` | `false` |
 | Development branch | `.repositories.<name>.branches.development` | *(none)* |
 
 ### 4.2: Apply the style
@@ -365,6 +367,35 @@ This curl notifies Magic Slash Desktop so it can update its UI. Without it, the 
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=committed&type=coder" > /dev/null 2>&1 || true
 ```
 
+### 6.2: Push (only when `pushAfterCommit` is `true`)
+
+`pushAfterCommit` false or absent — the default — means **no push**: skip this step. The
+commit stays local, as it always has.
+
+When it is `true`, push once, after the LAST commit of this repository (on an atomic split,
+after the whole series, never once per commit):
+
+```bash
+BRANCH="$(git branch --show-current)"
+if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  git push
+else
+  git push -u origin "$BRANCH"
+fi
+```
+
+Prepend `$NODE_PREFIX` if set: a pre-push hook runs with it. A detached HEAD (empty
+`BRANCH`) is not pushed: say so with `MSG_PUSH_FAILED` and carry on.
+
+- Success: display `MSG_PUSH_SUCCESS`.
+- Failure (rejected, no remote, auth, a pre-push hook): display `MSG_PUSH_FAILED` with git's
+  own reason. **Never force-push, never pull or rebase to make it go through**: the commit is
+  made and stays made, and reconciling with the remote is the user's call. The run's outcome
+  is still `committed` (Step 7.5).
+
+In a multi-repo run, push each worktree after its own commits, and list each push in
+`MSG_MULTI_REPO_FINAL`.
+
 ---
 
 ## Step 7: Multi-repo summary (if applicable)
@@ -373,9 +404,25 @@ If you committed in multiple worktrees, display a final summary listing all comm
 
 ---
 
+## Step 7.5: Next step
+
+Pick the outcome with this table, then ask the app what follows, as `references/workflow.md` §2 says (in multi-repo mode, once per repository, from its worktree):
+
+| Result of this run | Outcome |
+| --- | --- |
+| At least one commit was created (Step 6), in one repo or several | `committed` |
+| Nothing to commit (Step 1), or the user aborted the commit (`MSG_HOOK_MANUAL_FIX`, option 3) | none: nothing to ask |
+| The run stopped on an error it could not resolve | `failed`, with the reason |
+
+When the answer has `lines`, display `MSG_NEXT_STEPS` (see `references/messages.md`) once, after the last `MSG_COMMIT_SUCCESS` or after `MSG_MULTI_REPO_FINAL`, never once per commit, with one line per `text`; for the default flow that is `/magic:pr`. With no line, display nothing: the commit confirmation stays the last line, as it always was.
+
+Then Step 8. A `chain` is followed only after Step 8 has recorded the run.
+
+---
+
 ## Step 8: Record the run
 
-**Always run this, as the very last thing you do — including when the workflow stopped early.**
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `chain` Step 7.5 got, if any, comes after it (`references/workflow.md` §2).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { MAGIC_COMMANDS } from './commands'
 import { FEATURE_FAMILIES } from './features'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { SKILLS_BAND_CHROME, SKILLS_BAND_PATH, SKILLS_BAND_POINTS } from './skillsBand'
 
 /**
@@ -23,8 +23,8 @@ import { SKILLS_BAND_CHROME, SKILLS_BAND_PATH, SKILLS_BAND_POINTS } from './skil
  * Same shape and same reasoning as `workflow.test.ts` next door.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -116,7 +116,7 @@ describe('the skills band', () => {
     // ② The route has to exist, which is the half `PUBLIC_PATHS` cannot check: a listed
     // path with no page behind it is a clean 404, which is honest and still a dead button
     // on the homepage.
-    expect(existsSync(webapp(`../app/(marketing)${path}/page.tsx`))).toBe(true)
+    expect(existsSync(webapp(`../app/(showcase)${path}/page.tsx`))).toBe(true)
 
     // ③ And the ANCHOR has to be one `/features` renders. This is the half a URL check
     // cannot do at all: `/features#nonsense` is a 200 that lands the reader at the top of

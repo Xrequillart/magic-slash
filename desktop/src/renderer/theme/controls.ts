@@ -29,35 +29,25 @@ export const BTN = `${BTN_BASE} text-text-secondary border border-line hover:bg-
 export const BTN_PRIMARY = `${BTN_BASE} text-on-brand bg-accent hover:bg-accent-hover`
 
 /**
- * The affirmative action of a view that has to explain itself: the label on one
- * line, a quieter sentence under it, an icon beside both.
+ * THE STACKED TIER IS GONE, and nothing replaced it.
  *
- * A second tier rather than `BTN_PRIMARY` with a bigger padding appended, for the
- * reason the header gives: two paddings from the same Tailwind group do not
- * override each other by class order. Taller than the one gabarit on purpose —
- * this is the single action of a page, not one control in a row of them — and its
- * text is left-aligned, because two stacked lines centred read as a heading. The
- * type scale lives on the two inner lines, so the caller sets it there.
+ * `BTN_PRIMARY_STACKED` and `BTN_NEUTRAL_STACKED` stood here for one caller: the ticket
+ * page's Start and Discuss, each a label with a quieter sentence under it explaining what
+ * pressing it would do. The tier existed BECAUSE of that sentence — `Button`'s label is a
+ * `string` precisely so it cannot grow a second line, so a button that had one could not
+ * be the design system's.
+ *
+ * The sentence went. "Start an agent" beside a Play mark is not a proposition anybody
+ * needs glossed, and a card whose two controls are each three lines tall reads as a form.
+ * With it went the only reason to have a second geometry — the two buttons are `Button`
+ * at `md` now, `accent` over `ink`, which is the same ranking those two strings were.
+ *
+ * Worth recording, because it was the argument FOR the tier and it turned out to be an
+ * argument against the sentence: a class string cannot offer a tone, so the second line
+ * had to spell its own colour at the call site (`text-on-brand/70` under the accent one,
+ * `text-bg/70` under the ink one). A control that needs its caller to pair two strings
+ * correctly is a control that is carrying something it should not.
  */
-export const BTN_PRIMARY_STACKED = 'flex items-start gap-2.5 px-3.5 py-2.5 text-left rounded-lg transition-all text-on-brand bg-accent hover:bg-accent-hover'
-
-/**
- * The stacked tier's second action: filled, and the highest contrast the theme has.
- *
- * `bg-ink`, not `bg-white`. Four of the eight themes are light, and a white button on a
- * light surface is an outline of nothing — whereas ink is by definition whatever reads
- * against the background, so this is white on the dark themes and near-black on the light
- * ones. The pairing with `text-bg` inverts with it, so the label follows for free.
- *
- * A tier here rather than `BTN_PRIMARY_STACKED` with colours appended, which is this
- * module's own rule: two Tailwind utilities from the same group do not override each other
- * by class order, so `${BTN_PRIMARY_STACKED} bg-ink` would keep whichever the generated
- * stylesheet happened to emit last.
- *
- * It reads as a real button rather than a quiet one on purpose: it sits directly under the
- * primary as an alternative to it, not as a lesser version of it.
- */
-export const BTN_NEUTRAL_STACKED = 'flex items-start gap-2.5 px-3.5 py-2.5 text-left rounded-lg transition-all text-bg bg-ink hover:bg-ink/90'
 
 /** Destructive. Bordered rather than filled: it should read as available, not as the obvious next step. */
 export const BTN_DANGER = `${BTN_BASE} text-red border border-red/20 hover:bg-red/10`
@@ -75,15 +65,35 @@ export const BTN_COMPACT = 'inline-flex items-center gap-1.5 h-7 px-2 text-[11px
 export const BTN_ICON = 'flex items-center justify-center h-7 w-7 shrink-0 rounded-lg transition-all text-icon bg-surface border border-line hover:bg-surface-strong hover:text-ink'
 
 /**
- * Text field. Same 30px box as the buttons above, deliberately: a field and the
- * button next to it sit on the same row all over Settings, and the `py-2 text-sm`
- * this used to be stood 8px taller than everything around it — which is what made
- * the settings pages read as a size bigger than the organization page.
+ * `INPUT` IS GONE — it is `Input` in `@ds/desktop` now, and every one of its
+ * twenty-four fields with it.
+ *
+ * It was the largest piece left in this module, and the same argument `Button` made
+ * applies to it word for word: a class string cannot offer a SIZE, a TONE or a SHAPE, so
+ * every call site composed it by hand with whatever that field needed — `resize-none`,
+ * `font-mono`, `disabled:opacity-50`, a `pl-9` for a glyph, a `pr-14` for a spinner —
+ * and fields that meant the same thing did not always agree. The component carries all
+ * of it, the textarea included.
+ *
+ * `SELECT` STAYS, for now. It is a NATIVE `<select>` and a different control: its popup
+ * is the platform's, which is why it needs `appearance-none` and a chevron drawn over
+ * it. `SelectIcon` in the design system is the app's own menu and not a replacement for
+ * the two places that still want the native one.
  */
-export const INPUT = 'px-3 py-1.5 bg-surface border border-line-field rounded-lg text-xs text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30'
 
 /**
  * Native `<select>`. `appearance-none` because macOS otherwise draws its own
  * popup and ignores the theme; the caller draws the chevron over the `pr-9`.
  */
 export const SELECT = 'px-3 py-1.5 pr-9 bg-surface border border-line-field rounded-lg text-xs cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors'
+
+/**
+ * The width a settings row's control stands at — `w-52`, the class every one of those
+ * selects carries.
+ *
+ * A NUMBER, because `Select` is handed one: its panel is portalled and positioned by
+ * hand, so a width in a class is a width the panel cannot read. It is here rather than
+ * in the design system for the reason the rest of this file is: how wide the right-hand
+ * column of a settings row runs is this app's layout, not a design language.
+ */
+export const SELECT_WIDTH = 208

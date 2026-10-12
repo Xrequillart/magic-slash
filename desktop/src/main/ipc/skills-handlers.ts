@@ -6,8 +6,14 @@ import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import AdmZip from 'adm-zip'
 import { t } from '../i18n'
+import { collectListingEntries } from '../skills-listing'
+import { copySkillToRepo, hasSkillIn, relativePathOf, skillInRepo, stringFieldsOf } from '../skill-copy'
+import { gitRunner, skillShareStatus, type SkillShareResult } from '../skill-share-status'
 
-const BUILT_IN_SKILLS = ['magic-plan', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+/** A skill directory name, as `skills:import` creates one. */
+const SKILL_NAME = /^[a-z0-9-]+$/
+
+const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
 interface SkillInfo {
   name: string
@@ -65,6 +71,24 @@ function findImageInDir(dirPath: string): string | null {
     // Directory might not exist
   }
   return null
+}
+
+/**
+ * The local folder of the repository at config key `name`, or null when it has none on
+ * this machine: paths are personal (each member binds their own), so a shared repo
+ * may well have no folder here. `hasOwn` keeps a key like `constructor` from resolving
+ * through the prototype.
+ */
+function localRepoPath(name: unknown): string | null {
+  if (typeof name !== 'string') throw new Error(`Invalid repository: expected a config key, got ${typeof name}.`)
+  const repos = readConfig().repositories || {}
+  if (!Object.hasOwn(repos, name) || !repos[name].path) return null
+  const repoPath = expandPath(repos[name].path)
+  try {
+    return fs.statSync(repoPath).isDirectory() ? repoPath : null
+  } catch {
+    return null
+  }
 }
 
 export function setupSkillsHandlers() {
@@ -262,7 +286,7 @@ export function setupSkillsHandlers() {
     const skillName = frontmatter.name || path.basename(sourceDir)
 
     // Validate name
-    if (!/^[a-z0-9-]+$/.test(skillName)) {
+    if (!SKILL_NAME.test(skillName)) {
       throw new Error(`Invalid skill name "${skillName}". Must contain only lowercase letters, numbers, and hyphens.`)
     }
 
@@ -354,6 +378,16 @@ export function setupSkillsHandlers() {
     return repoSkills
   })
 
+  // Everything Claude Code puts in its skill listing, for the budget gauge. Wider than
+  // skills:list + skills:listRepoSkills on purpose: plugins count too (see skills-listing.ts).
+  ipcMain.handle('skills:listingEntries', async () => {
+    const repos = Object.entries(readConfig().repositories || {}).map(([name, repo]) => ({
+      name,
+      path: expandPath(repo.path),
+    }))
+    return collectListingEntries({ home: os.homedir(), repos, builtIn: BUILT_IN_SKILLS, env: process.env })
+  })
+
   // Get a specific repo skill's full content
   ipcMain.handle('skills:getRepoSkill', async (_event, { filePath }: { filePath: string }) => {
     // Security: verify filePath is under a registered repo
@@ -406,6 +440,42 @@ export function setupSkillsHandlers() {
       hasImage: false,
       imagePath: undefined,
     }
+  })
+
+  // How far the repository's copy of a skill has reached its members, for the workflow
+  // editor: a custom step whose skill is only personal, or only in this checkout, runs
+  // for nobody else yet. `unknown` when the repository has no folder on this machine,
+  // where there is nothing to look at, which is not the same answer as `missing`.
+  // Read-only git (never a fetch), so the answer is as fresh as the last one the user ran.
+  ipcMain.handle('skills:repoSkillStatus', async (_event, payload: unknown): Promise<SkillShareResult> => {
+    const request = stringFieldsOf(payload, ['repoName', 'skill'])
+    if (!request) return { status: 'unknown' }
+    const { repoName, skill } = request
+    const repoPath = localRepoPath(repoName)
+    if (!repoPath) return { status: 'unknown' }
+    const found = skillInRepo(os.homedir(), repoPath, skill)
+    const branch = readConfig().repositories?.[repoName]?.branches?.development
+    return skillShareStatus(gitRunner(repoPath), found ? relativePathOf(found) : null, branch)
+  })
+
+  // Whether the skill is in the user's own `~/.claude` (a skill folder or a command),
+  // i.e. can be copied.
+  ipcMain.handle('skills:homeHasSkill', async (_event, payload: unknown) => {
+    const request = stringFieldsOf(payload, ['skill'])
+    return request ? hasSkillIn(os.homedir(), request.skill) : false
+  })
+
+  // Copy a personal skill or command into a repository, so its members get it once it
+  // is committed. Never overwrites, refuses links outside the skill (skill-copy.ts).
+  // Committing is left to the user: the copy is an ordinary change in their checkout.
+  ipcMain.handle('skills:copyToRepo', async (_event, payload: unknown) => {
+    const request = stringFieldsOf(payload, ['repoName', 'skill'])
+    if (!request) throw new Error('Invalid copy request: expected a repository and a skill name.')
+    const { repoName, skill } = request
+    const repoPath = localRepoPath(repoName)
+    if (!repoPath) throw new Error(`Repository "${repoName}" has no folder on this machine`)
+    const dest = copySkillToRepo(os.homedir(), repoPath, skill)
+    return { success: true, path: relativePathOf(dest) }
   })
 
   // Dialog: open file for image selection

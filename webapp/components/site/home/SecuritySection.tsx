@@ -4,7 +4,7 @@ import { ToneCard } from '@/components/ui'
 import { SECURITY_CARDS, SECURITY_CHROME, type SecurityArt } from '@/lib/security'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
-import { CommitGuardArt, GdprArt, PrivateRepoArt, SecretsArt } from './SecurityArt'
+import { SecretsArt } from './SecurityArt'
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
@@ -22,7 +22,7 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * IT IS THE LAST BAND BEFORE THE FAQ, and the two are doing related jobs in the right
  * order: this one answers the objection everybody has, and `FaqSection` answers the five
- * that are specific to the reader. `app/(marketing)/page.tsx` holds the running argument
+ * that are specific to the reader. `app/(showcase)/page.tsx` holds the running argument
  * for the page's order.
  *
  * ── WHY THE COPY IS SHORT AND THE VERIFICATION IS LONG ────────────────────────────
@@ -98,11 +98,25 @@ import { HomeHeading, HomeSection } from './Shell'
  * than components: the badge sets the regulation's acronym inside the European emblem, and
  * that acronym is the one string in the drawing that is not English in both languages.
  */
-function art(id: SecurityArt, mark: string) {
+function art(id: SecurityArt) {
   const DRAWING: Record<SecurityArt, React.ReactNode> = {
-    privateRepo: <PrivateRepoArt />,
-    gdpr: <GdprArt label={mark} />,
-    commitGuard: <CommitGuardArt />,
+    // FROM THE SITE'S OWN SET TOO, replacing the padlock on the owner's call. Same crop
+    // treatment as the shield below: the `viewBox` is the drawing's measured box
+    // (`23 49 954 902` out of 1000²). Sized by HEIGHT, like the other short-card pictures.
+    privateRepo: <img src="/img/illustration-files.svg" alt="" className="mx-auto h-60 w-auto px-7" />,
+    // Same set, same treatment: the European seal went on the owner's call. The file's
+    // white ground was deleted and its `viewBox` cropped to the drawing (`163 63 954 730`
+    // out of 1280×856), so the card's tone shows through like it does on the others.
+    gdpr: <img src="/img/illustration-database.svg" alt="" className="mx-auto h-48 w-auto px-7" />,
+    // AN ILLUSTRATION FROM THE SITE'S OWN SET, not a drawing of the mechanism: the branch
+    // graph that was here went on the owner's call. The file's `viewBox` is cropped to the
+    // drawing's measured box (`87 25 826 950` out of a 1000² canvas), so nothing here has
+    // to correct for dead margin. Beside the copy — see `SecurityCard.beside` — and sized
+    // by HEIGHT, because it is a portrait picture in a landscape row. `alt=""`: the title
+    // beside it already says what it says.
+    commitGuard: (
+      <img src="/img/illustration-shield.svg" alt="" className="mx-auto h-[22rem] w-auto px-3 pb-3 md:py-3 md:pl-0" />
+    ),
     secrets: <SecretsArt />,
   }
   return DRAWING[id]
@@ -139,12 +153,13 @@ export function SecuritySection() {
           >
             <ToneCard
               tone={card.tone}
+              layout={card.beside ? 'beside' : 'stacked'}
               visual={card.crop ? 'end' : 'center'}
               title={t(card.title)}
               description={t(card.description)}
               className="h-full"
             >
-              {art(card.id, t(SECURITY_CHROME.gdprMark))}
+              {art(card.id)}
             </ToneCard>
           </Reveal>
         ))}

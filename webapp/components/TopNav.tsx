@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AppWindow, Building2, ChevronDown, LogOut, NotebookPen, ShieldCheck, UserRound } from 'lucide-react'
+import { Logo } from '@/components/Logo'
+import { ChevronDown, LogOut, ShieldCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { isPlatformAdmin } from '@/lib/admin'
 import { getSupabase } from '@/lib/supabase'
@@ -14,8 +15,10 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 /**
  * App chrome, reduced to a logo and an account menu. It sits on the same canvas
  * as the page — no border, no panel — so the header reads as part of the page
- * rather than a bar over it. The sections that used to be nav pills live in the
- * account menu, which is the only remaining way to reach them.
+ * rather than a bar over it. The account menu used to open the Application, Plans,
+ * Organization and Account pages; all four were deleted once the desktop app did
+ * everything they did, so what is left is the language, the way out, and the
+ * back-office for the few who have one.
  *
  * There is no nav slot. There used to be one, filled by the back-office's section
  * links and empty everywhere else; /admin now has a chrome of its own
@@ -33,10 +36,6 @@ interface MenuLink {
 }
 
 const MENU_LINKS: MenuLink[] = [
-  { href: '/application', label: 'nav.application', icon: AppWindow },
-  { href: '/plans', label: 'nav.plans', icon: NotebookPen },
-  { href: '/organization', label: 'nav.organization', icon: Building2 },
-  { href: '/account', label: 'nav.account', icon: UserRound },
   { href: '/admin', label: 'nav.admin', icon: ShieldCheck, platformAdminOnly: true },
 ]
 
@@ -92,16 +91,19 @@ export function TopNav({ email }: { email?: string }) {
   }, [open])
 
   const signOut = async () => {
-    await getSupabase().auth.signOut()
+    // This browser only: the default `global` scope signs the desktop app out too.
+    await getSupabase().auth.signOut({ scope: 'local' })
     router.replace('/')
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-canvas">
+    <header className="sticky top-0 z-40 bg-white">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link href="/dashboard" className="shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-8" />
+          {/* `md` in a 64px bar, the same rung the site header takes — this bar and that
+              one are the same object on two hosts, and they were drawing two different
+              wordmarks at two unrelated heights until `Logo` held both. */}
+          <Logo size="md" decorative />
         </Link>
 
         <div ref={menuRef} className="relative shrink-0">

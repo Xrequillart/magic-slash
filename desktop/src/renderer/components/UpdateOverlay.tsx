@@ -1,15 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, Bot, Bug, Download, FileText, LogIn, ScrollText, Sparkles, Wrench } from '@ds/desktop/icons'
+import { setSimulatedSetup } from '../dev/simulatedSetup'
 import { useStore } from '../store'
 import { useT } from '../i18n'
-
-type UpdateStatus =
-  | { type: 'checking' }
-  | { type: 'available'; version: string }
-  | { type: 'not-available' }
-  | { type: 'downloading'; progress: number }
-  | { type: 'downloaded'; version: string; releaseNotes?: string }
-  | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 /**
  * Id of the fake agent the debug menu pins into the list. Prefixed like the other
@@ -18,99 +11,19 @@ type UpdateStatus =
  */
 const DEBUG_PLANNING_AGENT_ID = 'debug-planning-agent'
 
-const CONFETTI_COLORS = ['#393BFF', '#6366f1', '#22c55e', '#eab308', '#ef4444', '#a855f7', '#3b82f6', '#f97316']
-
-interface Particle {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  color: string
-  size: number
-  rotation: number
-  rotationSpeed: number
-  opacity: number
-  shape: 'rect' | 'circle'
-}
-
-function launchConfetti(canvas: HTMLCanvasElement) {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  canvas.width = canvas.offsetWidth
-  canvas.height = canvas.offsetHeight
-
-  const particles: Particle[] = []
-  const cx = canvas.width / 2
-  const cy = canvas.height / 2
-
-  for (let i = 0; i < 80; i++) {
-    const angle = Math.random() * Math.PI * 2
-    const speed = 4 + Math.random() * 8
-    particles.push({
-      x: cx,
-      y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 3,
-      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-      size: 4 + Math.random() * 6,
-      rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 15,
-      opacity: 1,
-      shape: Math.random() > 0.5 ? 'rect' : 'circle',
-    })
-  }
-
-  let frame: number
-  const animate = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    let alive = false
-    for (const p of particles) {
-      p.x += p.vx
-      p.y += p.vy
-      p.vy += 0.2
-      p.vx *= 0.99
-      p.rotation += p.rotationSpeed
-      p.opacity -= 0.008
-      if (p.opacity <= 0) continue
-      alive = true
-      ctx.save()
-      ctx.translate(p.x, p.y)
-      ctx.rotate((p.rotation * Math.PI) / 180)
-      ctx.globalAlpha = p.opacity
-      ctx.fillStyle = p.color
-      if (p.shape === 'rect') {
-        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2)
-      } else {
-        ctx.beginPath()
-        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.restore()
-    }
-    if (alive) {
-      frame = requestAnimationFrame(animate)
-    }
-  }
-  frame = requestAnimationFrame(animate)
-  return () => cancelAnimationFrame(frame)
-}
-
 export function UpdateOverlay() {
   const t = useT()
   const activeTerminalId = useStore((s) => s.activeTerminalId)
   // The one thing left that is worth interrupting for: the download is on disk, the
-  // restart was asked for, and it did not happen. Everything else the updater has to
-  // say is reported by the sidebar row instead.
+  // restart happened, and the app did not come back. Everything else the updater has
+  // to say is `UpdateModal`'s splash to report.
   const [installError, setInstallError] = useState<string | null>(null)
-  const [showConfetti, setShowConfetti] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
   const [planningAgentPinned, setPlanningAgentPinned] = useState(false)
-  const [updateRowPinned, setUpdateRowPinned] = useState(false)
+  const [updateDialogPinned, setUpdateDialogPinned] = useState(false)
+  const [brokenSetupPinned, setBrokenSetupPinned] = useState(false)
   const debugMenuRef = useRef<HTMLDivElement>(null)
-  const confettiRef = useRef<HTMLCanvasElement>(null)
-  const lastStatusTypeRef = useRef<UpdateStatus['type'] | null>(null)
 
   function floodTerminal() {
     if (!activeTerminalId) return
@@ -122,6 +35,21 @@ export function UpdateOverlay() {
   // Toggle rather than fire-and-forget: the agents page keeps showing its empty
   // state until this is switched back off, so it can be styled with sessions
   // still running underneath.
+  /**
+   * Makes the app believe this machine is in trouble — a required tool missing, another
+   * too old, an MCP server unconfigured, a skill not installed.
+   *
+   * It is the only way to see the quick-settings verdict in red: on the machine of
+   * whoever is drawing it, the setup is always ready. Both surfaces that ask about the
+   * setup read the same fake, so the verdict and the repair card it opens agree.
+   */
+  function toggleBrokenSetup() {
+    const next = !brokenSetupPinned
+    setBrokenSetupPinned(next)
+    setDebugMenuOpen(false)
+    setSimulatedSetup(next)
+  }
+
   function toggleEmptyState() {
     const next = !emptyStatePinned
     setEmptyStatePinned(next)
@@ -130,26 +58,26 @@ export function UpdateOverlay() {
   }
 
   /**
-   * Hands the sidebar update row a fake status to hold. It is the only way to see
-   * that row in development: checkForUpdatesOnStartup() returns early under the dev
+   * Hands the update splash a fake manual check to hold. It is the only way to see that
+   * splash in development: checkForUpdatesOnStartup() returns early under the dev
    * server, so no real status ever reaches it.
    *
-   * A toggle rather than a scripted playback, because the point is to CLICK it —
-   * the row simulates its own download and restart while pinned, so the whole
-   * offered → transferring → ready path is walked by hand.
+   * A toggle rather than a scripted playback, because the point is to WATCH it: the
+   * splash simulates its own answer, download and relaunch while pinned, so the whole
+   * checking → found → transferring → counting down path plays out by hand.
    */
-  function toggleUpdateRow() {
-    const next = !updateRowPinned
-    setUpdateRowPinned(next)
+  function toggleUpdateDialog() {
+    const next = !updateDialogPinned
+    setUpdateDialogPinned(next)
     setDebugMenuOpen(false)
     window.dispatchEvent(new CustomEvent('debug:update-sim', {
-      detail: next ? { type: 'available', version: '1.0.0' } : null,
+      detail: next ? { type: 'checking', manual: true } : null,
     }))
   }
 
-  /** Jumps the pinned row straight to a failed download, so retry can be clicked. */
-  function pinUpdateRowError() {
-    setUpdateRowPinned(true)
+  /** Jumps the pinned splash straight to a failed download, so retry can be clicked. */
+  function pinUpdateDialogError() {
+    setUpdateDialogPinned(true)
     setDebugMenuOpen(false)
     window.dispatchEvent(new CustomEvent('debug:update-sim', {
       detail: { type: 'error', message: 'net::ERR_CONNECTION_RESET (simulated)', phase: 'download' },
@@ -207,26 +135,18 @@ export function UpdateOverlay() {
     }))
   }
 
-  const triggerConfetti = useCallback(() => setShowConfetti(true), [])
-
-  // Driven by an effect rather than by the rAF that used to follow setShowConfetti:
-  // the canvas only exists once React has committed `showConfetti`, and an effect is
-  // the one place that is guaranteed to run after that commit AND after layout — so
-  // `canvas.offsetWidth` is the real width rather than 0. Returning launchConfetti's
-  // canceller also stops the animation loop if the overlay unmounts mid-burst, which
-  // the discarded return value never did.
-  // The canvas also unmounts itself once the particles have fallen: it now floats
-  // over the live app rather than over a modal that was about to close, so leaving it
-  // mounted would leave a full-window element on top of the UI forever.
-  useEffect(() => {
-    if (!showConfetti || !confettiRef.current) return
-    const cancel = launchConfetti(confettiRef.current)
-    const done = setTimeout(() => setShowConfetti(false), 4000)
-    return () => {
-      cancel?.()
-      clearTimeout(done)
-    }
-  }, [showConfetti])
+  /**
+   * Opens the sign-in card over whatever is on screen, signed in or not.
+   *
+   * It is the only way to SEE that screen without ending your own session: the title
+   * bar's label opens the account menu once there is an account, so the card is
+   * otherwise reachable only by signing out — and then again after every change to it.
+   * `useAccountTitleBarControl` listens for this and holds the open state.
+   */
+  function showLoginScreen() {
+    setDebugMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('debug:login-screen'))
+  }
 
   /** Pins the install-failure overlay — the one state that still takes the screen. */
   function toggleInstallFailure() {
@@ -246,24 +166,13 @@ export function UpdateOverlay() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [debugMenuOpen])
 
-  // The real update flow, and all that is left of it here. The whole sequence —
-  // check, download, restart — is reported and driven by the sidebar update row now:
-  // nothing about an update in progress blacks out the app, not the automatic startup
-  // check, not the transfer, and not the finished download either (its Restart and
-  // Later sit in that row, next to the progress bar that preceded them).
+  // The real update flow, and all that is left of it here. The whole sequence (check,
+  // download, relaunch) is reported and driven by `UpdateModal` now, on a splash that
+  // takes the window from the moment a release is found until the app comes back newer.
   //
-  // Two things still belong to this component: the burst of confetti when a download
-  // lands, and the overlay for a restart that failed.
+  // One thing still belongs to this component: the overlay for a restart that failed.
   useEffect(() => {
     const unsubscribe = window.electronAPI.updater.onStatus((newStatus) => {
-      // Only the TRANSITION into 'downloaded' celebrates. A manual re-check while an
-      // update is already downloaded makes electron-updater re-emit the event, and
-      // that is not a download finishing.
-      const isFirstDownloaded = newStatus.type === 'downloaded' && lastStatusTypeRef.current !== 'downloaded'
-      lastStatusTypeRef.current = newStatus.type
-
-      if (isFirstDownloaded) triggerConfetti()
-
       if (newStatus.type === 'error' && newStatus.phase === 'install') {
         setInstallError(newStatus.message)
       }
@@ -278,16 +187,10 @@ export function UpdateOverlay() {
     return () => {
       unsubscribe()
     }
-  }, [triggerConfetti])
+  }, [])
 
   return (
     <>
-      {/* Over the live app, never blocking it: the update is ready, and clicking
-          straight through the celebration to keep working is the point. */}
-      {showConfetti && (
-        <canvas ref={confettiRef} className="fixed inset-0 w-full h-full pointer-events-none z-[101]" />
-      )}
-
       {/* The restart did not happen and the terminals are already gone, so this one
           does hold the screen — quitting and reopening is the only way out. */}
       {installError && (
@@ -308,16 +211,6 @@ export function UpdateOverlay() {
           {debugMenuOpen && (
             <div className="absolute bottom-full right-0 mb-2 w-52 py-1 rounded-lg bg-bg-secondary border border-border/50 shadow-xl animate-fade-in">
               <button
-                onClick={() => {
-                  setDebugMenuOpen(false)
-                  triggerConfetti()
-                }}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
-              >
-                <PartyPopper className="w-3.5 h-3.5" />
-                Download-ready confetti
-              </button>
-              <button
                 onClick={toggleInstallFailure}
                 className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
                   installError ? 'text-purple' : 'text-text-secondary hover:text-ink'
@@ -328,21 +221,31 @@ export function UpdateOverlay() {
                 {installError && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
-                onClick={toggleUpdateRow}
+                onClick={toggleUpdateDialog}
                 className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
-                  updateRowPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                  updateDialogPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
                 }`}
               >
                 <Download className="w-3.5 h-3.5" />
-                Sidebar update row
-                {updateRowPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+                Update splash
+                {updateDialogPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
-                onClick={pinUpdateRowError}
+                onClick={pinUpdateDialogError}
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Update row: failed
+                Update splash: failed
+              </button>
+              <button
+                onClick={toggleBrokenSetup}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  brokenSetupPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                Broken machine setup
+                {brokenSetupPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
                 onClick={toggleEmptyState}
@@ -370,6 +273,13 @@ export function UpdateOverlay() {
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 What&apos;s New modal
+              </button>
+              <button
+                onClick={showLoginScreen}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Login screen
               </button>
               <button
                 onClick={floodTerminal}

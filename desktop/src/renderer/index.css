@@ -51,31 +51,31 @@
    written on <html> by applyTheme() from the registry in src/themes.ts, which
    is the single source — keep these in step with its `dark` entry. */
 :root {
-  --c-bg: 10 10 11;
-  --c-bg-secondary: 20 20 22;
-  --c-bg-tertiary: 28 28 31;
-  --c-window-wash: rgba(0, 0, 0, 0.3);
+  --c-bg: 11 12 14;
+  --c-bg-secondary: 21 22 25;
+  --c-bg-tertiary: 29 31 35;
 
   --c-ink: 255 255 255;
-  --c-text-secondary: 161 161 170;
+  --c-text-secondary: 160 164 174;
   --c-on-brand: 255 255 255;
-  --c-icon: 138 138 146;
-  --c-icon-muted: 101 101 106;
+  --c-icon: 137 141 151;
+  --c-icon-muted: 100 104 113;
 
   --c-surface-subtle: rgba(255, 255, 255, 0.04);
   --c-surface: rgba(255, 255, 255, 0.06);
   --c-surface-strong: rgba(255, 255, 255, 0.1);
   --c-surface-sunken: rgba(0, 0, 0, 0.3);
   --c-surface-sunken-soft: rgba(0, 0, 0, 0.2);
+  --c-plate-lift: 9%;
 
   --c-line-subtle: rgba(255, 255, 255, 0.05);
   --c-line-field: rgba(255, 255, 255, 0.08);
   --c-line: rgba(255, 255, 255, 0.1);
   --c-line-strong: rgba(255, 255, 255, 0.15);
-  --c-border: 39 39 42;
+  --c-border: 40 42 47;
 
-  --c-accent: 99 102 241;
-  --c-accent-hover: 129 140 248;
+  --c-accent: 0 122 252;
+  --c-accent-hover: 51 149 253;
   --c-purple: 168 85 247;
   --c-green: 34 197 94;
   --c-red: 239 68 68;
@@ -97,11 +97,30 @@
 
 body {
   font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
-  /* Painted over the native window vibrancy, so it is a wash, not a fill. */
-  background: var(--c-window-wash);
+  /* The theme's own ground, opaque: the window has no vibrancy behind it any more. */
+  background: rgb(var(--c-bg));
   color: rgb(var(--c-ink));
   line-height: 1.6;
   overflow: hidden;
+}
+
+/* THE QUICK-SETTINGS BLUR. The sheet under the title bar (`ControlCenter`, in the design
+   system) cannot blur its own backdrop: measured, a `backdrop-filter` in the transparent
+   vibrancy window the app had then rendered a blur so slight that text stays legible under it at any radius.
+   So the sheet puts `data-control-center` on <html> while it is down and the app blurs its
+   own body — everything below the title bar, the bar itself left sharp because the button
+   that closes the sheet is on it.
+
+   Only `open` is matched. The attribute turns to `closing` the moment the sheet starts its
+   exit, so the blur runs out over the same 200ms the sheet takes to slide up, and the two
+   arrive together. The durations are the sheet's own — 320ms in, 200ms out. */
+.app-body {
+  transition: filter 200ms ease-in;
+}
+
+html[data-control-center='open'] .app-body {
+  filter: blur(14px);
+  transition: filter 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Hide scrollbars globally while keeping scroll functionality */
@@ -191,97 +210,6 @@ fieldset:disabled button {
   }
 }
 
-/* Working indicator — three parallel bars, the middle one tallest, crossed by a wave
-   that travels from the left bar to the right one. Replaces the rotating ring the
-   sidebar used for an agent at work.
-
-   The bars keep their ORDER throughout the cycle: the 6/13px rest heights and the 0.15s
-   offsets are picked so the middle bar is still the tallest at the worst instant of the
-   loop — 7.7px against 5.3px, at t=0.655s, its own trough meeting a neighbour's rise.
-   Sides of 7px against a middle of 12px animate the same way but close that gap to
-   0.9px, and a silhouette that flattens twice a second stops reading as one shape.
-
-   `currentColor`, not the accent: the agent badge already colours itself by state
-   (see stateColors), and the ring's hardcoded accent border ignored that. One less
-   thing to keep in step with the eight themes.
-
-   Sized to the ring it replaces — 16px — so no sidebar row shifts.
-
-   Bars scale rather than change height, which keeps the animation off the layout path.
-   It also matters under `prefers-reduced-motion`, where the global rule collapses every
-   duration to 0.01ms: the frozen frame is the 100% keyframe, and that keyframe is the
-   resting silhouette, so the loader stops as three bars rather than as a blank. */
-.loader-wave {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 16px;
-  height: 16px;
-}
-
-.loader-wave > span {
-  width: 2px;
-  height: 6px;
-  border-radius: 1px;
-  background: currentColor;
-  animation: loader-wave-bar 1.2s ease-in-out infinite;
-}
-
-.loader-wave > span:nth-child(2) {
-  height: 13px;
-  animation-delay: 0.15s;
-}
-
-.loader-wave > span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes loader-wave-bar {
-  0%,
-  100% {
-    transform: scaleY(1);
-  }
-  35% {
-    transform: scaleY(0.55);
-  }
-  70% {
-    transform: scaleY(1.1);
-  }
-}
-
-/* The `waiting` badge — a question bubble, because that state is the agent asking you
-   something, not the agent being slow: nothing moves until the person answers.
-
-   It arrives rather than gestures: a small lift with a tilt into it, a settle back
-   past level, then rest — the motion of a message landing in a list. The lift is a
-   PERCENTAGE of the glyph's own height, not a pixel count, so it reads the same in the
-   16px sidebar badge and in the smaller one the marketing mockup draws.
-
-   One arrival per 3s loop, and the rest is most of it. The keyframes are spaced evenly
-   so the default ease-in-out shapes the motion like a breath rather than a snap — a
-   sidebar that can hold a dozen of these has to stay calm.
-
-   Under `prefers-reduced-motion` the global rule collapses the duration, freezing the
-   100% keyframe: the glyph at rest, untransformed. */
-.icon-ask {
-  animation: icon-ask-arrive 3s ease-in-out infinite;
-}
-
-@keyframes icon-ask-arrive {
-  0%,
-  44%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  14% {
-    transform: translateY(-14%) rotate(-5deg);
-  }
-  30% {
-    transform: translateY(0) rotate(2deg);
-  }
-}
-
 /* Modal animations */
 @keyframes modal-backdrop-in {
   from {
@@ -351,33 +279,12 @@ fieldset:disabled button {
   animation: dropzone-pulse 1.5s ease-in-out infinite;
 }
 
-/* What's New modal - release notes HTML styling */
-.whats-new-content h3 {
-  @apply text-white font-semibold text-sm mt-4 mb-2 first:mt-0;
-}
-.whats-new-content ul {
-  @apply list-disc list-inside space-y-1 mb-3;
-}
-.whats-new-content li {
-  @apply text-text-secondary text-sm;
-}
-.whats-new-content strong {
-  @apply text-white font-medium;
-}
-.whats-new-content p {
-  @apply mb-2;
-}
-.whats-new-content a {
-  @apply text-accent hover:underline;
-}
-
 /* Budget bar shimmer */
 @keyframes shimmer-sweep {
   0% { left: -30%; }
   10% { left: 130%; }
   100% { left: 130%; }
 }
-
 
 /* History card expand/collapse animations */
 @keyframes card-slide-out {

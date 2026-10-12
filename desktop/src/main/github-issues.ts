@@ -34,11 +34,29 @@ import type { PRStatusError, TaskIssue, TaskIssueDetail, TicketComment } from '.
 const CLOSED_PAGE_SIZE = 30
 
 /**
+ * How many OPEN issues one repository's board can hold — GitHub's own ceiling on a
+ * connection, and the counterpart to `SPRINT_COLUMN_PAGE_SIZE` on the Jira half.
+ *
+ * 50 until the Tasks page became a board. The two halves were matched then and they
+ * still are, but the number moved for a reason of its own: a `first:` above 100 is not
+ * served, it is rejected, so 100 is the most a single page can ask for and there is no
+ * argument for leaving rows on the table below it.
+ *
+ * WHAT THIS DOES NOT FIX is which issues a capped repository shows. They arrive ordered
+ * by creation date, so a backlog of four hundred comes back as its hundred newest —
+ * with `totalCount` beside them, which is the saving grace: the page prints "showing 100
+ * of 412" rather than passing a cap off as a total. The Jira half cannot even say that
+ * much (no total in a cursor-paginated response), which is why IT got a budget per
+ * column and this did not: a number is a better admission than a `+`.
+ */
+const OPEN_PAGE_SIZE = 100
+
+/**
  * `rateLimit` leads, as in every query here: it is the cheapest possible answer to
  * "why did this go quiet", and it costs nothing to ask for.
  *
- * `first: 50` and `CREATED_AT DESC`, not `last:` — an issue backlog is read from the
- * top, and the fifty most recently OPENED issues are the ones a page can act on.
+ * `OPEN_PAGE_SIZE` and `CREATED_AT DESC`, not `last:` — an issue backlog is read from
+ * the top, and the most recently OPENED issues are the ones a page can act on.
  * That is the opposite of the PR queries next door, where the tail is what matters
  * because bots post late; here the sort field decides, so `first:` takes the newest.
  *
@@ -54,9 +72,9 @@ const CLOSED_PAGE_SIZE = 30
  * `issueType`: Issue Types are an organisation-only feature and come back `null`
  * on a personal repository, so asking for them would buy an always-empty field.
  *
- * `totalCount` is asked for alongside the nodes because `first: 50` is a CAP, not a
- * total: a repository with two hundred open issues would otherwise be reported as
- * having fifty. There is no pagination here — the page says "showing 50 of 214"
+ * `totalCount` is asked for alongside the nodes because `first:` is a CAP, not a
+ * total: a repository with four hundred open issues would otherwise be reported as
+ * having a hundred. There is no pagination here — the page says "showing 100 of 412"
  * instead of quietly rounding the backlog down.
  *
  * A SECOND CONNECTION, aliased `closed`, for the board's Done column. One query and
@@ -68,7 +86,7 @@ const CLOSED_PAGE_SIZE = 30
 export const OPEN_ISSUES_QUERY = `query($owner:String!,$repo:String!){
   rateLimit { remaining }
   repository(owner:$owner,name:$repo){
-    issues(states: OPEN, first: 50, orderBy: {field: CREATED_AT, direction: DESC}){
+    issues(states: OPEN, first: ${OPEN_PAGE_SIZE}, orderBy: {field: CREATED_AT, direction: DESC}){
       totalCount
       nodes {
         number title url createdAt
@@ -200,6 +218,18 @@ interface GQLIssueDetailNode {
   body?: string | null
   assignees?: { nodes?: ({ login?: string | null } | null)[] | null } | null
   comments?: { totalCount?: number | null; nodes?: (GQLCommentNode | null)[] | null } | null
+}
+
+/**
+ * The aliased state read's envelope. `repository` is an open bag of aliases rather than
+ * named fields — the document is built from the caller's numbers, so there is no fixed
+ * shape to declare and `mapIssueStates` reads the values rather than the keys.
+ */
+interface GQLIssueStatesResponse extends GQLEnvelope {
+  data?: {
+    rateLimit?: { remaining?: number | null } | null
+    repository?: Record<string, unknown> | null
+  } | null
 }
 
 interface GQLIssueDetailResponse extends GQLEnvelope {
@@ -511,4 +541,96 @@ export async function fetchIssueDetail(
   if (isPRStatusError(node)) return node
 
   return mapIssueDetail(node)
+}
+
+
+/**
+ * How many issues one batched state read will ask about.
+ *
+ * A plan files an epic and a handful of stories, so this is a ceiling nothing realistic
+ * reaches — it is here because the query is BUILT FROM THE CALLER'S ARRAY, and a query
+ * document that grows with its input is the one shape GitHub rejects by size rather than
+ * by content. Extra keys are dropped rather than split into a second call: the rows they
+ * belong to simply carry no pill, which is a state the page already draws.
+ */
+export const ISSUE_STATES_LIMIT = 50
+
+/**
+ * One alias per issue, in one query — "are these still open?" for a whole plan.
+ *
+ * ALIASES RATHER THAN A CONNECTION, because there is no connection that takes a list of
+ * numbers: `issues(filterBy:)` cannot, and `states: OPEN` would answer by OMISSION —
+ * a number missing from the result would mean "closed" or "never existed" or "past the
+ * page size", three different things the caller could not tell apart. Asked one by one,
+ * every number gets its own answer or an explicit null.
+ *
+ * The alias is `i<number>`, which is a valid GraphQL name for every positive integer and
+ * is what the response is read back by. The numbers are the caller's own, already
+ * narrowed to integers by the handler's payload guard, so nothing user-typed reaches the
+ * document — which is what makes building a query by concatenation safe here.
+ *
+ * Two fields and no more. This read happens for every ticket of a plan on every open;
+ * it is not a detail read, and a body or a label set would make it one.
+ */
+export function buildIssueStatesQuery(numbers: number[]): string {
+  const aliases = numbers
+    .slice(0, ISSUE_STATES_LIMIT)
+    .map((number) => `i${number}: issue(number: ${number}) { number state }`)
+    .join('\n    ')
+  return `query($owner:String!,$repo:String!){
+  rateLimit { remaining }
+  repository(owner:$owner,name:$repo){
+    ${aliases}
+  }
+}`
+}
+
+/**
+ * The aliased response as `number → state`, dropping every hole GraphQL may leave.
+ *
+ * A null alias — an issue deleted, transferred, or never filed — is simply ABSENT from
+ * the map rather than defaulted to open: the caller renders a missing entry as "no
+ * answer", and inventing OPEN for a ticket nobody can find would be the one wrong pill.
+ * That is the opposite of `mapIssueDetail`'s narrowing, and deliberately so: there the
+ * panel was opened FROM a list of open issues, so OPEN is the assumption it came in
+ * with; here there is no such prior.
+ */
+function mapIssueStates(repository: Record<string, unknown>): Record<number, 'OPEN' | 'CLOSED'> {
+  const states: Record<number, 'OPEN' | 'CLOSED'> = {}
+  for (const value of Object.values(repository)) {
+    if (!value || typeof value !== 'object') continue
+    const { number, state } = value as { number?: unknown; state?: unknown }
+    if (!Number.isInteger(number)) continue
+    if (state !== 'OPEN' && state !== 'CLOSED') continue
+    states[number as number] = state
+  }
+  return states
+}
+
+/**
+ * The state of several issues of one repository, in ONE round trip.
+ *
+ * Never throws, like everything else here — but unlike its neighbours it does not return
+ * a `PRStatusError` either: it answers an empty map. The caller draws no error state for
+ * this read and has none to draw. It decorates rows that are already on screen, read out
+ * of the cloud, and a plan whose statuses could not be fetched is a plan the reader can
+ * still read in full. Collapsing "no token", "not found" and "network" into "no answer"
+ * is therefore not information lost, it is information nothing consumes.
+ */
+export async function fetchIssueStates(
+  owner: string,
+  repo: string,
+  numbers: number[],
+): Promise<Record<number, 'OPEN' | 'CLOSED'>> {
+  if (numbers.length === 0) return {}
+
+  const repository = await readGraphQL(
+    buildIssueStatesQuery(numbers),
+    { owner, repo },
+    (b: GQLIssueStatesResponse | null) => b?.data?.repository,
+    `Repository ${owner}/${repo} was not found.`,
+  )
+  if (isPRStatusError(repository)) return {}
+
+  return mapIssueStates(repository)
 }

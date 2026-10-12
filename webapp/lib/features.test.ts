@@ -12,14 +12,14 @@ import {
   type Feature,
   type FeatureTitle,
 } from './features'
-import { marketingEn } from './i18n/marketing/en'
+import { showcaseEn } from './i18n/showcase/en'
 
 /**
  * Runs in the ROOT vitest suite on the root `node_modules`, which is the reason
  * `lib/features.ts` may not import anything but `lib/commands.ts` — see the note on that
  * file. THIS TEST EXISTING IS WHAT KEEPS THAT TRUE: add a `lucide-react`, a `next/*` or
  * a `./supabase` import over there and this fails to RESOLVE rather than shipping a
- * marketing page that drags the auth SDK into a bundle authenticating nobody.
+ * showcase page that drags the auth SDK into a bundle authenticating nobody.
  *
  * The other half of its job is the one a type cannot do, and it is worth being explicit
  * about WHY. `tsc` never runs on `webapp/` in CI (`.github/workflows/ci.yml` typechecks
@@ -53,6 +53,7 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
     anchor: 'desktop',
     layout: 'rows',
     features: [
+      'plans',
       'tasks',
       'skillsPage',
       'worktrees',
@@ -78,11 +79,14 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
   {
     family: 'configuration',
     anchor: 'configuration',
-    layout: 'rows',
+    layout: 'cards',
     features: [
+      // The workflow opens the family, wide; three pairs; the launch modes close it, wide.
+      'repoWorkflow',
       'multiRepo',
       'commitFormat',
       'pullRequests',
+      'commitGuards',
       // The profile reads BEFORE the languages: who the app is talking to comes before
       // which language it says it in.
       'profile',
@@ -242,7 +246,9 @@ describe('FEATURE_FAMILIES', () => {
       const family = FEATURE_FAMILIES.find((candidate) => candidate.id === expected.family)
       expect(family?.layout, expected.family).toBe(expected.layout)
     }
-    expect(FEATURE_FAMILIES.filter((family) => family.layout === 'cards')).toHaveLength(1)
+    // Two now: the skills, and the conventions, which traded three settings windows for
+    // a bento of cards each showing the one thing it claims.
+    expect(FEATURE_FAMILIES.filter((family) => family.layout === 'cards')).toHaveLength(2)
     // And the same for the other loud shape. A showcase card is a full-width surface
     // carrying artwork; a second family taking it would double the page's height for
     // rows that have no artwork to put on a plate.
@@ -289,7 +295,9 @@ describe('FEATURE_FAMILIES', () => {
     const full = FEATURE_FAMILIES.flatMap((family) =>
       family.features.filter((feature) => feature.span === 'full').map((feature) => feature.id),
     )
-    expect(full).toEqual(['plan', 'done'])
+    // And in the conventions grid, the workflow that opens it and the launch modes that
+    // close it, around three pairs.
+    expect(full).toEqual(['plan', 'done', 'repoWorkflow', 'profile', 'languages', 'permissionModes'])
   })
 
   it('sets no card width on a family that draws rows', () => {
@@ -349,26 +357,29 @@ describe('FEATURE_FAMILIES', () => {
       for (const feature of family.features) {
         if (!feature.tone) continue
         expect(ui, `${family.id}/${feature.id} → tone "${feature.tone}"`).toContain(
-          `${feature.tone}: { surface: 'bg-tone-${feature.tone}'`,
+          `${feature.tone}: { surface: 'bg-card-${feature.tone}'`,
         )
       }
     }
   })
 
-  it('gives a chosen ground to the two commands that bookend the loop, and to the limits card', () => {
-    // Every other card takes whatever the positional cycle hands it, which is what keeps
-    // the palette from becoming a legend rather than a rhythm. A THIRD named tone in the
-    // skills grid would arrive as a one-word edit with nothing on screen to argue with
-    // it, which is why this is an exact list and not a `toContain`.
+  it('names a ground for four skills and the limits card, and cycles the rest', () => {
+    // The other four skills take whatever the positional cycle hands them. A FIFTH named
+    // tone would arrive as a one-word edit with nothing on screen to argue with it, which
+    // is why this is an exact list and not a `toContain` — and it matters more now that
+    // naming is half the grid than it did when it was two cards.
     const named = FEATURE_FAMILIES.flatMap((family) =>
       family.features.filter((feature) => feature.tone).map((feature) => feature.id),
     )
-    // In reading order: `start` opens the loop in orange, `done` closes it in green — the
-    // two bookends, and the two whose cycled ground (`sky`, `midnight`) said nothing
-    // about the command under it. `usage` is the third and it is in another family: the
-    // Claude Code limits are two gauges, and green is what a gauge with room left says in
-    // this product, so it asks for `done`'s ground rather than a colour of its own.
-    expect(named).toEqual(['start', 'done', 'usage'])
+    // In reading order: `start` opens the loop in orange and `done` closes it in green —
+    // the two bookends, whose cycled grounds (`sky`, `midnight`) said nothing about the
+    // command under them. `continue` and `resolve` are the owner's two additions and
+    // neither introduces a colour: they borrow `review`'s blue and `start`'s orange, so
+    // the named cards pair up across the grid. See `CARD_TONES_BY_COMMAND` for what that
+    // costs. `usage` is the last and it is in another family: the Claude Code limits are
+    // two gauges, and green is what a gauge with room left says in this product, so it
+    // asks for `done`'s ground rather than a colour of its own.
+    expect(named).toEqual(['start', 'continue', 'resolve', 'done', 'usage'])
   })
 
   it('closes the skills and the info sidebar families with a note, and no other', () => {
@@ -406,6 +417,7 @@ describe('FEATURE_FAMILIES', () => {
       'contextCard',
       'macNotification',
       'menuBar',
+      'planModal',
       'continueTask',
       'devServer',
       'doneChecklist',
@@ -414,12 +426,14 @@ describe('FEATURE_FAMILIES', () => {
       'prComments',
       'prWatchCard',
       'repoCard',
-      'reposSettings',
-      'commitConfig',
-      'prConfig',
+      'workflowZoom',
+      'repoStack',
+      'commitFormats',
+      'prDescription',
+      'commitGuards',
       'profileArt',
       'languagesArt',
-      'launchModes',
+      'launchModesMenu',
       'resolvedThreads',
       'reviewDrawer',
       'reviewThreads',
@@ -452,8 +466,10 @@ describe('FEATURE_FAMILIES', () => {
     const drawn = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ family, feature }) => `${family}/${feature.id}`,
     )
-    const rowVisuals = drawn.filter((entry) => !entry.startsWith('workflow/'))
+    const cardFamilies = FEATURE_FAMILIES.filter((family) => family.layout === 'cards').map((family) => `${family.id}/`)
+    const rowVisuals = drawn.filter((entry) => !cardFamilies.some((prefix) => entry.startsWith(prefix)))
     expect(rowVisuals).toEqual([
+      'desktop/plans',
       'desktop/tasks',
       'desktop/skillsPage',
       'desktop/worktrees',
@@ -469,26 +485,17 @@ describe('FEATURE_FAMILIES', () => {
       'insights/devServer',
       'insights/pullRequest',
       'insights/prComments',
-      // The configuration family's opening row, drawn for the reason `desktop/tasks` is:
-      // its claim is about a screen, so the screen is under it.
-      'configuration/multiRepo',
-      'configuration/commitFormat',
-      'configuration/pullRequests',
-      // The profile and the languages row are a pair, and they are drawn as one: two
-      // showcase cards, one over the other, with the same plate under each mark.
-      'configuration/profile',
-      'configuration/languages',
-      'configuration/permissionModes',
     ])
 
     // And the SHAPE each of them takes, pinned separately because it is a different
     // decision from "does this row have a picture at all". `block` is full width and
-    // costs a third of a section; the desktop family carries three of them — Tasks,
-    // Skills and Agents — and a fourth arriving as an omitted field is exactly the
-    // change nothing else would notice.
+    // costs a third of a section; the desktop family carries four of them — Plans,
+    // Tasks, Skills and Agents — and a fifth arriving as an omitted field is exactly
+    // the change nothing else would notice.
     const shapes = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ feature }) => feature.shape ?? 'block',
     )
+    // Six: four rows, and the profile and the languages cards of the conventions grid.
     expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(6)
   })
 
@@ -582,13 +589,13 @@ describe('the copy every row points at', () => {
     // whole reason those four keys are named in `features.ts` instead of inline in the
     // JSX: a rename in the catalogues would otherwise blank the `h1` with every row
     // below it intact, and no test in the repository would have an opinion.
-    const catalogue = marketingEn as Record<string, string>
+    const catalogue = showcaseEn as Record<string, string>
     const missing = CATALOGUE_KEYS
       .filter(({ key }) => !isLiteralTitle(key))
       .filter(({ key }) => !catalogue[key])
       .map(({ where, key }) => `${where} → ${key}`)
 
-    expect(missing, `key(s) with no entry in marketingEn:\n  ${missing.join('\n  ')}`).toEqual([])
+    expect(missing, `key(s) with no entry in showcaseEn:\n  ${missing.join('\n  ')}`).toEqual([])
   })
 
   it('translates every family heading and intro rather than printing a name', () => {
@@ -604,7 +611,7 @@ describe('the copy every row points at', () => {
     // The six product names exist as literals precisely so they need no en/fr pair. One
     // that ALSO had a catalogue entry would be translated by whichever branch the page
     // took, and the entry would owe a row in `i18n.test.ts`'s exact allow-list.
-    const catalogue = marketingEn as Record<string, string>
+    const catalogue = showcaseEn as Record<string, string>
     for (const name of LITERAL_TITLES) {
       expect(catalogue[name], `\`${name}\` is a catalogue key as well as a literal`).toBeUndefined()
     }
@@ -618,7 +625,7 @@ describe('the copy every row points at', () => {
     expect(isLiteralTitle('Jira')).toBe(true)
     expect(isLiteralTitle('site.features.worktreesTitle')).toBe(false)
 
-    for (const key of Object.keys(marketingEn)) {
+    for (const key of Object.keys(showcaseEn)) {
       expect(key.startsWith('/'), `\`${key}\` would be printed rather than translated`).toBe(false)
     }
   })

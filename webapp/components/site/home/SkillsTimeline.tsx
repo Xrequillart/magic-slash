@@ -104,7 +104,7 @@ import { JiraMark } from '../features/TicketCardMockup'
  * still decides and only the component resolution is duplicated.
  *
  * COLOUR IS SPENT ON TWO STOPS AND NO MORE: `validation` is green, `tickets` is brand
- * blue, and the eight others are `ink` on their white bead. Green because green is how
+ * blue, and the eight others are white on their black bead. Green because green is how
  * this product says "finished" (`tone-mint` carries the same reasoning in the Tailwind
  * config); blue because it ties the tickets stop to Jira's mark on its own label. A colour
  * that also decorates is a colour that no longer signals.
@@ -158,10 +158,11 @@ import { JiraMark } from '../features/TicketCardMockup'
  *
  * ── THE REST ─────────────────────────────────────────────────────────────────────
  *
- * EVERYTHING IS WHITE apart from those two glyphs, because the card is `midnight` and its
- * own title and body flip to white on that tone (`CARD_TONES.midnight`). Full-strength
- * white rather than the `onink` ramp the body uses: that ramp is for prose sitting BEHIND a
- * heading, and this drawing is the card's loudest element by design.
+ * EVERYTHING IS BLACK — `ink`, the rail, the beads and the labels — at the owner's ask
+ * ("mets le workflow en noir"). It was white when the card was `midnight`; the card is
+ * `lemon` now, a light ground, and white on it was the palest thing on the page. Full-
+ * strength `ink` rather than a muted one: this drawing is the card's loudest element by
+ * design. The glyphs inside the beads flip to white with them.
  *
  * THE LABELS ARE CERA PRO at `font-semibold`, by request. Cera Pro has no 600 face — the
  * webapp serves the same six the app bundles (300, 400 italic, 500, 700, 900, 900 italic)
@@ -304,7 +305,7 @@ function Mark({ stop }: { stop: (typeof STOPS)[number] }) {
 
 /** One stop's name. A flex row, because two of them carry a mark ahead of the text. */
 const LABEL =
-  'flex items-center gap-2 whitespace-nowrap font-display text-xl font-semibold text-white'
+  'flex items-center gap-2 whitespace-nowrap font-display text-xl font-semibold text-ink'
 
 export function SkillsTimeline() {
   const { t } = useT()
@@ -350,24 +351,24 @@ export function SkillsTimeline() {
                   distance. The LAST stop draws none, which is what makes the rail end on
                   `Done` rather than run out past it. */}
               {i < STOPS.length - 1 && (
-                <div className="absolute left-5 top-5 h-4 w-full -translate-y-1/2 bg-white" />
+                <div className="absolute left-5 top-5 h-4 w-full -translate-y-1/2 bg-ink" />
               )}
               {BeadGlyph ? (
                 // `relative` so the bead paints ABOVE its own rail segment: a
                 // positioned element outranks a static one, and the segment is
                 // positioned, so a static bead would be drawn under it.
-                <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white p-2">
+                <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-ink p-2">
                   {/* `h-full w-full`, so the two numbers deciding how big the glyph looks
                       are the bead's `h-10` and that `p-2` — one place, not three. */}
                   <BeadGlyph
-                    className={`h-full w-full ${stop.glyphClass ?? 'text-ink'}`}
+                    className={`h-full w-full ${stop.glyphClass ?? 'text-white'}`}
                     strokeWidth={2.25}
                   />
                 </span>
               ) : (
                 // Nothing reaches this today. It is the fallback for a stop with neither a
                 // command nor a glyph, and it is one line.
-                <span className="relative block h-10 w-10 rounded-full bg-white" />
+                <span className="relative block h-10 w-10 rounded-full bg-ink" />
               )}
 
               {/* THE NAME, under its bead — every stop's is here now. See the geometry

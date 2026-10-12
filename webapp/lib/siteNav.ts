@@ -102,13 +102,13 @@ export type SiteNavIcon =
 /**
  * The three colours a nav glyph is drawn in — and they are a GROUPING, not decoration.
  *
- * `accent` is the two rows that are the product itself, `purple` the two that are
+ * `accent` is the two rows that are the product itself, `ink` the two that are
  * reference (the inventory, and what changed), `green` the one that is the ask. Which
  * means the rules between the groups and the colours inside them say the same thing
  * twice, on purpose: the rule is the structure for anyone reading the shapes, the colour
  * is the structure for anyone scanning the column, and neither is load-bearing alone.
  *
- * TOKENS, all three — `accent`, `purple` and `green` in `tailwind.config.ts` — and the
+ * TOKENS, all three — `accent`, `ink` and `green` in `tailwind.config.ts` — and the
  * one worth a note is the last. `green` is declared there as a STATUS colour ("this
  * finished": a check, a diff's additions, a passing gauge), and that file is explicit
  * that spending it on decoration is how a green stops meaning "ok". It is spent here by
@@ -120,7 +120,7 @@ export type SiteNavIcon =
  * dresses controls and type while `accent` dresses decoration, and a glyph beside a menu
  * row is decoration — the row is the control.
  */
-export type SiteNavTone = 'accent' | 'purple' | 'green'
+export type SiteNavTone = 'accent' | 'ink' | 'green'
 
 /** One nav row: where it goes, the key that names it, and how it is drawn. */
 export type SiteNavRow = {
@@ -175,15 +175,15 @@ export type SiteNavRow = {
  *
  * HERE RATHER THAN IN A `lib/desktopPage.ts`, and that is a judgement rather than an
  * omission: `lib/workflow.ts` and `lib/faq.ts` own their paths because they own their
- * pages' DATA — five steps, eleven questions — and a component should not have to know
+ * pages' DATA — five steps, fifteen questions — and a component should not have to know
  * the site's URL shape to link to them. `/desktop` has no such data. Its copy is
  * `site.desktop.*`, the family the homepage band brought with it, and its composition is
  * the component. So the path lives with the menu that names it, and `siteNav.test.ts`
  * pins it against `PUBLIC_PATHS` and against the page like every other row.
  *
- * `/desktop` AND NOT `/application`, though the row is labelled "Application": the
- * product owns `/application/*` on `app.magic-slash.io` — its own settings section — and
- * two route branches resolving one path is a build question rather than a naming one.
+ * `/desktop` AND NOT `/application`, though the row is labelled "Application": that path
+ * was the product's own settings section on `app.magic-slash.io`, and since its deletion
+ * it still redirects bookmarks to the dashboard there (`next.config.mjs`).
  */
 export const DESKTOP_PATH = '/desktop'
 
@@ -241,8 +241,8 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
     { href: DESKTOP_PATH, label: 'site.nav.application', icon: 'AppWindow', tone: 'accent', tile: true },
   ],
   [
-    { href: '/features', label: 'site.nav.allFeatures', icon: 'Layers', tone: 'purple' },
-    { href: '/changelog', label: 'site.nav.changelog', icon: 'ScrollText', tone: 'purple' },
+    { href: '/features', label: 'site.nav.allFeatures', icon: 'Layers', tone: 'ink' },
+    { href: '/changelog', label: 'site.nav.changelog', icon: 'ScrollText', tone: 'ink' },
   ],
   [{ href: DOWNLOAD_PATH, label: 'site.nav.download', icon: 'Download', tone: 'green' }],
 ]
@@ -276,12 +276,12 @@ export const FAQ_NAV_ROW: SiteNavRow = {
   href: FAQ_PATH,
   label: 'site.nav.faq',
   icon: 'CircleHelp',
-  // PURPLE AND A GLYPH, neither of which the BAR draws — it had neither the first time it
+  // INK AND A GLYPH, neither of which the BAR draws — it had neither the first time it
   // stood out here, and the difference is that it is in `ALL_NAV_GROUPS` now: below `md`
-  // it lands in a column where every other row has both. `purple` is the reference
+  // it lands in a column where every other row has both. `ink` is the reference
   // family, the one `/features` and `/changelog` are in — a page you go to READ. See
   // `icon` on `SiteNavRow`.
-  tone: 'purple',
+  tone: 'ink',
 }
 
 /**

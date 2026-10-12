@@ -1,0 +1,462 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { PlanCommentsRead } from '../../types'
+
+/**
+ * The SHAPE guards on the four comment channels, and nothing else.
+ *
+ * WHAT THIS FILE DELIBERATELY DOES NOT TEST is who may write on whose plan. That is RLS's
+ * job and RLS's alone — `supabase/tests/plan_comments.test.sql` is where it is proved —
+ * and a unit test asserting an authorization rule in this layer would be asserting the
+ * existence of exactly the duplicated, weaker check the handlers are written not to have.
+ *
+ * What IS worth pinning is that a malformed argument never reaches the cloud module: these
+ * are the first WRITE channels in this file, so an argument that slips past the guard is a
+ * row in a table every member of the organization can read. Every assertion below therefore
+ * checks the refusal AND that the cloud function was not called.
+ *
+ * Mocked in the style of the siblings: `ipcMain.handle` is captured so the handlers can be
+ * invoked directly, and the cloud modules are replaced because they import
+ * `@supabase/supabase-js`, which the ROOT node_modules this suite runs on does not hold.
+ */
+type IpcHandler = (event: unknown, args?: unknown) => Promise<unknown>
+const handlers = new Map<string, IpcHandler>()
+vi.mock('electron', () => ({
+  ipcMain: {
+    handle: vi.fn((channel: string, handler: IpcHandler) => {
+      handlers.set(channel, handler)
+    }),
+  },
+}))
+
+const mockListSessions = vi.fn()
+const mockListDetail = vi.fn()
+const mockFindForTicket = vi.fn()
+const mockSetEditPolicy = vi.fn()
+const mockAddCollaborator = vi.fn()
+const mockRemoveCollaborator = vi.fn()
+vi.mock('../cloud/plans', () => ({
+  listPlanSessions: (...args: unknown[]) => mockListSessions(...args),
+  listPlanDetail: (...args: unknown[]) => mockListDetail(...args),
+  findPlanForTicket: (...args: unknown[]) => mockFindForTicket(...args),
+  updatePlanEditPolicy: (...args: unknown[]) => mockSetEditPolicy(...args),
+  addPlanCollaborator: (...args: unknown[]) => mockAddCollaborator(...args),
+  removePlanCollaborator: (...args: unknown[]) => mockRemoveCollaborator(...args),
+}))
+
+const mockListComments = vi.fn()
+const mockCreateComment = vi.fn()
+const mockUpdateComment = vi.fn()
+const mockDeleteComment = vi.fn()
+const mockAnnounceDeleted = vi.fn()
+const mockLiveSessionId = vi.fn()
+const PLAN_OPEN = 'e0000000-0000-0000-0000-0000000000aa'
+vi.mock('../cloud/planComments', () => ({
+  listPlanComments: (...args: unknown[]) => mockListComments(...args),
+  createPlanComment: (...args: unknown[]) => mockCreateComment(...args),
+  updatePlanComment: (...args: unknown[]) => mockUpdateComment(...args),
+  deletePlanComment: (...args: unknown[]) => mockDeleteComment(...args),
+}))
+
+const mockListLinks = vi.fn()
+const mockCreateLink = vi.fn()
+const mockDeleteLink = vi.fn()
+vi.mock('../cloud/planLinks', () => ({
+  listPlanLinks: (...args: unknown[]) => mockListLinks(...args),
+  createPlanLink: (...args: unknown[]) => mockCreateLink(...args),
+  deletePlanLink: (...args: unknown[]) => mockDeleteLink(...args),
+}))
+
+const mockSaveSpec = vi.fn()
+const mockLocalSpec = vi.fn()
+vi.mock('../store/plan-edit', () => ({
+  saveEditedPlanSpec: (...args: unknown[]) => mockSaveSpec(...args),
+  resolveLocalSpecPath: (...args: unknown[]) => mockLocalSpec(...args),
+}))
+
+const mockListHistory = vi.fn()
+const mockReadTexts = vi.fn()
+vi.mock('../cloud/planHistory', () => ({
+  listPlanHistory: (...args: unknown[]) => mockListHistory(...args),
+  readRevisionTexts: (...args: unknown[]) => mockReadTexts(...args),
+}))
+
+// The live channels' module, which reaches the Supabase client through `./auth`.
+const mockOpenLive = vi.fn()
+const mockCloseLive = vi.fn()
+const mockLiveStatus = vi.fn()
+vi.mock('../cloud/plan-live', () => ({
+  openPlanLive: (...args: unknown[]) => mockOpenLive(...args),
+  closePlanLive: (...args: unknown[]) => mockCloseLive(...args),
+  getPlanLiveStatus: () => mockLiveStatus(),
+  announcePlanCommentDeleted: (...args: unknown[]) => mockAnnounceDeleted(...args),
+  getPlanLiveSessionId: () => mockLiveSessionId(),
+}))
+
+// The preview machinery, which pulls shiki and the whole config layer. The diff channel's
+// own job is the guard and the wiring; `specDiff.test.ts` covers the line diff, and the
+// file preview's suite the annotation. The highlighter answers the text wrapped, so a test
+// can tell which side of the pair it was given.
+const mockHighlight = vi.fn()
+vi.mock('./config-handlers', () => ({
+  highlightNumbered: (...args: unknown[]) => mockHighlight(...args),
+  previewShikiTheme: () => 'github-dark',
+  annotateAgainstDiff: (numbered: string, diff: string) => ({ highlightedHtml: `${numbered}|${diff.split('\n').length}`, changedLines: { added: [], removedBefore: [] } }),
+}))
+
+import { setupPlansHandlers } from './plans-handlers'
+
+/** A well-formed uuid, so a rejection can only ever be about the field under test. */
+const SESSION_ID = '11111111-1111-4111-8111-111111111111'
+const COMMENT_ID = '22222222-2222-4222-8222-222222222222'
+const PARENT_ID = '33333333-3333-4333-8333-333333333333'
+
+/** The one payload every creation test starts from, with the field under test replaced. */
+function creation(overrides: Record<string, unknown> = {}) {
+  return { sessionId: SESSION_ID, anchor: null, quote: 'the passage', body: 'a note', ...overrides }
+}
+
+function invoke(channel: string, args?: unknown): Promise<unknown> {
+  const handler = handlers.get(channel)
+  if (!handler) throw new Error(`no handler registered for ${channel}`)
+  return handler({}, args)
+}
+
+beforeEach(() => {
+  handlers.clear()
+  vi.clearAllMocks()
+  mockListComments.mockResolvedValue({
+    comments: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, failed: false,
+  } satisfies PlanCommentsRead)
+  mockCreateComment.mockResolvedValue(true)
+  mockUpdateComment.mockResolvedValue(true)
+  mockDeleteComment.mockResolvedValue(true)
+  mockLiveSessionId.mockReturnValue(PLAN_OPEN)
+  mockCreateLink.mockResolvedValue(true)
+  mockDeleteLink.mockResolvedValue(true)
+  mockListLinks.mockResolvedValue({ links: [], emailByAuthor: {}, failed: false })
+  mockSaveSpec.mockResolvedValue({ status: 'saved', updatedAt: 'x', fileWritten: false, fileSkipReason: 'not_owner' })
+  mockListHistory.mockResolvedValue({ revisions: [], linkEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false })
+  mockReadTexts.mockResolvedValue({ older: 'a\nb', newer: 'a\nB\nc' })
+  mockHighlight.mockImplementation(async (text: string) => `<pre>${text}</pre>`)
+  setupPlansHandlers()
+})
+
+describe('plans:comments:list', () => {
+  it('reads the comments of a well-formed session id', async () => {
+    await invoke('plans:comments:list', SESSION_ID)
+    expect(mockListComments).toHaveBeenCalledWith(SESSION_ID)
+  })
+
+  it.each([
+    ['not a uuid', 'nope'],
+    ['a number', 7],
+    ['nothing at all', undefined],
+    ['an object', { id: SESSION_ID }],
+  ])('answers an UNFAILED nothing for %s, and reads nothing', async (_label, id) => {
+    // Unfailed, not failed: the page's "no comment yet" is the honest reading of an
+    // unknown plan, where an error block would offer a retry that cannot help.
+    expect(await invoke('plans:comments:list', id)).toEqual({
+      comments: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, failed: false,
+    })
+    expect(mockListComments).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:comments:create', () => {
+  it('passes a well-formed thread head through', async () => {
+    expect(await invoke('plans:comments:create', creation())).toBe(true)
+    expect(mockCreateComment).toHaveBeenCalledWith({
+      sessionId: SESSION_ID, parentId: undefined, anchor: null, quote: 'the passage', body: 'a note',
+    })
+  })
+
+  it('passes a reply through with its parent', async () => {
+    await invoke('plans:comments:create', creation({ parentId: PARENT_ID, quote: '' }))
+    expect(mockCreateComment).toHaveBeenCalledWith(
+      expect.objectContaining({ parentId: PARENT_ID }),
+    )
+  })
+
+  it('reads a null parent as a thread head — what JSON makes of an absent field', async () => {
+    await invoke('plans:comments:create', creation({ parentId: null }))
+    expect(mockCreateComment).toHaveBeenCalledWith(
+      expect.objectContaining({ parentId: undefined }),
+    )
+  })
+
+  it('keeps a line anchor that is exactly a LineRange', async () => {
+    const anchor = { side: 'new', startLine: 3, endLine: 9 }
+    await invoke('plans:comments:create', creation({ anchor }))
+    expect(mockCreateComment).toHaveBeenCalledWith(expect.objectContaining({ anchor }))
+  })
+
+  it.each([
+    ['no payload at all', undefined],
+    ['a string instead of a payload', 'nope'],
+    ['a session id that is not a uuid', creation({ sessionId: 'nope' })],
+    ['a missing session id', creation({ sessionId: undefined })],
+    ['a parent id that is not a uuid', creation({ parentId: 'nope' })],
+    ['an anchor that is not a LineRange', creation({ anchor: { side: 'sideways', startLine: 1, endLine: 2 } })],
+    ['an anchor with a non-integer line', creation({ anchor: { side: 'new', startLine: 1.5, endLine: 2 } })],
+    ['a quote that is not a string', creation({ quote: 12 })],
+    ['a quote past the ceiling', creation({ quote: 'x'.repeat(4_001) })],
+    ['a body that is not a string', creation({ body: null })],
+    ['an empty body', creation({ body: '   ' })],
+    ['a body past the ceiling', creation({ body: 'x'.repeat(16_001) })],
+  ])('refuses %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:comments:create', args)).toBe(false)
+    expect(mockCreateComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:comments:update', () => {
+  it('passes a well-formed edit through', async () => {
+    expect(await invoke('plans:comments:update', { id: COMMENT_ID, body: 'rewritten' })).toBe(true)
+    expect(mockUpdateComment).toHaveBeenCalledWith(COMMENT_ID, 'rewritten')
+  })
+
+  it.each([
+    ['no payload at all', undefined],
+    ['an id that is not a uuid', { id: 'nope', body: 'rewritten' }],
+    ['a missing id', { body: 'rewritten' }],
+    ['a body that is not a string', { id: COMMENT_ID, body: 7 }],
+    ['an empty body', { id: COMMENT_ID, body: '\n\t ' }],
+    ['a body past the ceiling', { id: COMMENT_ID, body: 'x'.repeat(16_001) }],
+  ])('refuses %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:comments:update', args)).toBe(false)
+    expect(mockUpdateComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:comments:delete', () => {
+  it('passes a well-formed id through', async () => {
+    expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(true)
+    expect(mockDeleteComment).toHaveBeenCalledWith(COMMENT_ID)
+    // The others on the plan hear of it from the deleter, not from the database, on the
+    // plan that was open when the delete started, even if another is open by now.
+    expect(mockAnnounceDeleted).toHaveBeenCalledWith(PLAN_OPEN)
+  })
+
+  it('announces nothing when no plan was open', async () => {
+    mockLiveSessionId.mockReturnValueOnce(null)
+    expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(true)
+    expect(mockAnnounceDeleted).not.toHaveBeenCalled()
+  })
+
+  it('announces nothing when the delete did not go through', async () => {
+    mockDeleteComment.mockResolvedValueOnce(false)
+    expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(false)
+    expect(mockAnnounceDeleted).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['not a uuid', 'nope'],
+    ['a number', 7],
+    ['nothing at all', undefined],
+    ['the id wrapped in an object', { id: COMMENT_ID }],
+  ])('refuses %s, and deletes nothing', async (_label, id) => {
+    expect(await invoke('plans:comments:delete', id)).toBe(false)
+    expect(mockDeleteComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:updateSpec', () => {
+  /** Microseconds included: the handler must hand it on exactly as it came. */
+  const UPDATED_AT = '2026-09-22T10:00:00.123456+00:00'
+
+  it('passes a well-formed save through, the timestamp untouched', async () => {
+    await invoke('plans:updateSpec', { id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+    expect(mockSaveSpec).toHaveBeenCalledWith({ id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+  })
+
+  it('drops anything but the three fields: no owner or path reaches the save', async () => {
+    await invoke('plans:updateSpec', {
+      id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT, ownerId: 'me', specPath: '/etc/passwd',
+    })
+    expect(mockSaveSpec).toHaveBeenCalledWith({ id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+  })
+
+  it.each([
+    ['saved', { status: 'saved', updatedAt: UPDATED_AT, fileWritten: true }],
+    ['conflict', { status: 'conflict' }],
+    ['denied', { status: 'denied' }],
+  ])('hands a %s answer back unchanged', async (_label, answer) => {
+    mockSaveSpec.mockResolvedValue(answer)
+    expect(await invoke('plans:updateSpec', { id: SESSION_ID, spec: 's', expectedUpdatedAt: UPDATED_AT })).toEqual(answer)
+  })
+
+  it.each([
+    ['no payload at all', undefined],
+    ['a string instead of a payload', 'nope'],
+    ['an id that is not a uuid', { id: 'nope', spec: 's', expectedUpdatedAt: UPDATED_AT }],
+    ['a spec that is not a string', { id: SESSION_ID, spec: null, expectedUpdatedAt: UPDATED_AT }],
+    ['a blank spec, which would wipe the plan', { id: SESSION_ID, spec: '  \n', expectedUpdatedAt: UPDATED_AT }],
+    ['a missing timestamp',{ id: SESSION_ID, spec: 's' }],
+    ['an empty timestamp', { id: SESSION_ID, spec: 's', expectedUpdatedAt: '' }],
+    ['a timestamp that is not a string', { id: SESSION_ID, spec: 's', expectedUpdatedAt: 1726999200000 }],
+  ])('answers failed for %s, and saves nothing', async (_label, args) => {
+    expect(await invoke('plans:updateSpec', args)).toEqual({ status: 'failed' })
+    expect(mockSaveSpec).not.toHaveBeenCalled()
+  })
+})
+
+describe('the read channels this file already had', () => {
+  it('still guards plans:detail on the shape of its id', async () => {
+    expect(await invoke('plans:detail', 'nope')).toEqual({ session: null, tickets: [], collaborators: [], failed: false })
+    expect(mockListDetail).not.toHaveBeenCalled()
+  })
+
+  it('guards plans:localSpec on the shape of its id, and passes a uuid through', async () => {
+    expect(await invoke('plans:localSpec', '../../etc')).toEqual({ ok: false, reason: 'no_file' })
+    expect(mockLocalSpec).not.toHaveBeenCalled()
+    mockLocalSpec.mockResolvedValueOnce({ ok: false, reason: 'not_owner' })
+    expect(await invoke('plans:localSpec', SESSION_ID)).toEqual({ ok: false, reason: 'not_owner' })
+    expect(mockLocalSpec).toHaveBeenCalledWith(SESSION_ID)
+  })
+})
+
+describe('plans:links', () => {
+  const link = (overrides: Record<string, unknown> = {}) => ({
+    sessionId: SESSION_ID, url: 'https://www.figma.com/design/abc', kind: 'figma', ...overrides,
+  })
+
+  it('passes a well-formed link through, the title trimmed and an empty one dropped', async () => {
+    expect(await invoke('plans:links:create', link({ title: '  Maquette  ' }))).toBe(true)
+    expect(mockCreateLink).toHaveBeenCalledWith({
+      sessionId: SESSION_ID, url: 'https://www.figma.com/design/abc', kind: 'figma', title: 'Maquette',
+    })
+    await invoke('plans:links:create', link({ title: '   ' }))
+    expect(mockCreateLink).toHaveBeenLastCalledWith(expect.objectContaining({ title: undefined }))
+  })
+
+  it.each([
+    ['a javascript: address', { url: 'javascript:alert(1)' }],
+    ['a file: address', { url: 'file:///etc/passwd' }],
+    ['an address with a space', { url: 'https://e.com/a b' }],
+    ['no address', { url: '' }],
+    ['an address past the cap', { url: `https://e.com/${'a'.repeat(2048)}` }],
+    ['a kind that is not a slug', { kind: 'Figma!' }],
+    ['a title past the cap', { title: 'x'.repeat(201) }],
+    ['a session that is not a uuid', { sessionId: 'nope' }],
+  ])('refuses %s, and writes nothing', async (_label, overrides) => {
+    expect(await invoke('plans:links:create', link(overrides))).toBe(false)
+    expect(mockCreateLink).not.toHaveBeenCalled()
+  })
+
+  it('reads and removes by uuid only', async () => {
+    await invoke('plans:links:list', SESSION_ID)
+    expect(mockListLinks).toHaveBeenCalledWith(SESSION_ID)
+    expect(await invoke('plans:links:list', 'nope')).toEqual({ links: [], emailByAuthor: {}, failed: false })
+    expect(await invoke('plans:links:delete', 'nope')).toBe(false)
+    expect(mockDeleteLink).not.toHaveBeenCalled()
+    expect(await invoke('plans:links:delete', COMMENT_ID)).toBe(true)
+  })
+})
+
+describe('plans:history', () => {
+  const FROM = '44444444-4444-4444-8444-444444444444'
+  const TO = '55555555-5555-4555-8555-555555555555'
+
+  it('reads the history of a well-formed session id, and nothing for anything else', async () => {
+    await invoke('plans:history:list', SESSION_ID)
+    expect(mockListHistory).toHaveBeenCalledWith(SESSION_ID)
+    mockListHistory.mockClear()
+    expect(await invoke('plans:history:list', 'nope')).toMatchObject({ failed: false, revisions: [] })
+    expect(mockListHistory).not.toHaveBeenCalled()
+  })
+
+  it('diffs two revisions: the NEWER text, highlighted, with the counts', async () => {
+    const diff = await invoke('plans:history:diff', { fromRevisionId: FROM, toRevisionId: TO })
+    expect(mockReadTexts).toHaveBeenCalledWith(FROM, TO)
+    expect(mockHighlight).toHaveBeenCalledWith('a\nB\nc', 'md', 'github-dark')
+    expect(diff).toMatchObject({ failed: false, content: 'a\nB\nc', additions: 2, deletions: 1 })
+    expect((diff as { highlightedHtml: string }).highlightedHtml).toContain('<pre>a\nB\nc</pre>')
+  })
+
+  it('compares the first revision against nothing when no older one is named', async () => {
+    await invoke('plans:history:diff', { fromRevisionId: null, toRevisionId: TO })
+    expect(mockReadTexts).toHaveBeenCalledWith(null, TO)
+  })
+
+  it('answers failed when the texts cannot be read', async () => {
+    mockReadTexts.mockResolvedValue(null)
+    expect(await invoke('plans:history:diff', { fromRevisionId: FROM, toRevisionId: TO })).toEqual({ failed: true })
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed newer id', { fromRevisionId: FROM, toRevisionId: 'nope' }],
+    ['a malformed older id', { fromRevisionId: 7, toRevisionId: TO }],
+    ['the same revision twice', { fromRevisionId: TO, toRevisionId: TO }],
+  ])('refuses %s without reading anything', async (_label, args) => {
+    expect(await invoke('plans:history:diff', args)).toEqual({ failed: true })
+    expect(mockReadTexts).not.toHaveBeenCalled()
+  })
+})
+
+describe('who may edit a plan', () => {
+  const USER_ID = '44444444-4444-4444-8444-444444444444'
+
+  it.each(['personal', 'org', 'admins', 'invited'])('passes the %s policy through', async (policy) => {
+    mockSetEditPolicy.mockResolvedValue({ status: 'saved', updatedAt: 'x' })
+    expect(await invoke('plans:setEditPolicy', { id: SESSION_ID, policy })).toEqual({ status: 'saved', updatedAt: 'x' })
+    expect(mockSetEditPolicy).toHaveBeenCalledWith(SESSION_ID, policy)
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed id', { id: 'nope', policy: 'org' }],
+    ['a policy the table does not know', { id: SESSION_ID, policy: 'everyone' }],
+    ['a policy that is not a string', { id: SESSION_ID, policy: 1 }],
+  ])('refuses a policy change with %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:setEditPolicy', args)).toEqual({ status: 'failed' })
+    expect(mockSetEditPolicy).not.toHaveBeenCalled()
+  })
+
+  it('passes an invitation and its removal through', async () => {
+    mockAddCollaborator.mockResolvedValue({ status: 'saved' })
+    mockRemoveCollaborator.mockResolvedValue({ status: 'denied' })
+    expect(await invoke('plans:addCollaborator', { sessionId: SESSION_ID, userId: USER_ID })).toEqual({ status: 'saved' })
+    expect(mockAddCollaborator).toHaveBeenCalledWith(SESSION_ID, USER_ID)
+    expect(await invoke('plans:removeCollaborator', { sessionId: SESSION_ID, userId: USER_ID })).toEqual({ status: 'denied' })
+    expect(mockRemoveCollaborator).toHaveBeenCalledWith(SESSION_ID, USER_ID)
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed session', { sessionId: 'nope', userId: USER_ID }],
+    ['a malformed user', { sessionId: SESSION_ID, userId: 'someone@example.com' }],
+  ])('refuses an invitation with %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:addCollaborator', args)).toEqual({ status: 'failed' })
+    expect(await invoke('plans:removeCollaborator', args)).toEqual({ status: 'failed' })
+    expect(mockAddCollaborator).not.toHaveBeenCalled()
+    expect(mockRemoveCollaborator).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:live', () => {
+  it('opens a well-formed plan, and nothing for anything else', async () => {
+    expect(await invoke('plans:live:open', SESSION_ID)).toBe(true)
+    expect(mockOpenLive).toHaveBeenCalledWith(SESSION_ID)
+    mockOpenLive.mockClear()
+    expect(await invoke('plans:live:open', 'plan:../../x')).toBe(false)
+    expect(await invoke('plans:live:open', undefined)).toBe(false)
+    expect(mockOpenLive).not.toHaveBeenCalled()
+  })
+
+  it('closes the plan it names, and nothing on a malformed or missing id', async () => {
+    await invoke('plans:live:close', SESSION_ID)
+    expect(mockCloseLive).toHaveBeenCalledWith(SESSION_ID)
+    mockCloseLive.mockClear()
+    await invoke('plans:live:close', 'nope')
+    await invoke('plans:live:close', undefined)
+    expect(mockCloseLive).not.toHaveBeenCalled()
+  })
+
+  it('answers the channel health, null when no plan is open', async () => {
+    mockLiveStatus.mockReturnValue(null)
+    expect(await invoke('plans:live:status')).toBeNull()
+    mockLiveStatus.mockReturnValue('live')
+    expect(await invoke('plans:live:status')).toBe('live')
+  })
+})

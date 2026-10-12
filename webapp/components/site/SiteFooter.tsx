@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
 import { FAQ_NAV_ROW, PRODUCT_MENU, type SiteNavRow } from '@/lib/siteNav'
@@ -12,7 +13,7 @@ import { GITHUB_REPO_URL, NEW_ISSUE_URL } from './links'
 /**
  * The public site's footer — brand, two link columns, copyright, language picker.
  *
- * IN TAILWIND, where it used to be a dozen `marketing.css` classes; the stylesheet no
+ * IN TAILWIND, where it used to be a dozen `showcase.css` classes; the stylesheet no
  * longer reaches these routes. The plate is `ink`, which is the one place on the public
  * site that inverts — a light footer under a light page has nothing to end the page
  * WITH — so everything on it comes from the `onink` ladder in `tailwind.config.ts`
@@ -216,8 +217,12 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
                 file rather than the black one under a CSS `invert`: the artwork carries
                 `fill="black"` on its paths, so a filter would be inverting a colour the
                 markup states rather than one it inherits — and the two-file pair is the
-                convention the logo it replaces already used. */}
-            <img className="h-12 w-auto" src="/img/logo-white.svg" alt="Magic slash" />
+                convention the logo it replaces already used. Both files are named in
+                `Logo`, which is the only place either of them is.
+
+                Named rather than `decorative`: nothing else in this column says the
+                product's name, so here the mark IS the heading. */}
+            <Logo variant="white" size="md" />
             <p className="mt-4 text-sm text-onink-dim">{t('site.footer.tagline')}</p>
             <a
               href={GITHUB_REPO_URL}
@@ -289,7 +294,7 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <span className="text-xs text-onink-faint">© {year} magic-slash</span>
             {/* `Link` and not `<a>`: both are pages on this site, under
-                `app/(marketing)`, and `PUBLIC_PATHS` in `lib/hostRouting.ts` lists both
+                `app/(showcase)`, and `PUBLIC_PATHS` in `lib/hostRouting.ts` lists both
                 so the apex actually serves them. */}
             <Link href="/privacy" className={LEGAL_ROW}>
               {t('site.footer.privacyLink')}

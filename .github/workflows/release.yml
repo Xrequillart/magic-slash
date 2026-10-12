@@ -73,7 +73,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: |
+            desktop/package-lock.json
+            design-system/package-lock.json
+
+      # BEFORE the desktop's own install, and not optional: the renderer imports its
+      # icons and its shared components through `@ds`, which resolves into
+      # `design-system/node_modules`. Skip this and the build fails to resolve
+      # `lucide-react` — this job installs `desktop/` directly rather than going
+      # through the root `desktop:install` script that chains the two.
+      - name: Install design system dependencies
+        working-directory: design-system
+        run: npm ci
 
       - name: Install dependencies
         working-directory: desktop

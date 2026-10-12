@@ -2,7 +2,7 @@
   "extends": "next/core-web-vitals",
   "overrides": [
     {
-      "files": ["components/site/**", "app/(marketing)/**"],
+      "files": ["components/site/**", "app/(showcase)/**"],
       "rules": {
         "@next/next/no-img-element": "off"
       }

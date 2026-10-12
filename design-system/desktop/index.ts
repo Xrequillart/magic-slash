@@ -1,0 +1,421 @@
+/**
+ * The desktop half's public surface. Both apps import from `@ds/desktop`, never
+ * from a file inside it — the alias is what keeps the folder free to reorganise.
+ */
+export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS, BANNER_BAND_HEIGHT } from './Banner'
+export { AccountCard } from './AccountCard'
+export type {
+  AccountCardAction,
+  AccountCardAlert,
+  AccountCardMark,
+  AccountCardProps,
+  AccountCardRow,
+} from './AccountCard'
+export { Agent, AGENT_STATES } from './Agent'
+export { AppTitleBar, TITLE_BAR_HEIGHT, TRAFFIC_LIGHT_GUTTER } from './AppTitleBar'
+export type {
+  AppTitleBarProps,
+  TitleBarAccount,
+  TitleBarAction,
+  TitleBarIconAction,
+  TitleBarMenu,
+  TitleBarSwitch,
+  TitleBarSwitchOption,
+  TitleBarTitle,
+  TitleBarToggle,
+} from './AppTitleBar'
+export type { AgentProps, AgentState } from './Agent'
+export { Avatar } from './Avatar'
+export { AvatarPicker } from './AvatarPicker'
+export { AvatarStack } from './AvatarStack'
+export type { AvatarStackPerson, AvatarStackProps, AvatarStackSize } from './AvatarStack'
+export { DEFAULT_PORTRAIT_ID, DEFAULT_PORTRAIT_SRC } from './defaultAvatar'
+export { Button, BUTTON_TONES } from './Button'
+export type { ButtonProps, ButtonSize, ButtonTone } from './Button'
+export { ButtonIcon, BUTTON_ICON_SIZES } from './ButtonIcon'
+export type {
+  ButtonIconActive,
+  ButtonIconProps,
+  ButtonIconSize,
+  ButtonIconTone,
+} from './ButtonIcon'
+export { BoardColumn } from './BoardColumn'
+export type { BoardColumnProps, BoardColumnTone } from './BoardColumn'
+export { TaskBoard } from './TaskBoard'
+export type {
+  TaskBoardCard,
+  TaskBoardColumn,
+  TaskBoardNotice,
+  TaskBoardProps,
+} from './TaskBoard'
+export { FilterBar, FILTER_BAR_HEIGHT } from './FilterBar'
+export type { FilterBarControl, FilterBarProps, FilterBarSearch } from './FilterBar'
+export { BranchCard } from './BranchCard'
+export type { BranchCardProps } from './BranchCard'
+export { Card } from './Card'
+export { CodeSample } from './CodeSample'
+export type { CodeSampleProps } from './CodeSample'
+export { CodeThemeCard } from './CodeThemeCard'
+export type { CodeThemeCardPreview, CodeThemeCardProps, CodeThemeCardRow } from './CodeThemeCard'
+export { CommitCard } from './CommitCard'
+export type { CommitCardCommit, CommitCardProps } from './CommitCard'
+// `CommitRail` is deliberately absent: it is `CommitCard`'s and `CommitLine`'s shared
+// gutter, not a thing a page has any business drawing on its own.
+export { CommitLine } from './CommitLine'
+export type { CommitLineProps } from './CommitLine'
+export { TimelineLine } from './TimelineLine'
+export type { TimelineLineProps } from './TimelineLine'
+export { ChipInput } from './ChipInput'
+export { OutcomeTable } from './OutcomeTable'
+export type { OutcomeTableLabels, OutcomeTableProps } from './OutcomeTable'
+export { ColorSwatches } from './ColorSwatches'
+export type { ColorSwatchesProps } from './ColorSwatches'
+export type { ChipInputProps } from './ChipInput'
+export { CommentCard } from './CommentCard'
+export type { CommentCardProps } from './CommentCard'
+export { ChatView } from './ChatView'
+export { ClaudeCodeMascot } from './ClaudeCodeMascot'
+export { ChatMarkdown } from './ChatMarkdown'
+export { ChatDiffCard } from './ChatDiffCard'
+export { ChatInsightCard } from './ChatInsightCard'
+export { ChatTable } from './ChatTable'
+export type { ChatTableProps } from './ChatTable'
+export type { ChatInsightCardProps } from './ChatInsightCard'
+export { splitInsights } from './chatInsights'
+export type { ChatMessagePart } from './chatInsights'
+export type { ChatDiffCardProps, ChatDiffData, ChatDiffDisplay, ChatDiffToken, ChatLineHighlighter } from './ChatDiffCard'
+export { ChatQuestion } from './ChatQuestion'
+export type { ChatQuestionProps, ChatQuestionData, ChatQuestionItem, ChatQuestionLabels, ChatQuestionOption } from './ChatQuestion'
+export { ChatCommandMenu } from './ChatCommandMenu'
+export { matchCommands } from './chatCommandMatch'
+export type { ChatCommand, ChatCommandMenuProps } from './ChatCommandMenu'
+export { ChatQueueCard } from './ChatQueueCard'
+export { ChatBackgroundCard } from './ChatBackgroundCard'
+export { ChatBannerCard } from './ChatBannerCard'
+export type { ChatBannerCardProps } from './ChatBannerCard'
+export type { ChatBackgroundCardProps, ChatBackgroundAgentData } from './ChatBackgroundCard'
+export type { ChatQueueCardProps, ChatQueuedPromptData } from './ChatQueueCard'
+export type { ChatMarkdownProps, ChatHighlighter } from './ChatMarkdown'
+export type { ChatContextOffer, ChatViewProps, ChatViewEntry, ChatViewLabels } from './ChatView'
+export type { ClaudeCodeMascotProps } from './ClaudeCodeMascot'
+export { CommentBubble, holdsCommentDraft, COMMENT_BUBBLE_PX, COMMENT_BUBBLE_OFFSET_PX } from './CommentBubble'
+export type { CommentBubbleProps } from './CommentBubble'
+export { CommentableLine, COMMENT_GUTTER_PX } from './CommentableLine'
+export { DecisionList } from './DecisionList'
+export type { DecisionListItem, DecisionListProps } from './DecisionList'
+export { SizingCard } from './SizingCard'
+export { SpecHeaderCard } from './SpecHeaderCard'
+export type { SpecHeaderCardProps, SpecStatusTone } from './SpecHeaderCard'
+export type { SizingCardProps, SizingFact, SizingFactKind } from './SizingCard'
+export type { CommentableLineProps } from './CommentableLine'
+export { CommandChip } from './CommandChip'
+export type { CommandChipProps } from './CommandChip'
+export { CopyButton } from './CopyButton'
+export type { CopyButtonProps } from './CopyButton'
+export { ContextAgentCard, CONTEXT_THRESHOLDS } from './ContextAgentCard'
+export type { ContextAgentCardProps, ContextAgentModelOption, ContextAgentModelPicker, ContextAgentRestart } from './ContextAgentCard'
+export { ChecklistCard, CHECKLIST_VERDICT_MARK } from './ChecklistCard'
+export type { ChecklistCardProps, ChecklistVerdict } from './ChecklistCard'
+export { EmptyLine } from './EmptyLine'
+export { ExternalLinkCard } from './ExternalLinkCard'
+export type { ExternalLinkCardProps, ExternalLinkForm, ExternalLinkRow } from './ExternalLinkCard'
+export { RichTextBlock, caretOffsetIn, placeCaretAt } from './RichTextBlock'
+export type { RichTextBlockProps } from './RichTextBlock'
+export { FormatToolbar } from './FormatToolbar'
+export type { FormatToolbarItem, FormatToolbarProps } from './FormatToolbar'
+export { FactList } from './FactList'
+export type { FactListProps, FactListRow } from './FactList'
+export { FieldTable } from './FieldTable'
+export type { FieldTableAction, FieldTableProps, FieldTableRow } from './FieldTable'
+export { RateLimitBar, LIMIT_THRESHOLDS } from './RateLimitBar'
+export type { RateLimitBarProps } from './RateLimitBar'
+export { SettingRow } from './SettingRow'
+export type { SettingRowControl, SettingRowLayout, SettingRowProps } from './SettingRow'
+export { SettingsCard } from './SettingsCard'
+export type { SettingsCardAlert, SettingsCardProps, SettingsCardRow } from './SettingsCard'
+export { DisclosureCard } from './DisclosureCard'
+export type { DisclosureCardProps, DisclosureColumn } from './DisclosureCard'
+export { HealthCard } from './HealthCard'
+export type { HealthCardProps, HealthState } from './HealthCard'
+export { RepairList } from './RepairList'
+export type { RepairAction, RepairListProps, RepairRow } from './RepairList'
+export { NoticeCard } from './NoticeCard'
+export type { NoticeCardProps, NoticeCardRow, NoticeCardTag } from './NoticeCard'
+export { BreakdownList } from './BreakdownList'
+export type { BreakdownListProps, BreakdownRow, BreakdownTag } from './BreakdownList'
+export { BudgetMeter } from './BudgetMeter'
+export type { BudgetMeterProps } from './BudgetMeter'
+export { NoteCard } from './NoteCard'
+export type { NoteCardProps } from './NoteCard'
+export { SkillCard } from './SkillCard'
+export type { SkillCardProps } from './SkillCard'
+export { SkillsRail } from './SkillsRail'
+export type { SkillsRailGroup, SkillsRailProps, SkillsRailRow } from './SkillsRail'
+export { SkillBudget } from './SkillBudget'
+export type { SkillBudgetBanner, SkillBudgetNote, SkillBudgetProps, SkillBudgetWindow } from './SkillBudget'
+export { SkillSection, SkillsOverview } from './SkillsOverview'
+export type { SkillSectionProps, SkillsOverviewCard, SkillsOverviewProps, SkillsOverviewRepo } from './SkillsOverview'
+export { EmptyState } from './EmptyState'
+export type { EmptyStateAction, EmptyStateProps } from './EmptyState'
+export { FormField } from './FormField'
+export type { FormFieldProps } from './FormField'
+export { ImageField } from './ImageField'
+export type { ImageFieldProps } from './ImageField'
+export { SkillIntro } from './SkillIntro'
+export type { SkillIntroProps } from './SkillIntro'
+export { SkillHeader } from './SkillHeader'
+export type { SkillHeaderProps } from './SkillHeader'
+export type { CardAlert } from './cardAlert'
+export { UsageTable } from './UsageTable'
+export type { UsageTableProps, UsageTableRow } from './UsageTable'
+export { SectionHeader } from './SectionHeader'
+export type { SectionHeaderAction, SectionHeaderProps } from './SectionHeader'
+export { ProfileCard } from './ProfileCard'
+export type { ProfileCardProps } from './ProfileCard'
+export { CheckList, CHECK_STATE_MARK } from './CheckList'
+export type { CheckListEntry, CheckListProps, CheckState } from './CheckList'
+export { COMPONENT_SIZES } from './componentSizes'
+export type { ComponentSize } from './componentSizes'
+export { CollapsibleLine } from './CollapsibleLine'
+export type { CollapsibleLineProps } from './CollapsibleLine'
+export { DiffStat } from './DiffStat'
+export type { DiffStatProps } from './DiffStat'
+export { FileModifiedLine } from './FileModifiedLine'
+export type { FileModifiedLineProps } from './FileModifiedLine'
+export { UnCommittedChangesCard } from './UnCommittedChangesCard'
+export type { UnCommittedChangesCardProps, UnCommittedChangesFile } from './UnCommittedChangesCard'
+export { PullRequestCard, PR_STATE_MARK } from './PullRequestCard'
+export type { PullRequestCardProps, PullRequestState } from './PullRequestCard'
+export { PR_BADGE, PR_COLOR, PR_MARK, PR_TONES } from './prTones'
+export type { PRTone } from './prTones'
+export { Input } from './Input'
+export type { InputProps, InputSize, InputTone, InputTrailing } from './Input'
+export { Kbd } from './Kbd'
+export { LivePill } from './LivePill'
+export { MenuBarPanel } from './MenuBarPanel'
+export type { MenuBarAgent, MenuBarPanelProps, MenuBarUpdate } from './MenuBarPanel'
+export { MenuBarQuestion } from './MenuBarQuestion'
+export type { MenuBarAnswer, MenuBarQuestionLabels, MenuBarQuestionOption, MenuBarQuestionProps } from './MenuBarQuestion'
+export type { LivePillProps, LivePillTone } from './LivePill'
+export type { KbdProps, KbdSize } from './Kbd'
+export { Item, ItemGroup, ItemNote } from './Item'
+export type { ItemAlign, ItemProps } from './Item'
+export { PlanItem } from './PlanItem'
+export type { PlanItemProps } from './PlanItem'
+export { RepositoryCard } from './RepositoryCard'
+export type { RepositoryCardProps } from './RepositoryCard'
+export { RepositoryItem } from './RepositoryItem'
+export type { RepositoryItemProps } from './RepositoryItem'
+export { RepositoryList } from './RepositoryList'
+export type { RepositoryListProps, RepositoryListSection } from './RepositoryList'
+export { RepoPageHeader } from './RepoPageHeader'
+export type { RepoPageHeaderProps } from './RepoPageHeader'
+export { ScriptCard } from './ScriptCard'
+export type { ScriptCardProps, ScriptCardUrl } from './ScriptCard'
+export { ReviewThreadLine } from './ReviewThreadLine'
+export type { ReviewThreadLineProps } from './ReviewThreadLine'
+export type { CardGround, CardPadding, CardProps, CardShape } from './Card'
+export type { AvatarProps, AvatarFallback } from './Avatar'
+export type { AvatarPickerOption, AvatarPickerProps } from './AvatarPicker'
+export { AVATAR_SIZES } from './avatarSizes'
+export type { AvatarSize, AvatarGeometry } from './avatarSizes'
+export { HeaderRepoCard } from './HeaderRepoCard'
+export type { HeaderRepoAction, HeaderRepoCardProps } from './HeaderRepoCard'
+export { EditableText } from './EditableText'
+export type { EditableTextProps, EditableTextVariant } from './EditableText'
+export { Icon, ICON_SIZES } from './Icon'
+export { Label, LABEL_TONES } from './Label'
+export { ModalHeader, MODAL_HEADER_HEIGHT } from './ModalHeader'
+export type { ModalHeaderProps } from './ModalHeader'
+export { OutputSample } from './OutputSample'
+export type { OutputSampleProps } from './OutputSample'
+export { InvitationWizard } from './InvitationWizard'
+export type { InvitationWizardField, InvitationWizardProps, InvitationWizardRepo, InvitationWizardStep } from './InvitationWizard'
+export { OrganizationDialog } from './OrganizationDialog'
+export type { OrganizationDialogKind, OrganizationDialogProps } from './OrganizationDialog'
+export { OrganizationCard } from './OrganizationCard'
+export type {
+  OrganizationCardInvitation,
+  OrganizationCardMember,
+  OrganizationCardProps,
+} from './OrganizationCard'
+export { PageModal } from './PageModal'
+export type { PageModalProps } from './PageModal'
+export {
+  MODAL_COLUMN_GUTTER,
+  MODAL_COLUMN_MEASURE,
+  MODAL_COLUMN_PADDING,
+  MODAL_COLUMN_PADDING_Y,
+  PAGE_MODAL_RAIL_WIDTH,
+  PAGE_MODAL_SIZES,
+  PAGE_MODAL_WIDTH,
+  SETTINGS_RAIL_WIDTH,
+} from './modalSizes'
+export type { PageModalSize } from './modalSizes'
+export { MetaBlock } from './MetaBlock'
+export type { MetaBlockProps } from './MetaBlock'
+export { Menu } from './Menu'
+export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
+export { MenuSidebar } from './MenuSidebar'
+export { SettingsRail } from './SettingsRail'
+export { findSettingTarget, spotlightSetting } from './settingSpotlight'
+export type {
+  SettingsRailGroup,
+  SettingsRailProps,
+  SettingsRailRow,
+  SettingsRailSearch,
+  SettingsRailSearchResult,
+} from './SettingsRail'
+export type { MenuSidebarEntry, MenuSidebarProps } from './MenuSidebar'
+export { MenuSidebarItem } from './MenuSidebarItem'
+export type { MenuSidebarItemProps } from './MenuSidebarItem'
+export { LanguageCard } from './LanguageCard'
+export type { LanguageCardOption, LanguageCardProps } from './LanguageCard'
+export { Loader } from './Loader'
+export type { LoaderProps, LoaderSize, LoaderTone, LoaderVariant } from './Loader'
+export { ProgressBar, PROGRESS_TEXT, progressTone } from './ProgressBar'
+export type {
+  ProgressBarProps,
+  ProgressSize,
+  ProgressThresholds,
+  ProgressTone,
+  ProgressTrack,
+} from './ProgressBar'
+export type { LabelProps, LabelSize, LabelTone } from './Label'
+export { Sidebar, SIDEBAR_COMPACT_WIDTH, SIDEBAR_WIDTH } from './Sidebar'
+export { SidebarAgentCoderInfo } from './SidebarAgentCoderInfo'
+export type { CoderRepository, SidebarAgentCoderInfoProps } from './SidebarAgentCoderInfo'
+export { SidebarAgentPlannerInfo } from './SidebarAgentPlannerInfo'
+export type { SidebarAgentPlannerInfoProps } from './SidebarAgentPlannerInfo'
+export { Modal } from './Modal'
+export type { ModalProps } from './Modal'
+export { RepositorySelector } from './RepositorySelector'
+export type { RepositorySelectorProps, RepositorySelectorRepo } from './RepositorySelector'
+export { SpecCard } from './SpecCard'
+export type { SpecCardProps } from './SpecCard'
+export type {
+  SidebarAction,
+  SidebarAgentRow,
+  SidebarList,
+  SidebarProps,
+  SidebarSelectAction,
+} from './Sidebar'
+export { QuickSettingsEditor } from './QuickSettingsEditor'
+export { placeQuickSetting } from './quickSettingsOrder'
+export type { QuickSettingsEditorItem, QuickSettingsEditorProps } from './QuickSettingsEditor'
+export { SidebarPagesEditor } from './SidebarPagesEditor'
+export type { SidebarPagesEditorItem, SidebarPagesEditorProps } from './SidebarPagesEditor'
+export { Select } from './Select'
+export type { SelectMarker, SelectOption, SelectProps, SelectSize } from './Select'
+export { useAnchoredPanel } from './useAnchoredPanel'
+export { SelectIcon } from './SelectIcon'
+export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
+export { StickyBar } from './StickyBar'
+export type { StickyBarProps } from './StickyBar'
+export { ShareButton } from './ShareButton'
+export type { ShareButtonProps, ShareList, ShareOption, SharePerson } from './ShareButton'
+export { Status, STATUS_TONES } from './Status'
+export { Switch } from './Switch'
+export type { SwitchProps, SwitchSize, SwitchVariant } from './Switch'
+export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
+export { ConfirmDialog } from './ConfirmDialog'
+export type { ConfirmDialogProps, ConfirmDialogTone } from './ConfirmDialog'
+export { UpdateSplash } from './UpdateSplash'
+export type { UpdateSplashProps, UpdateStage } from './UpdateSplash'
+export { WhatsNewArt } from './WhatsNewArt'
+export { WhatsNewDialog } from './WhatsNewDialog'
+export type {
+  WhatsNewCategory,
+  WhatsNewDialogProps,
+  WhatsNewEntry,
+  WhatsNewHue,
+} from './WhatsNewDialog'
+export { UsageClaudeCodeCard } from './UsageClaudeCodeCard'
+export type { UsageClaudeCodeCardProps, UsageLimit } from './UsageClaudeCodeCard'
+export { TitleAgentCard } from './TitleAgentCard'
+export type { TitleAgentCardProps } from './TitleAgentCard'
+export { TicketCard } from './TicketCard'
+export type {
+  TicketCardAction,
+  TicketCardMark,
+  TicketCardNote,
+  TicketCardProps,
+  TicketCardStatus,
+  TicketCardTag,
+} from './TicketCard'
+export { TrackerBadge, TrackerTile } from './TrackerBadge'
+export type { Tracker, TrackerBadgeProps, TrackerTileProps, TrackerTileSize } from './TrackerBadge'
+export { TabStrip } from './TabStrip'
+export type { TabStripItem, TabStripProps } from './TabStrip'
+export { Tally } from './Tally'
+export type { TallyCount, TallyProps } from './Tally'
+export { Text, TEXT_FACE, TEXT_SIZES, TEXT_WEIGHTS } from './Text'
+export type { TextProps, TextSize, TextTone, TextWeight } from './Text'
+export type { IconProps, IconSize, IconTone } from './Icon'
+export type { BannerAction, BannerProps, BannerVariant, BannerLayout } from './Banner'
+export type { IconComponent } from './types'
+export { Flag, RoundFlag } from './Flag'
+export { RAISED_PLATE, RAISED_PLATE_HOVER } from './plate'
+export { ControlCenter, ControlCenterGroup, CONTROL_CENTER_GRID, CONTROL_CENTER_STACK } from './ControlCenter'
+export type { ControlCenterGroupProps, ControlCenterProps } from './ControlCenter'
+export { SetupStatusCard } from './SetupStatusCard'
+export type { SetupState, SetupStatusCardProps } from './SetupStatusCard'
+export { ThemeGrid } from './ThemeGrid'
+export type { ThemeGridOption, ThemeGridProps, ThemeSwatchColors } from './ThemeGrid'
+export { ThemePreviewGrid } from './ThemePreviewGrid'
+export type {
+  ThemePreviewColors,
+  ThemePreviewGridProps,
+  ThemePreviewOption,
+} from './ThemePreviewGrid'
+export { Stepper } from './Stepper'
+export type { StepperProps, StepperSize } from './Stepper'
+export { ToggleButton } from './ToggleButton'
+export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
+// The workflow canvas: the only components built on `@xyflow/react` (see README.md,
+// rule 1). Its data types are exported too, since a caller maps its own model onto
+// them; the layout and the handle ids stay inside the folder.
+export { WorkflowCanvas } from './WorkflowCanvas'
+export type { WorkflowCanvasActions, WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasRepositories, WorkflowCanvasSelection } from './WorkflowCanvas'
+export { WorkflowNode } from './WorkflowNode'
+export type { WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType } from './WorkflowNode'
+export { WorkflowEdge } from './WorkflowEdge'
+export { WorkflowFrame } from './WorkflowFrame'
+export type { WorkflowCanvasFrame, WorkflowFrameData, WorkflowFrameType } from './WorkflowFrame'
+export { WorkflowSticky } from './WorkflowSticky'
+export type { WorkflowCanvasSticky, WorkflowStickyData, WorkflowStickyType } from './WorkflowSticky'
+export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
+export { CanvasMinimap } from './CanvasMinimap'
+export type { CanvasMinimapProps } from './CanvasMinimap'
+export type {
+  WorkflowCanvasAction,
+  WorkflowCanvasLink,
+  WorkflowCanvasLinkKind,
+  WorkflowCanvasNode,
+  WorkflowCanvasNodeMode,
+} from './workflowLayout'
+// Where each card is drawn: the editor pins them there before an edit to the links.
+export { workflowCardWidths, workflowPositions } from './workflowLayout'
+// The dock and the full-screen editor draw a canvas, so they are xyflow's too.
+export { WorkflowDock } from './WorkflowDock'
+export type { WorkflowDockLabels, WorkflowDockProps } from './WorkflowDock'
+export { WorkflowEditor } from './WorkflowEditor'
+export type { WorkflowEditorAction, WorkflowEditorBanner, WorkflowEditorHistory, WorkflowEditorLabels, WorkflowEditorProps } from './WorkflowEditor'
+export { WorkflowHistory } from './WorkflowHistory'
+export type { WorkflowHistoryItem, WorkflowHistoryLabels, WorkflowHistoryProps } from './WorkflowHistory'
+// The editor around the canvas: no xyflow in any of them.
+export { WorkflowInspector } from './WorkflowInspector'
+export type {
+  WorkflowInspectorLabels, WorkflowInspectorLink, WorkflowInspectorProps, WorkflowInspectorIntro, WorkflowInspectorSettings, WorkflowInspectorStep,
+  WorkflowInspectorTarget,
+} from './WorkflowInspector'
+export { WorkflowSkillPicker } from './WorkflowSkillPicker'
+export type {
+  WorkflowSkillOption, WorkflowSkillPickerLabels, WorkflowSkillPickerProps, WorkflowSkillSource,
+} from './WorkflowSkillPicker'
+export { WorkflowProblems } from './WorkflowProblems'
+export type { WorkflowProblemItem, WorkflowProblemsLabels, WorkflowProblemsProps } from './WorkflowProblems'
+export { skillIcon } from './skillIcons'
+// Icons are imported from `@ds/desktop/icons` directly rather than through here: an
+// app pulls dozens of them per file, and routing that through the component barrel
+// would make every icon import drag the components along behind it.

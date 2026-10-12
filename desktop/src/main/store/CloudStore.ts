@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { AccountSettings, Agent, AgentDisplayMode, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import {
   AVATAR_BUCKET,
+  AVATAR_CACHE_CONTROL,
   AVATAR_DATA_URL_PREFIX,
   AVATAR_MIME_TYPE,
   avatarObjectPath,
@@ -13,7 +14,9 @@ import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
-import type { ConnectivityStatus, Store } from './Store'
+import type { AvatarWriteOutcome, ConnectivityStatus, Store, UsernameWriteOutcome } from './Store'
+import { StoreConflictError, StoreForbiddenError, type StoredWorkflow } from './Store'
+import type { WorkflowOverlay } from '../../workflow/overlay'
 import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
 import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
@@ -54,7 +57,9 @@ interface AgentRow {
   // build wrote — `coder` is what those were, and fromAgentRow does not guess.
   type: string | null
   repositories: string[]
-  metadata: TerminalMetadata & { __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right' } }
+  metadata: TerminalMetadata & {
+    __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right'; infoSidebarOpen?: boolean; displayMode?: AgentDisplayMode }
+  }
 }
 
 /**
@@ -66,6 +71,7 @@ interface AgentRow {
 interface PlanSessionSyncRow {
   spec_key: string
   spec_synced_at: string | null
+  spec_oversize: boolean | null
 }
 
 /**
@@ -170,6 +176,10 @@ interface RepositoryRow {
   commit: RepositoryConfig['commit'] | null
   pull_request: RepositoryConfig['pullRequest'] | null
   resolve: RepositoryConfig['resolve'] | null
+  review: RepositoryConfig['review'] | null
+  // Optional, with `plan`'s warning below: the select names it, so a database that has
+  // not run 20260930130000 fails the whole query. Deploy the migration before the clients.
+  start?: RepositoryConfig['start'] | null
   issues: RepositoryConfig['issues'] | null
   // Optional because the mapper must tolerate the key being absent as well as
   // null, both meaning "nothing chosen" — which resolves to the shipped defaults.
@@ -206,6 +216,13 @@ interface ProfileRow {
   // The Storage object path of the profile photo. Written only by setAvatar /
   // removeAvatar below, never by saveProfile.
   avatar_url: string | null
+  // The handle. Written only by setUsername, never by saveProfile — same rule as
+  // the photo, and the same reason.
+  username: string | null
+  // When the password last changed, as recorded by the app. Written only by
+  // `stampPasswordChange` (cloud/password-stamp.ts), from wherever a password
+  // actually changes; GoTrue keeps no timestamp of its own. Same rule again.
+  password_changed_at: string | null
 }
 
 /**
@@ -674,6 +691,8 @@ export class CloudStore implements Store {
     if (patch.commit !== undefined) row.commit = patch.commit ?? {}
     if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest ?? {}
     if (patch.resolve !== undefined) row.resolve = patch.resolve ?? {}
+    if (patch.review !== undefined) row.review = patch.review ?? {}
+    if (patch.start !== undefined) row.start = patch.start ?? {}
     if (patch.issues !== undefined) row.issues = patch.issues ?? {}
     if (patch.plan !== undefined) row.plan = patch.plan ?? {}
     if (patch.jira !== undefined) row.jira = patch.jira ?? {}
@@ -696,6 +715,8 @@ export class CloudStore implements Store {
       commit: row.commit ?? undefined,
       pullRequest: row.pull_request ?? undefined,
       resolve: row.resolve ?? undefined,
+      review: row.review ?? undefined,
+      start: row.start ?? undefined,
       issues: row.issues ?? undefined,
       plan: row.plan ?? undefined,
       jira: row.jira ?? undefined,
@@ -754,6 +775,8 @@ export class CloudStore implements Store {
         commit: r.commit,
         pullRequest: r.pullRequest,
         resolve: r.resolve,
+        review: r.review,
+        start: r.start,
         issues: r.issues,
         plan: r.plan,
         jira: r.jira,
@@ -777,7 +800,7 @@ export class CloudStore implements Store {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
-        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, plan, jira, branches, worktree_files, remote_url'),
+        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, review, start, issues, plan, jira, branches, worktree_files, remote_url'),
       ctx.client.from('repository_paths').select('repo_id, path'),
     ])
     if (reposRes.error || !reposRes.data) return []
@@ -819,6 +842,8 @@ export class CloudStore implements Store {
       commit: repo.commit ?? {},
       pull_request: repo.pullRequest ?? {},
       resolve: repo.resolve ?? {},
+      review: repo.review ?? {},
+      start: repo.start ?? {},
       issues: repo.issues ?? {},
       plan: repo.plan ?? {},
       jira: repo.jira ?? {},
@@ -878,6 +903,126 @@ export class CloudStore implements Store {
   }
 
   /**
+   * repo id → stored workflow definition and revision, for every repo the caller can see.
+   *
+   * `userContext()`, not `context()`: a personal repo can carry a flow too, and a
+   * user with no membership still has those. RLS is what scopes the rows (the
+   * repository's own visibility test, 20260929120000). Most repos have no row —
+   * they follow the default flow — so an empty record is the common answer. A
+   * failed read is `null` instead, so the caller keeps the flows it already had
+   * rather than mistaking an outage for "no custom flow".
+   *
+   * The revision is `updated_at` (kept by the `set_updated_at` trigger), the token a
+   * save hands back to say which version it edited: see saveRepositoryWorkflow.
+   */
+  async loadRepositoryWorkflows(): Promise<Record<string, StoredWorkflow> | null> {
+    const ctx = await this.userContext()
+    if (!ctx) return {}
+    const { data, error } = await ctx.client.from('repository_workflows').select('repo_id, definition, updated_at')
+    if (error || !data) {
+      if (error) console.error('[cloud] could not read the repository workflows:', error.message)
+      return null
+    }
+    const workflows: Record<string, StoredWorkflow> = {}
+    for (const row of data as { repo_id: string; definition: unknown; updated_at: string }[]) {
+      workflows[row.repo_id] = { definition: row.definition, revision: row.updated_at }
+    }
+    return workflows
+  }
+
+  /**
+   * See Store.saveRepositoryWorkflow. `userContext()` for the reason the read uses it:
+   * a personal repo can carry a flow too.
+   *
+   * OPTIMISTIC CONCURRENCY ON `updated_at`. Every write is conditioned on the revision
+   * the editor started from, so two admins saving at once cannot have the second
+   * silently overwrite the first:
+   *  - no row expected, an overlay to store: a plain INSERT, never an upsert. A unique
+   *    violation (23505) means someone created the row meanwhile: a conflict.
+   *  - a row expected: UPDATE (or DELETE, back to the default) WHERE repo_id AND
+   *    updated_at match. The trigger moves `updated_at` on every update, so a row
+   *    edited since no longer matches.
+   *  - no row expected, back to the default: nothing to write, as long as there is
+   *    still no row; one that appeared since is a conflict.
+   *
+   * RLS answers in two ways too. A refused INSERT or UPDATE raises 42501; a refused
+   * UPDATE can also just match nothing, and a refused DELETE always does: the policy
+   * filters the row out. So every conditional write asks for its rows back, and when
+   * none come, the row is read again to say why. Gone or at another revision: someone
+   * else wrote it, a conflict (except a delete finding it gone, which is the outcome
+   * it wanted). Still there at the revision we expected: the write was ours to lose,
+   * so RLS filtered it, a refusal.
+   */
+  async saveRepositoryWorkflow(repoId: string, overlay: WorkflowOverlay | null, expectedRevision: string | null): Promise<string | null> {
+    const ctx = await this.userContext()
+    if (!ctx) throw new Error('saveRepositoryWorkflow failed: no session')
+    const client = ctx.client
+    const refused = (error: { code?: string; message: string }) =>
+      error.code === '42501'
+        ? new StoreForbiddenError(`saveRepositoryWorkflow refused: ${error.message}`)
+        : new Error(`saveRepositoryWorkflow failed: ${error.message}`)
+    const conflict = () => new StoreConflictError('saveRepositoryWorkflow conflict: the workflow changed since it was read')
+    /** The row's revision now, or null when there is no row (that the caller can see). */
+    const currentRevision = async (): Promise<string | null> => {
+      const { data, error } = await client.from('repository_workflows').select('updated_at').eq('repo_id', repoId)
+      if (error) throw new Error(`saveRepositoryWorkflow failed: ${error.message}`)
+      const rows = (data ?? []) as { updated_at: string }[]
+      return rows.length > 0 ? rows[0].updated_at : null
+    }
+    /** Why a conditional write matched no row. `goneIsDone`: a delete, content with no row. */
+    const explainMiss = async (goneIsDone: boolean): Promise<null> => {
+      const now = await currentRevision()
+      if (now === null && goneIsDone) return null
+      if (now !== expectedRevision) throw conflict()
+      throw new StoreForbiddenError('saveRepositoryWorkflow refused: the row is still there, unchanged')
+    }
+    const revisionOf = (data: unknown): string | null => {
+      const rows = (data ?? []) as { updated_at?: string }[]
+      return rows.length > 0 ? (rows[0].updated_at ?? null) : null
+    }
+
+    if (overlay && expectedRevision === null) {
+      const { data, error } = await client
+        .from('repository_workflows')
+        .insert({ repo_id: repoId, definition: overlay })
+        .select('repo_id, updated_at')
+      if (error) throw error.code === '23505' ? conflict() : refused(error)
+      const revision = revisionOf(data)
+      if (revision === null) throw new StoreForbiddenError('saveRepositoryWorkflow refused: no row written')
+      return revision
+    }
+
+    if (overlay && expectedRevision !== null) {
+      const { data, error } = await client
+        .from('repository_workflows')
+        .update({ definition: overlay })
+        .eq('repo_id', repoId)
+        .eq('updated_at', expectedRevision)
+        .select('repo_id, updated_at')
+      if (error) throw refused(error)
+      const revision = revisionOf(data)
+      if (revision !== null) return revision
+      return explainMiss(false)
+    }
+
+    if (expectedRevision === null) {
+      // Back to the default from the default: only a row created since stands in the way.
+      if ((await currentRevision()) !== null) throw conflict()
+      return null
+    }
+
+    const { data, error } = await client
+      .from('repository_workflows')
+      .delete()
+      .eq('repo_id', repoId)
+      .eq('updated_at', expectedRevision)
+      .select('repo_id')
+    if (error) throw refused(error)
+    if (data && (data as unknown[]).length > 0) return null
+    return explainMiss(true)
+  }
+
+  /**
    * Move legacy repos embedded in the config blob into the repositories table as
    * PERSONAL repos (org_id null), binding the local path. Best-effort and
    * idempotent: a duplicate-name insert (23505) means a prior run already
@@ -900,6 +1045,8 @@ export class CloudStore implements Store {
         commit: repo.commit ?? {},
         pull_request: repo.pullRequest ?? {},
         resolve: repo.resolve ?? {},
+        review: repo.review ?? {},
+        start: repo.start ?? {},
         issues: repo.issues ?? {},
         plan: repo.plan ?? {},
         jira: repo.jira ?? {},
@@ -967,7 +1114,16 @@ export class CloudStore implements Store {
       // tsCreate and splitPane, neither of which has anywhere else to live. Its
       // `id` is the one field now duplicated, and only for compatibility: a build
       // older than 20260814090000 reads the app id from here and nowhere else.
-      metadata: { ...rest, __app: { id: agent.id, tsCreate: agent.tsCreate, splitPane: agent.splitPane } },
+      metadata: {
+        ...rest,
+        __app: {
+          id: agent.id,
+          tsCreate: agent.tsCreate,
+          splitPane: agent.splitPane,
+          infoSidebarOpen: agent.infoSidebarOpen,
+          displayMode: agent.displayMode,
+        },
+      },
     }
   }
 
@@ -1007,6 +1163,10 @@ export class CloudStore implements Store {
         type: (row.type || rest.type) as TerminalMetadata['type'],
       } as TerminalMetadata,
       splitPane: app?.splitPane,
+      // Left undefined when the agent has never been decided about, which is not the
+      // same as closed: the renderer resolves undefined to the app setting.
+      infoSidebarOpen: app?.infoSidebarOpen,
+      displayMode: app?.displayMode === 'chat' || app?.displayMode === 'terminal' ? app.displayMode : undefined,
     }
   }
 
@@ -1502,6 +1662,10 @@ export class CloudStore implements Store {
    *
    * `org_id` is never sent at all: a BEFORE trigger derives it from `repo_id`, and
    * the client is not allowed an opinion on who may read this.
+   *
+   * `edit_policy` is never sent either (20260924090000): the first insert takes the
+   * column's default, `personal`, and from then on it is the author's choice on the plan's
+   * page. Sent here, it would land in the `DO UPDATE SET` and undo that choice on every save.
    */
   private planSessionRow(input: PlanSpecInput, uid: string): Record<string, unknown> {
     const agent = readAgents().find((a) => a.id === input.agentId)
@@ -1537,20 +1701,45 @@ export class CloudStore implements Store {
       row.spec_synced_at = new Date().toISOString()
     }
 
+    // CONDITIONAL, like everything else here, and this one is worth spelling out because
+    // an unconditional `input.specOversize === true` would look identical and be wrong.
+    // `savePlanTickets` upserts a session from an input that consulted no file at all, so
+    // it has no opinion about the spec's size — and sending `false` from there would
+    // clear a legitimately true flag on every ticket write, turning "too large to sync"
+    // back into "not written yet" the moment a plan files its epic.
+    //
+    // The READ paths always send a boolean (see plan-sync's `send`), so the flag is
+    // self-correcting in both directions: a spec cut back under the ceiling is uploaded
+    // with `false` and the row stops claiming otherwise.
+    if (input.specOversize !== undefined) row.spec_oversize = input.specOversize
+
     return row
   }
 
-  /** Upsert one session and hand back its uuid (server-generated on first write). */
+  /**
+   * Upsert one session and hand back its uuid (server-generated on first write).
+   *
+   * `x-magic-plan-source: agent` is what makes a spec written here the AGENT's revision in
+   * the plan's history: the `record_revision` trigger (20260923120000) reads it off the
+   * request, and believes it only from the plan's owner — which this app always is, since
+   * it upserts on its own `owner_id`. An edit made in the app goes through
+   * `cloud/plans.updatePlanSpec` instead and sends no header, so it is recorded by hand.
+   * The tickets' upsert passes through here too and carries the header harmlessly: it
+   * sends no `spec`, so the trigger does not even fire. Nor does a re-upload of an
+   * unchanged spec record anything — the trigger compares the text itself.
+   */
   private async upsertPlanSession(
     ctx: { client: SupabaseClient; uid: string },
     input: PlanSpecInput,
-  ): Promise<string | null> {
+  ): Promise<PlanSessionRef | null> {
     const { data, error } = await ctx.client
       .from('plan_sessions')
       .upsert(this.planSessionRow(input, ctx.uid), { onConflict: 'owner_id,spec_key' })
-      .select('id')
+      .select('id, number')
+      .setHeader('x-magic-plan-source', 'agent')
     if (error) throw new Error(`plan_sessions upsert failed: ${error.message}`)
-    return ((data ?? []) as { id: string }[])[0]?.id ?? null
+    const row = ((data ?? []) as { id: string; number: number | null }[])[0]
+    return row ? { id: row.id, ...(typeof row.number === 'number' ? { number: row.number } : {}) } : null
   }
 
   /**
@@ -1559,10 +1748,10 @@ export class CloudStore implements Store {
    * userContext, not context: a plan written on a personal repository has no
    * organization, and requiring one would drop exactly those sessions.
    */
-  async savePlanSpec(input: PlanSpecInput): Promise<void> {
+  async savePlanSpec(input: PlanSpecInput): Promise<PlanSessionRef | null> {
     const ctx = await this.userContext()
-    if (!ctx) return
-    await this.upsertPlanSession(ctx, input)
+    if (!ctx) return null
+    return this.upsertPlanSession(ctx, input)
   }
 
   /**
@@ -1590,7 +1779,7 @@ export class CloudStore implements Store {
 
     const sessionId =
       (data as { id: string } | null)?.id ??
-      (await this.upsertPlanSession(ctx, { agentId: input.agentId, specPath: input.specPath }))
+      (await this.upsertPlanSession(ctx, { agentId: input.agentId, specPath: input.specPath }))?.id
     if (!sessionId) throw new Error('savePlanTickets failed: no plan session to attach the tickets to')
 
     const rows = input.tickets.map((ticket) => ({
@@ -1618,13 +1807,15 @@ export class CloudStore implements Store {
    * which compares against files on THIS machine, and a colleague's session is
    * neither ours to compare nor ours to overwrite.
    */
-  async loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]> {
+  async loadPlanSyncState(): Promise<
+    Pick<PlanSession, 'specKey' | 'specSyncedAt' | 'specOversize'>[]
+  > {
     const ctx = await this.userContext()
     if (!ctx) return []
 
     const { data, error } = await ctx.client
       .from('plan_sessions')
-      .select('spec_key, spec_synced_at')
+      .select('spec_key, spec_synced_at, spec_oversize')
       .eq('owner_id', ctx.uid)
     if (error || !data) return []
 
@@ -1633,6 +1824,10 @@ export class CloudStore implements Store {
     return (data as unknown as PlanSessionSyncRow[]).map((row) => ({
       specKey: row.spec_key,
       specSyncedAt: row.spec_synced_at ?? undefined,
+      // `?? false` is safe where `?? undefined` is used above: the column is
+      // `not null default false`, so a null here only ever means a row written
+      // before the migration, which by definition had no oversize spec.
+      specOversize: row.spec_oversize ?? false,
     }))
   }
 
@@ -1996,6 +2191,175 @@ export class CloudStore implements Store {
   }
 
   // -------------------------------------------------------------------------
+  // Handle (profiles.username)
+  // -------------------------------------------------------------------------
+  //
+  // Kept off load/saveProfile for the photo's reason, stated once at `saveProfile`:
+  // that method rewrites every optional column as `?? null`, and a handle must
+  // survive a profile edit — and must exist for a user whose profile is too
+  // incomplete for `loadProfile` to return at all. The Account tab is reachable
+  // without ever opening the Profile tab.
+
+  /**
+   * The account facts the card draws off the caller's own row: the handle, and when
+   * the password last changed. Plus the date the account was created, which is not on
+   * that row at all.
+   *
+   * ONE SELECT FOR THE TWO COLUMNS, because they are two columns of one row and the
+   * card wants both at once. This is also why it is not `getUsername` any more.
+   *
+   * THE CREATION DATE COMES FROM THE SESSION and not from a query, because there is no
+   * query that could get it: `auth.users` is not readable by an authenticated client at
+   * all, and a definer function to expose one timestamp would be a new privileged
+   * surface for a line of text. The SDK already holds the user object the sign-in
+   * returned, `created_at` included, and `getSession()` reads it out of memory —
+   * `getAuthedClient()` above has just made sure that session is live, so this costs
+   * nothing and cannot be stale.
+   *
+   * NEVER THROWS. Every field is separately nullable and each null is a state the card
+   * draws (see `AccountSettings`), so a failure degrades one line rather than the page.
+   */
+  async getAccountSettings(): Promise<AccountSettings> {
+    const empty: AccountSettings = {
+      username: null,
+      passwordChangedAt: null,
+      accountCreatedAt: null,
+      avatarUpdatedAt: null,
+    }
+
+    const ctx = await this.userContext()
+    if (!ctx) return empty
+
+    let accountCreatedAt: string | null = null
+    try {
+      const { data } = await ctx.client.auth.getSession()
+      accountCreatedAt = data.session?.user?.created_at ?? null
+    } catch (error) {
+      console.error('[cloud] could not read the account creation date:', error)
+    }
+
+    const avatarUpdatedAt = await this.readAvatarUpdatedAt(ctx.client, ctx.uid)
+
+    const { data, error } = await ctx.client
+      .from('profiles')
+      .select('username, password_changed_at')
+      .eq('user_id', ctx.uid)
+      .maybeSingle()
+    // No row is the ordinary state for someone who never opened the Profile tab, and
+    // it is not distinguishable from a failure here — both mean "nothing to show but
+    // what the session already told us".
+    if (error || !data) return { ...empty, accountCreatedAt, avatarUpdatedAt }
+
+    const row = data as Pick<ProfileRow, 'username' | 'password_changed_at'>
+    return {
+      username: row.username,
+      passwordChangedAt: row.password_changed_at,
+      accountCreatedAt,
+      avatarUpdatedAt,
+    }
+  }
+
+  /**
+   * When the photo was last written, from STORAGE rather than from a column we keep.
+   *
+   * `storage.objects` maintains `updated_at` on every object, so this is the row the
+   * photo actually lives in rather than a date somebody has to remember to stamp. It
+   * cannot drift from the bytes, and there is no migration and no write path to get
+   * wrong — which is exactly what `password_changed_at` costs, and what it costs only
+   * because GoTrue keeps no such fact of its own.
+   *
+   * `list()` ON THE USER'S OWN FOLDER, with the file named in the search rather than
+   * the whole folder listed: there is one blessed object per user
+   * (`avatarObjectPath`), so this asks for that one. The folder is the uid, which is
+   * what `avatars_select` scopes on, so this reads only ever the caller's own.
+   *
+   * AN EMPTY LIST IS THE NORMAL ANSWER for someone with no photo, and it returns null
+   * the same way a failure does. The two are not worth telling apart here: the caller
+   * draws a date or it draws nothing, and it already knows from the bytes whether there
+   * is a photo at all.
+   */
+  private async readAvatarUpdatedAt(client: SupabaseClient, uid: string): Promise<string | null> {
+    try {
+      const path = avatarObjectPath(uid)
+      const slash = path.lastIndexOf('/')
+      const { data, error } = await client.storage
+        .from(AVATAR_BUCKET)
+        .list(path.slice(0, slash), { search: path.slice(slash + 1), limit: 1 })
+      if (error || !data?.length) return null
+      return data[0].updated_at ?? null
+    } catch (error) {
+      console.error('[cloud] could not read the avatar date:', error)
+      return null
+    }
+  }
+
+  /**
+   * Is this handle free for the caller to take?
+   *
+   * ADVISORY, and the caller must not treat it as a reservation: it answers for the
+   * instant it ran, and `profiles_username_lower_key` is what actually decides. It
+   * exists so the form can say "taken" while the user is still typing rather than
+   * only after they press save — see the migration's note.
+   *
+   * An RPC rather than a select, because `profiles_select` is own-rows only: there
+   * is no query this client can write that would see somebody else's handle. The
+   * function is SECURITY DEFINER and returns a bare boolean.
+   *
+   * A FAILURE ANSWERS `true`, which is the surprising half and is deliberate. This
+   * only ever gates a hint and the enabling of a button; answering `false` when the
+   * network hiccuped would tell a user their own free handle is taken and leave them
+   * unable to press anything. Answering `true` lets them press, and the write is
+   * where the truth is — a genuine collision comes back as 23505 and is reported
+   * then.
+   */
+  async isUsernameAvailable(candidate: string): Promise<boolean> {
+    const ctx = await this.userContext()
+    if (!ctx) return true
+
+    const { data, error } = await ctx.client.rpc('username_available', { candidate })
+    if (error) {
+      console.error('[cloud] username_available failed:', error.message)
+      return true
+    }
+    return data !== false
+  }
+
+  /**
+   * Claim a handle.
+   *
+   * An UPSERT and not an update, for `setAvatar`'s reason: there may be no `profiles`
+   * row at all, and an `update` would report success while matching zero rows — the
+   * card would show a handle that was never stored, until the next launch disagreed.
+   * PostgREST writes only the columns present in the payload, so this cannot touch
+   * `name`/`role`/`technical_level`/`avatar_url`.
+   *
+   * `23505` IS A RESULT, NOT AN ERROR. Someone else holding the handle is an ordinary
+   * answer the user acts on by typing a different one, so it comes back as
+   * `{ ok: false, reason: 'taken' }` and everything else throws. That is also the only
+   * check that counts: `isUsernameAvailable` above describes a moment that has passed
+   * by the time this runs, and two people claiming one handle at the same instant is
+   * exactly what it cannot decide. The unique index decides, here.
+   *
+   * `23514` is the check constraint — a handle whose shape `validateUsername` should
+   * already have refused on the way in. It is mapped rather than thrown so that a rule
+   * drifting between `desktop/src/username.ts` and the SQL surfaces as a legible
+   * message instead of an unhandled IPC rejection.
+   */
+  async setUsername(username: string): Promise<UsernameWriteOutcome> {
+    const ctx = await this.userContext()
+    if (!ctx) return { ok: false, reason: 'offline' }
+
+    const { error } = await ctx.client
+      .from('profiles')
+      .upsert({ user_id: ctx.uid, username }, { onConflict: 'user_id' })
+
+    if (!error) return { ok: true }
+    if (error.code === '23505') return { ok: false, reason: 'taken' }
+    if (error.code === '23514') return { ok: false, reason: 'invalid' }
+    throw new Error(`setUsername failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
   // Profile photo (Supabase Storage, `avatars` bucket)
   // -------------------------------------------------------------------------
   //
@@ -2022,7 +2386,7 @@ export class CloudStore implements Store {
    * writes only the columns present in the payload, so upserting these two
    * cannot touch `name`/`role`/`technical_level`.
    */
-  async setAvatar(dataUrl: string): Promise<void> {
+  async setAvatar(dataUrl: string): Promise<AvatarWriteOutcome> {
     // Parsed BEFORE the session is even looked up: this is the main-process end of
     // the preload bridge, and `dataUrl` is renderer input whatever produced it. The
     // parser is the whole guard — exact prefix, strict base64, the decoded size
@@ -2038,14 +2402,25 @@ export class CloudStore implements Store {
     const parsed = parseAvatarDataUrl(dataUrl)
     if (!parsed.ok) throw new Error(`setAvatar failed: the image was refused (${parsed.reason})`)
 
+    // REPORTED, not swallowed. Returning here used to look to the caller exactly like
+    // a completed upload, so the Account tab published the bytes it held and every
+    // surface drew a face that existed nowhere but in that window.
     const ctx = await this.userContext()
-    if (!ctx) return
+    if (!ctx) return { ok: false, reason: 'offline' }
 
     const buffer = Buffer.from(parsed.bytes)
     const path = avatarObjectPath(ctx.uid)
     const { error: uploadError } = await ctx.client.storage
       .from(AVATAR_BUCKET)
-      .upload(path, buffer, { upsert: true, contentType: AVATAR_MIME_TYPE })
+      // `cacheControl` is NOT a default worth taking: storage-js sends '3600' when it
+      // is absent, which stores the object with `max-age=3600` under a key that never
+      // changes. See AVATAR_CACHE_CONTROL — the same staleness the line below guards
+      // against in this process, one layer down and an hour long.
+      .upload(path, buffer, {
+        upsert: true,
+        contentType: AVATAR_MIME_TYPE,
+        cacheControl: AVATAR_CACHE_CONTROL,
+      })
     if (uploadError) throw new Error(`setAvatar failed: ${uploadError.message}`)
 
     const { error } = await ctx.client
@@ -2053,10 +2428,22 @@ export class CloudStore implements Store {
       .upsert({ user_id: ctx.uid, avatar_url: path }, { onConflict: 'user_id' })
     if (error) throw new Error(`setAvatar failed: ${error.message}`)
 
-    // The key is stable across saves — one blessed object per user — so nothing about
-    // the PATH tells a reader the bytes changed. Dropping the entry here is what stops
-    // the roster showing this user their own previous face for the rest of the TTL.
-    this.avatarCache.delete(path)
+    // SEEDED WITH WHAT WE JUST WROTE, not dropped — and this is the line that makes a
+    // saved avatar actually appear.
+    //
+    // The key is stable across saves, so nothing about the PATH tells a reader the
+    // bytes changed, and the object is served through a CDN that purges ASYNCHRONOUSLY.
+    // Measured against production: for the first seconds after a save, a download of
+    // this path answers with the PREVIOUS version, while `list()` — which reads the
+    // metadata row rather than the object — already reports the new size. Dropping the
+    // entry here therefore did the opposite of what it intended: the next roster read
+    // raced the purge, lost, and cached the old face for the whole TTL.
+    //
+    // There is nothing to race for. These are the bytes, they are the ones the server
+    // now holds, and `dataUrl` is already in the exact shape a reader wants. Whatever
+    // the CDN is still handing out in the meantime is of no interest to this process.
+    this.avatarCache.set(path, { dataUrl, at: Date.now() })
+    return { ok: true }
   }
 
   /**
@@ -2066,9 +2453,12 @@ export class CloudStore implements Store {
    * missing key is not an error to Storage, and a pointer left behind would keep
    * the UI showing a broken avatar it could no longer delete.
    */
-  async removeAvatar(): Promise<void> {
+  async removeAvatar(): Promise<AvatarWriteOutcome> {
+    // Same reason as `setAvatar`, and it matters more here: a removal reported as
+    // done is one the user believes has taken their face off their colleagues'
+    // screens.
     const ctx = await this.userContext()
-    if (!ctx) return
+    if (!ctx) return { ok: false, reason: 'offline' }
 
     const path = avatarObjectPath(ctx.uid)
     const { error: removeError } = await ctx.client.storage.from(AVATAR_BUCKET).remove([path])
@@ -2079,7 +2469,11 @@ export class CloudStore implements Store {
       .upsert({ user_id: ctx.uid, avatar_url: null }, { onConflict: 'user_id' })
     if (error) throw new Error(`removeAvatar failed: ${error.message}`)
 
-    this.avatarCache.delete(path)
+    // `null`, not a delete, for `setAvatar`'s reason wearing the other sign: a dropped
+    // entry sends the next reader back to a CDN that may still be serving the object we
+    // just deleted, which would put the removed face back on screen.
+    this.avatarCache.set(path, { dataUrl: null, at: Date.now() })
+    return { ok: true }
   }
 
   /**
@@ -2105,15 +2499,48 @@ export class CloudStore implements Store {
       .select('avatar_url')
       .eq('user_id', ctx.uid)
       .maybeSingle()
+    // A missing row is the ordinary state of someone who never set a photo; a failed
+    // READ of it is not, and the two leave through the same return. Only the second is
+    // worth a line — every null below is drawn as the generic face, so without one a
+    // photo that exists and cannot be fetched is indistinguishable from no photo at
+    // all, in the logs as well as on screen.
+    if (error) console.error('[cloud] could not read the avatar pointer:', error.message)
     if (error || !data) return null
     const path = (data as Pick<ProfileRow, 'avatar_url'>).avatar_url
     if (!path) return null
 
+    // THE SAME CACHE THE ROSTER USES, and reading it here is what makes a photo the user
+    // just saved survive a window reload.
+    //
+    // `Cmd+R` reloads the RENDERER; this process, and this map, stay. So after a save
+    // the entry `setAvatar` seeded is still here, holding the bytes we know the server
+    // took — while a download of the path would, for the first seconds, still be handed
+    // the previous version by the CDN. Going to the network there is how a save looked
+    // undone the moment the window reloaded.
+    //
+    // The TTL is what keeps this honest rather than a place a wrong face could hide: an
+    // entry older than AVATAR_CACHE_TTL_MS is ignored and the object is fetched again,
+    // by which time the purge has long since happened. A photo changed on another
+    // machine therefore still arrives, within that window or at the next launch — the
+    // same contract `loadAvatarDataUrls` already states for teammates' faces.
+    const hit = this.avatarCache.get(path)
+    if (hit && Date.now() - hit.at < AVATAR_CACHE_TTL_MS) return hit.dataUrl
+
     const { data: blob, error: downloadError } = await ctx.client.storage.from(AVATAR_BUCKET).download(path)
+    // The pointer says there ARE bytes, so failing to get them is always a fault:
+    // storage policies, connectivity, or an object the pointer outlived.
+    if (downloadError) console.error(`[cloud] could not download the avatar at ${path}:`, downloadError.message)
     if (downloadError || !blob) return null
     const buffer = Buffer.from(await blob.arrayBuffer())
     if (buffer.length === 0) return null
-    return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+    const dataUrl = `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+    // Populated on the way out, so the roster does not re-fetch the caller's own face
+    // it has just been handed. A failed read is deliberately NOT cached here, unlike in
+    // `loadAvatarDataUrls`: that method caches its misses to stop a wrong pointer
+    // costing a request per call over a whole team, whereas this is one object the user
+    // is looking at, and a blip must not fix a blank face in place for five minutes.
+    this.avatarCache.set(path, { dataUrl, at: Date.now() })
+    return dataUrl
   }
 
   /**

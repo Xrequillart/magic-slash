@@ -1,13 +1,14 @@
 # Magic Slash
 
-8 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
+9 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:plan-change`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
 
 ## Project Structure
 
 ```text
 magic-slash/
-├── skills/            # Claude Code skills (8 skills) - SKILL.md files
+├── skills/            # Claude Code skills (9 skills) - SKILL.md files
 │   ├── magic-plan/    #   Turn an idea into a spec, then an epic and its stories
+│   ├── magic-plan-change/#   Rework a plan's spec and update the tickets it filed
 │   ├── magic-start/   #   Start a task from a Jira ticket or GitHub issue
 │   ├── magic-continue/#   Resume work on an existing ticket
 │   ├── magic-commit/  #   Create atomic commits with conventional messages
@@ -15,6 +16,7 @@ magic-slash/
 │   ├── magic-review/  #   Review a Pull Request (self or external)
 │   ├── magic-resolve/ #   Address review comments and force-push fixes
 │   ├── magic-done/    #   Finalize after PR merge (transition Jira to Done)
+│   ├── magic-action/  #   Hidden: carries out a workflow action (Slack message…), never typed
 │   └── evals/         #   Trigger evals: eval_set.json (queries) + results.json
 ├── desktop/           # Native desktop app (Electron + React + TypeScript)
 │   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
@@ -22,7 +24,7 @@ magic-slash/
 │   ├── src/preload/   #   Secure bridge main <-> renderer
 │   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
 ├── webapp/            # Next.js site + web product, on Vercel (was docs/ on GitHub Pages)
-│   ├── app/           #   Routes: (marketing) at the apex, dashboard, admin, invite
+│   ├── app/           #   Routes: (showcase) at the apex, dashboard, admin, invite
 │   ├── middleware.ts  #   One host per front door — rules in lib/hostRouting.ts
 │   └── lib/           #   Supabase client, i18n catalogues, helpers
 ├── install/           # Uninstaller and CLI (bash)
@@ -63,7 +65,7 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
+  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)

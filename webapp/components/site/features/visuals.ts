@@ -2,29 +2,37 @@
 
 import type { FeatureVisual } from '@/lib/features'
 import { AgentsSidebarMockup } from './AgentsSidebarMockup'
-import { CommitsCardMockup } from './CommitsCardMockup'
 import { ContextCardMockup } from './ContextCardMockup'
-import { ContinueTaskMockup } from './ContinueTaskMockup'
-import { DoneChecklistMockup } from './DoneChecklistMockup'
+import {
+  CommitFormatsArt,
+  CommitGuardsArt,
+  LaunchModesMenuArt,
+  PrDescriptionArt,
+  WorkflowZoomArt,
+} from './ConventionsArt'
 import { LanguagesArt } from './LanguagesArt'
-import { LaunchModesGrid } from './LaunchModesGrid'
+import { ProfileArt } from './ProfileArt'
 import { MacNotificationMockup } from './MacNotificationMockup'
 import { MenuBarMockup } from './MenuBarMockup'
+import { PlanModalMockup } from './PlanModalMockup'
 import { PRCommentsMockup } from './PRCommentsMockup'
-import { PRWatchCardMockup } from './PRWatchCardMockup'
-import { ProfileArt } from './ProfileArt'
+import {
+  CommitCompleteArt,
+  ContinuePencilArt,
+  DoneApprovedArt,
+  FoldersCroppedArt,
+  PlanSketchArt,
+  PrClimbArt,
+  ResolvePuzzleArt,
+  ReviewSearchArt,
+  StartLiftoffArt,
+} from './FeatureArt'
 import { PullRequestCardMockup } from './PullRequestCardMockup'
 import { DevServerMockup, RepoCardMockup } from './RepoCardMockup'
-import { CommitConfigMockup, PRConfigMockup } from './RepoConfigMockup'
-import { ReposSettingsMockup } from './ReposSettingsMockup'
-import { ResolvedThreadsMockup } from './ResolvedThreadsMockup'
 import { ReviewDrawerMockup } from './ReviewDrawerMockup'
-import { ReviewThreadsMockup } from './ReviewThreadsMockup'
 import { SkillsModalMockup } from './SkillsModalMockup'
-import { SpecPanelMockup } from './SpecPanelMockup'
 import { SplitViewMockup } from './SplitViewMockup'
 import { SpotlightBarMockup } from './SpotlightBarMockup'
-import { StartTerminal } from './StartTerminal'
 import { TasksModalMockup } from './TasksModalMockup'
 import { TicketCardMockup } from './TicketCardMockup'
 import { UsageCardMockup } from './UsageCardMockup'
@@ -45,31 +53,40 @@ import { UsageCardMockup } from './UsageCardMockup'
  */
 export const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
   agentsSidebar: AgentsSidebarMockup,
-  commitsCard: CommitsCardMockup,
+  commitsCard: CommitCompleteArt,
   contextCard: ContextCardMockup,
   macNotification: MacNotificationMockup,
   menuBar: MenuBarMockup,
-  continueTask: ContinueTaskMockup,
+  planModal: PlanModalMockup,
+  continueTask: ContinuePencilArt,
   devServer: DevServerMockup,
-  doneChecklist: DoneChecklistMockup,
-  planSpec: SpecPanelMockup,
+  doneChecklist: DoneApprovedArt,
+  // ── THE EIGHT DRAWN ROWS ──────────────────────────────────────────────────────
+  // One per command. The skill cards show what a command is FOR rather than what it
+  // renders; the twenty-two rows under them keep their mockups. `FeatureArt`'s header has
+  // the reasoning, and the note on which mockups these replaced, which two are still
+  // drawn elsewhere, and which six now have no caller at all.
+  planSpec: PlanSketchArt,
   splitView: SplitViewMockup,
   spotlightBar: SpotlightBarMockup,
   prCard: PullRequestCardMockup,
   prComments: PRCommentsMockup,
-  prWatchCard: PRWatchCardMockup,
+  prWatchCard: PrClimbArt,
   repoCard: RepoCardMockup,
-  reposSettings: ReposSettingsMockup,
-  commitConfig: CommitConfigMockup,
-  prConfig: PRConfigMockup,
+  // The "Your conventions" cards: see `ConventionsArt`.
+  workflowZoom: WorkflowZoomArt,
+  repoStack: FoldersCroppedArt,
+  commitFormats: CommitFormatsArt,
+  prDescription: PrDescriptionArt,
+  commitGuards: CommitGuardsArt,
   profileArt: ProfileArt,
   languagesArt: LanguagesArt,
-  launchModes: LaunchModesGrid,
-  resolvedThreads: ResolvedThreadsMockup,
+  launchModesMenu: LaunchModesMenuArt,
+  resolvedThreads: ResolvePuzzleArt,
   reviewDrawer: ReviewDrawerMockup,
-  reviewThreads: ReviewThreadsMockup,
+  reviewThreads: ReviewSearchArt,
   skillsModal: SkillsModalMockup,
-  startTerminal: StartTerminal,
+  startTerminal: StartLiftoffArt,
   tasksModal: TasksModalMockup,
   ticketCard: TicketCardMockup,
   usageCard: UsageCardMockup,

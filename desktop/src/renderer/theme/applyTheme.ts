@@ -8,7 +8,7 @@ import { THEMES, type ThemeTokens } from '../../themes'
  */
 
 /**
- * `bgSecondaryRgb` → `--c-bg-secondary`, `windowWash` → `--c-window-wash`. The
+ * `bgSecondaryRgb` → `--c-bg-secondary`, `surfaceSunken` → `--c-surface-sunken`. The
  * name is derived rather than mapped so a new token needs no bookkeeping here;
  * the `Rgb` suffix marks the bare-channel tokens and is not part of the name.
  */

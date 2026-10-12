@@ -1,23 +1,25 @@
-import { notFound } from 'next/navigation'
-import { Gallery } from './Gallery'
+import type { Metadata } from 'next'
+import { showcaseEn } from '@/lib/i18n/showcase/en'
+import { DesignSystemHome } from '@/components/site/designSystem/DesignSystemHome'
 
 /**
- * The design system, rendered. Every variant of every primitive in
- * `components/ui.tsx`, on one scrollable page, so a change to the scale can be
- * judged by looking instead of by reading a diff.
+ * `/design-system` — Prestige's home page, and the root of `design.magic-slash.io`.
  *
- * DEVELOPMENT ONLY. It is a workbench, not a page of the product: it has no
- * session guard, no i18n, and it would tell a visitor more about the app's
- * internals than the app does. `notFound()` in production rather than a
- * `PUBLIC_PATHS` entry or a middleware rule, because the route should not exist
- * at all there — `lib/hostRouting.ts` decides which HOST serves a path, not
- * whether it should be served, and this is the second question.
+ * The two galleries sit under it: `/design-system/desktop`, public, and
+ * `/design-system/webapp`, still development-only.
  *
- * Reachable at `localhost:3000/design-system` on any host, since
- * `isProductionHost()` scopes the host rules to the real domains and there is
- * only one host in development.
+ * A SERVER COMPONENT for the `metadata`, with the page in a client component next door:
+ * the copy needs `useT()`. The same split `/desktop` and `/workflow` make. Not in
+ * `PAGE_TITLES`, which `DocumentTitle` reads by the BROWSER's path — `/` on the design
+ * host — and this page is not under the `(showcase)` layout that mounts it anyway.
  */
-export default function DesignSystemPage() {
-  if (process.env.NODE_ENV === 'production') notFound()
-  return <Gallery />
+
+export const metadata: Metadata = {
+  title: showcaseEn['site.meta.designSystemTitle'],
+  description:
+    'Prestige is the Magic Slash design system: every component shown is the one compiled into the app.',
+}
+
+export default function DesignSystemHomePage() {
+  return <DesignSystemHome />
 }

@@ -5,6 +5,1236 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.118.4] - 2026-10-12
+
+### Fixed
+
+- **Desktop**: Paste long texts whole from the chat and fold them in the composer
+
+## [0.118.3] - 2026-10-12
+
+### Fixed
+
+- **Desktop**: Keep only the newest run of each ci check on the pr card
+
+## [0.118.2] - 2026-10-08
+
+### Fixed
+
+- **Desktop**: Show a compaction as a notice in the chat, not its summary as a prompt
+
+## [0.118.1] - 2026-10-08
+
+### Added
+
+- **Desktop**: Switch claude code's emoji completion from the chat settings
+
+### Fixed
+
+- **Desktop**: Complete a trailing emoji shortcode in the chat instead of losing the message
+- **Desktop**: Read the emoji completion of a session from the terminal handlers
+
+## [0.118.0] - 2026-10-07
+
+### Changed
+
+- **Webapp**: Remove the signed-in pages the desktop app replaced
+
+## [0.117.0] - 2026-10-07
+
+### Added
+
+- **Desktop**: Draw the jira, notion, slack and github logos on their mcp tool lines in the chat
+
+## [0.116.0] - 2026-10-07
+
+### Added
+
+- **Desktop**: Show a question's header and its options' previews in the chat card
+- **Desktop**: Fade the chat thread out at its top edge and under the composer
+- **Video**: Add the product film rendered with remotion from the design system
+
+## [0.115.0] - 2026-10-06
+
+### Added
+
+- **Desktop**: Draw a plan's risks as a warning card inside it
+- **Desktop**: Draw the plan a skill frames in its message as a card in the chat
+- **Desktop**: Show the agents running in the background beside the chat prompt
+
+### Changed
+
+- **Desktop**: Re-render only the turn being written and mount the last turns of a long chat
+
+## [0.114.0] - 2026-10-06
+
+### Added
+
+- **Desktop**: Offer a new session the context of earlier ones and load chats without waiting
+- **Desktop**: Suggest and highlight slash commands anywhere in a chat prompt
+- **Desktop**: Add chat view settings for the send key, tool calls, diffs and timestamps
+- **Desktop**: Add shortcuts for a new session, the chat/terminal switch and settings
+- **Desktop**: Offer settings and account as opt-in sidebar pages
+
+### Changed
+
+- **Desktop**: Align the chat working loader with the tool line marks
+
+### Fixed
+
+- **Desktop**: Kill a terminal's whole process group so no claude is left orphaned
+- **Desktop**: Hide prompts claude code writes itself from the chat view
+
+## [0.113.3] - 2026-10-05
+
+### Added
+
+- **Desktop**: Show a loader in the chat while a resumed session loads
+
+### Fixed
+
+- **Desktop**: Keep the session history in creation order when resuming one
+
+## [0.113.2] - 2026-10-05
+
+### Added
+
+- **Desktop**: Start a new claude code session from the title bar history
+
+## [0.113.1] - 2026-10-05
+
+### Fixed
+
+- **Desktop**: Show an empty state for agents with no claude code session history
+
+## [0.113.0] - 2026-10-05
+
+### Added
+
+- **Desktop**: Resume claude code sessions on launch and from a title bar history
+- **Desktop**: Restart claude code from the context card
+
+### Changed
+
+- **Desktop**: Restore the applied chat compact composer migrations
+
+## [0.112.0] - 2026-10-05
+
+### Added
+
+- **Desktop**: Animate the claude code robot on the empty chat
+- **Desktop**: Cap chat diff cards at 30 lines and grow them into a dialog
+- **Pr**: Leave out the template sections the change does not touch
+- **Desktop**: Show the interface zoom level in the title bar
+
+### Changed
+
+- **Deps**: Bump globals from 17.12.0 to 17.13.0
+- **Deps**: Bump vitest from 5.0.2 to 5.0.3
+- **Deps**: Bump typescript-eslint
+
+### Fixed
+
+- **Desktop**: Paint the spec card on the same plate as the other sidebar cards
+
+## [0.111.10] - 2026-10-05
+
+### Added
+
+- **Desktop**: Draw markdown tables as a rounded card in the chat
+
+## [0.111.9] - 2026-10-05
+
+### Added
+
+- **Desktop**: Color inline code blue in the chat
+- **Desktop**: Draw claude's insight asides as a card in the chat
+- **Desktop**: Show in the chat what a shell command changed on disk
+
+## [0.111.8] - 2026-10-05
+
+### Added
+
+- **Desktop**: Shrink the pinned chat prompt to its first two lines
+- **Desktop**: Let the chat thread span the full width like the terminal
+
+## [0.111.7] - 2026-10-05
+
+### Added
+
+- **Desktop**: Add a setting to turn the pinned chat prompt off, on by default
+- **Desktop**: Keep the prompt of the turn being read pinned at the top of the chat
+
+### Fixed
+
+- **Desktop**: Ignore the hooks of a claude an agent runs itself
+- **Desktop**: Hand back a prompt escape cancels before claude answers in the chat
+
+## [0.111.6] - 2026-10-04
+
+### Added
+
+- **Desktop**: Show the queued prompts behind a button beside send in the chat
+
+### Fixed
+
+- **Desktop**: Read the appearance on every window load so a reload keeps the chosen theme
+
+## [0.111.5] - 2026-10-03
+
+### Added
+
+- **Desktop**: Switch the agent's model from the context card
+
+### Changed
+
+- **Desktop**: Tighten the select field padding to match its neighbouring chips
+
+## [0.111.4] - 2026-10-03
+
+### Fixed
+
+- **Desktop**: Leave cmd+arrow to agent switching instead of chat history
+
+## [0.111.3] - 2026-10-03
+
+### Added
+
+- **Desktop**: Answer every question claude asks from the chat through its hook
+
+## [0.111.2] - 2026-10-03
+
+### Added
+
+- **Desktop**: Open the chat thread on a claude code header with its start time
+- **Desktop**: Show the session's claude code version in an empty chat
+- **Desktop**: Set chat code in the code font size from settings
+- **Desktop**: Show the claude code mark in an empty chat
+
+### Changed
+
+- **Desktop**: Soften the raised plate on the midnight theme
+
+### Fixed
+
+- **Desktop**: Mirror the plate lift in the webapp theme copy
+- **Desktop**: Settle an agent's turn when escape interrupts it
+- **Desktop**: Keep each agent's chat draft across session switches
+- **Desktop**: Report an agent as waiting only when it is blocked on the user
+- **Desktop**: Refit the chat composer height when its width or font settles
+
+## [0.111.1] - 2026-10-03
+
+### Added
+
+- **Desktop**: Interrupt the agent with escape in the chat view
+
+## [0.111.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: Paint the window in the theme ground instead of vibrancy
+- **Desktop**: Add a chat view over claude code sessions
+
+### Changed
+
+- **Desktop**: Align the title bar and sidebar paddings and drop the version line
+- **Desktop**: Raise the sidebar cards onto the theme plate
+
+## [0.110.2] - 2026-10-02
+
+### Added
+
+- **Desktop**: Widen the settings rail and dim the page while its search is in use
+- **Desktop**: Find the connections, workflow and integrations rows in the settings search
+
+### Changed
+
+- **Desktop**: Fail when a settings row is missing from the search catalogue
+
+## [0.110.1] - 2026-10-02
+
+### Added
+
+- **Desktop**: Add a cli section to settings connections that checks gh
+
+### Fixed
+
+- **Desktop**: Show an mcp server as connected when a claude.ai connector answers for it
+- **Desktop**: Sign the github mcp server in with the gh token instead of oauth
+
+## [0.110.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: List the jira, github and slack mcp servers under settings connections
+
+### Changed
+
+- **Landing**: Refresh the skill icons on the site
+- **Skills**: Refresh the skill icons and add one for magic-action
+- **Skills**: Bump the hidden magic-action skill in the release checklist
+
+### Fixed
+
+- **Desktop**: Draw the settings row logo tile at the account card size
+
+## [0.109.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: Install the slack mcp server and check mcp health from settings
+- **Desktop**: Add slack actions to the workflow, run through the hidden magic-action skill
+- **Skills**: Add the hidden magic-action skill and the actions step of the workflow protocol
+
+## [0.108.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: Add workflow settings to confirm, cap and skip automatic chaining
+- **Desktop**: Copy and paste frames, sticky notes and end notes in the workflow editor
+
+### Changed
+
+- **Desktop**: Drop the shadow under the ink button
+- **Desktop**: Drop the shadow under the primary button
+- **Landing**: Add account, custom skills and team questions to the faq
+- **Landing**: Answer whether the workflow runs outside the app in the faq
+
+## [0.107.1] - 2026-10-01
+
+### Added
+
+- **Desktop**: List a workflow link's from and to as rows in its inspector
+
+## [0.107.0] - 2026-10-01
+
+### Added
+
+- **Desktop**: Show the update flow on the launch splash instead of a dialog
+- **Desktop**: Have a custom workflow step ask /workflow/next like a magic one
+- **Skills**: Let the app decide what follows a cycle skill
+
+### Changed
+
+- **Skills**: Hold each cycle skill's outcome table to its node's outcomes
+- **Desktop**: Stop reading v1 workflow overlays
+
+## [0.106.0] - 2026-10-01
+
+### Added
+
+- **Desktop**: Move the workflow editor's back button beside the repository picker
+- **Desktop**: Retune the themes around the new blue, with graphite in place of espresso
+- **Desktop**: Move the organization dialogs and the invitation wizard into the design system
+- **Desktop**: Make #007afc the desktop's accent blue in every theme
+- **Desktop**: Open the app on a splash where the rabbit hops off once it is ready
+- **Desktop**: Add save and cross icons to the workflow editor's save and discard buttons
+
+### Changed
+
+- **Desktop**: Note that the toggle button's on state is the app's blue accent
+
+## [0.105.9] - 2026-10-01
+
+### Added
+
+- **Desktop**: Show a release's banner image in what's new, from its lasting github address
+- **Landing**: Show a release's banner image at the head of its changelog entry
+- **Desktop**: Add a toolbox to the workflow editor, with frames that carry their cards and sticky notes
+- **Desktop**: Let the workflow editor remove built-in steps and default links, and add them back from the dock
+- **Desktop**: Make each workflow outcome its own link, with its own kind
+
+### Changed
+
+- **Docs**: Add the introducing workflows banner to 0.105.0
+
+### Fixed
+
+- **Desktop**: Keep a custom step's workflow links on their row when it gains an outcome
+
+## [0.105.8] - 2026-10-01
+
+### Added
+
+- **Desktop**: Trace a workflow outcome's links from its row, and drop the labels on the lines
+
+## [0.105.7] - 2026-10-01
+
+### Added
+
+- **Desktop**: Say why an outcome cannot be added, with its naming rules under the form
+- **Desktop**: Draw workflow links with square corners, their label always at the middle
+- **Desktop**: Let a workflow step link to itself, refusing only an endless auto rerun
+
+## [0.105.6] - 2026-10-01
+
+### Added
+
+- **Desktop**: Take a workflow link on several outcomes and end a flow on a note
+- **Desktop**: Hand a custom skill its workflow context when it is typed by hand
+
+## [0.105.5] - 2026-10-01
+
+### Added
+
+- **Desktop**: Let custom workflow steps declare outcomes, read from their skill frontmatter
+- **Desktop**: Gather the workflow history, duplicate and reset under a more actions menu
+
+## [0.105.4] - 2026-09-30
+
+### Added
+
+- **Desktop**: Show who changed a repository's workflow and start settings, and when
+- **Desktop**: Word the workflow history button, close its panel on an outside press and keep it above the minimap
+- **Desktop**: Show when the workflow last changed beside its history button
+
+### Changed
+
+- **Desktop**: Mock the workflow history read in the config handlers suite
+
+### Fixed
+
+- **Desktop**: Stop reopening the workflow editor when coming back to the workflow tab
+
+## [0.105.3] - 2026-09-30
+
+### Added
+
+- **Desktop**: Move the workflow edit button under the tab description and drop the settings canvas minimap
+- **Desktop**: Describe what magic:start will do from the repository's start settings
+
+## [0.105.2] - 2026-09-30
+
+### Added
+
+- **Desktop**: Switch repository from the workflow editor and name its way back to settings
+
+## [0.105.1] - 2026-09-30
+
+### Fixed
+
+- **Desktop**: Scroll the workflow inspector back to the top on a new selection
+
+## [0.105.0] - 2026-09-30
+
+![Introducing workflows](https://github.com/user-attachments/assets/d3095f25-6f67-4806-b43b-114c27e60141)
+
+### Added
+
+- **Desktop**: Draw the agent archive confirmation with a design system dialog
+- **Webapp**: Rework the conventions family of the features page as a card grid
+- **Desktop**: Let the workflow canvas leave its minimap out
+- **Desktop**: Show the github and jira marks in the tracker picker
+- **Desktop**: Draw the selected link in the inspector and lay its choices out as settings rows
+- **Webapp**: Add the push-after-commit toggle to repository settings
+- **Commit**: Push right after committing when the repository asks for it
+- **Desktop**: Add a push-after-commit setting to the commit step
+- **Desktop**: Turn workflow steps off, colour custom steps and size cards to their words
+- **Desktop**: Add a colour swatches control and the workflow step palette to the design system
+- **Desktop**: Expose a skill's own description in the skills listing
+- **Desktop**: Inject the workflow context when the model invokes a custom skill
+- **Desktop**: Move skill and language settings onto the workflow steps
+- **Start**: Let a repository set the plan, simplify and critic phases
+- **Desktop**: Store per-repository settings for /magic:start
+- **Desktop**: Edit the repository workflow as a graph, full screen
+- **Skills**: Let the skills hand over to a repository's custom steps
+- **Desktop**: Edit a repository's workflow from its settings
+- **Desktop**: Show the workflow editor components in the design-system showcase
+- **Desktop**: Make the workflow canvas editable, with an inspector, a picker and a problems list
+- **Desktop**: Save repository workflows safely, sync them live and share their skills
+- **Desktop**: Let the owner or an org admin write a repository's workflow
+- **Desktop**: Compose a repository's workflow from custom steps added to the default line
+- **Desktop**: Show a repository's workflow on a canvas in its settings
+- **Desktop**: Show the workflow canvas components in the design-system showcase
+- **Desktop**: Add the workflow canvas, node, edge and minimap to the design system
+- **Skills**: Read the workflow at step 0 and compute every cycle skill's next step from it
+- **Desktop**: Serve the workflow of the calling skill's repository on the local api
+- **Desktop**: Read each repository's workflow from supabase and cache it in the main process
+- **Desktop**: Add the workflow model and a default flow derived from the skills list
+
+### Changed
+
+- **Desktop**: Add the confirm dialog to the design system showcase
+- **Skills**: Let a custom skill own its hand-off when the app injects its context
+- **Skills**: Let custom steps link to any step in the workflow protocol
+- **Ci**: Allow the skills scope in commitlint
+- **Desktop**: Show the six-step default flow in the canvas specimens and comments
+- **Review**: Take review out of the default workflow cycle
+- **Deps**: Add @xyflow/react to the design system and resolve it in the webapp
+
+### Fixed
+
+- **Webapp**: Escape the quotes in the colour swatches showcase
+- **Pr**: Address review feedback for 333
+- **Desktop**: Close menus on a press outside them over a canvas
+- **Pr**: Address review feedback for 330
+- **Pr**: Address review feedback for 329
+- **Pr**: Address review feedback for 328
+
+## [0.104.0] - 2026-09-29
+
+### Added
+
+- **Desktop**: Call agents sessions throughout the interface
+- **Desktop**: Search every setting from the settings sidebar
+- **Desktop**: Find settings by the values their selects offer
+- **Desktop**: Publish plans on realtime and make their presence channels private
+- **Desktop**: Add the avatar stack to the design system and its showcase
+- **Desktop**: See who is on a plan and follow its edits and comments live
+- **Desktop**: Show the reader and everyone's handle in the plan presence stack
+- **Desktop**: Name each face of an avatar stack in an instant hover pill
+
+### Fixed
+
+- **Desktop**: Make the idle and completed session states feminine in French
+- **Pr**: Number the test steps after their checkbox so GitHub shows the order
+- **Desktop**: Drop the native clear cross from search fields
+- **Desktop**: Let a refused plan presence channel leave the changes channel running
+
+## [0.103.0] - 2026-09-29
+
+### Added
+
+- **Desktop**: Let the application page switch the sidebar to icons only
+- **Desktop**: Add an icons-only compact mode to the design system sidebar
+- **Desktop**: Store the compact sidebar preference in user settings
+- **Desktop**: Let the application page reorder and hide the sidebar pages
+- **Desktop**: Add the SidebarPagesEditor to the design system and its showcase
+- **Desktop**: Store the sidebar page order and hidden pages in user settings
+- **Desktop**: Count plugins, when_to_use and hidden skills in the skills budget gauge
+
+### Changed
+
+- **Desktop**: Draw the compact sidebar buttons as 40px squares
+- **Plan**: Move detailed procedures out of skill.md into references
+- **Resolve**: Move detailed procedures out of skill.md into references
+- **Pr**: Move detailed procedures out of skill.md into references
+- **Start**: Move detailed procedures out of skill.md into references
+
+### Fixed
+
+- **Desktop**: Keep an empty pane droppable in the compact sidebar
+
+## [0.102.1] - 2026-09-28
+
+### Changed
+
+- **Desktop**: Run the quiet websocket test against a stand-in so ci needs no desktop install
+
+## [0.102.0] - 2026-09-28
+
+### Added
+
+- **Desktop**: Add a security & access page listing the account's devices and browsers
+
+### Changed
+
+- **Desktop**: Add the MenuBarPanel and LivePill entries to the design system showcase
+- **Desktop**: Draw the menu bar panel with the design system's MenuBarPanel
+- **Desktop**: Give the security page's sections their icon and title headers
+- **Desktop**: Extract the live pill into the design system as LivePill
+
+### Fixed
+
+- **Desktop**: Stop a realtime channel closed mid-handshake from crashing the main process
+- **Desktop**: Sign out of this session only, not every device on the account
+
+## [0.101.0] - 2026-09-28
+
+### Added
+
+- **Desktop**: Add a quick settings page to turn the sheet off and arrange its switches
+- **Desktop**: Reduce the quick settings sheet to five switches with no heading
+- **Desktop**: Group the notifications page under its own caption in the settings rail
+- **Desktop**: Add a quick launch settings page with its repository, launch mode and background start
+- **Desktop**: Add a split view settings page with the pane new agents open in
+- **Desktop**: Give the profile its own settings page with a description of what it changes
+- **Desktop**: Move the usage card switch to the claude code settings page
+- **Desktop**: Add an agents settings page with a default model and an archive confirmation
+- **Desktop**: List keyboard shortcuts as setting rows with a description and their keys
+- **Desktop**: Add a code & reviews settings page with syntax theme families and a code font size
+
+### Changed
+
+- **Desktop**: Mock the model list in the config handlers suite
+
+## [0.100.0] - 2026-09-28
+
+### Added
+
+- **Plan**: Link the planner to its plan instead of a ticket
+- **Desktop**: Link planners to their plan from the first write, with a badge, a picker and a plan page banner
+- **Desktop**: Merge the account and settings modals into one window with a sidebar
+- **Desktop**: Add a settings rail to the page modal, full height with no title band
+- **Desktop**: Move the switch knob edge by edge and stretch it on hover
+- **Pr**: Write how-to-test steps as checkable boxes for the reviewer
+
+### Changed
+
+- **Desktop**: Drop the right border of the skills rail
+- **Desktop**: Share the tab strip's edge-by-edge pill motion
+
+## [0.99.0] - 2026-09-28
+
+### Added
+
+- **Review**: Present a scored draft and ask before posting, per repo settings
+- **Desktop**: Add a review tab and a review language to repository settings
+- **Desktop**: Draw the app icon on the macOS grid with a white background
+- **Landing**: Replace the download buttons with a waitlist form backed by Supabase
+- **Landing**: Move the theme playground into the desktop gallery as a themes page
+- **Landing**: Add search, theme grid and used-by to the desktop design system
+- **Landing**: Give the design system a home page and move its galleries under it
+- **Landing**: Add a halves layout to tone cards
+- **Landing**: Serve the design system on design.magic-slash.io
+
+### Changed
+
+- **Landing**: Rename the marketing route group and vocabulary to showcase
+
+## [0.98.6] - 2026-09-25
+
+### Added
+
+- **Landing**: Give every page a descriptive tab title in the reader's language
+- **Landing**: Add a plans band to the desktop page
+- **Landing**: Drive the dev server scene by scroll, framed on its menu
+- **Landing**: Open the desktop hero on the overload illustration
+- **Landing**: Illustrate the spec and commits control cards
+- **Landing**: Illustrate the plan step on the workflow page
+- **Landing**: Reword the footer tagline
+- **Landing**: Trim the opener of the download reassurance line
+- **Landing**: Open the download page on the jetpack illustration
+- **Landing**: Close the home page on a white jetpack over plain black
+- **Landing**: Illustrate the repository and storage security cards
+- **Landing**: Redraw the plan sharing card with black line avatars
+- **Landing**: Draw the team band with the app's own components
+- **Landing**: Illustrate the desktop pillar card
+- **Landing**: Replace the mac card with a made-to-measure one
+- **Landing**: Draw the tasks card with the app's own board
+- **Landing**: Name the plans in the app band and show its window whole
+- **Landing**: Illustrate the workflow cards
+- **Landing**: Replace the animated hero orbit with an illustration
+- **Landing**: Illustrate the commit guard card
+- **Landing**: Draw the repository settings with the app's own components
+- **Landing**: Draw the skills window with the app's own components
+- **Desktop**: Filter plans by status, search and repository
+
+### Changed
+
+- **Landing**: Draw the shortcuts and plan sharing cards in amber
+- **Landing**: Play the desktop before/after entrance off one trigger, faster
+- **Landing**: Drop the workflow hero aura
+- **Landing**: Draw the reference nav glyphs in ink
+- **Landing**: Draw the skills timeline in black
+- **Landing**: Paint every page on white
+- **Desktop**: Move the repository list and page header into the design system
+- **Desktop**: Move the skills page blocks into the design system
+
+### Fixed
+
+- **Desktop**: Notify on every new pr review or comment, including those missed while closed
+- **Landing**: Round the focus ring on the branches card
+- **Desktop**: Keep the active tab in view when the tab strip scrolls
+
+## [0.98.5] - 2026-09-25
+
+### Added
+
+- **Desktop**: Show only the checklist header once onboarding is complete
+- **Desktop**: Show a loader while the plans list loads
+- **Desktop**: Show a spinner while the tasks board switches repository
+- **Plan**: Invite people onto a plan on a personal repository
+
+### Fixed
+
+- **Desktop**: Stop granting the git -C permission rules claude code warns about
+- **Desktop**: Keep the board columns rounded after switching repository
+
+## [0.98.4] - 2026-09-24
+
+### Added
+
+- **Plan**: Move the rework and share buttons into the sticky bar
+
+## [0.98.3] - 2026-09-24
+
+### Added
+
+- **Plan**: Share a plan from a button in its header
+- **Desktop**: Add a share button to the design system
+- **Desktop**: Pick who may edit a plan and tell readers when they cannot
+- **Desktop**: Read and write a plan's edit policy and its collaborators
+- **Plan**: Let a plan's author choose who may see and edit it, with invitations
+
+### Changed
+
+- **Desktop**: Read only the selected repository on the tasks page
+
+### Fixed
+
+- **Pr**: Address review feedback for 305
+- **Plan**: Report a refused status change in the webapp instead of the raw error
+
+## [0.98.2] - 2026-09-23
+
+### Added
+
+- **Plan**: Open a line's discussion in a bubble under the pointer instead of a side rail
+
+### Changed
+
+- **Plan**: Draw the spec header card's text with the design system's text component
+- **Plan**: Fill the spec's inner cards instead of outlining them
+
+## [0.98.1] - 2026-09-23
+
+### Added
+
+- **Plan**: Show each revision's diff inline in the plan history, folded past 30 lines
+- **Plan**: Draw a spec's header, framing decisions and sizing as cards
+- **Plan**: Give /magic:plan-change its own image
+
+### Fixed
+
+- **Desktop**: Recognise a comment on a whole line made of several blocks
+
+## [0.98.0] - 2026-09-23
+
+### Added
+
+- **Desktop**: Move a plan's tabs under its heading and add an Idea tab
+- **Plan**: Add an in-progress status for a plan being implemented
+- **Plan**: Let anyone on a plan set its status by hand, and record each change in its history
+- **Desktop**: Show a plan's history in its own tab, one revision selected at a time
+- **Desktop**: Show a plan's edit history, by hand or with claude, on its page
+- **Desktop**: Add a timeline row to the design system
+- **Desktop**: Record plan spec revisions and link events in the database
+- **Desktop**: Rework a plan from its page with /magic:plan-change
+- **Plan**: Add /magic:plan-change and declare it in every skill list
+- **Desktop**: Pin external links to a plan, with the tool detected from the address
+- **Desktop**: Edit a plan's spec in place, with formatting, shortcuts and undo
+- **Desktop**: Count the comments on a plan in the list
+- **Desktop**: Comment a plan line by line in the margin
+- **Desktop**: Edit a plan in place, as a member of the organization
+- **Desktop**: Let organization members write a plan's content columns
+- **Desktop**: Comment on a plan, anchored in the text, with its author
+- **Landing**: Draw the tasks window with the app's own components
+
+### Changed
+
+- **Desktop**: Share the diff annotation between the file preview and other callers
+- **Readme**: Count nine skills and document /magic:plan-change
+- **Desktop**: Draw a pinned claude artifact with claude's own mark
+- **Desktop**: Give a plan's idea its own section heading and a caption
+- **Desktop**: Draw the tasks page from one design system component
+
+### Fixed
+
+- **Plan**: Record every spec save as its own revision, diffed from the prior text
+- **Pr**: Address review feedback for 304
+- **Pr**: Address review feedback for 303
+- **Desktop**: Focus a plan comment box without scrolling the page
+- **Desktop**: Order the member-edit migration after the plan comments check
+- **Desktop**: Let a plan comment be written and read back
+- **Pr**: Address review feedback for 302
+
+## [0.97.1] - 2026-09-22
+
+### Added
+
+- **Desktop**: Grow the expanded overlay into the title bar
+- **Desktop**: Stagger the tab pill's two edges
+- **Desktop**: Remember the info panel per agent
+- **Pr**: Keep the PR description short and bulleted, per repo
+
+### Changed
+
+- **Desktop**: Drop canChangeAgentType with its last caller
+- **Desktop**: Let CopyButton own the setup wizard's copy state
+- **Readme**: Show the current wordmark
+- **Deps**: Bump vitest from 5.0.0 to 5.0.1
+- Delete the assets and folders nothing references any more
+
+## [0.97.0] - 2026-09-21
+
+### Added
+
+- **Resolve**: Put the fix description on its own line, in plain words
+
+### Changed
+
+- **Desktop**: Move the tasks page into the design system
+- **Desktop**: Move the repository settings into the design system
+- **Plan**: Move the two pinned bars onto StickyBar
+
+## [0.96.9] - 2026-09-20
+
+### Changed
+
+- **Desktop**: Move the skills warnings into a NoticeCard
+- **Desktop**: Move the skills budget section into the design system
+- **Desktop**: Move the skills list and rail into the design system
+- **Desktop**: Move the read-only skill document into the design system
+- **Desktop**: Move the skill editor form into the design system
+
+## [0.96.8] - 2026-09-20
+
+### Changed
+
+- **Desktop**: Log why an avatar could not be read
+
+### Fixed
+
+- **Desktop**: Stop serving a replaced avatar from cache for an hour
+- **Desktop**: Stop reporting success for an avatar never written
+- **Desktop**: Keep a saved avatar from reverting to the cached copy
+
+## [0.96.7] - 2026-09-20
+
+### Added
+
+- **Desktop**: Redraw the what's new dialog, themed and sized to content
+- **Desktop**: Offer thirty drawn avatars, and default to one of them
+- **Landing**: Draw the plans window with the app's own components
+
+### Changed
+
+- **Landing**: Repaint the site from indigo to blue
+- **Landing**: Reopen the features page, the FAQ and the changelog on a white split band
+- **Landing**: Draw the eight skill cards instead of mocking them up
+- **Landing**: Flatten the colour cards and drop the dark grounds
+- **Landing**: Move the primary and the blue surfaces onto the ramp
+- **Landing**: Show the site's palette on the design-system page
+- **Landing**: Name the disabled button fill by its new colour
+- **Landing**: Point four arrows at the download button
+- **Landing**: Strip the invitation panel back to one drawing
+- **Landing**: Name the logo in one place
+
+### Fixed
+
+- **PR**: Leave a template's checkboxes unticked, configurable per repo, and pair them by section before label rather than by total
+- **Landing**: Put the Tasks plate back on its family's ground
+
+## [0.96.6] - 2026-09-18
+
+### Added
+
+- **Desktop**: A settings card that owns the rules between its rows — so a hairline can no longer trail the last setting, or outlive a row that is no longer there
+- **Desktop**: A health card and a repair list: whether something is working, and the one button, command or page that fixes each fault under it
+- **Desktop**: A disclosure card for what a feature records and what it never touches — two columns rather than a paragraph nobody reads
+- **Desktop**: A theme preview grid, every theme as a little window, beside the swatches the quick-settings sheet already had
+- **Desktop**: Settings rows take a stepper, and a help line can end in the keys the setting also answers to
+- **Desktop**: The account and settings overlays are now as wide as their content and no wider, and their pages sweep in the direction of the tab you pressed
+
+### Changed
+
+- **Desktop**: The notifications page is the design system's, and the optimistic write under every switch is a hook the cards can be built from
+- **Desktop**: The application page too — six hand-drawn plates, nine rows of label-over-help and a hand-rolled red strip gone, the machine setup card included
+- **Desktop**: The appearance page as well, where the interface scale is one stepper instead of three bordered buttons and a number
+- **Desktop**: A dialog's header lays its title, its tabs and its buttons on three tracks, so a title too long for the band is ellipsed rather than run under the pills
+- **Desktop**: One alert shape for every card that carries one, where three near-identical ones were about to exist
+
+### Fixed
+
+- **Desktop**: A page sliding in no longer arrives with a side of each card sliced off — the padding travels with the page instead of clipping it
+
+## [0.96.5] - 2026-09-17
+
+### Added
+
+- **Desktop**: One picker for the whole app — a `Select` in the design system, replacing four hand-built dropdowns and eighteen native ones whose popup macOS drew in its own colours
+- **Desktop**: The account card can front a service, so the Atlassian connection is the same card as the cloud account — with a band for a credential the service has started refusing
+- **Desktop**: A keycap component, with the modifier glyphs set a rung above the letters so `⌘` no longer reads smaller than the `N` beside it
+- **Desktop**: An organization card: the roster, the invitations and the two ways out, in one component
+- **Desktop**: The settings blocks joined it — a setting row, a list of facts, a plan gauge, a table of figures and a language card
+
+### Changed
+
+- **Desktop**: The Connections tab's Atlassian card is the account card now, and its revoked state is a band inside it rather than a hand-built strip
+- **Desktop**: The About card opens on the product's own mark, and its changelog link goes through the app like every other outside link
+- **Desktop**: Every keyboard shortcut is drawn by one component, on the shortcuts tab and in the zoom help line
+- **Desktop**: The organization page is wiring only, and the count beside its heading is drawn quiet like the repository lists'
+- **Desktop**: The Claude Code page is five design-system blocks — the account, the two pickers, the plan gauges and the spend table
+- **Desktop**: The language page is one card, and the app has a single list of languages where it carried three copies of it
+
+## [0.96.4] - 2026-09-17
+
+### Added
+
+- **Desktop**: The account card is a table — one row per setting, with a username you can pick (unique, checked as you type) and the date the password last changed
+- **Desktop**: The account checklist moved into the design system on the pull request card's shape — one line per step, and the next one unfolds itself to say where to fix it
+- **Desktop**: The profile card joined it — the same table, with each field edited behind a modal instead of six controls stacked in a card
+- **Desktop**: An email change is confirmed by a link instead of a code, and the app notices it without a restart
+- **Landing**: A page that greets you when an email change is confirmed, logo and all
+
+### Changed
+
+- **Desktop**: A password field spaces its bullets, so they read as marks rather than as a grey bar
+- **Desktop**: One SectionHeader in the design system, where the same heading was drawn eighteen different places
+- **Desktop**: The section headers above the account and checklist cards are gone — both cards name themselves
+- **Desktop**: The plans list is capped at the repository page's width
+- **Desktop**: Dialogs have room — a wider gutter, larger fields, and every button drawn by the design system
+- **Ci**: The Supabase auth config is driven from the environment, so a config push can no longer send this machine's localhost to production
+
+### Fixed
+
+- **Desktop**: A failed read at startup can no longer become an unhandled rejection, and the auth handler tests cover the email-change watch
+
+## [0.96.3] - 2026-09-16
+
+### Added
+
+- **Desktop**: Item and PlanItem in the design system — one row shape for the plans and repositories lists, flush, with a radius only at the two ends of the stack
+- **Desktop**: A WhatsNewDialog in the design system, typeset like the public changelog
+- **Desktop**: The release notes dialog is redrawn and says which day the version shipped
+- **Desktop**: An Input in the design system — one line or several, four rungs, two grounds
+- **Desktop**: The sign-in screen takes the whole window, on the release mesh behind a glass card, and the debug menu can open it at any time
+- **Desktop**: An AccountCard in the design system, one card for both signed-in states
+- **Desktop**: The "+N more commits" line is a control — pressing it sweeps the hidden commits open
+
+### Changed
+
+- **Desktop**: The plans and repositories lists are drawn with Item
+- **Desktop**: Every text field is drawn with Input, and INPUT leaves theme/controls.ts
+- **Desktop**: The account card is drawn with the design system and loses its border
+- **Desktop**: The account avatar wrapper is gone — three of its four surfaces no longer existed
+- **Desktop**: The button has more air on both axes and rises under the pointer
+
+### Fixed
+
+- **Desktop**: A field takes the width its form gives it — the design system input was silently overriding every caller asking for a narrow one
+- **Landing**: The drawn title bar shows the account, and the sidebar's fourth row is the repositories
+
+## [0.96.2] - 2026-09-16
+
+### Added
+
+- **Desktop**: The repositories list is redrawn — no border, the name and its GitHub status as labels, the path underneath, and the remote and agent count gathered at the right edge
+- **Desktop**: A Button component in the design system, seven sizes and nine tones, replacing the seven hand-kept button constants the app had grown
+
+### Changed
+
+- **Desktop**: The repositories page drops its heading and keeps its one action, now a design-system button
+- **Desktop**: A banner takes its actions as data rather than as rendered buttons, so every banner draws the same control at the same size in its own colour — and ranks a pair by itself
+- **Desktop**: The script card's stop control is that same button
+
+### Fixed
+
+- **Desktop**: Leaving a repository's settings sweeps back the way it arrived instead of repeating the arrival, and no longer clips the page against the pane's edge on the way
+- **Desktop**: Checking for updates from the account menu no longer reports a red failure when it finds one
+
+## [0.96.1] - 2026-09-16
+
+### Added
+
+- **Desktop**: ⌘;, ⌘J, ⌘T and ⌘P close the page they opened, the way ⌘, already closed the quick settings sheet. Pressing another page's chord still switches to it rather than dismissing
+
+### Fixed
+
+- **Desktop**: Team repositories are back in the settings list. The organizations they group under were only ever fetched by the pages that manage them, so the list showed the personal repositories and swallowed every shared one
+- **Desktop**: Leaving a dialog by any route other than its close button or Escape no longer strands it on a sub-page, so the next open lands on the page's home
+
+## [0.96.0] - 2026-09-16
+
+### Added
+
+- **Desktop**: The account is in the title bar, as a dropdown carrying your name and address, the five pages behind them — account, organization, connections, Claude Code, about — plus checking for updates and signing out
+- **Desktop**: The settings window is the repository list and nothing else. Everything that was a preference opens from the quick settings sheet, everything that was an identity opens from the account menu, and both open as a dialog in the middle of the window
+- **Desktop**: A keyboard shortcuts page listing every chord the app answers to, Tasks and Plans included — they were missing from it for as long as it existed
+- **Desktop**: ⌘, opens and closes the quick settings sheet, where it used to open the settings window; ⌘P opens the repositories
+
+### Changed
+
+- **Desktop**: Every dialog wears the same header — a mark, a name, the pages in the middle when there are several, and the two buttons that expand or close it — drawn by the design system rather than written twice
+- **Desktop**: Dialogs have no border, no rule under the header, and the same corners; a click on the dimmed app around a page overlay closes it, unless the press started inside and you were selecting text
+- **Desktop**: The quick settings sheet drops "start at login" and the PR watcher — settings you decide once when you set the machine up — and its sections now arrive one after another from the top rather than all at once
+- **Desktop**: The card reporting whether usage recording reaches the server sits beside the switch it is about, instead of under the version number where nothing else mentioned recording
+
+### Fixed
+
+- **Desktop**: The split view has one switch instead of two. The settings card armed a feature flag and the quick settings tile turned the split on, and both had to be set before the window would divide — so a lit switch could do nothing
+- **Desktop**: A toast is no longer drawn behind the dialog or the sheet that produced it
+
+## [0.95.2] - 2026-09-15
+
+### Added
+
+- **Desktop**: The debug menu can simulate a broken machine setup, so the setup screens can be seen without breaking the machine
+- **Desktop**: The quick settings sheet opens the full app settings, instead of making you leave the sheet to get there
+
+### Changed
+
+- **Desktop**: The tab strip is drawn by the design system rather than by hand in the renderer
+
+## [0.95.1] - 2026-09-15
+
+### Added
+
+- **Desktop**: The quick settings sheet says how far the chosen theme reaches, on the line directly under the swatches: one tile matches Claude Code to it in the terminals, and a picker beside it sets which appearance the file preview highlights code in
+
+### Changed
+
+- **Desktop**: The "Left" and "Right" chips over the sidebar's two lists are drawn with the design system's label instead of by hand
+
+### Fixed
+
+- **Desktop**: A quick settings tile with no caption shows its name on the sheet's opaque plate. The old pill was a see-through shape over the frosted window and could barely be read
+- **Desktop**: Turning notifications off now darkens every kind on the sheet rather than leaving lit circles under a red bell. Nothing is written while it is off, so every kind comes back as it was left
+
+## [0.95.0] - 2026-09-15
+
+### Added
+
+- **Desktop**: A quick settings sheet pulls down from the title bar, the way macOS opens its Control Center. One sheet holds the machine's setup verdict, the eight themes as swatches you pick by looking, the interface scale, every notification switch, the feature toggles and the language as flags — and the app frosts over behind it while it is down
+- **Desktop**: The title bar says so while notifications are off, and pressing that notice opens the sheet where the switch is
+- **Desktop**: Every design system component stands on one seven-rung size ladder. A size can be changed at a call site in one word instead of being a reason to edit the component
+- **Desktop**: The pull request card finished its move to the shared `design-system/` folder, along with its review threads and its check list
+- **Desktop**: The banner has a pinned band layout, and the avatar falls back to initials when there is no picture
+
+### Changed
+
+- **Desktop**: The normal/split switch is gone from the title bar. The split view is a tile on the quick settings sheet now, and it turns the split on rather than merely allowing it
+- **Desktop**: The tally, the check list and the ticket labels are drawn with the design system's own text and label components
+- **Desktop**: The confirmation dialog is built on the design system's modal, and the action chip left over from the button migration is gone
+
+### Fixed
+
+- **Landing**: The window drawn on the home page and in the design system showcase was missing the quick settings toggle the app carries. Both drawings render the real component, so they now show it too
+
+## [0.94.10] - 2026-09-15
+
+### Added
+
+- **Desktop**: The update flow is a dialog that holds the screen, from the release found at launch to the relaunch: the version found, then the download running, then a five second countdown before the app restarts into it. The button that used to sit at the foot of the left sidebar is gone, and with it the last slot in that column
+- **Desktop**: The uncommitted changes card says when there is nothing in flight instead of disappearing. It only says so when the branch is not ahead either, so the sentence and the commit card under it can never disagree
+
+### Changed
+
+- **Desktop**: The repository card's own empty state is gone. It could never appear: the app passed it only when a branch existed, and a branch that exists was one of the three things that had to be absent for it to draw
+
+## [0.94.9] - 2026-09-14
+
+### Changed
+
+- **Desktop**: Both agent sidebars are drawn by the shared `design-system/` folder. A column takes data and callbacks rather than ready-made elements, and a card draws its own blocks instead of receiving them in slots
+- **Desktop**: A planning agent has a column of its own. It holds what the agent is spending and the spec being written, and nothing else: no ticket card, no repository cards, no add-repository box, because a planner has no branch, no diff and no pull request for them to show
+- **Desktop**: The repository picker is a shared component now, on a new `Modal` foundation. Every row wears the repository's own colour, so the picker matches the card a click adds to the sidebar
+
+### Fixed
+
+- **Desktop**: The Claude usage card no longer fetches the account and keeps a 30 second timer running when it has been switched off
+
+## [0.94.8] - 2026-09-14
+
+### Fixed
+
+- **Landing**: An unescaped apostrophe in the design system's `SelectIcon` page failed the production build. The site deploys again
+
+## [0.94.7] - 2026-09-14
+
+### Added
+
+- **Desktop**: A select can mark the row that is in force — a check and the accent — and size its own panel, so a menu opened from the 230px column no longer overhangs it. Its rows may carry their own marks when they are kinds rather than one repeated action
+- **Desktop**: A label can wear a colour from the palette
+- **Desktop**: The script card moved into the shared `design-system/` folder
+- **Desktop**: The agent info sidebar moved into the shared `design-system/` folder
+- **Desktop**: The repository card moved into the shared `design-system/` folder
+- **Desktop**: The scripts trigger takes a class of its own
+- **Desktop**: `SelectIcon` takes a controlled open, so a drawing can play the menu on a timer
+- **Desktop**: The pull request card moved into the shared `design-system/` folder
+- **Desktop**: `ButtonIcon` has a busy state
+- **Desktop**: The uncommitted changes card moved into the shared `design-system/` folder
+- **Desktop**: `CommitLine` and `CommitCard` moved into the shared `design-system/` folder
+- **Desktop**: The switch has a liquid glass variant
+
+### Changed
+
+- **Desktop**: The agent sort opens from a select rather than a bare button: a chevron says it opens a list before it is pressed, and the option descriptions are gone — the labels say what they do
+- **Desktop**: A review thread states itself with a label instead of an outline
+- **Landing**: The sort menu, the running script, the info sidebar and the sidebar illustrations are drawn with the real components instead of copies, so the drawings cannot fall behind what they draw
+- **Deps**: The linters group moved up two versions
+
+### Fixed
+
+- **Landing**: The scripts step of the storyboard is framed on its trigger
+
+## [0.94.6] - 2026-09-13
+
+### Added
+
+- **Desktop**: The settings switch moved into the shared `design-system/` folder. Its knob is a pill rather than a circle, and it comes in the three sizes `Label`, `Status` and `ButtonIcon` already use — `sm` (40×24), `md` (48×28) and `lg` (56×32). The knob stretches while pressed and settles at the far end
+
+### Changed
+
+- **Landing**: The switch in the "It works your way" card is the real component instead of a track and knob built by hand, so the drawing cannot fall behind the control it draws
+
+## [0.94.5] - 2026-09-13
+
+### Fixed
+
+- **Landing**: An unescaped apostrophe in the design system page failed the production build. The site deploys again
+
+## [0.94.4] - 2026-09-13
+
+### Added
+
+- **Desktop**: The window's title bar moved into the shared `design-system/` folder. Its panel toggles are `ButtonIcon`s carrying lucide's `PanelLeft`/`PanelRight` pair, so the mark says what the click does, and the archive control is a `Label`
+
+### Changed
+
+- **Desktop**: The coder/planner switch is gone from the title bar. An agent's kind is still set in the settings
+- **Landing**: The drawn window's title bar is the real component instead of two SVGs copied out of the app
+
+### Fixed
+
+- **Landing**: The focus ring on the ticket card follows the card's corners instead of coming out square
+
+## [0.94.3] - 2026-09-13
+
+### Added
+
+- **Desktop**: Eleven more components moved into the shared `design-system/` folder — the whole left sidebar, the agent row, the sidebar menu, the status pill and its picker, the branch card, the repository card header, the scripts menu, the Claude usage card, the agent identity card, the editable title and the loader
+- **Landing**: The design system page is served in production
+
+### Changed
+
+- **Landing**: The sidebar, the ticket cards and the limits gauge are the real components instead of hand-drawn reproductions, so they cannot fall behind the app again
+- **Desktop**: `ButtonIcon` takes a size, and the app's action chips use it; `Label` gains a middle rung on its scale
+
+### Fixed
+
+- **Desktop**: The status wrapper fits its own pill
+
+## [0.94.2] - 2026-09-13
+
+### Added
+
+- **Desktop**: Nine primitives now live in a shared `design-system/` folder that both the app and the site compile — `Icon`, `Text`, `Avatar`, `Label`, `Banner`, `Card`, `ButtonIcon`, `ProgressBar` and the agent context card — so a component drawn once is the same drawing everywhere
+- **Landing**: A design system page at `/design-system`, with every extracted component, its variants, its props, and the eight desktop themes to try them on. The web one moved to `/design-system-web`
+
+### Changed
+
+- **Desktop**: Every badge in the app is one `Label` — the ticket id, a plan's number, a repository, the Claude Code chip, the account, the cost and the duration — where each used to respell the same shape by hand
+- **Desktop**: Every progress bar is one `ProgressBar`, and a gauge's warning step is orange rather than yellow: yellow is what this app gives a pending state
+- **Desktop**: `lucide-react` belongs to the design system, so neither app carries a version of its own. GitHub's mark, which the library dropped, is drawn by the app
+- **Landing**: The agent context card on `/features` and on `/desktop` is the real component instead of a hand-drawn reproduction, so it cannot fall behind the app again
+
+### Fixed
+
+- **Landing**: The Vercel build no longer fails to resolve the shared components' dependencies
+
+## [0.94.1] - 2026-09-12
+
+### Changed
+
+- **Desktop**: The banner saying an agent is already on a ticket now stands apart from the body below it, with no outline and a larger mark
+
+## [0.94.0] - 2026-09-12
+
+### Added
+
+- **Desktop**: Every plan now carries a short sequential number, `#7`, unique within the organization it is visible in — the badge sits left of the title in the plans list, on a plan's page and in its pinned bar, exactly where a ticket wears its key
+- **Desktop**: A repository card's name is now a badge in that repository's own colour, and clicking it opens the repository's settings
+- **Desktop**: The pull request card draws its checks as a ring — the share of passed, failed, running and skipped, beside the count
+- **Desktop**: The agent context card is headed by a Claude Code label, with the model, the cost and the session's duration beside it
+
+### Changed
+
+- **Desktop**: The repository card is rebuilt on one chip: the script, editor, GitHub and remove controls are 24px squares on the ground the ticket badge uses, and the branch, changes, commits and pull request blocks have given up their outlines
+- **Desktop**: A branch's commits are drawn on a vertical timeline, one tick per commit
+- **Desktop**: The left sidebar speaks the same vocabulary — the sort and new-agent controls, the Claude usage card and its account chip
+- **Desktop**: The plans list wears chips for the repository, the author and the ticket count, its status is a round plate beside the creation date, and the list has lost its frame
+- **Desktop**: A ticket's detail page starts higher, with no rule between its head and its body
+- **Desktop**: An agent's description holds its size and hides its pencil at rest
+
+### Fixed
+
+- **Desktop**: The plans list is ordered by when each plan was started, which is also the date it shows — it was ordered by the last edit while showing the creation date, so the dates ran out of order down the column
+
+## [0.93.0] - 2026-09-12
+
+### Added
+
+- **Desktop**: An agent with no ticket now offers to pick one — the empty badge opens Tasks in picking mode, where clicking a card attaches that ticket instead of opening it
+- **Desktop**: A ticket's page can take an agent off the ticket, leaving the agent itself running
+- **Desktop**: The agent's description saves with Enter, Shift+Enter starts a new line, and its Save button is gone
+
+### Changed
+
+- **Desktop**: The ticket id in the right sidebar wears the same badge as a Tasks card, on its tracker's own ground
+- **Desktop**: Every card in the right sidebar carries the same padding
+- **Desktop**: The agent's title and description show their ground on hover only, and carry no border in either state
+
+### Fixed
+
+- **Desktop**: The gap above the pull request card matches the gaps between the blocks above it
+
+## [0.92.1] - 2026-09-12
+
+### Changed
+
+- **Desktop**: The names of the files being modified, and every part of an inline comment card, are drawn in the app's own face instead of the code's monospace
+- **Desktop**: The repository card in the right sidebar has as much padding above its header as under its last row
+
+### Fixed
+
+- **Desktop**: The board's pinned column headings no longer show the cards sliding past through their rounded corners
+- **Desktop**: The plan link on a ticket's page no longer blinks
+
+## [0.92.0] - 2026-09-11
+
+### Added
+
+- **Desktop**: Plans, Tasks, Skills and Settings are one overlay with four tabs, so moving between them no longer closes a modal and opens another
+- **Desktop**: The Settings tab is named after the signed-in account, with their photo, rather than after a gear
+- **Desktop**: A plan's tickets carry their tracker's badge and their state read live off GitHub or Jira, and open in the app instead of in the browser
+- **Desktop**: A ticket's page names the plan it was filed from, and opens it
+- **Desktop**: A plan's pinned bar carries the plan's title and status once the heading has scrolled behind it
+- **Desktop**: The page overlay can be taken full screen, with the button in its header or ⌘⇧F
+- **Desktop**: A plan opens on a page of its own, with its spec and the epic and stories it created
+- **Desktop**: A spec too large to sync says so, rather than leaving an empty panel
+- **Desktop**: A repository's colour can be picked straight from its closed row, without opening the modal
+- **Desktop**: A repository's colour is picked from a grid of thirty-six
+- **Desktop**: The Team page becomes a Plans page, listing every planning session you can see
+- **Desktop**: A new file's lines count as additions in a review's diff stat
+
+### Changed
+
+- Relicensed under PolyForm Shield 1.0.0, replacing MIT
+- **Desktop**: Settings and Skills fill the width they are given instead of stopping at a reading measure
+- **Desktop**: Going full screen animates, and stops under the app's own title bar so the window stays draggable
+
+### Fixed
+
+- **Desktop**: A full-screen overlay's header no longer falls inside the window's drag region, where its close and full-screen buttons stopped responding
+- **Desktop**: A malformed plan id is refused, and a spec past the sync ceiling is no longer re-uploaded on every change
+- **Desktop**: The plans list tells a failed read from an empty one, and a repository filter changed twice in a row cannot settle on the older answer
+- **Desktop**: Every changed file row in a review carries a path it can open
+
+## [0.91.3] - 2026-09-11
+
+### Added
+
+- **Desktop**: The board's filter bar stays pinned to the top of the page while the board scrolls, and the column headings pin underneath it
+- **Desktop**: A filter for whether a ticket has an agent on it, offered only on a board somebody is actually working
+- **Desktop**: A ticket page keeps its epic, its priority and the agent banner in the side column once the title has scrolled behind the pinned bar
+
+## [0.91.2] - 2026-09-11
+
+### Added
+
+- **Desktop**: The board names the active sprint on a chip beside the repository picker
+- **Desktop**: Each board column is read with a page budget of its own, so a long backlog can no longer empty the blocked and in-progress columns
+- **Desktop**: The blocked column has a budget of its own too, built from the statuses the project itself calls blocked
+- **Desktop**: A column whose read stopped at its budget shows `100+` rather than a count that reads as a total
+- **Desktop**: The search box reaches the whole sprint when a column is short, instead of only filtering the tickets already loaded
+
+### Changed
+
+- **Desktop**: A sprint column and a repository's open GitHub issues are read a hundred at a time rather than fifty
+
 ## [0.91.1] - 2026-09-11
 
 ### Added
@@ -2709,6 +3939,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.118.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.4
+[0.118.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.3
+[0.118.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.2
+[0.118.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.1
+[0.118.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.0
+[0.117.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.117.0
+[0.116.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.116.0
+[0.115.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.115.0
+[0.114.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.114.0
+[0.113.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.3
+[0.113.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.2
+[0.113.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.1
+[0.113.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.0
+[0.112.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.112.0
+[0.111.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.10
+[0.111.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.9
+[0.111.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.8
+[0.111.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.7
+[0.111.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.6
+[0.111.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.5
+[0.111.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.4
+[0.111.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.3
+[0.111.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.2
+[0.111.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.1
+[0.111.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.0
+[0.110.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.110.2
+[0.110.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.110.1
+[0.110.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.110.0
+[0.109.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.109.0
+[0.108.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.108.0
+[0.107.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.1
+[0.107.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.0
+[0.106.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.106.0
+[0.105.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.9
+[0.105.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.8
+[0.105.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.7
+[0.105.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.6
+[0.105.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.5
+[0.105.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.4
+[0.105.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.3
+[0.105.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.2
+[0.105.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.1
+[0.105.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.0
+[0.104.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.104.0
+[0.103.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.103.0
+[0.102.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.1
+[0.102.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.0
+[0.101.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.101.0
+[0.100.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.100.0
+[0.99.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.99.0
+[0.98.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.6
+[0.98.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.5
+[0.98.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.4
+[0.98.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.3
+[0.98.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.2
+[0.98.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.1
+[0.98.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.0
+[0.97.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.1
+[0.97.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.0
+[0.96.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.9
+[0.96.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.8
+[0.96.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.7
+[0.96.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.6
+[0.96.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.5
+[0.96.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.4
+[0.96.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.3
+[0.96.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.2
+[0.96.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.1
+[0.96.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.0
+[0.95.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.2
+[0.95.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.1
+[0.95.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.0
+[0.94.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.10
+[0.94.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.9
+[0.94.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.8
+[0.94.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.7
+[0.94.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.6
+[0.94.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.5
+[0.94.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.4
+[0.94.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.3
+[0.94.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.2
+[0.94.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.1
+[0.94.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.0
+[0.93.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.93.0
+[0.92.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.1
+[0.92.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.0
+[0.91.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.3
+[0.91.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.2
 [0.91.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.1
 [0.91.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.0
 [0.90.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.90.0

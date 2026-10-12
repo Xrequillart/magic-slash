@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeThemeMode, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SidebarPageId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId, WorkflowSettings } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -72,6 +72,18 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateRepositoryStartSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['start']>>) => {
+    const result = await window.electronAPI.config.updateRepositoryStartSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateRepositoryReviewSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['review']>>) => {
+    const result = await window.electronAPI.config.updateRepositoryReviewSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateRepositoryPullRequestSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) => {
     const result = await window.electronAPI.config.updateRepositoryPullRequestSettings(name, settings)
     setConfig(result.config)
@@ -104,12 +116,6 @@ export function useConfig() {
 
   const updateRepositoryWorktreeFilesSettings = useCallback(async (name: string, settings: string[]) => {
     const result = await window.electronAPI.config.updateRepositoryWorktreeFilesSettings(name, settings)
-    setConfig(result.config)
-    return result
-  }, [setConfig])
-
-  const updateSplitEnabled = useCallback(async (enabled: boolean) => {
-    const result = await window.electronAPI.config.updateSplitEnabled(enabled)
     setConfig(result.config)
     return result
   }, [setConfig])
@@ -153,6 +159,17 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Which repository the Plans list is narrowed to, as a `public.repositories` id.
+  // Recorded and nothing more, like the board's above: the list reads the choice straight
+  // back off the config, so it re-narrows as soon as this resolves — and on this
+  // account's other machines too, when the row reaches them over Realtime. An empty
+  // string clears the filter back to all repositories.
+  const updatePlansRepo = useCallback(async (repoId: string) => {
+    const result = await window.electronAPI.config.updatePlansRepo(repoId)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Repainting is the main process's job (it also owns the native chrome and
   // the other windows), so this only records the choice.
   const updateTheme = useCallback(async (theme: ThemeId) => {
@@ -169,11 +186,61 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  // Which appearance the file preview highlights code in. Recorded here and read
-  // back through `useCodeAppearance`, which is what the preview keys its cache on
-  // — so the drawer re-highlights the file already on screen.
-  const updateCodeTheme = useCallback(async (mode: CodeThemeMode) => {
-    const result = await window.electronAPI.config.setCodeTheme(mode)
+  // Which palette family code is highlighted in. Recorded here and read back through
+  // `useCodeAppearance`, which is what the preview keys its cache on — so the drawer
+  // re-highlights the file already on screen.
+  const updateCodeSyntax = useCallback(async (choice: CodeSyntaxChoice) => {
+    const result = await window.electronAPI.config.setCodeSyntax(choice)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // The model a new agent is launched on; null goes back to the CLI's own default.
+  const updateDefaultModel = useCallback(async (model: string | null) => {
+    const result = await window.electronAPI.config.setDefaultModel(model)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateQuickLaunch = useCallback(async (patch: { repo?: string; background?: boolean; launchMode?: LaunchMode | null }) => {
+    const result = await window.electronAPI.config.setQuickLaunch(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateQuickSettings = useCallback(async (patch: { enabled?: boolean; items?: QuickSettingId[] }) => {
+    const result = await window.electronAPI.config.setQuickSettings(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateSidebarPages = useCallback(async (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; shown?: SidebarPageId[]; compact?: boolean }) => {
+    const result = await window.electronAPI.config.setSidebarPages(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateSplitNewAgentPane = useCallback(async (pane: SplitNewAgentPane) => {
+    const result = await window.electronAPI.config.setSplitNewAgentPane(pane)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateConfirmAgentArchive = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setConfirmAgentArchive(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateWorkflowSettings = useCallback(async (patch: WorkflowSettings) => {
+    const result = await window.electronAPI.config.setWorkflowSettings(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // The size code is set in; CodeView reads it straight off the config.
+  const updateCodeFontSize = useCallback(async (size: number) => {
+    const result = await window.electronAPI.config.setCodeFontSize(size)
     setConfig(result.config)
     return result
   }, [setConfig])
@@ -260,21 +327,31 @@ export function useConfig() {
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
+    updateRepositoryReviewSettings,
+    updateRepositoryStartSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryJiraSettings,
     updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
-    updateSplitEnabled,
     updateSpotlight,
     updateLaunchMode,
     updateDefaultAgentType,
     updateAgentSort,
     updateTasksRepo,
+    updatePlansRepo,
     updateTheme,
     updateSyncClaudeTheme,
-    updateCodeTheme,
+    updateCodeSyntax,
+    updateCodeFontSize,
+    updateDefaultModel,
+    updateConfirmAgentArchive,
+    updateWorkflowSettings,
+    updateSplitNewAgentPane,
+    updateQuickLaunch,
+    updateQuickSettings,
+    updateSidebarPages,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

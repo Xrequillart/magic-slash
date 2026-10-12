@@ -8,8 +8,8 @@ import {
   PAGE_CHROME,
   VERSIONS_PER_PAGE,
 } from './changelogPage'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 
 /**
  * Runs in the ROOT vitest suite on the root `node_modules`, which is the reason
@@ -37,13 +37,13 @@ describe('the changelog page chrome', () => {
     // key, so this could rest on that — but the failure it would produce over there is
     // "fr is missing site.changelog.lead", which does not say who wanted it. Here it does.
     for (const key of Object.values(PAGE_CHROME)) {
-      expect(marketingEn[key], `en.${key}`).toBeTruthy()
-      expect((marketingFr as Record<string, string>)[key], `fr.${key}`).toBeTruthy()
+      expect(showcaseEn[key], `en.${key}`).toBeTruthy()
+      expect((showcaseFr as Record<string, string>)[key], `fr.${key}`).toBeTruthy()
     }
 
     for (const { label } of Object.values(CATEGORIES)) {
-      expect(marketingEn[label], `en.${label}`).toBeTruthy()
-      expect((marketingFr as Record<string, string>)[label], `fr.${label}`).toBeTruthy()
+      expect(showcaseEn[label], `en.${label}`).toBeTruthy()
+      expect((showcaseFr as Record<string, string>)[label], `fr.${label}`).toBeTruthy()
     }
   })
 
@@ -55,7 +55,7 @@ describe('the changelog page chrome', () => {
      * regex rather than a value it exports.
      *
      * So the regex is matched as text. That is the same technique
-     * `homepageStylesheet.test.ts` and `marketingCss.test.ts` use, and it is here for
+     * `homepageStylesheet.test.ts` and `showcaseCss.test.ts` use, and it is here for
      * the reason those two exist: a fourth heading added to the parser — `Removed`,
      * `Deprecated`, the two Keep-a-Changelog sections this project does not write yet —
      * would render on the page under a raw English label and a neutral dot, which is a
@@ -77,7 +77,7 @@ describe('the changelog page chrome', () => {
     /**
      * TWO FILES THIS SUITE CANNOT IMPORT — `tailwind.config.ts` pulls in the Tailwind
      * types and `ChangelogContent.tsx` is a `'use client'` React module — so both are
-     * read as text. Same technique `homepageStylesheet.test.ts` and `marketingCss.test.ts`
+     * read as text. Same technique `homepageStylesheet.test.ts` and `showcaseCss.test.ts`
      * use, and here it closes the loop a `Record` cannot: `CATEGORIES` names a HUE, the
      * component maps it to a class, and the palette is what makes that class exist.
      * A hue with no colour token emits no class at all — Tailwind never sees it — and
