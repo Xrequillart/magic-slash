@@ -32,6 +32,9 @@ private struct RootView: View {
   @State private var auth: AuthModel
   @State private var agents: AgentStore?
   @State private var wentToBackground = false
+  /// The last queued store transition. Each one waits for the previous, so a sign-out still
+  /// stopping the old account's stores can never stop the ones a newer sign-in started.
+  @State private var lastTransition: Task<Void, Never>?
 
   init(client: SupabaseClient, theme: ThemeStore) {
     self.theme = theme
@@ -42,7 +45,7 @@ private struct RootView: View {
     content
       .task { await auth.start() }
       .onChange(of: auth.state) { _, state in
-        Task { await apply(state) }
+        enqueue { await apply(state) }
       }
       .onChange(of: scenePhase) { _, phase in
         switch phase {
@@ -50,7 +53,7 @@ private struct RootView: View {
           wentToBackground = true
         case .active where wentToBackground:
           wentToBackground = false
-          Task {
+          enqueue {
             async let agentsResumed: Void? = agents?.start()
             async let themeResumed: Void = theme.resume()
             _ = await (agentsResumed, themeResumed)
@@ -78,6 +81,14 @@ private struct RootView: View {
       } else {
         LoadingScreen()
       }
+    }
+  }
+
+  private func enqueue(_ work: @escaping @MainActor () async -> Void) {
+    let previous = lastTransition
+    lastTransition = Task {
+      await previous?.value
+      await work()
     }
   }
 

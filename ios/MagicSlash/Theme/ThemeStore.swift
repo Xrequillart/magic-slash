@@ -18,6 +18,9 @@ final class ThemeStore {
   @ObservationIgnored private var userId: UUID?
   @ObservationIgnored private var channel: RealtimeChannelV2?
   @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+  /// Bumped by every Realtime change, so a read that started before one is not applied
+  /// over it.
+  @ObservationIgnored private var liveRevision = 0
 
   private static let cacheKey = "lastThemeID"
 
@@ -48,6 +51,7 @@ final class ThemeStore {
 
   private func refresh() async {
     guard let client, let userId else { return }
+    let revision = liveRevision
     do {
       let rows: [JSONObject] = try await client
         .from("user_settings")
@@ -56,6 +60,7 @@ final class ThemeStore {
         .limit(1)
         .execute()
         .value
+      guard revision == liveRevision else { return }
       // No row yet means the user never changed anything: the desktop default applies.
       apply(raw: rows.first?["theme"]?.stringValue)
     } catch {
@@ -75,8 +80,8 @@ final class ThemeStore {
       Task { [weak self] in
         for await change in changes {
           switch change {
-          case .insert(let action): self?.apply(raw: action.record["theme"]?.stringValue)
-          case .update(let action): self?.apply(raw: action.record["theme"]?.stringValue)
+          case .insert(let action): self?.applyLive(raw: action.record["theme"]?.stringValue)
+          case .update(let action): self?.applyLive(raw: action.record["theme"]?.stringValue)
           default: break
           }
         }
@@ -93,6 +98,11 @@ final class ThemeStore {
       await client.removeChannel(channel)
     }
     channel = nil
+  }
+
+  private func applyLive(raw: String?) {
+    liveRevision += 1
+    apply(raw: raw)
   }
 
   private func apply(raw: String?) {

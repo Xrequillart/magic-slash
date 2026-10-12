@@ -34,6 +34,32 @@ final class PlanStore {
     self.client = client
   }
 
+  /// Loads the plan, then reloads it whenever its row changes, until the calling task is
+  /// cancelled (the screen goes away, or the agent's link to its plan changes).
+  func watch(_ agent: Agent) async {
+    await load(for: agent)
+    guard !Task.isCancelled, let planId = currentPlanId else { return }
+
+    let channel = client.channel("ios-plan-\(planId)")
+    let changes = channel.postgresChange(
+      UpdateAction.self,
+      table: "plan_sessions",
+      filter: RealtimePostgresFilter.eq("id", value: planId)
+    )
+    try? await channel.subscribeWithError()
+    for await _ in changes {
+      await load(for: agent)
+    }
+    await client.removeChannel(channel)
+  }
+
+  private var currentPlanId: String? {
+    switch state {
+    case .loaded(let plan), .oversize(let plan): plan.id
+    case .loading, .none, .unavailable: nil
+    }
+  }
+
   func load(for agent: Agent) async {
     // A coder with no linked plan has no spec to look up.
     guard agent.planId != nil || agent.type == .planner else {

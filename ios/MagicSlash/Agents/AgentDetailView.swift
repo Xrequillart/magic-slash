@@ -28,9 +28,13 @@ struct AgentDetailView: View {
 
 private struct AgentDetailContent: View {
   @Environment(\.theme) private var theme
+  @Environment(\.scenePhase) private var scenePhase
 
   let agent: Agent
   @State private var plans: PlanStore
+  /// Bumped on each return to the foreground: the plan channel may have died while
+  /// suspended, so the watch restarts, reading the spec again and resubscribing.
+  @State private var foregroundCount = 0
 
   init(agent: Agent, client: SupabaseClient) {
     self.agent = agent
@@ -49,9 +53,12 @@ private struct AgentDetailContent: View {
       .padding(16)
     }
     .navigationTitle(agent.title)
-    // Re-read when the link to the plan changes, not on every status tick.
-    .task(id: "\(agent.planId ?? "")|\(agent.type.rawValue)") {
-      await plans.load(for: agent)
+    // Re-watched when the link to the plan changes, not on every status tick.
+    .task(id: "\(agent.planId ?? "")|\(agent.type.rawValue)|\(foregroundCount)") {
+      await plans.watch(agent)
+    }
+    .onChange(of: scenePhase) { old, phase in
+      if old == .background, phase != .background { foregroundCount += 1 }
     }
     .refreshable { await plans.load(for: agent) }
   }

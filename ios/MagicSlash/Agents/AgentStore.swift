@@ -24,6 +24,11 @@ final class AgentStore {
   @ObservationIgnored private let userId: String
   @ObservationIgnored private var channel: RealtimeChannelV2?
   @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+  /// Realtime changes received while a read is in flight, keyed by agent id (nil = gone).
+  /// The read's snapshot can predate them, so they are replayed on top of it.
+  @ObservationIgnored private var changesDuringRead: [String: Agent?]?
+  /// Bumped by every read, so a read overtaken by a newer one is dropped.
+  @ObservationIgnored private var readGeneration = 0
 
   private static let columns = "id, owner_id, name, ticket_id, description, branch_name, base_branch, status, type, repositories, metadata, updated_at, archived_at"
 
@@ -51,6 +56,9 @@ final class AgentStore {
   }
 
   func refresh() async {
+    readGeneration += 1
+    let generation = readGeneration
+    if changesDuringRead == nil { changesDuringRead = [:] }
     do {
       let rows: [AnyJSON] = try await client
         .from("agents")
@@ -59,11 +67,17 @@ final class AgentStore {
         .is("archived_at", value: nil)
         .execute()
         .value
+      guard generation == readGeneration else { return }
       // One unreadable row is dropped, never the whole list.
       let parsed = rows.compactMap { $0.objectValue.flatMap(Agent.init(row:)) }
-      agents = Self.sorted(parsed.filter(isVisible))
+      var byId = Dictionary(parsed.filter(isVisible).map { ($0.id, $0) }) { _, last in last }
+      for (id, change) in changesDuringRead ?? [:] { byId[id] = change }
+      changesDuringRead = nil
+      agents = Self.sorted(Array(byId.values))
       loadState = .loaded
     } catch {
+      guard generation == readGeneration else { return }
+      changesDuringRead = nil
       // A failed refresh keeps what is on screen; only an empty first load is an error.
       if agents.isEmpty, loadState != .loaded {
         loadState = .failed("Could not load your agents. Pull to try again.")
@@ -82,8 +96,8 @@ final class AgentStore {
     let mine = RealtimePostgresFilter.eq("owner_id", value: userId)
     let inserts = channel.postgresChange(InsertAction.self, table: "agents", filter: mine)
     let updates = channel.postgresChange(UpdateAction.self, table: "agents", filter: mine)
-    // No filter on DELETE: the old row carries no reliable owner to match on, and
-    // removing an id we do not hold is a no-op.
+    // No filter on DELETE: Realtime does not apply filters to deletes, and removing an id
+    // we do not hold is a no-op.
     let deletes = channel.postgresChange(DeleteAction.self, table: "agents")
 
     tasks = [
@@ -120,6 +134,7 @@ final class AgentStore {
       remove(id: agent.id)
       return
     }
+    changesDuringRead?[agent.id] = .some(agent)
     var next = agents.filter { $0.id != agent.id }
     next.append(agent)
     agents = Self.sorted(next)
@@ -127,6 +142,7 @@ final class AgentStore {
   }
 
   private func remove(id: String) {
+    changesDuringRead?[id] = .some(nil)
     agents.removeAll { $0.id == id }
   }
 
