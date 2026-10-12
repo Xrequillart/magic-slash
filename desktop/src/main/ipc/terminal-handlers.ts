@@ -114,6 +114,12 @@ function launchMetadataFrom(value: unknown): LaunchMetadata {
 let getMainWindow: () => BrowserWindow | null
 let showNotification: (title: string, body: string) => void
 let onAgentChange: (() => void) | null = null
+/**
+ * Every runtime state change of an agent, whatever caused it: a hook, but also the PTY
+ * exiting or failing, which no hook reports. The remote relay (#352) owes the phones such a
+ * change within 2 s, and the tray's 3 s poll is too slow to be what tells it.
+ */
+let onAgentStateChange: (() => void) | null = null
 
 // Track last notification time per terminal to avoid spam
 const lastNotificationTime = new Map<string, number>()
@@ -322,6 +328,7 @@ function createTerminalCallbacks(id: string, name: string) {
     onData: base.onData,
     onStateChange: (state: string, previousState: string) => {
       base.onStateChange(state, previousState)
+      onAgentStateChange?.()
 
       const t = getTerminal(id)
       const displayName = t?.metadata?.title || name
@@ -519,10 +526,12 @@ export function setupTerminalHandlers(
   mainWindowGetter: () => BrowserWindow | null,
   notificationCallback: (title: string, body: string) => void,
   agentChangeCallback?: () => void,
+  agentStateCallback?: () => void,
 ) {
   getMainWindow = mainWindowGetter
   showNotification = notificationCallback
   onAgentChange = agentChangeCallback || null
+  onAgentStateChange = agentStateCallback || null
 
   // Create a new terminal
   ipcMain.handle('terminal:create', async (_event, { id, name, cwd }) => {

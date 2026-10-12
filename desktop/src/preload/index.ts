@@ -4,7 +4,7 @@ import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
 import type { WorkflowOverlay } from '../workflow/overlay'
 import type { ChatSendKey, ChatToolDetail, ChatDiffDisplay, ChatTimestamps } from '../types'
-import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
+import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, RemotePairing, RemoteState, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -1210,6 +1210,33 @@ const zoomApi = {
   },
 }
 
+// Remote access (#352): the iPhone companion's end-to-end encrypted relay. Everything that
+// touches a key, a token or the channel stays in the main process (main/remote/); the
+// settings page only flips remote mode, drives a pairing and revokes devices. `onState`
+// follows the relay's health and the device list, `onPairing` the pairing on screen (`null`
+// once it is closed). Remote mode is Mac-local and off by default.
+const remoteApi = {
+  getState: (): Promise<RemoteState> => ipcRenderer.invoke('remote:getState'),
+  setEnabled: (enabled: boolean): Promise<RemoteState> => ipcRenderer.invoke('remote:setEnabled', enabled),
+  // Null when remote mode is off, the relay is not live, or this Mac's identity cannot be
+  // stored (no keychain).
+  startPairing: (): Promise<RemotePairing | null> => ipcRenderer.invoke('remote:startPairing'),
+  cancelPairing: (): Promise<void> => ipcRenderer.invoke('remote:cancelPairing'),
+  approvePairing: (): Promise<void> => ipcRenderer.invoke('remote:approvePairing'),
+  declinePairing: (): Promise<void> => ipcRenderer.invoke('remote:declinePairing'),
+  revokeDevice: (phoneId: string): Promise<RemoteState> => ipcRenderer.invoke('remote:revokeDevice', phoneId),
+  onState: (callback: (state: RemoteState) => void) => {
+    const listener = (_event: IpcRendererEvent, state: RemoteState) => callback(state)
+    ipcRenderer.on('remote:state', listener)
+    return () => ipcRenderer.removeListener('remote:state', listener)
+  },
+  onPairing: (callback: (pairing: RemotePairing | null) => void) => {
+    const listener = (_event: IpcRendererEvent, pairing: RemotePairing | null) => callback(pairing)
+    ipcRenderer.on('remote:pairing', listener)
+    return () => ipcRenderer.removeListener('remote:pairing', listener)
+  },
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   repo: repoApi,
@@ -1234,6 +1261,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   plans: plansApi,
   tasks: tasksApi,
   connectivity: connectivityApi,
+  remote: remoteApi,
   theme: themeApi,
   zoom: zoomApi,
   language: languageApi,
@@ -1266,6 +1294,7 @@ declare global {
       plans: typeof plansApi
       tasks: typeof tasksApi
       connectivity: typeof connectivityApi
+      remote: typeof remoteApi
       theme: typeof themeApi
       zoom: typeof zoomApi
       language: typeof languageApi
