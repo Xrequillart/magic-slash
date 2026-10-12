@@ -1,0 +1,23 @@
+{
+  "comment": "Generated once from desktop/src/main/remote/crypto.ts. Replayed by crypto.test.ts and by ios/relay/main.swift. Test keys only.",
+  "macId": "b3c6a1f0-2d4e-4f8a-9c1b-7e5d3a2f1c0e",
+  "phoneId": "5f9e8d7c-6b5a-4c3d-8e2f-1a0b9c8d7e6f",
+  "macPrivate": "7c04417e12922653763d2fea069473bd908642357dc331a0dfecf5c6321f18bc",
+  "macPublic": "0432d1dc5f74d2cf9c6e99bdf25464fbed7e572e1c48ced00b4bf44454e82b7c707ebb591109706f48cb520b1f31bd8752ea475d9c0d2b55465cbb3fa8e758af02",
+  "phonePrivate": "3573fc78d02a791faa6e3da8e759b82179f3e604330efb1ac565a9cacb551378",
+  "phonePublic": "04696f9ef532f43dbcaa2636bcad45b0d94d9a522642558ee930ec97ba02fd68c463793f46fffa8e4fc6532e2d25b1696a08a01378d25b6fd94b1e696d8d6a3d53",
+  "key": "5d0cc7872b1d2663de2f6dea1f7c1623778f0e80c1bb5c75f945d9a085ed257c",
+  "header": {
+    "type": "state",
+    "from": "b3c6a1f0-2d4e-4f8a-9c1b-7e5d3a2f1c0e",
+    "to": "5f9e8d7c-6b5a-4c3d-8e2f-1a0b9c8d7e6f",
+    "epoch": "0e1d2c3b-4a59-4687-9a5b-c4d3e2f1a0b9",
+    "seq": 42
+  },
+  "aad": "v1|state|b3c6a1f0-2d4e-4f8a-9c1b-7e5d3a2f1c0e|5f9e8d7c-6b5a-4c3d-8e2f-1a0b9c8d7e6f|0e1d2c3b-4a59-4687-9a5b-c4d3e2f1a0b9|42",
+  "plaintext": "{\"sentAt\":1760000000000,\"macName\":\"MacBook Pro\",\"agents\":[{\"appAgentId\":\"claude-1760000000000\",\"title\":\"Café ☕\",\"state\":\"working\",\"usage\":null}]}",
+  "nonce": "000102030405060708090a0b",
+  "box": "AAECAwQFBgcICQoLlMfCWVex2lXrb5KmVTXICcbnrvyaZ+kw+/1/o3IKuOQCw9wJUeFELVHsod5liJO9Tx8uPtWDrEoqB4BrteZQob6KGCUO3TNkVAk2DFRc817vkcp3+jcbIXWwRm6XtB2GV9dRbrkNcdIr+kp3FOwVMwG5eMqzO0w0YnWFc9S0BCvE6q9ZFuIyhl9F5a0HACcGdwl7KhEd9eKGbzv5oZY6kmxxfHQ=",
+  "token": "paWlpaWlpaWlpaWlpaWlpVpaWlpaWlpaWlpaWlpaWlo",
+  "pairingCode": "7004"
+}

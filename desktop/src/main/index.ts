@@ -50,8 +50,10 @@ import { setupJiraHandlers } from './ipc/jira-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
 import { setupPlansHandlers } from './ipc/plans-handlers'
 import { setupTasksHandlers } from './ipc/tasks-handlers'
+import { setupRemoteHandlers } from './ipc/remote-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { closePlanLive } from './cloud/plan-live'
+import { notifyRemoteState, notifyRemoteUsage, stopRemoteRelay } from './remote/relay'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 import { setupReengagementNotifications } from './notifications/reengagement'
@@ -329,6 +331,9 @@ function setupHandlers() {
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.
   setupTasksHandlers()
+  // Remote access (#352): the settings page's switch, pairing and devices. The relay itself
+  // is joined by the connectivity gate on 'ok', only while remote mode is on.
+  setupRemoteHandlers(() => mainWindow)
   setupConnectivityHandlers(() => mainWindow)
   // Notification callback - only show when window is not focused.
   //
@@ -356,6 +361,8 @@ function setupHandlers() {
     notificationCallback,
     // Agent change callback - update tray state
     () => { if (aggregator) aggregator.update() },
+    // Any runtime state change, a PTY exit included: the paired phones hear it at once.
+    () => notifyRemoteState(),
   )
 
   // Initialize PR review watcher and its IPC handlers
@@ -682,6 +689,9 @@ app.whenReady().then(async () => {
   trayManager = new TrayManager(aggregator)
   trayManager.init()
   aggregator.startPolling()
+  // An agent created, closed or renamed changes the phones' list too. Coalesced with any
+  // state change of the same tick, and a no-op while the relay is not live.
+  aggregator.on('change', () => notifyRemoteState())
 
   // Apply auto-start setting from config (only if it differs to avoid macOS notification spam)
   const config = readConfig()
@@ -746,6 +756,7 @@ async function initializeHooksAndSessions() {
       if (aggregator) {
         aggregator.update()
       }
+      // The paired phones hear it through the terminal's own onStateChange (terminal-handlers).
     })
 
     // One path for every metadata write, whoever makes it: a skill through the hook, or
@@ -788,6 +799,8 @@ async function initializeHooksAndSessions() {
           metadata: { usage }
         })
       }
+      // Throttled to one snapshot every 2 s by the relay: the status line fires far more often.
+      notifyRemoteUsage()
     })
 
     setChatListener((terminalId, chat) => {
@@ -1080,6 +1093,8 @@ app.on('before-quit', async (event) => {
   // And the open plan's: leaving it untracks the reader, so colleagues see them go now
   // rather than when the server notices the socket is dead.
   void closePlanLive()
+  // And the relay: our presence leaves now, and the power blocker is let go.
+  void stopRemoteRelay()
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

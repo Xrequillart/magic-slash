@@ -4214,3 +4214,56 @@ export interface UserProfile {
 // They are now catalogue keys in i18n/profileLabels.ts — this module cannot hold
 // them, because it is what i18n/ imports (LanguageId, LANGUAGE_LOCALE), and
 // reaching back for MessageKey would close the cycle.
+
+// ---------------------------------------------------------------------------
+// Remote access: the iPhone companion's relay (#352, main/remote/PROTOCOL.md)
+// ---------------------------------------------------------------------------
+
+/** A paired iPhone, as the settings page lists it. Its key never leaves the main process. */
+export interface RemoteDevice {
+  phoneId: string
+  name: string
+  /** Epoch ms. */
+  pairedAt: number
+}
+
+/**
+ * Where the relay stands. `off`: remote mode is off, nothing is joined or published.
+ * `signed-out`: remote mode is on but there is no cloud session to join with.
+ */
+export type RemoteRelayStatus = 'off' | 'signed-out' | 'reconnecting' | 'live'
+
+export interface RemoteState {
+  /** Remote mode. Mac-local, off by default, never written to the cloud. */
+  enabled: boolean
+  status: RemoteRelayStatus
+  /** The paired devices of the signed-in account. Empty when signed out. */
+  devices: RemoteDevice[]
+  /** The name this Mac announces to its phones (os.hostname, cleaned). */
+  macName: string
+}
+
+/**
+ * One pairing in progress, driven by the main process:
+ * - `waiting`: the QR is up; `qr` and `expiresAt` change every 60 s (a fresh token each time).
+ * - `confirm`: a phone scanned it; `code` and `deviceName` await the user's decision.
+ * - `paired`: approved; the device is in `RemoteState.devices`.
+ * - `rejected`: the token expired, was already used, or the user declined.
+ */
+export interface RemotePairing {
+  phase: 'waiting' | 'confirm' | 'paired' | 'rejected'
+  /** The QR's text (PROTOCOL.md §7), present in `waiting`. */
+  qr?: string
+  /** Epoch ms at which `qr` stops being accepted. */
+  expiresAt?: number
+  /** The 4-digit code, present in `confirm`. */
+  code?: string
+  deviceName?: string
+  reason?: 'expired' | 'used' | 'declined'
+  /**
+   * The `startPairing` call this pairing belongs to: a fresh id per call, on every pairing it
+   * emits. `cancelPairing(attemptId)` closes that attempt only, so a late cleanup for an older
+   * call cannot close a newer one.
+   */
+  attemptId?: string
+}

@@ -2,7 +2,8 @@
 
 A read-only companion to the desktop app: sign in with your Magic Slash account and
 follow your agents (workflow status, ticket, branches, pull requests, spec) live from
-your iPhone. It never acts on an agent.
+your iPhone. Paired with a Mac, it also shows each agent's live runtime state and usage.
+It never acts on an agent, and sends no command to the Mac.
 
 SwiftUI, iOS 17+, iPhone only. The only dependency is
 [supabase-swift](https://github.com/supabase/supabase-swift), pulled by Swift Package
@@ -21,8 +22,10 @@ ios/
 │   ├── Auth/                      #   Email + password sign-in, TOTP second factor
 │   ├── Agents/                    #   Agent model, store (Realtime), list and detail screens
 │   ├── Plans/                     #   Spec lookup in plan_sessions
+│   ├── Remote/                    #   Mac pairing and the end-to-end encrypted relay
 │   ├── Supabase/                  #   Client built from the Info.plist values
 │   └── Theme/                     #   Desktop theme tokens (generated) and the theme store
+├── relay/                         # Check of RelayCrypto.swift against the Node vectors
 └── theme/                         # Generator for Theme/ThemeTokens.generated.swift
 ```
 
@@ -78,6 +81,38 @@ root:
 npm run ios:theme
 ```
 
+## Live state from a Mac
+
+The runtime state of an agent (working, waiting for input, completed…) and its usage (cost,
+context, model, 5-hour and 7-day limits) never reach the database. A Mac with remote
+access on sends them, end-to-end encrypted, over a private Supabase Realtime channel
+(`relay:<userId>`) that Supabase only relays. The contract is
+[`desktop/src/main/remote/PROTOCOL.md`](../desktop/src/main/remote/PROTOCOL.md).
+
+- **Pairing.** On the Mac, open Settings > Remote access, turn it on, and click
+  **Pair**. On the iPhone, open the account menu, **Pair a Mac**, and scan the code.
+  Both screens then show the same 4-digit code: approve on the Mac. The iPhone saves the Mac only once the Mac accepts.
+  **Paired Macs** in the same menu lists them; **Forget** is local to the iPhone (revoke
+  the iPhone on the Mac to stop it sending).
+- **Keys and Face ID.** The iPhone's key is a Secure Enclave P-256 key that needs Face ID
+  and dies if a new face is enrolled (the app then asks to pair again). One Face ID prompt
+  per return to the foreground unlocks it; the derived keys stay in memory only and are
+  dropped in the background. The phone id, the wrapped key and the paired Macs are in the
+  Keychain, this device only.
+- **Offline Mac.** A Mac is online while its presence is on the channel and its last
+  snapshot is under 75 s old. Otherwise the list says so, and the last snapshot (cached on
+  the device) is shown dimmed as the last known state.
+- **Simulator.** It has no Secure Enclave and no camera: DEBUG Simulator builds use a
+  software key instead, and offer a field to paste the QR's text. Neither exists in any
+  other build.
+
+After touching `Remote/RelayCrypto.swift` or the desktop's `crypto.ts`, replay the shared
+test vectors from the repo root (macOS):
+
+```bash
+npm run ios:relay-check
+```
+
 ## TestFlight (internal testers)
 
 1. Make sure `DEVELOPMENT_TEAM` is set in `Secrets.xcconfig` and that the bundle id
@@ -92,5 +127,7 @@ npm run ios:theme
    **TestFlight > Internal Testing**, add the build to the internal group, and testers
    get it in the TestFlight app.
 
-The app declares `ITSAppUsesNonExemptEncryption = NO` (it only uses HTTPS), so no export
-compliance question blocks the build.
+The app declares `ITSAppUsesNonExemptEncryption = NO`, so no export compliance question
+blocks the build. That stays true with the relay: besides HTTPS, the app only uses Apple's
+standard CryptoKit primitives (P-256 ECDH, HKDF, AES-GCM) to protect the user's own data,
+which is exempt.

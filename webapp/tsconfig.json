@@ -24,7 +24,8 @@
       "lucide-react": ["./node_modules/lucide-react"],
       "@xyflow/react": ["./node_modules/@xyflow/react"],
       "react-markdown": ["./node_modules/react-markdown"],
-      "remark-gfm": ["./node_modules/remark-gfm"]
+      "remark-gfm": ["./node_modules/remark-gfm"],
+      "qrcode": ["./node_modules/@types/qrcode"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../design-system/desktop/**/*.ts", "../design-system/desktop/**/*.tsx", "../design-system/webapp/**/*.ts", "../design-system/webapp/**/*.tsx"],

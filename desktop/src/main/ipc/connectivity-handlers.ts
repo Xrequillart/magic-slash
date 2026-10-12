@@ -28,6 +28,7 @@ import {
   stopUserSyncRealtime,
 } from '../cloud/settings-realtime'
 import { resumePlanLive, setPlanLiveEmitters, suspendPlanLive } from '../cloud/plan-live'
+import { resumeRemoteRelay, suspendRemoteRelay } from '../remote/relay'
 
 let restoredOnce = false
 
@@ -184,6 +185,12 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
         void resumePlanLive().catch((error) =>
           console.error('[connectivity] failed to resume plan realtime:', error),
         )
+        // The relay to paired phones (#352): joined only while remote mode is on, which it
+        // checks itself. Also the place an account switch is noticed: a different session
+        // user leaves the previous account's channel and identity before anything is joined.
+        void resumeRemoteRelay().catch((error) =>
+          console.error('[connectivity] failed to resume the remote relay:', error),
+        )
       } catch (error) {
         console.error('[connectivity] hydration failed:', error)
       }
@@ -197,6 +204,10 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
       // gate, and the plan it holds is joined again on the next 'ok'. The page's own
       // unmount is what closes it for good.
       void suspendPlanLive()
+      // The relay leaves its channel and forgets the account's identity and phones from
+      // memory: the next account must not seal for this one's devices. Remote mode stays as
+      // it was, and the next 'ok' joins again for whoever signed in.
+      void suspendRemoteRelay()
     }
 
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)

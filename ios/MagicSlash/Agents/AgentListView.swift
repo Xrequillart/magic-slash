@@ -4,17 +4,31 @@ struct AgentListView: View {
   @Environment(\.theme) private var theme
 
   let store: AgentStore
+  let relay: RelayStore
   let onSignOut: () -> Void
+
+  private enum Sheet: String, Identifiable {
+    case pair, macs
+    var id: String { rawValue }
+  }
+
+  @State private var sheet: Sheet?
 
   var body: some View {
     NavigationStack {
       content
+        .safeAreaInset(edge: .top, spacing: 0) {
+          MacPresenceBanner(relay: relay) { sheet = .pair }
+        }
         .background(theme.bg.ignoresSafeArea())
         .navigationTitle("Agents")
         .toolbarBackground(theme.bg, for: .navigationBar)
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
             Menu {
+              Button("Pair a Mac", systemImage: "qrcode.viewfinder") { sheet = .pair }
+              Button("Paired Macs", systemImage: "laptopcomputer") { sheet = .macs }
+              Divider()
               Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive, action: onSignOut)
             } label: {
               Image(systemName: "person.crop.circle")
@@ -24,7 +38,15 @@ struct AgentListView: View {
           }
         }
         .navigationDestination(for: String.self) { id in
-          AgentDetailView(store: store, agentId: id)
+          AgentDetailView(store: store, relay: relay, agentId: id)
+        }
+        .sheet(item: $sheet) { sheet in
+          switch sheet {
+          case .pair:
+            PairingView(relay: relay)
+          case .macs:
+            PairedMacsView(relay: relay) { self.sheet = .pair }
+          }
         }
     }
   }
@@ -61,7 +83,7 @@ struct AgentListView: View {
   private var list: some View {
     List(store.agents) { agent in
       NavigationLink(value: agent.id) {
-        AgentRow(agent: agent)
+        AgentRow(agent: agent, runtime: relay.runtime(for: agent.appAgentId))
       }
       .listRowBackground(theme.bg)
       .listRowSeparatorTint(theme.lineSubtle)
@@ -75,6 +97,7 @@ struct AgentListView: View {
 private struct AgentRow: View {
   @Environment(\.theme) private var theme
   let agent: Agent
+  let runtime: AgentRuntime?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -86,6 +109,9 @@ private struct AgentRow: View {
       HStack(spacing: 6) {
         TypeBadge(type: agent.type)
         StatusPill(status: agent.status)
+        if let runtime {
+          RuntimePill(runtime: runtime)
+        }
         Spacer(minLength: 4)
         if let ticket = agent.ticketId {
           Text(ticket)

@@ -239,6 +239,15 @@ export type {
   OrganizationCardMember,
   OrganizationCardProps,
 } from './OrganizationCard'
+export { PairingDialog } from './PairingDialog'
+export type {
+  PairingDialogLabels,
+  PairingDialogPhase,
+  PairingDialogProps,
+  PairingDialogRejection,
+} from './PairingDialog'
+export { QrCode } from './QrCode'
+export type { QrCodeProps } from './QrCode'
 export { PageModal } from './PageModal'
 export type { PageModalProps } from './PageModal'
 export {

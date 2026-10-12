@@ -42,6 +42,8 @@ const nextConfig = {
       // And the chat view's Markdown (`ChatMarkdown`), same terms again.
       'react-markdown': path.resolve(process.cwd(), 'node_modules/react-markdown'),
       'remark-gfm': path.resolve(process.cwd(), 'node_modules/remark-gfm'),
+      // And `qrcode`, for the desktop's pairing QR (`QrCode`), same terms again.
+      'qrcode': path.resolve(process.cwd(), 'node_modules/qrcode'),
     }
     return config
   },

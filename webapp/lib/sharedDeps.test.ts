@@ -30,7 +30,7 @@ const read = (...parts: string[]) =>
   }
 
 /** Every package the webapp resolves on the design system's behalf. */
-const ALIASED = ['@xyflow/react', 'lucide-react', 'react-markdown', 'remark-gfm']
+const ALIASED = ['@xyflow/react', 'lucide-react', 'qrcode', 'react-markdown', 'remark-gfm']
 
 describe('the dependencies the webapp resolves for the design system', () => {
   const ds = read('design-system', 'package.json').dependencies ?? {}
@@ -59,7 +59,9 @@ describe('the dependencies the webapp resolves for the design system', () => {
     }).compilerOptions.paths
     for (const name of ALIASED) {
       expect(nextConfig, `${name} in next.config.mjs`).toContain(`'${name}': path.resolve(`)
-      expect(paths[name], `${name} in tsconfig.json`).toEqual([`./node_modules/${name}`])
+      // A package that ships no types (`qrcode`) is mapped to its `@types` package instead:
+      // TypeScript does not look for `@types` behind a path mapping.
+      expect([[`./node_modules/${name}`], [`./node_modules/@types/${name}`]], `${name} in tsconfig.json`).toContainEqual(paths[name])
     }
   })
 })

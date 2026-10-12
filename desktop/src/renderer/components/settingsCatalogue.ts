@@ -110,6 +110,12 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
   { tab: 'security', labelKey: 'security.others' },
   { tab: 'security', labelKey: 'security.revokeAll', helpKey: 'security.revokeAllHint' },
 
+  // ── Remote access ──
+  { tab: 'remote', labelKey: 'remote.mode.label', helpKey: 'remote.mode.help' },
+  { tab: 'remote', labelKey: 'remote.status.label' },
+  { tab: 'remote', labelKey: 'remote.pair.label', helpKey: 'remote.pair.help' },
+  { tab: 'remote', labelKey: 'remote.devices' },
+
   // ── Appearance ──
   {
     tab: 'appearance',
