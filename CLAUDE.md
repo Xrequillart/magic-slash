@@ -27,6 +27,10 @@ magic-slash/
 │   ├── app/           #   Routes: (showcase) at the apex, dashboard, admin, invite
 │   ├── middleware.ts  #   One host per front door — rules in lib/hostRouting.ts
 │   └── lib/           #   Supabase client, i18n catalogues, helpers
+├── ios/               # Read-only iPhone companion app (SwiftUI)
+│   ├── MagicSlash/    #   SwiftUI app: auth, agents, theme
+│   ├── theme/         #   Swift token codegen from desktop/src/themes.ts + drift test
+│   └── Config/        #   xcconfig, Secrets.xcconfig gitignored
 ├── install/           # Uninstaller and CLI (bash)
 │   ├── uninstall.sh   #   Full uninstallation
 │   └── magic-slash    #   CLI wrapper
@@ -41,6 +45,7 @@ magic-slash/
 | Desktop   | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
 | Skills    | Markdown (SKILL.md)                                                                                   |
 | Webapp    | Next.js (App Router), React, TypeScript, Supabase, Vercel                                             |
+| iOS       | SwiftUI, Swift 6, iOS 17+, supabase-swift, Xcode 16+                                                  |
 | Install   | Bash                                                                                                  |
 
 ## Useful Commands
@@ -59,13 +64,16 @@ npm run desktop:install  # Install desktop dependencies
 npm run desktop          # Start in dev mode
 npm run desktop:build    # Production build
 npm run desktop:package  # Package for macOS (.dmg, .zip)
+
+# iOS
+npm run ios:theme        # Regenerate the Swift theme tokens from desktop/src/themes.ts
 ```
 
 ## Conventions
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`
+  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`, `ios`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)
