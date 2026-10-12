@@ -38,7 +38,7 @@ final class AgentStore {
   /// Bumped by every read, so a read overtaken by a newer one is dropped.
   @ObservationIgnored private var readGeneration = 0
 
-  private static let columns = "id, owner_id, name, ticket_id, description, branch_name, base_branch, status, type, repositories, metadata, updated_at, archived_at"
+  private static let columns = "id, owner_id, app_agent_id, name, ticket_id, description, branch_name, base_branch, status, type, repositories, metadata, updated_at, archived_at"
 
   init(client: SupabaseClient, userId: UUID) {
     self.client = client

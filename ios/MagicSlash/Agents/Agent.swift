@@ -15,6 +15,8 @@ struct Agent: Identifiable, Hashable, Sendable {
   /// here rather than the desktop's own `app_agent_id`.
   let id: String
   let ownerId: String?
+  /// The desktop terminal id: what the relay's snapshots name the agent by.
+  let appAgentId: String?
   let name: String
   let title: String
   let type: AgentType
@@ -38,6 +40,9 @@ struct Agent: Identifiable, Hashable, Sendable {
 
     self.id = id
     ownerId = row["owner_id"]?.stringValue
+    // Rows written before the column existed only carry it in the jsonb.
+    appAgentId = row["app_agent_id"]?.stringValue.nonEmpty
+      ?? metadata["__app"]?.objectValue?["id"]?.stringValue.nonEmpty
     name = row["name"]?.stringValue ?? ""
     // `||` in the desktop: an empty column must not beat a real value in the jsonb.
     func pick(_ column: String, _ key: String) -> String? {

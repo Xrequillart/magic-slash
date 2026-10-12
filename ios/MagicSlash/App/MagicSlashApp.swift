@@ -31,6 +31,8 @@ private struct RootView: View {
   let theme: ThemeStore
   @State private var auth: AuthModel
   @State private var agents: AgentStore?
+  /// Created, swapped and stopped with `agents`: both belong to the signed-in account.
+  @State private var relay: RelayStore?
   @State private var wentToBackground = false
 
   init(client: SupabaseClient, theme: ThemeStore) {
@@ -48,12 +50,15 @@ private struct RootView: View {
         switch phase {
         case .background:
           wentToBackground = true
+          // The pair keys never outlive the foreground session: Face ID again on return.
+          relay?.lock()
         case .active where wentToBackground:
           wentToBackground = false
           Task {
             async let agentsResumed: Void? = agents?.start()
+            async let relayResumed: Void? = relay?.start()
             async let themeResumed: Void = theme.resume()
-            _ = await (agentsResumed, themeResumed)
+            _ = await (agentsResumed, relayResumed, themeResumed)
           }
         default:
           break
@@ -73,8 +78,8 @@ private struct RootView: View {
     case .signedIn(let userId):
       // The owner check covers the frame between a sign-in and `apply`: another account's
       // list is never drawn under this one.
-      if let agents, agents.ownerId == userId {
-        AgentListView(store: agents) {
+      if let agents, let relay, agents.ownerId == userId, relay.ownerId == userId {
+        AgentListView(store: agents, relay: relay) {
           Task { await auth.signOut() }
         }
       } else {
@@ -91,20 +96,30 @@ private struct RootView: View {
     case .signedIn(let userId):
       guard agents?.ownerId != userId else { return }
       let previous = agents
+      let previousRelay = relay
       let store = AgentStore(client: auth.client, userId: userId)
+      let relayStore = RelayStore(client: auth.client, userId: userId)
       agents = store
+      relay = relayStore
       Task {
         if let previous {
           await theme.stop(for: previous.ownerId)
           await previous.stop()
         }
+        await previousRelay?.stop()
       }
       Task {
         async let agentsStarted: Void = store.start()
+        async let relayStarted: Void = relayStore.start()
         async let themeStarted: Void = theme.start(client: auth.client, userId: userId)
-        _ = await (agentsStarted, themeStarted)
+        _ = await (agentsStarted, relayStarted, themeStarted)
       }
     case .signedOut:
+      let previousRelay = relay
+      relay = nil
+      // Keys out of memory now, not once the channel has gone.
+      previousRelay?.lock()
+      Task { await previousRelay?.stop() }
       guard let previous = agents else { return }
       agents = nil
       Task {

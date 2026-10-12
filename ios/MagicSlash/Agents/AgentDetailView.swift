@@ -7,12 +7,13 @@ struct AgentDetailView: View {
   @Environment(\.theme) private var theme
 
   let store: AgentStore
+  let relay: RelayStore
   let agentId: String
 
   var body: some View {
     Group {
       if let agent = store.agent(id: agentId) {
-        AgentDetailContent(agent: agent, client: store.client)
+        AgentDetailContent(agent: agent, client: store.client, relay: relay)
       } else {
         MessageScreen(
           systemImage: "archivebox",
@@ -31,13 +32,15 @@ private struct AgentDetailContent: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let agent: Agent
+  let relay: RelayStore
   @State private var plans: PlanStore
   /// Bumped on each return to the foreground: the plan channel may have died while
   /// suspended, so the watch restarts, reading the spec again and resubscribing.
   @State private var foregroundCount = 0
 
-  init(agent: Agent, client: SupabaseClient) {
+  init(agent: Agent, client: SupabaseClient, relay: RelayStore) {
     self.agent = agent
+    self.relay = relay
     _plans = State(initialValue: PlanStore(client: client))
   }
 
@@ -45,6 +48,7 @@ private struct AgentDetailContent: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
         identity
+        live
         ticket
         repositories
         pullRequests
@@ -82,6 +86,18 @@ private struct AgentDetailContent: View {
       } else {
         EmptyLine(text: "No description")
       }
+    }
+  }
+
+  // MARK: Live
+
+  /// Runtime state and usage, from the paired Mac over the encrypted relay.
+  @ViewBuilder
+  private var live: some View {
+    let runtime = relay.runtime(for: agent.appAgentId)
+    LiveSection(runtime: runtime, hasPairedMac: !relay.macs.isEmpty)
+    if runtime != nil {
+      UsageSection(runtime: runtime)
     }
   }
 

@@ -28,8 +28,9 @@ magic-slash/
 │   ├── middleware.ts  #   One host per front door — rules in lib/hostRouting.ts
 │   └── lib/           #   Supabase client, i18n catalogues, helpers
 ├── ios/               # Read-only iPhone companion app (SwiftUI)
-│   ├── MagicSlash/    #   SwiftUI app: auth, agents, theme
+│   ├── MagicSlash/    #   SwiftUI app: auth, agents, Mac relay (Remote/), theme
 │   ├── theme/         #   Swift token codegen from desktop/src/themes.ts + drift test
+│   ├── relay/         #   Swift check of the relay crypto against the Node vectors
 │   └── Config/        #   xcconfig, Secrets.xcconfig gitignored
 ├── install/           # Uninstaller and CLI (bash)
 │   ├── uninstall.sh   #   Full uninstallation
@@ -67,6 +68,7 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 # iOS
 npm run ios:theme        # Regenerate the Swift theme tokens from desktop/src/themes.ts
+npm run ios:relay-check  # Replay the relay crypto vectors against RelayCrypto.swift (macOS)
 ```
 
 ## Conventions
