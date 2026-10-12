@@ -98,13 +98,16 @@ final class AgentStore {
   // MARK: - Realtime
 
   private func subscribe() async {
+    // Claimed before awaiting: if another subscribe starts while this one waits for the
+    // old channel to go, the newer call owns the subscription and this one steps aside.
+    subscriptionCount += 1
+    let attempt = subscriptionCount
     await unsubscribe()
-    guard !stopped else { return }
+    guard !stopped, attempt == subscriptionCount else { return }
 
     // `client.channel` is Realtime V2, whose socket follows the auth token as it is
     // refreshed, so a long-open app keeps receiving after the first hour.
-    subscriptionCount += 1
-    let channel = client.channel("ios-agents-\(subscriptionCount)")
+    let channel = client.channel("ios-agents-\(attempt)")
     let mine = RealtimePostgresFilter.eq("owner_id", value: userId)
     let inserts = channel.postgresChange(InsertAction.self, table: "agents", filter: mine)
     let updates = channel.postgresChange(UpdateAction.self, table: "agents", filter: mine)

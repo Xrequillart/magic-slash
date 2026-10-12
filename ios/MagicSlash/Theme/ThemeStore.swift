@@ -84,11 +84,14 @@ final class ThemeStore {
   private func subscribe() async {
     guard let client, let userId else { return }
     let session = session
-    await unsubscribe(using: client)
-    guard session == self.session else { return }
-
+    // Claimed before awaiting: if another subscribe starts while this one waits for the
+    // old channel to go, the newer call owns the subscription and this one steps aside.
     subscriptionCount += 1
-    let channel = client.channel("ios-user-settings-\(subscriptionCount)")
+    let attempt = subscriptionCount
+    await unsubscribe(using: client)
+    guard session == self.session, attempt == subscriptionCount else { return }
+
+    let channel = client.channel("ios-user-settings-\(attempt)")
     let filter = RealtimePostgresFilter.eq("user_id", value: userId.uuidString.lowercased())
     let changes = channel.postgresChange(AnyAction.self, table: "user_settings", filter: filter)
 
