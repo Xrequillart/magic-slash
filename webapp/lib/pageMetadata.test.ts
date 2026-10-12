@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { pageMetadata, SITE_URL } from './pageMetadata'
@@ -18,20 +18,27 @@ import { pageMetadata, SITE_URL } from './pageMetadata'
  * of them rather than an assertion on any one.
  */
 
-const MARKETING = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', '(marketing)')
+const SHOWCASE = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', '(showcase)')
 
-/** Every `(marketing)` route that exports metadata: the homepage plus each subdirectory. */
-function marketingPages(): { route: string; source: string }[] {
-  const out = [{ route: '/', source: readFileSync(join(MARKETING, 'page.tsx'), 'utf8') }]
-  for (const entry of readdirSync(MARKETING, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    let source: string
-    try {
-      source = readFileSync(join(MARKETING, entry.name, 'page.tsx'), 'utf8')
-    } catch {
-      continue // a directory with no page of its own (layout-only, or a nested segment)
+/**
+ * Every `page.tsx` and `layout.tsx` under `(showcase)` that exports metadata, at ANY
+ * depth: a nested route such as `blog/[slug]/page.tsx` hand-rolling its own card is the
+ * same regression one level down, and a sweep of the first level would pass it green.
+ * Layouts count too, since theirs is the card a route without metadata inherits.
+ */
+function showcaseFiles(dir = SHOWCASE): { route: string; source: string }[] {
+  const out: { route: string; source: string }[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      out.push(...showcaseFiles(path))
+      continue
     }
-    if (source.includes('export const metadata')) out.push({ route: `/${entry.name}`, source })
+    if (entry.name !== 'page.tsx' && entry.name !== 'layout.tsx') continue
+    const source = readFileSync(path, 'utf8')
+    if (!source.includes('export const metadata')) continue
+    const segments = relative(SHOWCASE, dirname(path)).split(sep).filter(Boolean)
+    out.push({ route: `/${segments.join('/')}${entry.name === 'layout.tsx' ? ' (layout)' : ''}`, source })
   }
   return out
 }
@@ -54,9 +61,18 @@ describe('pageMetadata', () => {
 
   it('keeps the card square, because the icon is', () => {
     const m = pageMetadata({ title: 't', description: 'd' })
-    expect(m.twitter?.card).toBe('summary')
+    // `card` lives on the discriminated members of `Twitter`, not on the base type.
+    expect((m.twitter as { card?: string } | undefined)?.card).toBe('summary')
     const [image] = m.openGraph?.images as { width: number; height: number }[]
     expect(image.width).toBe(image.height)
+  })
+
+  it('labels the image on both cards, so neither ships without alt text', () => {
+    const m = pageMetadata({ title: 't', description: 'd' })
+    const [og] = m.openGraph?.images as { alt?: string }[]
+    const [tw] = m.twitter?.images as { alt?: string }[]
+    expect(og.alt).toBeTruthy()
+    expect(tw.alt).toBe(og.alt)
   })
 
   it('hands each caller its own images array, so one page cannot mutate another', () => {
@@ -67,12 +83,13 @@ describe('pageMetadata', () => {
   })
 })
 
-describe('every marketing page builds its card through the helper', () => {
-  const pages = marketingPages()
+describe('every showcase page builds its card through the helper', () => {
+  const pages = showcaseFiles()
 
   it('finds the whole set, so this sweep cannot silently cover nothing', () => {
     expect(pages.map((p) => p.route).sort()).toEqual([
       '/',
+      '/ (layout)',
       '/changelog',
       '/desktop',
       '/download',

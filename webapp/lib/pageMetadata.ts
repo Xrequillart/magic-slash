@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { SHARED_DOMAIN } from './hostRouting'
 
 /**
  * THE SOCIAL CARD FOR ONE PAGE, built in one place because Next does not merge the
@@ -15,12 +16,12 @@ import type { Metadata } from 'next'
  *
  * Every public page builds all four blocks from the same two strings, so a page cannot
  * declare one title and quietly advertise another. `pageMetadata.test.ts` pins it: it
- * reads every `app/(marketing)` page and fails on one that hand-rolls `metadata`
+ * reads every `app/(showcase)` page and layout and fails on one that hand-rolls `metadata`
  * instead of coming through here, which is what stops a NINTH page added later from
  * reintroducing the same regression without anyone catching it in review.
  *
- * ZERO RUNTIME IMPORTS, on purpose, and `next` is a TYPE-ONLY import that esbuild
- * erases — the same constraint `lib/features.ts` and `lib/siteNav.ts` are written
+ * NO FRAMEWORK AT RUNTIME, on purpose: `next` is a TYPE-ONLY import that esbuild
+ * erases, and `hostRouting` imports nothing either — the same constraint `lib/features.ts` and `lib/siteNav.ts` are written
  * under, for the same reason: the test runs in the ROOT vitest suite against the root
  * `node_modules`, and CI never installs `webapp/`'s dependencies, so a real `next`
  * import here would fail to RESOLVE that test rather than fail it.
@@ -28,8 +29,8 @@ import type { Metadata } from 'next'
 
 const SITE_NAME = 'Magic Slash'
 
-/** The apex. Only the homepage emits `og:url`; see the `url` option below. */
-export const SITE_URL = 'https://magic-slash.io'
+/** The apex, spelled once in `hostRouting`. Only the homepage emits `og:url`; see the `url` option below. */
+export const SITE_URL = `https://${SHARED_DOMAIN}`
 
 /**
  * The icon that ships on the dock today. Square, which is why every card below is
@@ -73,7 +74,8 @@ export function pageMetadata({ title, description, url }: PageMetadataOptions): 
       card: 'summary',
       title,
       description,
-      images: [CARD_IMAGE.url],
+      // An object, not the bare URL: a string drops `twitter:image:alt`.
+      images: [{ url: CARD_IMAGE.url, alt: CARD_IMAGE.alt }],
     },
   }
 }
