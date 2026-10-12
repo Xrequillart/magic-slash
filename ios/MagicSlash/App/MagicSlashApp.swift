@@ -4,21 +4,30 @@ import SwiftUI
 @main
 struct MagicSlashApp: App {
   @State private var theme = ThemeStore()
+  /// Whether the app knows what to show: the splash leaves once it does.
+  @State private var ready = false
+  @State private var showsSplash = true
 
   var body: some Scene {
     WindowGroup {
       Group {
         if let client = Backend.client {
-          RootView(client: client, theme: theme)
+          RootView(client: client, theme: theme, ready: $ready)
         } else {
           MessageScreen(
             systemImage: "gearshape.2",
             title: "Not configured",
             message: "This build has no Supabase host or key. Copy ios/Config/Secrets.example.xcconfig to Secrets.xcconfig, fill it in, and rebuild."
           )
+          .onAppear { ready = true }
         }
       }
       .themed(theme.tokens)
+      .overlay {
+        if showsSplash {
+          SplashView(ready: ready) { showsSplash = false }
+        }
+      }
     }
   }
 }
@@ -29,20 +38,26 @@ private struct RootView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let theme: ThemeStore
+  /// Set once the screen shows more than a loader, which lets the splash go.
+  @Binding var ready: Bool
   @State private var auth: AuthModel
   @State private var agents: AgentStore?
   /// Created, swapped and stopped with `agents`: both belong to the signed-in account.
   @State private var relay: RelayStore?
   @State private var wentToBackground = false
 
-  init(client: SupabaseClient, theme: ThemeStore) {
+  init(client: SupabaseClient, theme: ThemeStore, ready: Binding<Bool>) {
     self.theme = theme
+    _ready = ready
     _auth = State(initialValue: AuthModel(client: client))
   }
 
   var body: some View {
     content
       .task { await auth.start() }
+      .onChange(of: hasContent, initial: true) { _, hasContent in
+        if hasContent { ready = true }
+      }
       .onChange(of: auth.state) { _, state in
         apply(state)
       }
@@ -64,6 +79,19 @@ private struct RootView: View {
           break
         }
       }
+  }
+
+  /// True once the session is restored and, when signed in, the first agent read is
+  /// done, so the splash reveals the list rather than another spinner.
+  private var hasContent: Bool {
+    switch auth.state {
+    case .restoring:
+      false
+    case .signedOut, .needsTOTP:
+      true
+    case .signedIn(let userId):
+      agents?.ownerId == userId && agents?.loadState != .loading
+    }
   }
 
   @ViewBuilder

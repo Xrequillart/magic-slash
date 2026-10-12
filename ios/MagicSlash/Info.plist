@@ -8,5 +8,14 @@
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SupabaseHost</key>
 	<string>$(SUPABASE_HOST)</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>Rabbit</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<false/>
+	</dict>
 </dict>
 </plist>
