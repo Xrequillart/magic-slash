@@ -1,0 +1,58 @@
+name: iOS
+
+# The theme drift guard (the generated Swift tokens against desktop/src/themes.ts) is
+# not here: it is a vitest test, so the `test` job of ci.yml already runs it with
+# `npm test`. This workflow only proves the app still compiles.
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+
+jobs:
+  build:
+    name: Build
+    runs-on: macos-15
+    env:
+      SPM_DIR: ${{ github.workspace }}/.spm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Picked explicitly rather than trusting the image's default: the project file is
+      # objectVersion 77, which only Xcode 16+ opens. `latest-stable` rather than a pinned
+      # path like /Applications/Xcode_16.4.app, because runner images drop old Xcodes
+      # and a hard-coded path then fails before building anything.
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SPM_DIR }}
+          key: >-
+            spm-${{ runner.os }}-${{
+            hashFiles('ios/MagicSlash.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      # No secrets: Base.xcconfig carries empty defaults and only optionally includes
+      # the gitignored Secrets.xcconfig. Nothing is signed, the simulator needs none.
+      - name: Build
+        run: |
+          xcodebuild \
+            -project ios/MagicSlash.xcodeproj \
+            -scheme MagicSlash \
+            -destination 'generic/platform=iOS Simulator' \
+            -clonedSourcePackagesDirPath "$SPM_DIR" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            build

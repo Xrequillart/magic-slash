@@ -39,6 +39,7 @@ module.exports = {
         'community',
         'desktop',
         'skills',
+        'ios',
       ],
     ],
     'subject-case': [2, 'always', 'lower-case'],
