@@ -2789,7 +2789,7 @@ export const fr: Record<keyof typeof en, string> = {
   'remote.pair.pairedTitle': 'iPhone appairé',
   'remote.pair.pairedHint': 'Il peut maintenant suivre les agents de ce Mac.',
   'remote.pair.rejectedTitle': 'L’appairage n’a pas abouti',
-  'remote.pair.rejected.expired': 'Le code a expiré avant d’être utilisé. Réessayez avec un nouveau code.',
+  'remote.pair.rejected.expired': 'La demande a expiré avant d’être approuvée. Réessayez avec un nouveau code.',
   'remote.pair.rejected.used': 'Ce code a déjà été utilisé. Chaque code n’appaire qu’un seul iPhone.',
   'remote.pair.rejected.declined': 'Vous avez refusé la demande. Rien n’a été appairé.',
   'remote.pair.retry': 'Réessayer',

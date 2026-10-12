@@ -92,6 +92,11 @@ vi.mock('../config/config', () => ({ readConfig: vi.fn(() => ({ repositories: {}
 vi.mock('../config/validation', () => ({ expandPath: (p: string) => p }))
 vi.mock('../config/repo-validation', () => ({ checkRepoPath: vi.fn(() => ({ valid: true })) }))
 vi.mock('../store/hydrate', () => ({ ensureHydrated: vi.fn(async () => {}) }))
+vi.mock('../remote/terminal-owners', () => ({
+  recordTerminalOwner: vi.fn(),
+  forgetTerminalOwner: vi.fn(),
+  clearTerminalOwners: vi.fn(),
+}))
 
 import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'

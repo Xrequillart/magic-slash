@@ -67,6 +67,7 @@ import {
   suspendRemoteRelay,
 } from './relay'
 import { setRemoteModeEnabled } from './remote-mode'
+import { clearTerminalOwners, recordTerminalOwner } from './terminal-owners'
 import type { RemotePairing } from '../../types'
 
 function fakeChannel(topic: string, opts: unknown): FakeChannel {
@@ -140,6 +141,8 @@ beforeEach(async () => {
     { id: 'claude-1', name: 'Agent 1', state: 'working', metadata: { title: 'PROJ-12: refunds' } },
     { id: 'script-dev', name: 'dev', state: 'working', metadata: {} },
   ]
+  clearTerminalOwners()
+  recordTerminalOwner('claude-1', h.userId)
   pairings = []
   setRemoteEmitters(null)
   await __resetRemoteRelayForTests()
@@ -244,7 +247,8 @@ describe('remote mode on', () => {
     expect(state.devices.map((d) => d.phoneId)).toEqual([kept.id])
     const [goodbye] = sentOn(h.channels[0])
     expect(goodbye).toMatchObject({ type: 'revoked', to: revoked.id, from: macId })
-    expect(openEnvelope(goodbye, phoneKey(revoked, macId, macPub))).toEqual({})
+    // Names the pairing it ends (§8): the phone drops a `revoked` for any other one.
+    expect(openEnvelope(goodbye, phoneKey(revoked, macId, macPub))).toEqual({ pairedAt: 1 })
 
     h.channels[0].send.mockClear()
     notifyRemoteState()
@@ -274,14 +278,16 @@ describe('remote mode on', () => {
     broadcast(channel, { garbage: true })
     expect(pairings.at(-1)?.phase).toBe('waiting')
 
-    broadcast(channel, request(qr.macId))
+    const req = request(qr.macId)
+    broadcast(channel, req)
     expect(pairings.at(-1)).toMatchObject({ phase: 'confirm', deviceName: 'iPhone' })
     channel.send.mockClear()
     await approveRemotePairing()
     await tick()
     const [accepted, state] = sentOn(channel)
     expect(accepted).toMatchObject({ type: 'pair-accepted', to: phone.id, from: qr.macId })
-    expect(openEnvelope(accepted, key)).toEqual({ macName: getRemoteState().macName })
+    const pairedAt = getRemoteState().devices[0].pairedAt
+    expect(openEnvelope(accepted, key)).toEqual({ macName: getRemoteState().macName, requestEpoch: req.epoch, pairedAt })
     expect(state).toMatchObject({ type: 'state', to: phone.id })
     expect(state.seq).toBeGreaterThan(accepted.seq)
     expect(getRemoteState().devices.map((d) => d.phoneId)).toEqual([phone.id])
@@ -358,6 +364,32 @@ describe('remote mode on', () => {
     await goLive(h.channels[1])
     expect(getRemoteState().devices).toEqual([])
     expect(h.channels[1].send).not.toHaveBeenCalled()
+  })
+
+  it('after a refused session, the next account\'s phones see only that account\'s terminals', async () => {
+    seedPairedPhones()
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    // The session is refused elsewhere: the relay is suspended, but the PTYs keep running.
+    await suspendRemoteRelay()
+    h.userId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    const { macId, macPub, phones } = seedPairedPhones()
+    h.terminals = [
+      ...h.terminals,
+      { id: 'claude-2', name: 'Agent 2', state: 'idle', metadata: { title: 'B: mine' } },
+      { id: 'claude-3', name: 'Agent 3', state: 'idle', metadata: { title: 'nobody knows' } },
+    ]
+    recordTerminalOwner('claude-2', h.userId)
+    await resumeRemoteRelay()
+    await goLive(h.channels[1])
+    const envelopes = sentOn(h.channels[1])
+    expect(envelopes).toHaveLength(phones.length)
+    for (const envelope of envelopes) {
+      const phone = phones.find((p) => p.id === envelope.to)!
+      const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as { agents: { appAgentId: string }[] }
+      // claude-1 is the previous account's, claude-3 has no recorded owner: neither is sent.
+      expect(snapshot.agents.map((a) => a.appAgentId)).toEqual(['claude-2'])
+    }
   })
 
   it('remote mode is read from disk at launch', async () => {

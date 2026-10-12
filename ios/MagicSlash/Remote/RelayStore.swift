@@ -132,6 +132,9 @@ final class RelayStore {
   @ObservationIgnored private var pairKeys: [String: SymmetricKey] = [:]
   @ObservationIgnored private var pairingKey: SymmetricKey?
   @ObservationIgnored private var pairingPhonePub: Data?
+  /// The `epoch` of the `pair-request` still waiting for an answer: only a `pair-accepted`
+  /// carrying it as `requestEpoch` answers it (§6, §7 step 5).
+  @ObservationIgnored private var pairingEpoch: String?
   @ObservationIgnored private var pairingTimer: Task<Void, Never>?
   @ObservationIgnored private var pairingGeneration = 0
   /// Bumped by `lock()`, so an unlock that was waiting on Face ID when the app left the
@@ -156,7 +159,14 @@ final class RelayStore {
   /// channel. Also called on return from the background, where the socket may have died.
   func start() async {
     guard !stopped else { return }
-    let known = PairedMacs.load(userId: userId)
+    var known = PairedMacs.load(userId: userId)
+    // A pairing saved before the Mac's `pairedAt` was kept cannot tell its own revocation
+    // from a replayed one (§6): drop it and ask for a new pairing.
+    if known.contains(where: { $0.macPairedAt == nil }) {
+      known.removeAll { $0.macPairedAt == nil }
+      PairedMacs.save(known, userId: userId)
+      setNeedsRepair(true)
+    }
     macs = known
     let ids = Set(known.map(\.macId))
     snapshots = SnapshotCache.load(userId: userId).filter { ids.contains($0.key) }
@@ -178,10 +188,12 @@ final class RelayStore {
   }
 
   /// Drops every key from memory: on the way to the background, and on sign-out. The next
-  /// `start()` asks for Face ID again.
+  /// `start()` asks for Face ID again. A pairing still in progress is cancelled with its key:
+  /// an approval that lands later must not put a key back in memory without Face ID.
   func lock() {
     lockGeneration += 1
     pairKeys = [:]
+    cancelPendingPairing()
     DeviceKeys.shared.lock()
     if keyState == .unlocked || keyState == .unlocking { keyState = .idle }
     ticker?.cancel()
@@ -289,6 +301,8 @@ final class RelayStore {
     let generation = pairingGeneration
     pairingTimer?.cancel()
     pairingKey = nil
+    pairingPhonePub = nil
+    pairingEpoch = nil
     pairing = Pairing(offer: offer, phase: .preparing)
 
     func fail(_ message: String) {
@@ -333,6 +347,7 @@ final class RelayStore {
 
     let phoneId = keys.phoneId
     let epoch = UUID().uuidString.lowercased()
+    pairingEpoch = epoch
     let body: [String: String] = ["token": offer.tokenText, "name": UIDevice.current.name]
     let aad = RelayCrypto.aad(type: "pair-request", from: phoneId, to: offer.macId, epoch: epoch, seq: 1)
     guard let plain = try? JSONEncoder().encode(body),
@@ -365,14 +380,33 @@ final class RelayStore {
 
   /// Closes the pairing screen's session, whatever stage it reached.
   func endPairing() {
+    invalidatePairingWork()
+    guard pairing != nil else { return }
+    pairing = nil
+    if macs.isEmpty, !stopped { Task { await refreshSubscription() } }
+  }
+
+  /// Makes every piece of pairing work in flight stale (a Face ID prompt, a broadcast, the
+  /// timeout) and drops the pair key it was waiting with.
+  private func invalidatePairingWork() {
     pairingGeneration += 1
     pairingTimer?.cancel()
     pairingTimer = nil
     pairingKey = nil
     pairingPhonePub = nil
-    guard pairing != nil else { return }
-    pairing = nil
-    if macs.isEmpty, !stopped { Task { await refreshSubscription() } }
+    pairingEpoch = nil
+  }
+
+  /// On `lock()`: a pairing not answered yet ends here, and its screen says so. A finished
+  /// one keeps its outcome on screen.
+  private func cancelPendingPairing() {
+    invalidatePairingWork()
+    switch pairing?.phase {
+    case .preparing, .waiting:
+      pairing?.phase = .failed("The pairing was cancelled when Magic Slash left the screen. Scan your Mac's code again.")
+    default:
+      break
+    }
   }
 
   // MARK: - Realtime
@@ -518,7 +552,11 @@ final class RelayStore {
   private func receiveState(_ envelope: Envelope) {
     guard let key = pairKeys[envelope.from],
           let plain = envelope.open(with: key),
-          let snapshot = try? JSONDecoder().decode(RelaySnapshot.self, from: plain)
+          let snapshot = try? JSONDecoder().decode(RelaySnapshot.self, from: plain),
+          let mac = macs.first(where: { $0.macId == envelope.from }),
+          let pairedAt = mac.macPairedAt,
+          // §6: a snapshot from before this pairing is a replay of an older one.
+          snapshot.sentAt >= pairedAt
     else { return }
     // §6: a replayed or overtaken snapshot never replaces a newer one.
     if let last = snapshots[envelope.from],
@@ -537,25 +575,39 @@ final class RelayStore {
   }
 
   private func receiveRevoked(_ envelope: Envelope) {
-    // Only a box that opens counts: anyone on the channel could send the header.
-    guard let key = pairKeys[envelope.from], envelope.open(with: key) != nil else { return }
+    // Only a box that opens counts: anyone on the channel could send the header. And only
+    // one naming this pairing: the same key opens a `revoked` recorded from an older one (§6, §8).
+    guard let key = pairKeys[envelope.from],
+          let plain = envelope.open(with: key),
+          let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
+          let pairedAt = (body["pairedAt"] as? NSNumber)?.doubleValue,
+          let mac = macs.first(where: { $0.macId == envelope.from }),
+          mac.macPairedAt == pairedAt
+    else { return }
     forget(envelope.from)
   }
 
   private func receivePairAccepted(_ envelope: Envelope) {
-    guard let pairing, case .waiting = pairing.phase,
+    // Only an answer to the request still pending: `lock()` and `endPairing()` drop the key
+    // and the epoch, and the same key opens a `pair-accepted` recorded from an older pairing,
+    // which carries that pairing's request epoch instead (§6, §7 step 5).
+    guard !stopped, let pairing, case .waiting = pairing.phase,
           envelope.from == pairing.offer.macId,
-          let key = pairingKey, let phonePub = pairingPhonePub,
-          let plain = envelope.open(with: key)
+          let key = pairingKey, let phonePub = pairingPhonePub, let requestEpoch = pairingEpoch,
+          let plain = envelope.open(with: key),
+          let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
+          body["requestEpoch"] as? String == requestEpoch,
+          let macPairedAt = (body["pairedAt"] as? NSNumber)?.doubleValue,
+          macPairedAt.isFinite, macPairedAt > 0
     else { return }
-    let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any]
-    let name = cleanMacName(body?["macName"] as? String) ?? pairing.offer.name
+    let name = cleanMacName(body["macName"] as? String) ?? pairing.offer.name
 
     let mac = PairedMac(
       macId: pairing.offer.macId,
       name: name,
       pub: pairing.offer.pub,
       pairedAt: Date(),
+      macPairedAt: macPairedAt,
       phoneId: envelope.to,
       phonePub: phonePub
     )
@@ -566,7 +618,8 @@ final class RelayStore {
     pairKeys[mac.macId] = key
     keyState = .unlocked
     setNeedsRepair(false)
-    pairingTimer?.cancel()
+    // The request is answered: nothing else may answer it again.
+    invalidatePairingWork()
     self.pairing?.phase = .accepted(macName: name)
     // Rejoin so the new Mac, which only now knows this phone, sends its first snapshot.
     Task { await refreshSubscription() }
@@ -575,7 +628,7 @@ final class RelayStore {
   private func receivePairRejected(_ envelope: Envelope) {
     // Clear text and forgeable (§4): the worst it can do is cancel this screen.
     guard let pairing, case .waiting = pairing.phase, envelope.from == pairing.offer.macId else { return }
-    pairingTimer?.cancel()
+    invalidatePairingWork()
     let message = switch envelope.reason {
     case "expired": "The code expired before your Mac received the request. Scan the fresh one."
     case "used": "This code was already used. Scan the fresh one your Mac shows."

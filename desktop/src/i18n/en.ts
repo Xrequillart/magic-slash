@@ -3206,7 +3206,7 @@ export const en = {
   'remote.pair.pairedTitle': 'iPhone paired',
   'remote.pair.pairedHint': 'It can now follow this Mac\'s agents.',
   'remote.pair.rejectedTitle': 'Pairing did not go through',
-  'remote.pair.rejected.expired': 'The code expired before it was used. Try again with a new one.',
+  'remote.pair.rejected.expired': 'The request expired before it was approved. Try again with a new code.',
   'remote.pair.rejected.used': 'This code was already used. Each code pairs a single iPhone.',
   'remote.pair.rejected.declined': 'You declined the request. Nothing was paired.',
   'remote.pair.retry': 'Try again',

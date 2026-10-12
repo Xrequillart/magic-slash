@@ -10,27 +10,45 @@ import type { StoredRemoteDevice } from './identity-store'
  * single use, approval on the Mac only — are tested without a channel or a keychain.
  *
  *   waiting ──request that opens, live token──▶ confirm ──approve──▶ paired
- *      │                                           └──────decline──▶ rejected (declined)
- *      └──request that opens, stale/used token──▶ rejected (expired | used)
+ *                                                  ├──────decline──▶ rejected (declined)
+ *                                                  └──── 120 s ────▶ rejected (expired)
  *
  * The token is CONSUMED by the first request that opens, whatever follows: a declined phone
  * cannot try again with the same QR, nor can anyone who photographed it after it was scanned.
- * A box that does not open is ignored without a word and consumes nothing: whoever never saw
- * the QR (it carries the Mac's key and the token) cannot even burn it.
+ * A request carrying an expired or already-used token is answered `pair-rejected` to ITS
+ * sender only: the Mac's own screen (the QR and its refresh, or a confirmation) stays as it
+ * was, so a phone holding an old QR cannot interrupt the pairing in progress (§7 step 3).
+ * A box that does not open, and a token this Mac never issued, are ignored without a word and
+ * consume nothing: whoever never saw the QR (it carries the Mac's key and the token) cannot
+ * even burn it.
  */
 export const TOKEN_TTL_MS = 60_000
+/**
+ * How long the confirmation stays approvable once the request opened (§7 step 6). Under the
+ * phone's 180 s wait, so any approval the Mac can still give reaches a phone still listening.
+ */
+export const CONFIRM_TTL_MS = 120_000
 const TOKEN_BYTES = 32
 /**
  * Tokens remembered after they were replaced, so a phone that scanned one of them is told
- * `expired` rather than `used`. Bounded: a QR left up all afternoon issues one a minute, and
- * one older than this is answered `used`, which is just as final.
+ * `expired`. Bounded: a QR left up all afternoon issues one a minute, and one older than this
+ * is no longer known, so it is ignored like any token never issued.
  */
 const REMEMBERED_TOKENS = 32
 const NAME_MAX = 64
 
 export type PairingOutgoing =
-  | { type: 'pair-accepted'; to: string; key: Buffer; body: { macName: string } }
+  | { type: 'pair-accepted'; to: string; key: Buffer; body: PairAcceptedBody }
   | { type: 'pair-rejected'; to: string; reason: PairRejectReason }
+
+/** The `pair-accepted` box (§4): names the request it answers and the pairing it creates. */
+export interface PairAcceptedBody {
+  macName: string
+  /** The `epoch` of the `pair-request` envelope this answers. */
+  requestEpoch: string
+  /** The stored device's `pairedAt`: the pairing's name (§6). */
+  pairedAt: number
+}
 
 export interface PairingDeps {
   macId: string
@@ -65,6 +83,8 @@ interface PendingPhone {
   phonePub: Buffer
   name: string
   key: Buffer
+  /** The request envelope's epoch, echoed back in `pair-accepted`. */
+  requestEpoch: string
 }
 
 function defaultTimer(fn: () => void, ms: number): () => void {
@@ -88,6 +108,11 @@ export class PairingSession {
   private issued: IssuedToken[] = []
   private pending: PendingPhone | null = null
   private cancelRefresh: (() => void) | null = null
+  private cancelConfirmDeadline: (() => void) | null = null
+  /** When the confirmation was opened: approval is possible until CONFIRM_TTL_MS after it. */
+  private confirmOpenedAt = 0
+  /** The confirmation deadline passed while an approval was in flight: expire once it settles. */
+  private expireAfterApproval = false
   private state: RemotePairing = { phase: 'waiting' }
   private closed = false
   private approving = false
@@ -114,6 +139,7 @@ export class PairingSession {
   cancel(): void {
     this.closed = true
     this.stopRefresh()
+    this.stopConfirmDeadline()
     this.pending = null
     this.issued = []
   }
@@ -121,6 +147,11 @@ export class PairingSession {
   private stopRefresh(): void {
     this.cancelRefresh?.()
     this.cancelRefresh = null
+  }
+
+  private stopConfirmDeadline(): void {
+    this.cancelConfirmDeadline?.()
+    this.cancelConfirmDeadline = null
   }
 
   private emit(next: RemotePairing): void {
@@ -183,28 +214,57 @@ export class PairingSession {
     if (!body || typeof body !== 'object' || typeof body.token !== 'string') return
 
     const token = this.findToken(Buffer.from(body.token, 'base64url'))
+    // Never issued (or long forgotten): ignored, like a box that does not open. Neither
+    // reaches the screen, and nothing is said to a sender that never saw the current QR.
+    if (!token) return
     let reason: PairRejectReason | null = null
-    if (!token || token.used) reason = 'used'
+    if (token.used) reason = 'used'
     else if (this.now() > token.exp) reason = 'expired'
     // Consumed on the first request that opens, whatever happens next.
-    if (token) token.used = true
+    token.used = true
 
     if (reason || this.state.phase !== 'waiting') {
+      // Answered to that sender only. The Mac's screen stays as it was: a QR keeps refreshing,
+      // and a confirmation is never taken away from the user mid-decision.
       this.deps.send({ type: 'pair-rejected', to: phoneId, reason: reason ?? 'used' })
-      // A confirmation on screen is never disturbed by another request: that would let a
-      // replay of the first one take the code away from the user mid-decision.
-      if (this.state.phase === 'waiting') this.close({ phase: 'rejected', reason: reason ?? 'used' })
       return
     }
 
     const name = cleanName(body.name)
-    this.pending = { phoneId, phonePub, name, key }
+    this.pending = { phoneId, phonePub, name, key, requestEpoch: envelope.epoch }
     this.stopRefresh()
+    this.confirmOpenedAt = this.now()
+    this.expireAfterApproval = false
+    this.cancelConfirmDeadline = this.setTimer(() => {
+      this.cancelConfirmDeadline = null
+      this.expireConfirmation()
+    }, CONFIRM_TTL_MS)
     this.emit({
       phase: 'confirm',
-      code: pairingCode(token!.bytes, this.deps.macPublicRaw, phonePub),
+      code: pairingCode(token.bytes, this.deps.macPublicRaw, phonePub),
       deviceName: name,
     })
+  }
+
+  /**
+   * The confirmation's 120 s are up (§7 step 6): the phone is told `expired` and approval is
+   * no longer possible. An approval already in flight is let finish (its `pair-accepted` still
+   * reaches a phone that waits 180 s); if it fails, the confirmation expires then.
+   */
+  private expireConfirmation(): void {
+    const phone = this.pending
+    if (this.closed || this.state.phase !== 'confirm' || !phone) return
+    if (this.approving) {
+      this.expireAfterApproval = true
+      return
+    }
+    this.deps.send({ type: 'pair-rejected', to: phone.phoneId, reason: 'expired' })
+    this.close({ phase: 'rejected', reason: 'expired', deviceName: phone.name })
+  }
+
+  /** Whether the confirmation is past its deadline, whatever the timer has done yet. */
+  private confirmationExpired(): boolean {
+    return this.now() - this.confirmOpenedAt >= CONFIRM_TTL_MS
   }
 
   /**
@@ -217,16 +277,27 @@ export class PairingSession {
   async approve(): Promise<void> {
     const phone = this.pending
     if (this.closed || this.approving || this.state.phase !== 'confirm' || !phone) return
+    // A late timer must not leave a window past the deadline: expired is expired.
+    if (this.confirmationExpired()) {
+      this.expireConfirmation()
+      return
+    }
     this.approving = true
     try {
+      const pairedAt = this.now()
       this.deps.storeDevice({
         phoneId: phone.phoneId,
         name: phone.name,
         pub: phone.phonePub.toString('base64'),
-        pairedAt: this.now(),
+        pairedAt,
       })
       try {
-        await this.deps.send({ type: 'pair-accepted', to: phone.phoneId, key: phone.key, body: { macName: this.deps.macName } })
+        await this.deps.send({
+          type: 'pair-accepted',
+          to: phone.phoneId,
+          key: phone.key,
+          body: { macName: this.deps.macName, requestEpoch: phone.requestEpoch, pairedAt },
+        })
       } catch (error) {
         this.deps.forgetDevice?.(phone.phoneId)
         throw error
@@ -234,6 +305,10 @@ export class PairingSession {
       this.close({ phase: 'paired', deviceName: phone.name })
     } finally {
       this.approving = false
+      if (this.expireAfterApproval) {
+        this.expireAfterApproval = false
+        this.expireConfirmation()
+      }
     }
   }
 
@@ -248,6 +323,7 @@ export class PairingSession {
   /** A final phase: shown until the screen closes, and nothing else is accepted. */
   private close(final: RemotePairing): void {
     this.stopRefresh()
+    this.stopConfirmDeadline()
     this.pending = null
     this.emit(final)
     this.issued = []

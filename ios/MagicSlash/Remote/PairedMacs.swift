@@ -7,7 +7,13 @@ struct PairedMac: Codable, Hashable, Sendable, Identifiable {
   var name: String
   /// The Mac's P-256 public point, X9.63.
   let pub: Data
+  /// When this phone saved the pairing, on its own clock: for display only.
   let pairedAt: Date
+  /// The Mac's `pairedAt` (epoch ms, Mac clock) from `pair-accepted`: the name of this
+  /// pairing (PROTOCOL.md §6). A `revoked` must carry it, and a `state` sent before it is
+  /// dropped. Nil in a record saved before it existed: `RelayStore` drops such a pairing and
+  /// asks for a new one, since it could tell neither a real revocation nor a replay.
+  let macPairedAt: Double?
   /// The phone identity this pairing was made with. A pairing whose identity is no longer
   /// the phone's (the key was reset since) can never open a box again.
   let phoneId: String

@@ -6,14 +6,19 @@
 -- way Realtime does for the JOIN it authorizes, and reads the helper back through
 -- `realtime.topic()` exactly as the policies do.
 --
--- The assertion that matters most is #5: an org colleague is refused. That is what keeps the
--- relay off the `plan:` model, where org membership opens the channel.
+-- The assertions that matter most are #5 and #12-13: an org colleague is refused, by the
+-- helper and by the policies themselves. That is what keeps the relay off the `plan:` model,
+-- where org membership opens the channel.
+--
+-- #11-14 go through `realtime.messages` itself, as Realtime does: an INSERT is what `track`
+-- and a broadcast need, a SELECT is what receiving them needs. Calling the helper alone would
+-- still pass if a policy stopped using it, or if another permissive policy let colleagues in.
 --
 -- Harness: see plan_comments.test.sql. Not run by CI (no pgTAP there): replay by hand
 -- before touching these policies.
 
 begin;
-select plan(10);
+select plan(14);
 
 -- u1 and u2 share Org A; u1 owns the relay under test.
 insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
@@ -45,6 +50,24 @@ select is(
   0,
   'the relay publishes no table'
 );
+
+-- `realtime.messages` is partitioned by day, and the local Realtime service only creates the
+-- partitions of the days it ran. Give today one, inside this transaction, so the INSERTs below
+-- test the policies rather than a missing partition.
+do $$
+begin
+  if not exists (
+    select 1 from pg_inherits i join pg_class c on c.oid = i.inhrelid
+    where i.inhparent = 'realtime.messages'::regclass
+      and c.relname = 'messages_' || to_char(current_date, 'YYYY_MM_DD')
+  ) then
+    execute format(
+      'create table realtime.%I partition of realtime.messages for values from (%L) to (%L)',
+      'messages_' || to_char(current_date, 'YYYY_MM_DD'), current_date, current_date + 1
+    );
+  end if;
+end;
+$$;
 
 set local role authenticated;
 
@@ -80,6 +103,38 @@ select is(public.relay_topic_owned(realtime.topic()), false, 'a topic of another
 
 -- 10. No topic at all.
 select is(public.relay_topic_owned(null), false, 'a null topic is refused');
+
+-- 11. *** Through the policies: the owner may broadcast on their relay... ***
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+select set_config('realtime.topic', 'relay:11111111-1111-1111-1111-111111111111', true);
+select lives_ok(
+  $sql$ insert into realtime.messages (topic, extension, payload, event, private)
+        values ('relay:11111111-1111-1111-1111-111111111111', 'broadcast', '{}', 'relay', true) $sql$,
+  'the owner may broadcast on their relay'
+);
+
+-- 12. ...and receive what is on it.
+select ok(
+  (select count(*) from realtime.messages where topic = 'relay:11111111-1111-1111-1111-111111111111') > 0,
+  'the owner may read their relay'
+);
+
+-- 13. *** An org colleague may not broadcast on it... ***
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+select throws_ok(
+  $sql$ insert into realtime.messages (topic, extension, payload, event, private)
+        values ('relay:11111111-1111-1111-1111-111111111111', 'broadcast', '{}', 'relay', true) $sql$,
+  '42501',
+  null,
+  'a colleague may not broadcast on another user''s relay'
+);
+
+-- 14. ...nor read it.
+select is(
+  (select count(*)::int from realtime.messages where topic = 'relay:11111111-1111-1111-1111-111111111111'),
+  0,
+  'a colleague may not read another user''s relay'
+);
 
 reset role;
 

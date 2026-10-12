@@ -22,7 +22,7 @@ describe('buildSnapshot', () => {
   ]
 
   it('drops script- and sidebar- terminals, and titles fall back to the name', () => {
-    const snap = buildSnapshot(terminals, 'MacBook Pro', 42)
+    const snap = buildSnapshot(terminals, 'MacBook Pro', 42, () => true)
     expect(snap.sentAt).toBe(42)
     expect(snap.macName).toBe('MacBook Pro')
     expect(snap.agents.map((a) => [a.appAgentId, a.title, a.state])).toEqual([
@@ -33,7 +33,7 @@ describe('buildSnapshot', () => {
   })
 
   it('maps usage to the protocol fields only, with nulls for the missing ones', () => {
-    const [first, second, third] = buildSnapshot(terminals, 'Mac', 0).agents
+    const [first, second, third] = buildSnapshot(terminals, 'Mac', 0, () => true).agents
     expect(first.usage).toEqual({
       costUsd: 1.23, contextPercent: 41, model: 'Opus 4.5', fiveHourPercent: 12, fiveHourResetsAt: 1760003600,
       sevenDayPercent: 30, sevenDayResetsAt: 1760500000,
@@ -43,6 +43,13 @@ describe('buildSnapshot', () => {
       sevenDayPercent: null, sevenDayResetsAt: null,
     })
     expect(third.usage).toBeNull()
+  })
+
+  it('carries only the terminals the account owns', () => {
+    const owners: Record<string, string> = { 'claude-1': 'me', 'claude-2': 'someone-else' }
+    const snap = buildSnapshot(terminals, 'Mac', 0, (id) => owners[id] === 'me')
+    // claude-2 belongs to another account, claude-3 has no recorded owner: both stay out.
+    expect(snap.agents.map((a) => a.appAgentId)).toEqual(['claude-1'])
   })
 })
 

@@ -59,12 +59,23 @@ export function isAgentTerminal(id: string): boolean {
   return !id.startsWith('script-') && !id.startsWith('sidebar-')
 }
 
-export function buildSnapshot(terminals: SnapshotTerminal[], macName: string, sentAt: number): RelaySnapshot {
+/**
+ * `isOwned` says whether a terminal belongs to the account the snapshot is sealed for. It is
+ * required, not defaulted: a terminal started under another account (one whose session was
+ * refused, then someone else signed in) must never reach this account's phones, and one whose
+ * owner is unknown is left out too.
+ */
+export function buildSnapshot(
+  terminals: SnapshotTerminal[],
+  macName: string,
+  sentAt: number,
+  isOwned: (terminalId: string) => boolean,
+): RelaySnapshot {
   return {
     sentAt,
     macName,
     agents: terminals
-      .filter((t) => isAgentTerminal(t.id))
+      .filter((t) => isAgentTerminal(t.id) && isOwned(t.id))
       .map((t) => ({
         appAgentId: t.id,
         title: t.metadata?.title || t.name,

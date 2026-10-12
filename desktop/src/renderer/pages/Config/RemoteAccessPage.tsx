@@ -213,13 +213,32 @@ export function RemoteAccessPage() {
  * from `startPairing`'s result or from `onPairing`, whichever comes first.
  *
  * CLOSING WHILE IT IS LIVE CANCELS IT. A token left valid behind a closed dialog would be
- * a QR nobody is watching that a phone could still scan.
+ * a QR nobody is watching that a phone could still scan. Leaving the page does the same, and
+ * so does a `startPairing` that answers after the dialog closed or the page went: the QR it
+ * started is cancelled rather than shown.
  */
+function cancelPairing(): void {
+  window.electronAPI.remote.cancelPairing().catch((error) => console.error('[remote] cancel failed:', error))
+}
+
 function usePairing(t: Translate) {
   const [view, setView] = useState<RemotePairing | null>(null)
   const [pending, setPending] = useState<'approve' | 'decline' | undefined>()
   const viewRef = useRef(view)
   viewRef.current = view
+  /** Bumped by every open, close and unmount: a `startPairing` answer for an older one is stale. */
+  const attemptRef = useRef(0)
+  /** A `startPairing` call has not answered yet. */
+  const startingRef = useRef(false)
+
+  // Leaving the page cancels whatever pairing it started, live or still starting.
+  useEffect(() => {
+    return () => {
+      attemptRef.current++
+      const phase = viewRef.current?.phase
+      if (startingRef.current || phase === 'waiting' || phase === 'confirm') cancelPairing()
+    }
+  }, [])
 
   // Follow the main process while the dialog is open.
   const isOpen = view !== null
@@ -245,10 +264,18 @@ function usePairing(t: Translate) {
   }, [phase])
 
   const open = useCallback(async () => {
+    const attempt = ++attemptRef.current
     setPending(undefined)
     setView({ phase: 'waiting' })
+    startingRef.current = true
     try {
       const started = await window.electronAPI.remote.startPairing()
+      startingRef.current = false
+      // Closed, reopened or unmounted meanwhile: the QR this started is nobody's to show.
+      if (attempt !== attemptRef.current) {
+        if (started) cancelPairing()
+        return
+      }
       if (!started) {
         setView(null)
         showToast(t('remote.pair.unavailable'), 'error')
@@ -257,16 +284,17 @@ function usePairing(t: Translate) {
       // Keep whatever `onPairing` already delivered: it is at least as fresh.
       setView((current) => (current && (current.qr || current.phase !== 'waiting') ? current : started))
     } catch (error) {
+      startingRef.current = false
+      if (attempt !== attemptRef.current) return
       setView(null)
       showToast(error instanceof Error ? error.message : t('remote.pair.unavailable'), 'error')
     }
   }, [t])
 
   const close = useCallback(() => {
+    attemptRef.current++
     const current = viewRef.current?.phase
-    if (current === 'waiting' || current === 'confirm') {
-      window.electronAPI.remote.cancelPairing().catch((error) => console.error('[remote] cancel failed:', error))
-    }
+    if (current === 'waiting' || current === 'confirm') cancelPairing()
     setPending(undefined)
     setView(null)
   }, [])

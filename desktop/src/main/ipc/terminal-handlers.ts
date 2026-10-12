@@ -49,6 +49,7 @@ import { ensureHydrated } from '../store/hydrate'
 import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt, watchTranscript } from '../chat/transcript-watcher'
 import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
+import { clearTerminalOwners, forgetTerminalOwner, recordTerminalOwner } from '../remote/terminal-owners'
 import type { HistoryAction, LaunchMetadata } from '../../types'
 
 /**
@@ -489,6 +490,8 @@ export function restoreAgents() {
         undefined,
         resumeId ?? undefined
       )
+      // Restored under the account that just signed in: only its phones may see it (#352).
+      recordTerminalOwner(agent.id)
       // The chat reads that conversation NOW, from the file the agent recorded, rather
       // than when the resumed Claude Code's statusLine first names it, seconds later:
       // until then the chat stood empty, then filled at once. `--resume` goes on writing
@@ -520,6 +523,7 @@ export function restoreAgents() {
  */
 export function teardownAgentSessions(): void {
   cleanupAllTerminals()
+  clearTerminalOwners()
 }
 
 export function setupTerminalHandlers(
@@ -549,6 +553,8 @@ export function setupTerminalHandlers(
       callbacks.onBranchChange,
       callbacks.onMetadataChange
     )
+    // The account it was opened under: the relay sends it to that account's phones only.
+    recordTerminalOwner(terminal.id)
 
     return {
       id: terminal.id,
@@ -605,6 +611,9 @@ export function setupTerminalHandlers(
       // but the Tasks page's "Discuss" button wants.
       promptMode === 'draft' ? 'draft' : 'run'
     )
+
+    // The account it was launched under: the relay sends it to that account's phones only.
+    recordTerminalOwner(terminal.id)
 
     // Save agent to disk immediately
     const tsCreate = Date.now()
@@ -689,6 +698,7 @@ export function setupTerminalHandlers(
     // Same window, same reason: after archiveAgent the app id resolves to nothing.
     flushPlanSpecSnapshot(id)
     killTerminal(id)
+    forgetTerminalOwner(id)
     // Archive, never delete: the row is kept so the events above keep their link.
     archiveAgent(id)
     usageFlushed.delete(id)

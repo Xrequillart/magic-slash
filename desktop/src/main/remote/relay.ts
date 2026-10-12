@@ -12,6 +12,7 @@ import { addDevice, listDevices, loadIdentity, loadOrCreateIdentity, removeDevic
 import { PairingSession, type PairingOutgoing } from './pairing'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
 import { buildSnapshot, SnapshotScheduler } from './snapshot'
+import { terminalOwner } from './terminal-owners'
 
 // ---------------------------------------------------------------------------
 // The relay to paired iPhones (main process, #352). PROTOCOL.md is the contract.
@@ -251,10 +252,15 @@ function sendSealed(type: RelayMessageType, device: StoredRemoteDevice, body: un
   return sendEnvelope(sealEnvelope(nextHeader(type, device.phoneId), key, body))
 }
 
-/** One complete snapshot, sealed once per paired phone (seq moves across recipients). */
+/**
+ * One complete snapshot, sealed once per paired phone (seq moves across recipients). Only the
+ * terminals started under THIS account: a refused session leaves its PTYs running, and the
+ * next account to sign in must not see them on its phones (terminal-owners.ts).
+ */
 function publishSnapshot(): void {
-  if (!live || !channel || !identity || identity.devices.length === 0) return
-  const snapshot = buildSnapshot(getAllTerminals(), macName(), Date.now())
+  const account = userId
+  if (!live || !channel || !identity || !account || identity.devices.length === 0) return
+  const snapshot = buildSnapshot(getAllTerminals(), macName(), Date.now(), (id) => terminalOwner(id) === account)
   for (const device of identity.devices) void sendSealed('state', device, snapshot)
 }
 
@@ -620,7 +626,8 @@ export function revokeRemoteDevice(phoneId: string): Promise<RemoteState> {
     const self = identity
     const device = self?.devices.find((d) => d.phoneId === phoneId)
     if (uid && self && device) {
-      await sendSealed('revoked', device, {})
+      // Names the pairing it ends (§8): a phone paired again since drops a replay of this one.
+      await sendSealed('revoked', device, { pairedAt: device.pairedAt })
       // Out of memory FIRST: whatever the write does, this session never seals for it again.
       self.devices = self.devices.filter((d) => d.phoneId !== phoneId)
       pairKeys.delete(phoneId)

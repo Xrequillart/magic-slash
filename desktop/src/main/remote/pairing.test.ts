@@ -4,7 +4,7 @@ import type { RemotePairing } from '../../types'
 import { deriveKey, generateKeyPair, pairingCode, type RelayKeyPair } from './crypto'
 import { openEnvelope, sealEnvelope, type RelayEnvelope } from './envelope'
 import type { StoredRemoteDevice } from './identity-store'
-import { PairingSession, TOKEN_TTL_MS, type PairingOutgoing } from './pairing'
+import { CONFIRM_TTL_MS, PairingSession, TOKEN_TTL_MS, type PairingOutgoing } from './pairing'
 
 // The phone is simulated with crypto.ts itself, which the vectors pin to the Swift side: a
 // request built here is byte for byte one the iPhone would send.
@@ -106,13 +106,37 @@ describe('a request', () => {
     expect(sent).toEqual([])
   })
 
-  it('carrying an expired token is rejected as expired', () => {
+  it('carrying an expired token is rejected as expired to that phone, and the QR stays up', () => {
     const token = qr().token
     advance(TOKEN_TTL_MS + 1)
+    const live = session.current
+    const count = screens.length
     const phone = makePhone()
     session.handleRequest(request(phone, token))
     expect(sent).toEqual([{ type: 'pair-rejected', to: phone.id, reason: 'expired' }])
-    expect(session.current).toMatchObject({ phase: 'rejected', reason: 'expired' })
+    // The Mac's screen did not move: same QR, still waiting, and it keeps refreshing.
+    expect(session.current).toEqual(live)
+    expect(screens).toHaveLength(count)
+    advance(TOKEN_TTL_MS)
+    expect(screens).toHaveLength(count + 1)
+    expect(session.current.phase).toBe('waiting')
+    // And the current QR still pairs.
+    session.handleRequest(request(makePhone(), qr().token))
+    expect(session.current.phase).toBe('confirm')
+  })
+
+  it('carrying an expired token a second time is answered used, the screen still untouched', () => {
+    const token = qr().token
+    advance(TOKEN_TTL_MS + 1)
+    const live = session.current
+    const phone = makePhone()
+    session.handleRequest(request(phone, token))
+    session.handleRequest(request(phone, token))
+    expect(sent).toEqual([
+      { type: 'pair-rejected', to: phone.id, reason: 'expired' },
+      { type: 'pair-rejected', to: phone.id, reason: 'used' },
+    ])
+    expect(session.current).toEqual(live)
   })
 
   it('is rejected as expired a millisecond past 60 s even before the refresh fires', () => {
@@ -133,10 +157,25 @@ describe('a request', () => {
     expect(session.current).toEqual(confirm)
   })
 
-  it('carrying a token that was never issued is rejected as used', () => {
-    const phone = makePhone()
-    session.handleRequest(request(phone, crypto.randomBytes(32).toString('base64url')))
-    expect(sent).toEqual([{ type: 'pair-rejected', to: phone.id, reason: 'used' }])
+  it('carrying a token that was never issued is ignored: no reply, the QR and its refresh untouched', () => {
+    const live = session.current
+    const count = screens.length
+    session.handleRequest(request(makePhone(), crypto.randomBytes(32).toString('base64url')))
+    expect(sent).toEqual([])
+    expect(session.current).toEqual(live)
+    expect(screens).toHaveLength(count)
+    advance(TOKEN_TTL_MS)
+    expect(screens).toHaveLength(count + 1)
+    session.handleRequest(request(makePhone(), qr().token))
+    expect(session.current.phase).toBe('confirm')
+  })
+
+  it('carrying a token that was never issued leaves a confirmation on screen', () => {
+    session.handleRequest(request(makePhone(), qr().token))
+    const confirm = session.current
+    session.handleRequest(request(makePhone(), crypto.randomBytes(32).toString('base64url')))
+    expect(sent).toEqual([])
+    expect(session.current).toEqual(confirm)
   })
 
   it('that does not open is ignored and does NOT consume the token', () => {
@@ -162,7 +201,9 @@ describe('a request', () => {
 describe('the decision', () => {
   it('approve stores the device and sends a pair-accepted the phone can open', async () => {
     const phone = makePhone()
-    session.handleRequest(request(phone, qr().token))
+    const req = request(phone, qr().token)
+    session.handleRequest(req)
+    now += 5_000
     await session.approve()
     expect(stored).toEqual([{ phoneId: phone.id, name: "Xavier's iPhone", pub: phone.keys.publicRaw.toString('base64'), pairedAt: now }])
     expect(sent).toHaveLength(1)
@@ -170,7 +211,8 @@ describe('the decision', () => {
     expect(accepted).toMatchObject({ type: 'pair-accepted', to: phone.id })
     // As the relay would put it on the wire, then opened with the phone's own derivation.
     const envelope = sealEnvelope({ type: 'pair-accepted', from: MAC_ID, to: phone.id, epoch: crypto.randomUUID(), seq: 1 }, accepted.key, accepted.body)
-    expect(openEnvelope(envelope, phone.key)).toEqual({ macName: 'MacBook Pro' })
+    // It names the request it answers and the pairing it creates (§6).
+    expect(openEnvelope(envelope, phone.key)).toEqual({ macName: 'MacBook Pro', requestEpoch: req.epoch, pairedAt: now })
     expect(session.current).toEqual({ phase: 'paired', deviceName: "Xavier's iPhone" })
   })
 
@@ -233,6 +275,42 @@ describe('the decision', () => {
     expect(session.current).toMatchObject({ phase: 'rejected', reason: 'declined' })
     session.handleRequest(request(phone, token))
     expect(sent).toHaveLength(1)
+  })
+
+  it('the confirmation expires 120 s after the request opened: the phone is told, approval is gone', async () => {
+    const phone = makePhone()
+    session.handleRequest(request(phone, qr().token))
+    advance(CONFIRM_TTL_MS - 1)
+    expect(session.current.phase).toBe('confirm')
+    expect(sent).toEqual([])
+    advance(1)
+    expect(sent).toEqual([{ type: 'pair-rejected', to: phone.id, reason: 'expired' }])
+    expect(session.current).toEqual({ phase: 'rejected', reason: 'expired', deviceName: "Xavier's iPhone" })
+    await session.approve()
+    session.decline()
+    expect(stored).toEqual([])
+    expect(sent).toHaveLength(1)
+  })
+
+  it('approve past the deadline expires instead, even before the timer fires', async () => {
+    const phone = makePhone()
+    session.handleRequest(request(phone, qr().token))
+    now += CONFIRM_TTL_MS
+    await session.approve()
+    expect(stored).toEqual([])
+    expect(sent).toEqual([{ type: 'pair-rejected', to: phone.id, reason: 'expired' }])
+    expect(session.current).toMatchObject({ phase: 'rejected', reason: 'expired' })
+  })
+
+  it('approve just inside the deadline pairs, and the deadline never fires afterwards', async () => {
+    const phone = makePhone()
+    session.handleRequest(request(phone, qr().token))
+    advance(CONFIRM_TTL_MS - 1)
+    await session.approve()
+    expect(session.current.phase).toBe('paired')
+    advance(CONFIRM_TTL_MS)
+    expect(sent.map((m) => m.type)).toEqual(['pair-accepted'])
+    expect(session.current.phase).toBe('paired')
   })
 
   it('cancel stops the refresh and ignores every later request', () => {

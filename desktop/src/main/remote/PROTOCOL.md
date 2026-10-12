@@ -72,10 +72,10 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 | `type` | Direction | Box plaintext (JSON) | Extra clear fields |
 | --- | --- | --- | --- |
 | `pair-request` | phone → Mac | `{ "token": "<b64url>", "name": "Xavier's iPhone" }` | `phonePub` |
-| `pair-accepted` | Mac → phone | `{ "macName": "MacBook Pro" }` | |
+| `pair-accepted` | Mac → phone | `{ "macName": "MacBook Pro", "requestEpoch": "<uuid>", "pairedAt": 1760000000000 }` | |
 | `pair-rejected` | Mac → phone | none: `box` is absent | `reason`: `expired`, `used`, `declined` |
 | `state` | Mac → phone | snapshot (§5) | |
-| `revoked` | Mac → phone | `{}` | |
+| `revoked` | Mac → phone | `{ "pairedAt": 1760000000000 }` | |
 
 `pair-rejected` is clear text and can be forged by anyone on the channel. The worst a forgery
 can do is cancel a pairing on screen, which is accepted.
@@ -127,6 +127,13 @@ The Mac sends a snapshot to every paired phone:
   from its `sentAt`, which is the Mac's clock). Otherwise it is shown offline, with that
   snapshot labelled as the last known state, never as the current one.
 - The phone caches the last snapshot per Mac so that it can show it after a relaunch.
+- **Pairings never replay into each other.** The same phone and Mac derive the same pair key
+  every time they pair, so a recorded envelope from an earlier pairing still opens. Each pairing
+  is therefore named by its `pairedAt` (Mac clock, set on approval), and the phone drops:
+  - a `pair-accepted` whose `requestEpoch` is not the epoch of the `pair-request` it is waiting
+    on (§7 step 5);
+  - a `revoked` whose `pairedAt` is not the one it saved for that Mac (§8);
+  - a `state` whose `sentAt` is earlier than that `pairedAt`.
 
 ## 7. Pairing
 
@@ -147,20 +154,26 @@ The Mac sends a snapshot to every paired phone:
    - compares the token in constant time against the current one, and checks it has not
      expired;
    - **consumes the token on the first request that opens**, whatever happens next;
-   - answers a stale or reused token with `pair-rejected`;
-   - ignores a box that does not open: someone who never saw the QR cannot even burn the
-     token.
+   - answers an expired or already-used token with `pair-rejected` to that sender, and leaves its
+     own screen as it was: only the current token moves the Mac to the confirmation;
+   - ignores a box that does not open, and a token it never issued: neither reaches the screen,
+     so a phone that never saw the current QR cannot interrupt a pairing in progress.
 4. **Code.** `SHA-256(tokenBytes(32) ‖ macPub(65) ‖ phonePub(65))`; take the first 4 bytes as
    a big-endian UInt32, mod 10000, and zero-pad to 4 digits. Both screens show it.
 5. **Approval on the Mac only.** Approve stores `{phoneId, name, pub, pairedAt}` and sends
-   `pair-accepted`. Decline sends `pair-rejected` with reason `declined`. The phone saves the
-   Mac (`macId`, `name`, `pub`) only on `pair-accepted`.
+   `pair-accepted`, carrying the request's `epoch` as `requestEpoch` and that `pairedAt`. Decline
+   sends `pair-rejected` with reason `declined`. The phone saves the Mac (`macId`, `name`, `pub`,
+   `pairedAt`) only on a `pair-accepted` that answers its own pending request.
+6. **One deadline for both ends.** The Mac's confirmation expires **120 s** after the request
+   opened: it then answers `pair-rejected` with reason `expired` and approval is no longer
+   possible. The phone waits **180 s**, so any approval the Mac can still give reaches a phone
+   that is still listening.
 
 ## 8. Revocation
 
-The Mac sends `revoked` to the device, then deletes the device's key. It never encrypts for
+The Mac sends `revoked`, carrying the device's `pairedAt`, then deletes the device's key. It never encrypts for
 that device again, so a revoked phone receives nothing it can read, even with a valid
-Supabase session. On `revoked`, the phone forgets the Mac.
+Supabase session. On a `revoked` whose `pairedAt` matches its pairing, the phone forgets the Mac.
 
 "Forget this Mac" on the phone is local only in v1: the Mac keeps sealing for it until it is
 revoked there too.
