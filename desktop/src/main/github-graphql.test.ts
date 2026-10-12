@@ -385,6 +385,52 @@ describe('fetchPRStatusGraphQL', () => {
     expect(snapshot.latestFeedback).toBeUndefined()
   })
 
+  it('keeps only the newest run of a job, per workflow and event, as GitHub lists them', async () => {
+    const mep = (databaseId: number, event: string, conclusion: string) => ({
+      databaseId,
+      name: 'check-mep-config-reviewer',
+      status: 'COMPLETED',
+      conclusion,
+      detailsUrl: `https://ci/mep/${databaseId}`,
+      checkSuite: { workflowRun: { event, workflow: { name: 'Protect MEP config' } } },
+    })
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          commits: {
+            nodes: [
+              {
+                commit: {
+                  statusCheckRollup: {
+                    state: 'SUCCESS',
+                    contexts: {
+                      nodes: [
+                        mep(1, 'pull_request', 'SUCCESS'),
+                        mep(2, 'pull_request_review', 'FAILURE'),
+                        mep(4, 'pull_request_review', 'SUCCESS'),
+                        mep(3, 'pull_request_review', 'FAILURE'),
+                        { databaseId: 5, name: 'Greptile Review', status: 'COMPLETED', conclusion: 'SUCCESS', checkSuite: { workflowRun: null } },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.checks).toEqual([
+      { name: 'check-mep-config-reviewer', state: 'passed', url: 'https://ci/mep/1' },
+      { name: 'check-mep-config-reviewer', state: 'passed', url: 'https://ci/mep/4' },
+      { name: 'Greptile Review', state: 'passed' },
+    ])
+    expect(snapshot.checksSummary).toEqual({ total: 3, passed: 3, failed: 0, running: 0, skipped: 0 })
+  })
+
   it('tolerates a head commit with no checks at all', async () => {
     mockFetch.mockResolvedValue(
       graphQLResponse(payload({ commits: { nodes: [{ commit: { statusCheckRollup: null } }] } })),
