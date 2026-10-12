@@ -216,9 +216,15 @@ export function RemoteAccessPage() {
  * a QR nobody is watching that a phone could still scan. Leaving the page does the same, and
  * so does a `startPairing` that answers after the dialog closed or the page went: the QR it
  * started is cancelled rather than shown.
+ *
+ * EVERY CANCEL NAMES ITS ATTEMPT. Each `startPairing` call gets an `attemptId` from the main
+ * process, and the page only ever cancels the one it owns: a late cleanup for an older call
+ * (closed and reopened while starts were queued) is then a no-op instead of closing the
+ * newer QR. A cleanup that runs while the start has not answered yet has no id to name; the
+ * stale answer cancels its own attempt when it lands.
  */
-function cancelPairing(): void {
-  window.electronAPI.remote.cancelPairing().catch((error) => console.error('[remote] cancel failed:', error))
+function cancelPairing(attemptId: string): void {
+  window.electronAPI.remote.cancelPairing(attemptId).catch((error) => console.error('[remote] cancel failed:', error))
 }
 
 function usePairing(t: Translate) {
@@ -228,23 +234,34 @@ function usePairing(t: Translate) {
   viewRef.current = view
   /** Bumped by every open, close and unmount: a `startPairing` answer for an older one is stale. */
   const attemptRef = useRef(0)
-  /** A `startPairing` call has not answered yet. */
-  const startingRef = useRef(false)
+  /** The main process's id for the pairing this page put up, once `startPairing` answered. */
+  const ownedRef = useRef<string | null>(null)
 
-  // Leaving the page cancels whatever pairing it started, live or still starting.
+  /** Cancel the pairing this page owns, if it is still live, and let go of it. */
+  const release = useCallback(() => {
+    const owned = ownedRef.current
+    ownedRef.current = null
+    const phase = viewRef.current?.phase
+    if (owned && (phase === 'waiting' || phase === 'confirm')) cancelPairing(owned)
+  }, [])
+
+  // Leaving the page cancels whatever pairing it started: a live one here, one still starting
+  // when its answer lands (stale, see `open`).
   useEffect(() => {
     return () => {
       attemptRef.current++
-      const phase = viewRef.current?.phase
-      if (startingRef.current || phase === 'waiting' || phase === 'confirm') cancelPairing()
+      release()
     }
-  }, [])
+  }, [release])
 
   // Follow the main process while the dialog is open.
   const isOpen = view !== null
   useEffect(() => {
     if (!isOpen) return
     const off = window.electronAPI.remote.onPairing((next) => {
+      // Another attempt's state (one this page let go of): never ours to show.
+      const owned = ownedRef.current
+      if (next?.attemptId && owned && next.attemptId !== owned) return
       setPending(undefined)
       // Null is the pairing ending on the main side (remote mode switched off, say). A
       // success already on screen keeps its moment; anything else simply closes.
@@ -265,15 +282,15 @@ function usePairing(t: Translate) {
 
   const open = useCallback(async () => {
     const attempt = ++attemptRef.current
+    ownedRef.current = null
     setPending(undefined)
     setView({ phase: 'waiting' })
-    startingRef.current = true
     try {
       const started = await window.electronAPI.remote.startPairing()
-      startingRef.current = false
       // Closed, reopened or unmounted meanwhile: the QR this started is nobody's to show.
+      // Cancelled by ITS id, so a newer pairing put up since is left alone.
       if (attempt !== attemptRef.current) {
-        if (started) cancelPairing()
+        if (started?.attemptId) cancelPairing(started.attemptId)
         return
       }
       if (!started) {
@@ -281,10 +298,10 @@ function usePairing(t: Translate) {
         showToast(t('remote.pair.unavailable'), 'error')
         return
       }
-      // Keep whatever `onPairing` already delivered: it is at least as fresh.
-      setView((current) => (current && (current.qr || current.phase !== 'waiting') ? current : started))
+      ownedRef.current = started.attemptId ?? null
+      // Keep whatever `onPairing` already delivered for this attempt: it is at least as fresh.
+      setView((current) => (current?.attemptId !== undefined && current.attemptId === started.attemptId ? current : started))
     } catch (error) {
-      startingRef.current = false
       if (attempt !== attemptRef.current) return
       setView(null)
       showToast(error instanceof Error ? error.message : t('remote.pair.unavailable'), 'error')
@@ -293,11 +310,10 @@ function usePairing(t: Translate) {
 
   const close = useCallback(() => {
     attemptRef.current++
-    const current = viewRef.current?.phase
-    if (current === 'waiting' || current === 'confirm') cancelPairing()
+    release()
     setPending(undefined)
     setView(null)
-  }, [])
+  }, [release])
 
   const answer = useCallback(
     async (which: 'approve' | 'decline') => {

@@ -38,8 +38,11 @@ export function setupRemoteHandlers(getMainWindow: () => BrowserWindow | null): 
 
   ipcMain.handle('remote:startPairing', async (): Promise<RemotePairing | null> => startRemotePairing())
 
-  ipcMain.handle('remote:cancelPairing', async (): Promise<void> => {
-    cancelRemotePairing()
+  // With an attempt id, only that attempt closes: a late cleanup from the page for an older
+  // `startPairing` must not close the pairing a newer one put up.
+  ipcMain.handle('remote:cancelPairing', async (_event, attemptId: unknown): Promise<void> => {
+    if (attemptId === undefined || attemptId === null) cancelRemotePairing()
+    else if (typeof attemptId === 'string') cancelRemotePairing(attemptId)
   })
 
   // Rejects when the device cannot be stored (no keychain) or the phone cannot be told (relay

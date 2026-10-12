@@ -4260,4 +4260,10 @@ export interface RemotePairing {
   code?: string
   deviceName?: string
   reason?: 'expired' | 'used' | 'declined'
+  /**
+   * The `startPairing` call this pairing belongs to: a fresh id per call, on every pairing it
+   * emits. `cancelPairing(attemptId)` closes that attempt only, so a late cleanup for an older
+   * call cannot close a newer one.
+   */
+  attemptId?: string
 }

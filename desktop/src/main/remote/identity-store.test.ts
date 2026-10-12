@@ -19,12 +19,27 @@ vi.mock('electron', () => ({
 
 vi.mock('../config/paths', () => ({ CONFIG_DIR: TEST_CONFIG_DIR }))
 
-import { addDevice, listDevices, loadIdentity, loadOrCreateIdentity, removeDevice, RemoteKeychainUnavailableError } from './identity-store'
+import {
+  addDevice,
+  listDevices,
+  loadIdentity,
+  loadOrCreateIdentity,
+  removeDevice,
+  RemoteKeychainUnavailableError,
+  saveGeneration,
+  saveIdentity,
+} from './identity-store'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
 
 const ALICE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const BOB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
-const device = { phoneId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'iPhone', pub: 'BAAA', pairedAt: 1 }
+const device = {
+  phoneId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  name: 'iPhone',
+  pub: 'BAAA',
+  pairedAt: 1,
+  pairingId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+}
 
 beforeEach(() => {
   keychain.available = true
@@ -56,6 +71,37 @@ describe('identity store', () => {
     expect(listDevices(BOB)).toEqual([])
     removeDevice(ALICE, device.phoneId)
     expect(listDevices(ALICE)).toEqual([])
+  })
+
+  it('starts at generation 0 and keeps the generation it is given, never going back', () => {
+    expect(loadOrCreateIdentity(ALICE).generation).toBe(0)
+    saveGeneration(ALICE, 3)
+    expect(loadIdentity(ALICE)?.generation).toBe(3)
+    // Adding a device keeps it.
+    addDevice(ALICE, device)
+    expect(loadIdentity(ALICE)?.generation).toBe(3)
+    saveGeneration(ALICE, 2)
+    expect(loadIdentity(ALICE)?.generation).toBe(3)
+    expect(() => saveGeneration(BOB, 1)).toThrow()
+  })
+
+  it('drops a stored device without a pairing id, with a log line, and keeps the rest', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const identity = loadOrCreateIdentity(ALICE)
+    const legacy = { phoneId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: 'Old iPhone', pub: 'BAAA', pairedAt: 1 }
+    // Written as a dev build from before pairings were named would have.
+    saveIdentity(ALICE, { ...identity, devices: [legacy as unknown as typeof device, device] })
+    expect(listDevices(ALICE)).toEqual([device])
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('without a pairing id'))
+    warn.mockRestore()
+  })
+
+  it('reads an identity file without a generation as generation 0', () => {
+    const identity = loadOrCreateIdentity(ALICE)
+    const older: Partial<typeof identity> = { ...identity }
+    delete older.generation
+    fs.writeFileSync(`${TEST_CONFIG_DIR}/remote-${ALICE}.enc`, `enc:${JSON.stringify(older)}`)
+    expect(loadIdentity(ALICE)).toEqual({ ...identity, generation: 0 })
   })
 
   it('refuses to create or save without a keychain, and load never throws', () => {

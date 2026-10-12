@@ -1221,7 +1221,8 @@ const remoteApi = {
   // Null when remote mode is off, the relay is not live, or this Mac's identity cannot be
   // stored (no keychain).
   startPairing: (): Promise<RemotePairing | null> => ipcRenderer.invoke('remote:startPairing'),
-  cancelPairing: (): Promise<void> => ipcRenderer.invoke('remote:cancelPairing'),
+  /** With an `attemptId`, cancels that attempt only (a no-op once it is replaced). */
+  cancelPairing: (attemptId?: string): Promise<void> => ipcRenderer.invoke('remote:cancelPairing', attemptId),
   approvePairing: (): Promise<void> => ipcRenderer.invoke('remote:approvePairing'),
   declinePairing: (): Promise<void> => ipcRenderer.invoke('remote:declinePairing'),
   revokeDevice: (phoneId: string): Promise<RemoteState> => ipcRenderer.invoke('remote:revokeDevice', phoneId),

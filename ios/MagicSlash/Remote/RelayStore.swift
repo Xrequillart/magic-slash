@@ -160,16 +160,20 @@ final class RelayStore {
   func start() async {
     guard !stopped else { return }
     var known = PairedMacs.load(userId: userId)
-    // A pairing saved before the Mac's `pairedAt` was kept cannot tell its own revocation
-    // from a replayed one (§6): drop it and ask for a new pairing.
-    if known.contains(where: { $0.macPairedAt == nil }) {
-      known.removeAll { $0.macPairedAt == nil }
+    // A pairing saved before its `pairingId` was kept cannot tell its own revocation from a
+    // replayed one (§6): drop it and ask for a new pairing.
+    if known.contains(where: { $0.pairingId == nil }) {
+      known.removeAll { $0.pairingId == nil }
       PairedMacs.save(known, userId: userId)
       setNeedsRepair(true)
     }
     macs = known
-    let ids = Set(known.map(\.macId))
-    snapshots = SnapshotCache.load(userId: userId).filter { ids.contains($0.key) }
+    // Only what was cached for the current pairing of each Mac.
+    let pairings = Dictionary(known.map { ($0.macId, $0.pairingId) }, uniquingKeysWith: { _, last in last })
+    snapshots = SnapshotCache.load(userId: userId).filter { entry in
+      guard let pairingId = pairings[entry.key] ?? nil else { return false }
+      return entry.value.snapshot.pairingId == pairingId
+    }
     startTicker()
     // Unlocked before joining: joining is what makes the Macs send a snapshot, and one
     // that arrives before the keys cannot be read.
@@ -554,17 +558,21 @@ final class RelayStore {
           let plain = envelope.open(with: key),
           let snapshot = try? JSONDecoder().decode(RelaySnapshot.self, from: plain),
           let mac = macs.first(where: { $0.macId == envelope.from }),
-          let pairedAt = mac.macPairedAt,
-          // §6: a snapshot from before this pairing is a replay of an older one.
-          snapshot.sentAt >= pairedAt
+          let pairingId = mac.pairingId,
+          // §6: a snapshot sealed for another pairing is a replay of an older one.
+          snapshot.pairingId == pairingId,
+          let generation = snapshot.generation, generation >= 0
     else { return }
-    // §6: a replayed or overtaken snapshot never replaces a newer one.
+    // §6: a replayed or overtaken snapshot never replaces a newer one. `sentAt` is the Mac's
+    // clock and is never compared.
     if let last = snapshots[envelope.from],
-       !last.isSuperseded(byEpoch: envelope.epoch, seq: envelope.seq, sentAt: snapshot.sentAt) {
+       !last.isSuperseded(byGeneration: generation, epoch: envelope.epoch, seq: envelope.seq) {
       return
     }
     now = Date()
-    snapshots[envelope.from] = AcceptedSnapshot(epoch: envelope.epoch, seq: envelope.seq, snapshot: snapshot, receivedAt: now)
+    snapshots[envelope.from] = AcceptedSnapshot(
+      generation: generation, epoch: envelope.epoch, seq: envelope.seq, snapshot: snapshot, receivedAt: now
+    )
     if let name = cleanMacName(snapshot.macName),
        let index = macs.firstIndex(where: { $0.macId == envelope.from }), macs[index].name != name {
       var renamed = macs
@@ -580,9 +588,9 @@ final class RelayStore {
     guard let key = pairKeys[envelope.from],
           let plain = envelope.open(with: key),
           let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
-          let pairedAt = (body["pairedAt"] as? NSNumber)?.doubleValue,
+          let pairingId = body["pairingId"] as? String,
           let mac = macs.first(where: { $0.macId == envelope.from }),
-          mac.macPairedAt == pairedAt
+          mac.pairingId == pairingId
     else { return }
     forget(envelope.from)
   }
@@ -597,8 +605,8 @@ final class RelayStore {
           let plain = envelope.open(with: key),
           let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
           body["requestEpoch"] as? String == requestEpoch,
-          let macPairedAt = (body["pairedAt"] as? NSNumber)?.doubleValue,
-          macPairedAt.isFinite, macPairedAt > 0
+          let pairingId = body["pairingId"] as? String,
+          !pairingId.isEmpty, pairingId == pairingId.lowercased()
     else { return }
     let name = cleanMacName(body["macName"] as? String) ?? pairing.offer.name
 
@@ -607,7 +615,7 @@ final class RelayStore {
       name: name,
       pub: pairing.offer.pub,
       pairedAt: Date(),
-      macPairedAt: macPairedAt,
+      pairingId: pairingId,
       phoneId: envelope.to,
       phonePub: phonePub
     )

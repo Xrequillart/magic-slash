@@ -46,8 +46,8 @@ export interface PairAcceptedBody {
   macName: string
   /** The `epoch` of the `pair-request` envelope this answers. */
   requestEpoch: string
-  /** The stored device's `pairedAt`: the pairing's name (§6). */
-  pairedAt: number
+  /** The stored device's `pairingId`: the pairing's name (§6), drawn on approval. */
+  pairingId: string
 }
 
 export interface PairingDeps {
@@ -70,6 +70,8 @@ export interface PairingDeps {
   /** Arm a timer; returns its cancel. */
   setTimer?: (fn: () => void, ms: number) => () => void
   randomBytes?: (n: number) => Buffer
+  /** Draws the `pairingId` on approval. Lower-cased whatever it returns. */
+  randomUUID?: () => string
 }
 
 interface IssuedToken {
@@ -105,6 +107,7 @@ export class PairingSession {
   private readonly now: () => number
   private readonly setTimer: (fn: () => void, ms: number) => () => void
   private readonly randomBytes: (n: number) => Buffer
+  private readonly randomUUID: () => string
   private issued: IssuedToken[] = []
   private pending: PendingPhone | null = null
   private cancelRefresh: (() => void) | null = null
@@ -122,6 +125,7 @@ export class PairingSession {
     this.now = deps.now ?? Date.now
     this.setTimer = deps.setTimer ?? defaultTimer
     this.randomBytes = deps.randomBytes ?? crypto.randomBytes
+    this.randomUUID = deps.randomUUID ?? crypto.randomUUID
   }
 
   /** What the pairing screen should show now. */
@@ -284,19 +288,22 @@ export class PairingSession {
     }
     this.approving = true
     try {
-      const pairedAt = this.now()
+      // A new name for every pairing (§6): the same phone paired again derives the same key,
+      // so only this tells its envelopes apart from a recording of an earlier pairing.
+      const pairingId = this.randomUUID().toLowerCase()
       this.deps.storeDevice({
         phoneId: phone.phoneId,
         name: phone.name,
         pub: phone.phonePub.toString('base64'),
-        pairedAt,
+        pairedAt: this.now(),
+        pairingId,
       })
       try {
         await this.deps.send({
           type: 'pair-accepted',
           to: phone.phoneId,
           key: phone.key,
-          body: { macName: this.deps.macName, requestEpoch: phone.requestEpoch, pairedAt },
+          body: { macName: this.deps.macName, requestEpoch: phone.requestEpoch, pairingId },
         })
       } catch (error) {
         this.deps.forgetDevice?.(phone.phoneId)

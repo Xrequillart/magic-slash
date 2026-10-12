@@ -24,10 +24,19 @@ export interface RelayAgent {
   usage: RelayAgentUsage | null
 }
 
-export interface RelaySnapshot {
+/** What every phone of the Mac is sent alike: the snapshot before it is addressed. */
+export interface RelaySnapshotBody {
+  /** The relay start this snapshot belongs to (§6): what the phone orders by. */
+  generation: number
+  /** Mac clock, epoch ms. Shown, never compared (§6). */
   sentAt: number
   macName: string
   agents: RelayAgent[]
+}
+
+/** The snapshot as one phone receives it (§5): named by that phone's pairing. */
+export interface RelaySnapshot extends RelaySnapshotBody {
+  pairingId: string
 }
 
 /** What a snapshot reads of a terminal: a structural subset, so tests need no PTY. */
@@ -69,9 +78,11 @@ export function buildSnapshot(
   terminals: SnapshotTerminal[],
   macName: string,
   sentAt: number,
+  generation: number,
   isOwned: (terminalId: string) => boolean,
-): RelaySnapshot {
+): RelaySnapshotBody {
   return {
+    generation,
     sentAt,
     macName,
     agents: terminals
@@ -83,6 +94,14 @@ export function buildSnapshot(
         usage: toRelayUsage(t.metadata?.usage),
       })),
   }
+}
+
+/**
+ * The snapshot for one phone: the shared body, named by that phone's pairing, so the
+ * plaintext sealed for each phone is its own (§5, §6).
+ */
+export function snapshotFor(body: RelaySnapshotBody, pairingId: string): RelaySnapshot {
+  return { pairingId, ...body }
 }
 
 export const USAGE_THROTTLE_MS = 2_000

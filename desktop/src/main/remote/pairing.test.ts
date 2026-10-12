@@ -2,7 +2,7 @@ import * as crypto from 'crypto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { RemotePairing } from '../../types'
 import { deriveKey, generateKeyPair, pairingCode, type RelayKeyPair } from './crypto'
-import { openEnvelope, sealEnvelope, type RelayEnvelope } from './envelope'
+import { openEnvelope, sealEnvelope, UUID_RE, type RelayEnvelope } from './envelope'
 import type { StoredRemoteDevice } from './identity-store'
 import { CONFIRM_TTL_MS, PairingSession, TOKEN_TTL_MS, type PairingOutgoing } from './pairing'
 
@@ -205,15 +205,46 @@ describe('the decision', () => {
     session.handleRequest(req)
     now += 5_000
     await session.approve()
-    expect(stored).toEqual([{ phoneId: phone.id, name: "Xavier's iPhone", pub: phone.keys.publicRaw.toString('base64'), pairedAt: now }])
+    expect(stored).toEqual([{
+      phoneId: phone.id,
+      name: "Xavier's iPhone",
+      pub: phone.keys.publicRaw.toString('base64'),
+      pairedAt: now,
+      pairingId: expect.stringMatching(UUID_RE),
+    }])
+    const { pairingId } = stored[0]
     expect(sent).toHaveLength(1)
     const accepted = sent[0] as Extract<PairingOutgoing, { type: 'pair-accepted' }>
     expect(accepted).toMatchObject({ type: 'pair-accepted', to: phone.id })
     // As the relay would put it on the wire, then opened with the phone's own derivation.
     const envelope = sealEnvelope({ type: 'pair-accepted', from: MAC_ID, to: phone.id, epoch: crypto.randomUUID(), seq: 1 }, accepted.key, accepted.body)
     // It names the request it answers and the pairing it creates (§6).
-    expect(openEnvelope(envelope, phone.key)).toEqual({ macName: 'MacBook Pro', requestEpoch: req.epoch, pairedAt: now })
+    expect(openEnvelope(envelope, phone.key)).toEqual({ macName: 'MacBook Pro', requestEpoch: req.epoch, pairingId })
     expect(session.current).toEqual({ phase: 'paired', deviceName: "Xavier's iPhone" })
+  })
+
+  it('names every pairing afresh, lower-case, even for the same phone (§6)', async () => {
+    const phone = makePhone()
+    session.handleRequest(request(phone, qr().token))
+    await session.approve()
+    const again = new PairingSession({
+      macId: MAC_ID,
+      macPrivate: mac.privateKey,
+      macPublicRaw: mac.publicRaw,
+      macName: 'MacBook Pro',
+      onChange: () => {},
+      send: (m) => { sent.push(m) },
+      storeDevice: (d) => stored.push(d),
+      randomUUID: () => 'DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD',
+    })
+    again.start()
+    again.handleRequest(request(phone, JSON.parse(again.current.qr!).token))
+    await again.approve()
+    expect(stored.map((d) => d.phoneId)).toEqual([phone.id, phone.id])
+    expect(stored[1].pairingId).toBe('dddddddd-dddd-4ddd-8ddd-dddddddddddd')
+    expect(stored[0].pairingId).not.toBe(stored[1].pairingId)
+    const bodies = sent.map((m) => (m as Extract<PairingOutgoing, { type: 'pair-accepted' }>).body.pairingId)
+    expect(bodies).toEqual(stored.map((d) => d.pairingId))
   })
 
   it('approve that cannot store fails before anything is sent', async () => {

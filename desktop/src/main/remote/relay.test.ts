@@ -26,11 +26,12 @@ const h = vi.hoisted(() => ({
   blockers: new Set<number>(),
   nextBlocker: 1,
   terminals: [] as unknown[],
+  keychain: true,
 }))
 
 vi.mock('electron', () => ({
   safeStorage: {
-    isEncryptionAvailable: () => true,
+    isEncryptionAvailable: () => h.keychain,
     encryptString: (plain: string) => Buffer.from(`enc:${plain}`, 'utf-8'),
     decryptString: (blob: Buffer) => blob.toString('utf-8').replace(/^enc:/, ''),
   },
@@ -53,10 +54,11 @@ vi.mock('../pty/terminal-manager', () => ({ getAllTerminals: () => h.terminals }
 
 import { deriveKey, generateKeyPair, type RelayKeyPair } from './crypto'
 import { openEnvelope, sealEnvelope, type RelayEnvelope } from './envelope'
-import { addDevice, loadOrCreateIdentity } from './identity-store'
+import { addDevice, listDevices, loadIdentity, loadOrCreateIdentity, saveIdentity } from './identity-store'
 import {
   __resetRemoteRelayForTests,
   approveRemotePairing,
+  cancelRemotePairing,
   getRemoteState,
   notifyRemoteState,
   resumeRemoteRelay,
@@ -103,6 +105,18 @@ interface Phone {
   keys: RelayKeyPair
 }
 
+interface PairedPhone extends Phone {
+  pairingId: string
+}
+
+/** A snapshot as the phone reads it once opened (§5). */
+interface OpenedSnapshot {
+  pairingId: string
+  generation: number
+  sentAt: number
+  agents: { appAgentId: string }[]
+}
+
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
 
 /** Every envelope broadcast on a channel. */
@@ -137,6 +151,7 @@ beforeEach(async () => {
   h.channels = []
   h.client = makeClient()
   h.userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  h.keychain = true
   h.terminals = [
     { id: 'claude-1', name: 'Agent 1', state: 'working', metadata: { title: 'PROJ-12: refunds' } },
     { id: 'script-dev', name: 'dev', state: 'working', metadata: {} },
@@ -156,11 +171,17 @@ afterEach(async () => {
 })
 
 /** Two phones already paired with this Mac's (pre-created) identity. */
-function seedPairedPhones(): { macId: string; macPub: Buffer; phones: Phone[] } {
+function seedPairedPhones(): { macId: string; macPub: Buffer; phones: PairedPhone[] } {
   const identity = loadOrCreateIdentity(h.userId!)
-  const phones = [0, 1].map(() => ({ id: crypto.randomUUID(), keys: generateKeyPair() }))
+  const phones = [0, 1].map(() => ({ id: crypto.randomUUID(), keys: generateKeyPair(), pairingId: crypto.randomUUID() }))
   for (const phone of phones) {
-    addDevice(h.userId!, { phoneId: phone.id, name: `iPhone ${phone.id.slice(0, 4)}`, pub: phone.keys.publicRaw.toString('base64'), pairedAt: 1 })
+    addDevice(h.userId!, {
+      phoneId: phone.id,
+      name: `iPhone ${phone.id.slice(0, 4)}`,
+      pub: phone.keys.publicRaw.toString('base64'),
+      pairedAt: 1,
+      pairingId: phone.pairingId,
+    })
   }
   const ecdh = crypto.createECDH('prime256v1')
   ecdh.setPrivateKey(Buffer.from(identity.macPrivate, 'hex'))
@@ -218,8 +239,12 @@ describe('remote mode on', () => {
       expect(envelope).toMatchObject({ v: 1, type: 'state', from: macId })
       const mine = phones.find((p) => p.id === envelope.to)!
       const other = phones.find((p) => p.id !== envelope.to)!
-      const snapshot = openEnvelope(envelope, phoneKey(mine, macId, macPub)) as { agents: { appAgentId: string }[] }
+      const snapshot = openEnvelope(envelope, phoneKey(mine, macId, macPub)) as OpenedSnapshot
       expect(snapshot.agents.map((a) => a.appAgentId)).toEqual(['claude-1'])
+      // Named by that phone's pairing, and ordered by the relay's generation (§5, §6).
+      expect(snapshot.pairingId).toBe(mine.pairingId)
+      expect(snapshot.generation).toBe(1)
+      expect(typeof snapshot.sentAt).toBe('number')
       expect(openEnvelope(envelope, deriveKey(other.keys.privateKey, macPub, macId, envelope.to))).toBeNull()
       // Nothing readable rides in clear.
       expect(JSON.stringify(envelope)).not.toContain('PROJ-12')
@@ -248,7 +273,7 @@ describe('remote mode on', () => {
     const [goodbye] = sentOn(h.channels[0])
     expect(goodbye).toMatchObject({ type: 'revoked', to: revoked.id, from: macId })
     // Names the pairing it ends (§8): the phone drops a `revoked` for any other one.
-    expect(openEnvelope(goodbye, phoneKey(revoked, macId, macPub))).toEqual({ pairedAt: 1 })
+    expect(openEnvelope(goodbye, phoneKey(revoked, macId, macPub))).toEqual({ pairingId: revoked.pairingId })
 
     h.channels[0].send.mockClear()
     notifyRemoteState()
@@ -286,9 +311,11 @@ describe('remote mode on', () => {
     await tick()
     const [accepted, state] = sentOn(channel)
     expect(accepted).toMatchObject({ type: 'pair-accepted', to: phone.id, from: qr.macId })
-    const pairedAt = getRemoteState().devices[0].pairedAt
-    expect(openEnvelope(accepted, key)).toEqual({ macName: getRemoteState().macName, requestEpoch: req.epoch, pairedAt })
+    const [stored] = listDevices(h.userId!)
+    expect(stored.pairingId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(openEnvelope(accepted, key)).toEqual({ macName: getRemoteState().macName, requestEpoch: req.epoch, pairingId: stored.pairingId })
     expect(state).toMatchObject({ type: 'state', to: phone.id })
+    expect((openEnvelope(state, key) as OpenedSnapshot).pairingId).toBe(stored.pairingId)
     expect(state.seq).toBeGreaterThan(accepted.seq)
     expect(getRemoteState().devices.map((d) => d.phoneId)).toEqual([phone.id])
   })
@@ -386,10 +413,94 @@ describe('remote mode on', () => {
     expect(envelopes).toHaveLength(phones.length)
     for (const envelope of envelopes) {
       const phone = phones.find((p) => p.id === envelope.to)!
-      const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as { agents: { appAgentId: string }[] }
+      const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as OpenedSnapshot
       // claude-1 is the previous account's, claude-3 has no recorded owner: neither is sent.
       expect(snapshot.agents.map((a) => a.appAgentId)).toEqual(['claude-2'])
     }
+  })
+
+  it('increments the generation on every relay start and persists it across launches', async () => {
+    const { macId, macPub, phones } = seedPairedPhones()
+    const generationSent = (channel: FakeChannel): number => {
+      const envelope = sentOn(channel).find((e) => e.type === 'state' && e.to === phones[0].id)!
+      return (openEnvelope(envelope, phoneKey(phones[0], macId, macPub)) as OpenedSnapshot).generation
+    }
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    expect(generationSent(h.channels[0])).toBe(1)
+    await setRemoteEnabled(false)
+    await setRemoteEnabled(true)
+    await goLive(h.channels[1])
+    expect(generationSent(h.channels[1])).toBe(2)
+    expect(h.channels[1].send.mock.calls[0][0].payload.epoch).not.toBe(h.channels[0].send.mock.calls[0][0].payload.epoch)
+    expect(loadIdentity(h.userId!)?.generation).toBe(2)
+    // A relaunch reads it back and goes above it.
+    await __resetRemoteRelayForTests()
+    await resumeRemoteRelay()
+    await goLive(h.channels[2])
+    expect(generationSent(h.channels[2])).toBe(3)
+  })
+
+  it('a generation that cannot be saved is still used, from memory', async () => {
+    const { macId, macPub, phones } = seedPairedPhones()
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    h.keychain = false
+    await setRemoteEnabled(false)
+    await setRemoteEnabled(true)
+    await goLive(h.channels[1])
+    const envelope = sentOn(h.channels[1]).find((e) => e.to === phones[0].id)!
+    expect((openEnvelope(envelope, phoneKey(phones[0], macId, macPub)) as OpenedSnapshot).generation).toBe(2)
+    expect(error).toHaveBeenCalledWith('[remote] failed to save the relay generation:', expect.any(String))
+    error.mockRestore()
+    h.keychain = true
+    expect(loadIdentity(h.userId!)?.generation).toBe(1)
+  })
+
+  it('a stored device without a pairing id is dropped and never sealed for', async () => {
+    const { phones } = seedPairedPhones()
+    const identity = loadIdentity(h.userId!)!
+    const legacy = { phoneId: crypto.randomUUID(), name: 'Old iPhone', pub: generateKeyPair().publicRaw.toString('base64'), pairedAt: 1 }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    saveIdentity(h.userId!, { ...identity, devices: [...identity.devices, legacy as unknown as (typeof identity.devices)[number]] })
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    expect(getRemoteState().devices.map((d) => d.phoneId).sort()).toEqual(phones.map((p) => p.id).sort())
+    expect(sentOn(h.channels[0]).map((e) => e.to)).not.toContain(legacy.phoneId)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('without a pairing id'))
+    warn.mockRestore()
+  })
+
+  it('cancels a pairing only by its own attempt id', async () => {
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    const first = await startRemotePairing()
+    expect(first?.attemptId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(pairings.at(-1)?.attemptId).toBe(first!.attemptId)
+    // A newer start replaces it without a `null` in between (that would close the dialog).
+    const second = await startRemotePairing()
+    expect(second?.attemptId).not.toBe(first!.attemptId)
+    expect(pairings).not.toContain(null)
+    expect(pairings.at(-1)?.attemptId).toBe(second!.attemptId)
+    // The older attempt's late cleanup: nothing closes.
+    cancelRemotePairing(first!.attemptId)
+    expect(pairings).not.toContain(null)
+    // Its own id closes it.
+    cancelRemotePairing(second!.attemptId)
+    expect(pairings.at(-1)).toBeNull()
+    // And with nothing on screen, any id is a no-op.
+    const count = pairings.length
+    cancelRemotePairing(second!.attemptId)
+    expect(pairings).toHaveLength(count)
+  })
+
+  it('cancels whatever is on screen when no attempt id is given', async () => {
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    await startRemotePairing()
+    cancelRemotePairing()
+    expect(pairings.at(-1)).toBeNull()
   })
 
   it('remote mode is read from disk at launch', async () => {

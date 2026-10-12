@@ -29,8 +29,13 @@ export interface StoredRemoteDevice {
   name: string
   /** The phone's X9.63 public point, standard base64. */
   pub: string
-  /** Epoch ms. */
+  /** Epoch ms, for display only (PROTOCOL.md §7 step 5): no decision reads it. */
   pairedAt: number
+  /**
+   * Lower-case UUID drawn on approval: the pairing's name (§6). Sent in `pair-accepted`,
+   * `revoked` and every snapshot, so the phone drops anything from an earlier pairing.
+   */
+  pairingId: string
 }
 
 export interface RemoteIdentity {
@@ -38,6 +43,11 @@ export interface RemoteIdentity {
   macId: string
   /** The private scalar `d`, 32 bytes, hex. */
   macPrivate: string
+  /**
+   * Incremented and saved each time the relay starts (§6): the phone orders snapshots by it,
+   * never by the Mac's clock. 0 for an identity that has never started a relay.
+   */
+  generation: number
   devices: StoredRemoteDevice[]
 }
 
@@ -66,7 +76,19 @@ function identityFile(userId: string): string {
 function isDevice(value: unknown): value is StoredRemoteDevice {
   if (!value || typeof value !== 'object') return false
   const d = value as Record<string, unknown>
-  return typeof d.phoneId === 'string' && typeof d.name === 'string' && typeof d.pub === 'string' && typeof d.pairedAt === 'number'
+  return (
+    typeof d.phoneId === 'string' &&
+    typeof d.name === 'string' &&
+    typeof d.pub === 'string' &&
+    typeof d.pairedAt === 'number' &&
+    typeof d.pairingId === 'string' &&
+    UUID_RE.test(d.pairingId)
+  )
+}
+
+/** A stored count, or 0: anything else in that field reads as "never started". */
+function cleanGeneration(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
 }
 
 /** The stored identity, or null on any failure (no file, locked keychain, corrupt content). */
@@ -79,10 +101,18 @@ export function loadIdentity(userId: string): RemoteIdentity | null {
     if (typeof parsed?.macId !== 'string' || typeof parsed.macPrivate !== 'string' || !/^[0-9a-f]{64}$/.test(parsed.macPrivate)) {
       return null
     }
+    const stored: unknown[] = Array.isArray(parsed.devices) ? parsed.devices : []
+    const devices = stored.filter(isDevice)
+    // Records from before pairings were named (no `pairingId`, dev builds only: the feature is
+    // unreleased) cannot be addressed under §6, and the phone drops its side of them too.
+    if (devices.length < stored.length) {
+      console.warn(`[remote] dropped ${stored.length - devices.length} paired device record(s) without a pairing id; pair those phones again`)
+    }
     return {
       macId: parsed.macId,
       macPrivate: parsed.macPrivate,
-      devices: Array.isArray(parsed.devices) ? parsed.devices.filter(isDevice) : [],
+      generation: cleanGeneration(parsed.generation),
+      devices,
     }
   } catch (error) {
     // Nothing from this file is worth printing: the fact, not the object.
@@ -110,6 +140,7 @@ export function loadOrCreateIdentity(userId: string): RemoteIdentity {
   const identity: RemoteIdentity = {
     macId: crypto.randomUUID().toLowerCase(),
     macPrivate: privateRawOf(generateKeyPair().privateKey).toString('hex'),
+    generation: 0,
     devices: [],
   }
   saveIdentity(userId, identity)
@@ -143,4 +174,14 @@ export function removeDevice(userId: string, phoneId: string): RemoteIdentity | 
   const next: RemoteIdentity = { ...identity, devices: identity.devices.filter((d) => d.phoneId !== phoneId) }
   saveIdentity(userId, next)
   return next
+}
+
+/**
+ * Record the relay's generation (§6). THROWS when there is no identity or it cannot be
+ * stored: the caller keeps the value in memory and runs all the same.
+ */
+export function saveGeneration(userId: string, generation: number): void {
+  const identity = loadIdentity(userId)
+  if (!identity) throw new Error('remote: no identity to record a generation in')
+  saveIdentity(userId, { ...identity, generation: Math.max(identity.generation, generation) })
 }

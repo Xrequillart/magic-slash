@@ -72,10 +72,10 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 | `type` | Direction | Box plaintext (JSON) | Extra clear fields |
 | --- | --- | --- | --- |
 | `pair-request` | phone → Mac | `{ "token": "<b64url>", "name": "Xavier's iPhone" }` | `phonePub` |
-| `pair-accepted` | Mac → phone | `{ "macName": "MacBook Pro", "requestEpoch": "<uuid>", "pairedAt": 1760000000000 }` | |
+| `pair-accepted` | Mac → phone | `{ "macName": "MacBook Pro", "requestEpoch": "<uuid>", "pairingId": "<uuid>" }` | |
 | `pair-rejected` | Mac → phone | none: `box` is absent | `reason`: `expired`, `used`, `declined` |
 | `state` | Mac → phone | snapshot (§5) | |
-| `revoked` | Mac → phone | `{ "pairedAt": 1760000000000 }` | |
+| `revoked` | Mac → phone | `{ "pairingId": "<uuid>" }` | |
 
 `pair-rejected` is clear text and can be forged by anyone on the channel. The worst a forgery
 can do is cancel a pairing on screen, which is accepted.
@@ -84,6 +84,8 @@ can do is cancel a pairing on screen, which is accepted.
 
 ```json
 {
+  "pairingId": "<uuid>",
+  "generation": 12,
   "sentAt": 1760000000000,
   "macName": "MacBook Pro",
   "agents": [
@@ -118,10 +120,13 @@ The Mac sends a snapshot to every paired phone:
 
 ## 6. Freshness and replay (phone side)
 
-- Per Mac, the phone remembers the last accepted `(epoch, seq, sentAt)`. It accepts a `state`
+- **No decision here reads the Mac's clock.** A Mac whose clock moves backward must keep
+  updating its phones, so `sentAt` is shown, never compared. Ordering uses `generation`: a
+  counter the Mac persists and increments each time its relay starts, alongside a fresh `epoch`.
+- Per Mac, the phone remembers the last accepted `(generation, epoch, seq)`. It accepts a `state`
   when either:
-  - the epoch is the same and `seq` is greater; or
-  - the epoch is different and `sentAt` is greater than the last `sentAt`.
+  - `generation` is greater; or
+  - `generation` and `epoch` are the same and `seq` is greater.
 - The Mac is **online** when its `mac:<macId>` presence is present **and** the last snapshot is
   under 75 s old, measured from the moment the phone accepted it, on the phone's clock (never
   from its `sentAt`, which is the Mac's clock). Otherwise it is shown offline, with that
@@ -129,11 +134,11 @@ The Mac sends a snapshot to every paired phone:
 - The phone caches the last snapshot per Mac so that it can show it after a relaunch.
 - **Pairings never replay into each other.** The same phone and Mac derive the same pair key
   every time they pair, so a recorded envelope from an earlier pairing still opens. Each pairing
-  is therefore named by its `pairedAt` (Mac clock, set on approval), and the phone drops:
+  is therefore named by a `pairingId`, a random lower-case UUID the Mac draws on approval, and
+  the phone drops:
   - a `pair-accepted` whose `requestEpoch` is not the epoch of the `pair-request` it is waiting
     on (§7 step 5);
-  - a `revoked` whose `pairedAt` is not the one it saved for that Mac (§8);
-  - a `state` whose `sentAt` is earlier than that `pairedAt`.
+  - a `revoked` or a `state` whose `pairingId` is not the one it saved for that Mac (§8).
 
 ## 7. Pairing
 
@@ -160,10 +165,11 @@ The Mac sends a snapshot to every paired phone:
      so a phone that never saw the current QR cannot interrupt a pairing in progress.
 4. **Code.** `SHA-256(tokenBytes(32) ‖ macPub(65) ‖ phonePub(65))`; take the first 4 bytes as
    a big-endian UInt32, mod 10000, and zero-pad to 4 digits. Both screens show it.
-5. **Approval on the Mac only.** Approve stores `{phoneId, name, pub, pairedAt}` and sends
-   `pair-accepted`, carrying the request's `epoch` as `requestEpoch` and that `pairedAt`. Decline
-   sends `pair-rejected` with reason `declined`. The phone saves the Mac (`macId`, `name`, `pub`,
-   `pairedAt`) only on a `pair-accepted` that answers its own pending request.
+5. **Approval on the Mac only.** Approve stores `{phoneId, name, pub, pairedAt, pairingId}` and
+   sends `pair-accepted`, carrying the request's `epoch` as `requestEpoch` and that `pairingId`.
+   `pairedAt` is for display only. Decline sends `pair-rejected` with reason `declined`. The phone
+   saves the Mac (`macId`, `name`, `pub`, `pairingId`) only on a `pair-accepted` that answers its
+   own pending request.
 6. **One deadline for both ends.** The Mac's confirmation expires **120 s** after the request
    opened: it then answers `pair-rejected` with reason `expired` and approval is no longer
    possible. The phone waits **180 s**, so any approval the Mac can still give reaches a phone
@@ -171,9 +177,9 @@ The Mac sends a snapshot to every paired phone:
 
 ## 8. Revocation
 
-The Mac sends `revoked`, carrying the device's `pairedAt`, then deletes the device's key. It never encrypts for
+The Mac sends `revoked`, carrying the device's `pairingId`, then deletes the device's key. It never encrypts for
 that device again, so a revoked phone receives nothing it can read, even with a valid
-Supabase session. On a `revoked` whose `pairedAt` matches its pairing, the phone forgets the Mac.
+Supabase session. On a `revoked` whose `pairingId` matches its pairing, the phone forgets the Mac.
 
 "Forget this Mac" on the phone is local only in v1: the Mac keeps sealing for it until it is
 revoked there too.

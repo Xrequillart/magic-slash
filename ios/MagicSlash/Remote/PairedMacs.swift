@@ -9,11 +9,11 @@ struct PairedMac: Codable, Hashable, Sendable, Identifiable {
   let pub: Data
   /// When this phone saved the pairing, on its own clock: for display only.
   let pairedAt: Date
-  /// The Mac's `pairedAt` (epoch ms, Mac clock) from `pair-accepted`: the name of this
-  /// pairing (PROTOCOL.md §6). A `revoked` must carry it, and a `state` sent before it is
-  /// dropped. Nil in a record saved before it existed: `RelayStore` drops such a pairing and
-  /// asks for a new one, since it could tell neither a real revocation nor a replay.
-  let macPairedAt: Double?
+  /// The `pairingId` from `pair-accepted`: the name of this pairing (PROTOCOL.md §6). A
+  /// `revoked` or a `state` must carry it. Nil in a record saved before it existed:
+  /// `RelayStore` drops such a pairing and asks for a new one, since it could tell neither a
+  /// real revocation nor a replay.
+  let pairingId: String?
   /// The phone identity this pairing was made with. A pairing whose identity is no longer
   /// the phone's (the key was reset since) can never open a box again.
   let phoneId: String
@@ -45,7 +45,12 @@ enum PairedMacs {
 /// A Mac's complete state snapshot (PROTOCOL.md §5). Every field but the agent id and state
 /// may be missing: a newer or older desktop must never make the whole snapshot unreadable.
 struct RelaySnapshot: Codable, Hashable, Sendable {
-  /// Epoch milliseconds, on the Mac's clock.
+  /// The pairing this snapshot was sealed for (§6). Nil only in a cache written before it
+  /// existed: `RelayStore` drops a live snapshot without it.
+  let pairingId: String?
+  /// The Mac's relay generation, which orders snapshots across its restarts (§6).
+  let generation: Int?
+  /// Epoch milliseconds, on the Mac's clock: for display only, never compared (§6).
   let sentAt: Double
   let macName: String?
   let agents: [RemoteAgent]
@@ -54,6 +59,8 @@ struct RelaySnapshot: Codable, Hashable, Sendable {
 
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    pairingId = (try? container.decodeIfPresent(String.self, forKey: .pairingId)) ?? nil
+    generation = (try? container.decodeIfPresent(Int.self, forKey: .generation)) ?? nil
     sentAt = try container.decode(Double.self, forKey: .sentAt)
     macName = try? container.decodeIfPresent(String.self, forKey: .macName)
     // One unreadable agent is dropped, never the whole snapshot.
@@ -118,6 +125,8 @@ private struct Lossy<Value: Codable & Sendable>: Codable, Sendable {
 /// The last snapshot accepted from one Mac, with what PROTOCOL.md §6 compares the next one
 /// against.
 struct AcceptedSnapshot: Codable, Hashable, Sendable {
+  /// -1 in a cache written before it existed, so any new snapshot supersedes it.
+  let generation: Int
   let epoch: String
   let seq: Int
   let snapshot: RelaySnapshot
@@ -129,7 +138,8 @@ struct AcceptedSnapshot: Codable, Hashable, Sendable {
   /// When it was last heard of, for display: the phone's clock, or the Mac's for an old cache.
   var lastHeard: Date { receivedAt ?? snapshot.sentDate }
 
-  init(epoch: String, seq: Int, snapshot: RelaySnapshot, receivedAt: Date) {
+  init(generation: Int, epoch: String, seq: Int, snapshot: RelaySnapshot, receivedAt: Date) {
+    self.generation = generation
     self.epoch = epoch
     self.seq = seq
     self.snapshot = snapshot
@@ -138,15 +148,18 @@ struct AcceptedSnapshot: Codable, Hashable, Sendable {
 
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    generation = (try? container.decodeIfPresent(Int.self, forKey: .generation)) ?? -1
     epoch = try container.decode(String.self, forKey: .epoch)
     seq = try container.decode(Int.self, forKey: .seq)
     snapshot = try container.decode(RelaySnapshot.self, forKey: .snapshot)
     receivedAt = (try? container.decodeIfPresent(Date.self, forKey: .receivedAt)) ?? nil
   }
 
-  /// §6: same epoch and a greater seq, or another epoch and a later `sentAt`.
-  func isSuperseded(byEpoch epoch: String, seq: Int, sentAt: Double) -> Bool {
-    epoch == self.epoch ? seq > self.seq : sentAt > snapshot.sentAt
+  /// §6: a greater generation, or the same generation and epoch and a greater seq. Never the
+  /// Mac's clock, so a Mac whose clock moves backward keeps updating.
+  func isSuperseded(byGeneration generation: Int, epoch: String, seq: Int) -> Bool {
+    if generation != self.generation { return generation > self.generation }
+    return epoch == self.epoch && seq > self.seq
   }
 }
 

@@ -8,10 +8,19 @@ import { loadSession } from '../cloud/session-store'
 import { getAllTerminals } from '../pty/terminal-manager'
 import { privateKeyFromRaw, publicRawOf, deriveKey } from './crypto'
 import { parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
-import { addDevice, listDevices, loadIdentity, loadOrCreateIdentity, removeDevice, type StoredRemoteDevice } from './identity-store'
+import {
+  addDevice,
+  listDevices,
+  loadIdentity,
+  loadOrCreateIdentity,
+  removeDevice,
+  saveGeneration,
+  type RemoteIdentity,
+  type StoredRemoteDevice,
+} from './identity-store'
 import { PairingSession, type PairingOutgoing } from './pairing'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
-import { buildSnapshot, SnapshotScheduler } from './snapshot'
+import { buildSnapshot, snapshotFor, SnapshotScheduler } from './snapshot'
 import { terminalOwner } from './terminal-owners'
 
 // ---------------------------------------------------------------------------
@@ -51,6 +60,8 @@ interface LoadedIdentity {
   macId: string
   privateKey: crypto.KeyObject
   publicRaw: Buffer
+  /** The current relay start's generation (§6); ahead of the file when saving it failed. */
+  generation: number
   devices: StoredRemoteDevice[]
 }
 
@@ -72,6 +83,8 @@ let epoch = ''
 let seq = 0
 let scheduler: SnapshotScheduler | null = null
 let pairing: PairingSession | null = null
+/** The id of the `startRemotePairing` call that put `pairing` up: a cancel names it. */
+let pairingAttempt: string | null = null
 let blockerId: number | null = null
 let lastStateKey = ''
 
@@ -102,9 +115,15 @@ function macName(): string {
   return macNameCache
 }
 
-function toLoaded(stored: { macId: string; macPrivate: string; devices: StoredRemoteDevice[] }): LoadedIdentity {
+function toLoaded(stored: RemoteIdentity): LoadedIdentity {
   const privateKey = privateKeyFromRaw(Buffer.from(stored.macPrivate, 'hex'))
-  return { macId: stored.macId, privateKey, publicRaw: publicRawOf(privateKey), devices: stored.devices }
+  return {
+    macId: stored.macId,
+    privateKey,
+    publicRaw: publicRawOf(privateKey),
+    generation: stored.generation,
+    devices: stored.devices,
+  }
 }
 
 function sessionUserId(): string | null {
@@ -253,15 +272,16 @@ function sendSealed(type: RelayMessageType, device: StoredRemoteDevice, body: un
 }
 
 /**
- * One complete snapshot, sealed once per paired phone (seq moves across recipients). Only the
+ * One complete snapshot, sealed once per paired phone (seq moves across recipients), each
+ * named by that phone's `pairingId` (§5). Only the
  * terminals started under THIS account: a refused session leaves its PTYs running, and the
  * next account to sign in must not see them on its phones (terminal-owners.ts).
  */
 function publishSnapshot(): void {
   const account = userId
   if (!live || !channel || !identity || !account || identity.devices.length === 0) return
-  const snapshot = buildSnapshot(getAllTerminals(), macName(), Date.now(), (id) => terminalOwner(id) === account)
-  for (const device of identity.devices) void sendSealed('state', device, snapshot)
+  const body = buildSnapshot(getAllTerminals(), macName(), Date.now(), identity.generation, (id) => terminalOwner(id) === account)
+  for (const device of identity.devices) void sendSealed('state', device, snapshotFor(body, device.pairingId))
 }
 
 /** Thrown when a `pair-accepted` cannot be put on the relay: the approval fails with it. */
@@ -450,6 +470,7 @@ async function startInternal(): Promise<void> {
   // A fresh epoch per start (§4), and seq from 1 within it.
   epoch = crypto.randomUUID().toLowerCase()
   seq = 0
+  nextGeneration(uid, identity)
   try {
     join(c, uid, identity.macId)
   } catch (error) {
@@ -457,6 +478,21 @@ async function startInternal(): Promise<void> {
     await teardown()
   }
   emitState()
+}
+
+/**
+ * A new generation for this relay start (§6): the phones order snapshots by it, never by this
+ * Mac's clock. Saved so the next launch goes above it. A save that fails is logged and the
+ * relay runs all the same, on the incremented value held in memory: a phone then at worst
+ * waits for a later generation after a relaunch, and a phone that never updates is worse.
+ */
+function nextGeneration(uid: string, self: LoadedIdentity): void {
+  self.generation += 1
+  try {
+    saveGeneration(uid, self.generation)
+  } catch (error) {
+    console.error('[remote] failed to save the relay generation:', error instanceof Error ? error.message : 'unknown error')
+  }
 }
 
 async function teardown(): Promise<void> {
@@ -536,17 +572,27 @@ export async function setRemoteEnabled(next: boolean): Promise<RemoteState> {
 
 // --- pairing ----------------------------------------------------------------
 
-function closePairing(): void {
+/**
+ * Close the pairing on screen. `announce` false is for a pairing replaced by a new one: the
+ * new one's first state follows at once, and a `null` in between would close the dialog that
+ * is waiting for it.
+ */
+function closePairing(announce = true): void {
   if (!pairing) return
   pairing.cancel()
   pairing = null
-  emitters?.pairing(null)
+  pairingAttempt = null
+  if (announce) emitters?.pairing(null)
 }
 
 /**
  * Put a QR up. Null when remote mode is off (no QR is ever offered then), when signed out,
  * when the relay is not live (the phone's request and our answer both ride it), or when this
  * Mac's identity cannot be stored. Replaces any pairing already on screen.
+ *
+ * Every call that puts a QR up gets its own `attemptId`, carried by every `RemotePairing` it
+ * emits: the page cancels by that id, so a cleanup for an older call that arrives late can
+ * never close a newer pairing.
  */
 export function startRemotePairing(): Promise<RemotePairing | null> {
   if (!isEnabled()) return Promise.resolve(null)
@@ -555,14 +601,15 @@ export function startRemotePairing(): Promise<RemotePairing | null> {
     const uid = await createAccountOrLog()
     const self = identity
     if (!uid || !self || !live || !channel) return null
-    closePairing()
+    closePairing(false)
+    const attemptId = crypto.randomUUID().toLowerCase()
     const session: PairingSession = new PairingSession({
       macId: self.macId,
       macPrivate: self.privateKey,
       macPublicRaw: self.publicRaw,
       macName: macName(),
       onChange: (p) => {
-        if (pairing === session) emitters?.pairing(p)
+        if (pairing === session) emitters?.pairing({ ...p, attemptId })
       },
       send: sendPairing,
       storeDevice: (device) => {
@@ -590,11 +637,18 @@ export function startRemotePairing(): Promise<RemotePairing | null> {
       },
     })
     pairing = session
-    return session.start()
+    pairingAttempt = attemptId
+    return { ...session.start(), attemptId }
   })
 }
 
-export function cancelRemotePairing(): void {
+/**
+ * Close the pairing on screen. With an `attemptId`, only if it is the current attempt's:
+ * a stale one (the page's cleanup for a call since replaced) does nothing. Without one,
+ * whatever is on screen closes.
+ */
+export function cancelRemotePairing(attemptId?: string): void {
+  if (attemptId !== undefined && attemptId !== pairingAttempt) return
   closePairing()
 }
 
@@ -627,7 +681,7 @@ export function revokeRemoteDevice(phoneId: string): Promise<RemoteState> {
     const device = self?.devices.find((d) => d.phoneId === phoneId)
     if (uid && self && device) {
       // Names the pairing it ends (§8): a phone paired again since drops a replay of this one.
-      await sendSealed('revoked', device, { pairedAt: device.pairedAt })
+      await sendSealed('revoked', device, { pairingId: device.pairingId })
       // Out of memory FIRST: whatever the write does, this session never seals for it again.
       self.devices = self.devices.filter((d) => d.phoneId !== phoneId)
       pairKeys.delete(phoneId)
