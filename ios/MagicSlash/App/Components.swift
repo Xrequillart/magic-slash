@@ -22,25 +22,6 @@ struct Pill: View {
   }
 }
 
-struct StatusPill: View {
-  @Environment(\.theme) private var theme
-  let status: String
-
-  var body: some View {
-    let style = StatusStyle.style(for: status)
-    Pill(text: style.label, color: style.tone.color(in: theme), strength: style.strength)
-  }
-}
-
-struct TypeBadge: View {
-  @Environment(\.theme) private var theme
-  let type: AgentType
-
-  var body: some View {
-    Pill(text: type.label, color: type == .planner ? theme.purple : theme.iconMuted, strength: .soft)
-  }
-}
-
 /// A titled block of the detail screen.
 struct SectionCard<Content: View>: View {
   @Environment(\.theme) private var theme
@@ -62,6 +43,23 @@ struct SectionCard<Content: View>: View {
       .padding(14)
       .background(RoundedRectangle(cornerRadius: 12).fill(theme.surface))
       .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(theme.lineSubtle))
+    }
+  }
+}
+
+/// Every sheet's way out: a cross at the top left, as on the account sheet, in place of a
+/// "Done" or "OK" word.
+struct CloseToolbarItem: ToolbarContent {
+  @Environment(\.theme) private var theme
+  let action: () -> Void
+
+  var body: some ToolbarContent {
+    ToolbarItem(placement: .topBarLeading) {
+      Button("Close", systemImage: "xmark") {
+        Haptics.tap()
+        action()
+      }
+      .tint(theme.ink)
     }
   }
 }
@@ -96,32 +94,6 @@ struct EmptyLine: View {
       .font(.cera(.subheadline))
       .foregroundStyle(theme.textSecondary)
       .italic()
-  }
-}
-
-struct LabeledLine: View {
-  @Environment(\.theme) private var theme
-  let label: LocalizedStringKey
-  let value: String?
-  var monospaced = false
-
-  var body: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 12) {
-      Text(label)
-        .font(.cera(.subheadline))
-        .foregroundStyle(theme.textSecondary)
-        .frame(width: 96, alignment: .leading)
-      if let value {
-        Text(value)
-          .font(monospaced ? .subheadline.monospaced() : .subheadline)
-          .foregroundStyle(theme.ink)
-          .textSelection(.enabled)
-          .frame(maxWidth: .infinity, alignment: .leading)
-      } else {
-        EmptyLine(text: "None")
-          .frame(maxWidth: .infinity, alignment: .leading)
-      }
-    }
   }
 }
 

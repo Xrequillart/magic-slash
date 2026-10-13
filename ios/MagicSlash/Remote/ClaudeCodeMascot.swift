@@ -252,6 +252,14 @@ private struct Robot: View {
   }
 }
 
+/// Claude Code's mark at rest, the desktop's `ClaudeCode` icon: the robot standing still.
+struct ClaudeCodeMark: View {
+  var body: some View {
+    Robot(pose: .init(right: .rest, left: .rest, eyes: 1))
+      .aspectRatio(1, contentMode: .fit)
+  }
+}
+
 /// A pixel speech bubble with a two-pixel tail, its width reserved for the whole text so
 /// a snore being typed does not grow it.
 private struct Bubble: View {

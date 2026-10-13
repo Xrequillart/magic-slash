@@ -51,26 +51,6 @@
         }
       }
     },
-    "%@ is offline. This state may have changed since." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ est hors ligne. Cet état a pu changer depuis."
-          }
-        }
-      }
-    },
-    "%lld" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld"
-          }
-        }
-      }
-    },
     "%lld actions" : {
       "localizations" : {
         "en" : {
@@ -111,6 +91,46 @@
         }
       }
     },
+    "%lld comments" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comment"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comments"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commentaire"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commentaires"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld of %lld online" : {
       "localizations" : {
         "fr" : {
@@ -131,22 +151,18 @@
         }
       }
     },
-    "5h limit" : {
+    "%lld/%lld passed" : {
       "localizations" : {
-        "fr" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Limite 5 h"
+            "state" : "new",
+            "value" : "%1$lld/%2$lld passed"
           }
-        }
-      }
-    },
-    "7d limit" : {
-      "localizations" : {
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limite 7 j"
+            "value" : "%1$lld/%2$lld réussis"
           }
         }
       }
@@ -167,16 +183,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Compte"
-          }
-        }
-      }
-    },
-    "Agent" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agent"
           }
         }
       }
@@ -231,16 +237,6 @@
         }
       }
     },
-    "answer" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "répondre"
-          }
-        }
-      }
-    },
     "Answer %@'s agent." : {
       "localizations" : {
         "fr" : {
@@ -291,42 +287,12 @@
         }
       }
     },
-    "Base branch" : {
+    "CI green" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Branche de base"
-          }
-        }
-      }
-    },
-    "Branch" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Branche"
-          }
-        }
-      }
-    },
-    "Cancel" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annuler"
-          }
-        }
-      }
-    },
-    "changes requested" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "modifications demandées"
+            "value" : "CI verte"
           }
         }
       }
@@ -351,12 +317,12 @@
         }
       }
     },
-    "CI green" : {
+    "Checks" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CI verte"
+            "value" : "Vérifications"
           }
         }
       }
@@ -441,16 +407,6 @@
         }
       }
     },
-    "committed" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "committé"
-          }
-        }
-      }
-    },
     "Completed" : {
       "localizations" : {
         "fr" : {
@@ -521,12 +477,12 @@
         }
       }
     },
-    "Cost" : {
+    "Copy branch name" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Coût"
+            "value" : "Copier le nom de la branche"
           }
         }
       }
@@ -631,16 +587,6 @@
         }
       }
     },
-    "Current" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actuel"
-          }
-        }
-      }
-    },
     "Cut: the rest is on the Mac" : {
       "localizations" : {
         "fr" : {
@@ -677,16 +623,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Refuser"
-          }
-        }
-      }
-    },
-    "Done" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
           }
         }
       }
@@ -901,26 +837,6 @@
         }
       }
     },
-    "in progress" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "en cours"
-          }
-        }
-      }
-    },
-    "in review" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "en revue"
-          }
-        }
-      }
-    },
     "Info" : {
       "localizations" : {
         "fr" : {
@@ -971,36 +887,6 @@
         }
       }
     },
-    "Last known figures" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Derniers chiffres connus"
-          }
-        }
-      }
-    },
-    "Last known state" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernier état connu"
-          }
-        }
-      }
-    },
-    "Last known: %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernier état connu : %@"
-          }
-        }
-      }
-    },
     "Light" : {
       "localizations" : {
         "fr" : {
@@ -1021,16 +907,6 @@
         }
       }
     },
-    "Live" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En direct"
-          }
-        }
-      }
-    },
     "Loading spec…" : {
       "localizations" : {
         "fr" : {
@@ -1047,16 +923,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chargement…"
-          }
-        }
-      }
-    },
-    "Mac" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mac"
           }
         }
       }
@@ -1121,6 +987,16 @@
         }
       }
     },
+    "Mergeability unknown" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fusion possible inconnue"
+          }
+        }
+      }
+    },
     "Mergeable" : {
       "localizations" : {
         "fr" : {
@@ -1171,12 +1047,12 @@
         }
       }
     },
-    "Model" : {
+    "No Mac paired yet" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modèle"
+            "value" : "Aucun Mac appairé pour l'instant"
           }
         }
       }
@@ -1201,12 +1077,12 @@
         }
       }
     },
-    "No checks reported" : {
+    "No checks" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune vérification remontée"
+            "value" : "Aucune vérification"
           }
         }
       }
@@ -1221,22 +1097,12 @@
         }
       }
     },
-    "No Mac paired yet" : {
+    "No plan" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun Mac appairé pour l'instant"
-          }
-        }
-      }
-    },
-    "No pull request yet" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pas encore de pull request"
+            "value" : "Aucun plan"
           }
         }
       }
@@ -1247,16 +1113,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun dépôt"
-          }
-        }
-      }
-    },
-    "No repository attached" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun dépôt associé"
           }
         }
       }
@@ -1281,32 +1137,12 @@
         }
       }
     },
-    "no status" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "aucun état"
-          }
-        }
-      }
-    },
     "No ticket" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun ticket"
-          }
-        }
-      }
-    },
-    "No usage reported yet" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune consommation remontée pour l'instant"
           }
         }
       }
@@ -1337,16 +1173,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non appairé"
-          }
-        }
-      }
-    },
-    "Not running on a paired Mac right now" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ne tourne sur aucun Mac appairé pour le moment"
           }
         }
       }
@@ -1401,32 +1227,12 @@
         }
       }
     },
-    "offline" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "hors ligne"
-          }
-        }
-      }
-    },
     "On your Mac, open Magic Slash settings, then Remote access. Turn it on, click Pair, and scan the code it shows." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur votre Mac, ouvrez les réglages de Magic Slash, puis Accès à distance. Activez-le, cliquez sur Appairer et scannez le code affiché."
-          }
-        }
-      }
-    },
-    "online" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "en ligne"
           }
         }
       }
@@ -1451,6 +1257,26 @@
         }
       }
     },
+    "PR created" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PR créée"
+          }
+        }
+      }
+    },
+    "PR merged" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PR mergée"
+          }
+        }
+      }
+    },
     "Pair" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1468,16 +1294,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appairer un Mac"
-          }
-        }
-      }
-    },
-    "Pair a Mac from the account menu to follow this agent live" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Appairez un Mac depuis le menu du compte pour suivre cet agent en direct"
           }
         }
       }
@@ -1542,52 +1358,12 @@
         }
       }
     },
-    "planned" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "planifié"
-          }
-        }
-      }
-    },
     "Planner" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Planner"
-          }
-        }
-      }
-    },
-    "planning" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "planification"
-          }
-        }
-      }
-    },
-    "PR created" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PR créée"
-          }
-        }
-      }
-    },
-    "PR merged" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PR mergée"
           }
         }
       }
@@ -1622,16 +1398,6 @@
         }
       }
     },
-    "ready for PR" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "prêt pour la PR"
-          }
-        }
-      }
-    },
     "Reconnect" : {
       "localizations" : {
         "fr" : {
@@ -1642,52 +1408,12 @@
         }
       }
     },
-    "Repositories" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dépôts"
-          }
-        }
-      }
-    },
-    "resets %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "réinit. %@"
-          }
-        }
-      }
-    },
-    "review addressed" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "revue traitée"
-          }
-        }
-      }
-    },
     "Review pending" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revue en attente"
-          }
-        }
-      }
-    },
-    "Reviewers" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relecteurs"
           }
         }
       }
@@ -1728,16 +1454,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Envoyer un prompt à l'agent de %@."
-          }
-        }
-      }
-    },
-    "send prompts" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "envoyer des prompts"
           }
         }
       }
@@ -1883,16 +1599,6 @@
         }
       }
     },
-    "Spec" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spec"
-          }
-        }
-      }
-    },
     "Spec unavailable" : {
       "localizations" : {
         "fr" : {
@@ -1923,22 +1629,22 @@
         }
       }
     },
-    "stop agents" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "arrêter des agents"
-          }
-        }
-      }
-    },
     "Stopping the agent…" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêt de l'agent…"
+          }
+        }
+      }
+    },
+    "The Mac's key is not valid." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé du Mac n'est pas valide."
           }
         }
       }
@@ -1953,32 +1659,12 @@
         }
       }
     },
-    "the answer" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "la réponse"
-          }
-        }
-      }
-    },
     "The code expired before your Mac received the request. Scan the fresh one." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le code a expiré avant que votre Mac reçoive la demande. Scannez le nouveau."
-          }
-        }
-      }
-    },
-    "The Mac's key is not valid." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La clé du Mac n'est pas valide."
           }
         }
       }
@@ -2003,32 +1689,12 @@
         }
       }
     },
-    "the prompt" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "le prompt"
-          }
-        }
-      }
-    },
     "The spec is empty" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "La spec est vide"
-          }
-        }
-      }
-    },
-    "the stop" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "l'arrêt"
           }
         }
       }
@@ -2049,6 +1715,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Thèmes"
+          }
+        }
+      }
+    },
+    "This Mac is no longer paired." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce Mac n'est plus appairé."
           }
         }
       }
@@ -2153,26 +1829,6 @@
         }
       }
     },
-    "this Mac" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ce Mac"
-          }
-        }
-      }
-    },
-    "This Mac is no longer paired." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce Mac n'est plus appairé."
-          }
-        }
-      }
-    },
     "This session was archived or deleted on the desktop." : {
       "localizations" : {
         "fr" : {
@@ -2193,12 +1849,12 @@
         }
       }
     },
-    "Ticket" : {
+    "Today, %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ticket"
+            "value" : "Aujourd’hui, %@"
           }
         }
       }
@@ -2273,26 +1929,6 @@
         }
       }
     },
-    "Updated" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mis à jour"
-          }
-        }
-      }
-    },
-    "Usage" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Consommation"
-          }
-        }
-      }
-    },
     "Use another account" : {
       "localizations" : {
         "fr" : {
@@ -2343,6 +1979,16 @@
         }
       }
     },
+    "Weekly" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hebdo"
+          }
+        }
+      }
+    },
     "Welcome back" : {
       "localizations" : {
         "fr" : {
@@ -2363,32 +2009,12 @@
         }
       }
     },
-    "Your account" : {
+    "Yesterday, %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre compte"
-          }
-        }
-      }
-    },
-    "Your agents' live state now shows on this iPhone while the Mac has remote access on." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L'état en direct de vos agents s'affiche désormais sur cet iPhone tant que l'accès à distance est activé sur le Mac."
-          }
-        }
-      }
-    },
-    "your Mac" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "votre Mac"
+            "value" : "Hier, %@"
           }
         }
       }
@@ -2489,6 +2115,216 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre Mac a refusé l'appairage."
+          }
+        }
+      }
+    },
+    "Your account" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre compte"
+          }
+        }
+      }
+    },
+    "Your agents' live state now shows on this iPhone while the Mac has remote access on." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'état en direct de vos agents s'affiche désormais sur cet iPhone tant que l'accès à distance est activé sur le Mac."
+          }
+        }
+      }
+    },
+    "answer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "répondre"
+          }
+        }
+      }
+    },
+    "changes requested" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "modifications demandées"
+          }
+        }
+      }
+    },
+    "committed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "committé"
+          }
+        }
+      }
+    },
+    "in progress" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en cours"
+          }
+        }
+      }
+    },
+    "in review" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en revue"
+          }
+        }
+      }
+    },
+    "no status" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucun état"
+          }
+        }
+      }
+    },
+    "offline" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hors ligne"
+          }
+        }
+      }
+    },
+    "online" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en ligne"
+          }
+        }
+      }
+    },
+    "planned" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "planifié"
+          }
+        }
+      }
+    },
+    "planning" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "planification"
+          }
+        }
+      }
+    },
+    "ready for PR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prêt pour la PR"
+          }
+        }
+      }
+    },
+    "review addressed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "revue traitée"
+          }
+        }
+      }
+    },
+    "send prompts" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "envoyer des prompts"
+          }
+        }
+      }
+    },
+    "stop agents" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "arrêter des agents"
+          }
+        }
+      }
+    },
+    "the answer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "la réponse"
+          }
+        }
+      }
+    },
+    "the prompt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "le prompt"
+          }
+        }
+      }
+    },
+    "the stop" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "l'arrêt"
+          }
+        }
+      }
+    },
+    "this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ce Mac"
+          }
+        }
+      }
+    },
+    "your Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "votre Mac"
           }
         }
       }
