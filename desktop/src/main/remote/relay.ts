@@ -309,7 +309,9 @@ async function sendEnvelope(envelope: RelayEnvelope): Promise<void> {
   if (!ch || !live) return
   try {
     const result = await ch.send({ type: 'broadcast', event: 'relay', payload: envelope })
-    if (result !== 'ok') logRelayEvent(`send ${envelope.type} answered ${String(result)}`)
+    // The conversation is the one large message: its size, to tell a payload cap from a drop.
+    if (envelope.type === 'chat') logRelayEvent(`send chat ${Buffer.byteLength(JSON.stringify(envelope))} bytes: ${String(result)}`)
+    else if (result !== 'ok') logRelayEvent(`send ${envelope.type} answered ${String(result)}`)
   } catch (error) {
     logRelayEvent(`send ${envelope.type} threw`)
     console.error('[remote] failed to send an envelope:', error)
