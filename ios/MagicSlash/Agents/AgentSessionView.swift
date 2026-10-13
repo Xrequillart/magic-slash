@@ -42,7 +42,7 @@ struct AgentSessionView: View {
         .navigationTitle(agent.title)
         .toolbar {
           ToolbarItem(placement: .principal) {
-            SessionTitle(title: agent.title, runtime: relay.runtime(for: agent.appAgentId))
+            SessionTitle(title: agent.title)
           }
           ToolbarItem(placement: .topBarTrailing) {
             Button("Info", systemImage: "info.circle") {
@@ -262,34 +262,16 @@ struct AgentSessionView: View {
   }
 }
 
-/// The bar's title: the session's name, and under it the agent's state on its Mac.
+/// The bar's title: the session's name.
 private struct SessionTitle: View {
   @Environment(\.theme) private var theme
   let title: String
-  let runtime: AgentRuntime?
 
   var body: some View {
-    VStack(spacing: 1) {
-      Text(title)
-        .font(.cera(.subheadline, .semibold))
-        .foregroundStyle(theme.ink)
-        .lineLimit(1)
-      if let runtime {
-        HStack(spacing: 5) {
-          Circle()
-            .fill(RuntimeStyle.tone(runtime.state).color(in: theme))
-            .frame(width: 6, height: 6)
-          Text(runtime.isCurrent
-            ? "\(RuntimeStyle.label(runtime.state)) · \(runtime.macName)"
-            : "Last known: \(RuntimeStyle.label(runtime.state)) · \(runtime.macName)")
-            .font(.cera(.caption2))
-            .foregroundStyle(theme.textSecondary)
-            .lineLimit(1)
-        }
-        .opacity(runtime.isCurrent ? 1 : 0.7)
-      }
-    }
-    .accessibilityElement(children: .combine)
+    Text(title)
+      .font(.cera(.headline))
+      .foregroundStyle(theme.ink)
+      .lineLimit(1)
   }
 }
 
