@@ -157,6 +157,7 @@ struct QuestionCard: View {
   }
 
   private func toggle(_ optionIndex: Int, in index: Int, multiple: Bool) {
+    Haptics.tap()
     var set = picks[index] ?? []
     if set.contains(optionIndex) {
       set.remove(optionIndex)
@@ -169,6 +170,7 @@ struct QuestionCard: View {
   }
 
   private func send(_ choice: AnswerChoice) {
+    Haptics.tap()
     let relay = relay
     let macId = runtime.macId
     let appAgentId = appAgentId

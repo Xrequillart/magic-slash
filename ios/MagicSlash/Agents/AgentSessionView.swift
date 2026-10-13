@@ -42,7 +42,10 @@ struct AgentSessionView: View {
             SessionTitle(title: agent.title, runtime: relay.runtime(for: agent.appAgentId))
           }
           ToolbarItem(placement: .topBarTrailing) {
-            Button("Info", systemImage: "info.circle") { sheet = .info }
+            Button("Info", systemImage: "info.circle") {
+              Haptics.tap()
+              sheet = .info
+            }
               .tint(theme.ink)
               .foregroundStyle(theme.ink)
           }
@@ -64,7 +67,10 @@ struct AgentSessionView: View {
           AgentDetailView(store: store, relay: relay, agentId: agentId)
             .toolbar {
               ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { self.sheet = nil }
+                Button("Done") {
+                  Haptics.tap()
+                  self.sheet = nil
+                }
               }
             }
         }
@@ -171,7 +177,10 @@ struct AgentSessionView: View {
     switch relay.keyState {
     case .locked(let message):
       ChatPlaceholder(systemImage: "lock.fill", title: "Locked", message: message) {
-        Button("Unlock") { Task { await relay.unlock() } }
+        Button("Unlock") {
+          Haptics.tap()
+          Task { await relay.unlock() }
+        }
           .font(.cera(.body, .semibold))
           .buttonStyle(.borderedProminent)
           .tint(theme.accent)
@@ -213,6 +222,7 @@ struct AgentSessionView: View {
       )
 
       Button {
+        Haptics.tap()
         sheet = .pair
       } label: {
         Label("Pair a Mac", systemImage: "qrcode.viewfinder")

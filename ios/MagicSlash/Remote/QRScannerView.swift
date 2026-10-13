@@ -136,6 +136,7 @@ struct CameraScanner: View {
           VStack(spacing: 12) {
             notice("Magic Slash needs the camera to scan the code your Mac shows.")
             Button("Open Settings") {
+              Haptics.tap()
               if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             }
             .foregroundStyle(theme.accent)

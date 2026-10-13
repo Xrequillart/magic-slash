@@ -96,7 +96,10 @@ struct AccountSheet: View {
               .truncationMode(.middle)
           }
         }
-        Button(action: onSettings) {
+        Button {
+          Haptics.tap()
+          onSettings()
+        } label: {
           Label("Settings", systemImage: "gearshape")
             .font(.cera(.body, .semibold))
             .frame(maxWidth: .infinity)
@@ -105,7 +108,10 @@ struct AccountSheet: View {
         .buttonStyle(.bordered)
         .tint(theme.ink)
         .padding(.top, 6)
-        Button(role: .destructive, action: onSignOut) {
+        Button(role: .destructive) {
+          Haptics.destructive()
+          onSignOut()
+        } label: {
           Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
             .font(.cera(.body, .semibold))
             .frame(maxWidth: .infinity)

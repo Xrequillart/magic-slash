@@ -268,6 +268,7 @@ private struct PullRequestBlock: View {
 
       if let url = meta.prUrl {
         Button {
+          Haptics.tap()
           openURL(url)
         } label: {
           Label(Self.shortLink(url), systemImage: "arrow.up.right.square")

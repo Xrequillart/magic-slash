@@ -252,6 +252,7 @@ private struct ToolGroup: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       Button {
+        Haptics.tap()
         withAnimation(.snappy(duration: 0.2)) { open.toggle() }
       } label: {
         HStack(spacing: 8) {

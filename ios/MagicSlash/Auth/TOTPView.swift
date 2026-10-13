@@ -53,6 +53,7 @@ struct TOTPView: View {
         .disabled(!canSubmit)
 
         Button("Use another account") {
+          Haptics.tap()
           Task { await auth.signOut() }
         }
         .font(.cera(.subheadline))
@@ -67,6 +68,7 @@ struct TOTPView: View {
   }
 
   private func submit() {
+    Haptics.tap()
     guard canSubmit else { return }
     Task { await auth.verifyTOTP(code: digits) }
   }

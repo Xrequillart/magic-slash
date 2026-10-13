@@ -55,6 +55,7 @@ struct PromptComposer: View {
 
         if let action {
           Button {
+            Haptics.tap()
             action == .stop ? stop() : send()
           } label: {
             Group {
@@ -80,7 +81,6 @@ struct PromptComposer: View {
       }
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
-    .sensoryFeedback(.impact(weight: .light), trigger: status?.commandId)
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }

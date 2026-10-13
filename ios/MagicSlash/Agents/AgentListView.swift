@@ -21,7 +21,6 @@ struct AgentListView: View {
   @State private var path: [String] = []
   @State private var profile: ProfileStore
   /// Bumped on every tap that should be felt: the header buttons and each session.
-  @State private var taps = 0
 
   init(store: AgentStore, relay: RelayStore, settings: DesktopSettingsStore, onSignOut: @escaping () -> Void) {
     self.store = store
@@ -41,7 +40,7 @@ struct AgentListView: View {
         .toolbar {
           ToolbarItem(placement: .topBarLeading) {
             Button {
-              taps += 1
+              Haptics.tap()
               sheet = .account
             } label: {
               ProfileAvatar(profile: profile, size: 30)
@@ -50,7 +49,7 @@ struct AgentListView: View {
           }
           ToolbarItem(placement: .topBarTrailing) {
             PairingButton(relay: relay) {
-              taps += 1
+              Haptics.tap()
               sheet = isPaired ? .macs : .pair
             }
           }
@@ -60,7 +59,6 @@ struct AgentListView: View {
         }
     }
     .task { await profile.load() }
-    .sensoryFeedback(.impact(weight: .light), trigger: taps)
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .account:
@@ -164,7 +162,7 @@ struct AgentListView: View {
   private func rows(_ agents: [OrderedAgent]) -> some View {
     ForEach(agents) { row in
       Button {
-        taps += 1
+        Haptics.tap()
         path.append(row.agent.id)
       } label: {
         AgentRow(agent: row.agent, state: liveState(of: row.agent))

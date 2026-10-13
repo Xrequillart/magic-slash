@@ -51,7 +51,10 @@ struct SettingsView: View {
       .toolbarBackground(theme.bg, for: .navigationBar)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
+          Button("Done") {
+            Haptics.tap()
+            dismiss()
+          }
             .foregroundStyle(theme.accent)
         }
       }
@@ -64,7 +67,7 @@ struct SettingsView: View {
     section("Appearance") {
       Picker("Theme", selection: Binding(
         get: { settings.themeID },
-        set: { settings.set(.theme, .string($0.rawValue)) }
+        set: { Haptics.tap(); settings.set(.theme, .string($0.rawValue)) }
       )) {
         ForEach(ThemeID.allCases, id: \.self) { id in
           Text(Self.themeName(id)).tag(id)
@@ -75,7 +78,7 @@ struct SettingsView: View {
       choice("Code syntax", .codeSyntax, SettingChoices.codeSyntax, default: "auto")
       Picker("Code font size", selection: Binding(
         get: { settings.int(.codeFontSize) ?? 12 },
-        set: { settings.set(.codeFontSize, .integer($0)) }
+        set: { Haptics.tap(); settings.set(.codeFontSize, .integer($0)) }
       )) {
         ForEach(SettingChoices.codeFontSize, id: \.self) { size in
           Text("\(size) pt").tag(size)
@@ -122,7 +125,7 @@ struct SettingsView: View {
     section("Agents") {
       Picker("Sort by", selection: Binding(
         get: { settings.agentSort },
-        set: { settings.set(.agentSort, .string($0.rawValue)) }
+        set: { Haptics.tap(); settings.set(.agentSort, .string($0.rawValue)) }
       )) {
         ForEach(AgentSortMode.allCases, id: \.self) { mode in
           Text(Self.label(mode.rawValue)).tag(mode)
@@ -196,7 +199,7 @@ struct SettingsView: View {
   ) -> some View {
     Picker(title, selection: Binding(
       get: { settings.string(column).flatMap { options.contains($0) ? $0 : nil } ?? fallback },
-      set: { settings.set(column, .string($0)) }
+      set: { Haptics.tap(); settings.set(column, .string($0)) }
     )) {
       ForEach(options, id: \.self) { option in
         Text(Self.label(option)).tag(option)

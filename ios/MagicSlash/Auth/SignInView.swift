@@ -69,6 +69,7 @@ struct SignInView: View {
   }
 
   private func submit() {
+    Haptics.tap()
     guard canSubmit else { return }
     Task { await auth.signIn(email: email, password: password) }
   }

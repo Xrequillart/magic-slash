@@ -25,7 +25,10 @@ struct PairingView: View {
         .toolbarBackground(theme.bg, for: .navigationBar)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button(isFinished ? "Done" : "Cancel") { dismiss() }
+            Button(isFinished ? "Done" : "Cancel") {
+              Haptics.tap()
+              dismiss()
+            }
               .foregroundStyle(theme.accent)
           }
         }
@@ -58,6 +61,7 @@ struct PairingView: View {
       VStack(spacing: 20) {
         outcome(icon: "xmark.circle.fill", color: theme.red, title: "Not paired", message: message)
         Button("Scan again") {
+          Haptics.tap()
           scanError = nil
           relay.endPairing()
         }
@@ -105,6 +109,7 @@ struct PairingView: View {
   }
 
   private func handle(_ code: String) {
+    Haptics.tap()
     do {
       let offer = try PairingOffer(qr: code)
       scanError = nil
@@ -210,7 +215,10 @@ struct PairedMacsView: View {
                   .foregroundStyle(theme.textSecondary)
               }
               Spacer(minLength: 4)
-              Button("Forget", role: .destructive) { forgetting = status }
+              Button("Forget", role: .destructive) {
+                Haptics.tap()
+                forgetting = status
+              }
                 .font(.cera(.subheadline, .semibold))
                 .foregroundStyle(theme.red)
                 .buttonStyle(.borderless)
@@ -223,7 +231,10 @@ struct PairedMacsView: View {
         }
 
         Section {
-          Button("Pair a Mac", systemImage: "qrcode.viewfinder", action: onPair)
+          Button("Pair a Mac", systemImage: "qrcode.viewfinder") {
+            Haptics.tap()
+            onPair()
+          }
             .foregroundStyle(theme.accent)
             .listRowBackground(theme.surface)
         }
@@ -235,7 +246,10 @@ struct PairedMacsView: View {
       .toolbarBackground(theme.bg, for: .navigationBar)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
+          Button("Done") {
+            Haptics.tap()
+            dismiss()
+          }
             .foregroundStyle(theme.accent)
         }
       }
@@ -245,7 +259,10 @@ struct PairedMacsView: View {
         titleVisibility: .visible,
         presenting: forgetting
       ) { status in
-        Button("Forget", role: .destructive) { relay.forget(status.mac.macId) }
+        Button("Forget", role: .destructive) {
+          Haptics.destructive()
+          relay.forget(status.mac.macId)
+        }
       } message: { _ in
         Text("Its agents' live state stops showing here. Pair again to see it.")
       }
