@@ -148,13 +148,19 @@ struct AgentListView: View {
     .refreshable { await store.refresh() }
   }
 
+  /// The agent's state when an online Mac reports it, nil otherwise.
+  private func liveState(of agent: Agent) -> String? {
+    guard let runtime = relay.runtime(for: agent.appAgentId), runtime.isCurrent else { return nil }
+    return runtime.state
+  }
+
   private func rows(_ agents: [OrderedAgent]) -> some View {
     ForEach(agents) { row in
       Button {
         taps += 1
         path.append(row.agent.id)
       } label: {
-        AgentRow(agent: row.agent)
+        AgentRow(agent: row.agent, state: liveState(of: row.agent))
       }
       .buttonStyle(.plain)
       .listRowBackground(theme.bg)
@@ -167,18 +173,18 @@ struct AgentListView: View {
   }
 }
 
-/// One session: a chat mark, its title and when it last moved, and the ticket it took.
+/// One session: its agent's state (the chat mark when idle), its title and when it last
+/// moved, and the ticket it took.
 private struct AgentRow: View {
   @Environment(\.theme) private var theme
   let agent: Agent
+  let state: String?
 
   var body: some View {
     HStack(spacing: 12) {
       // The mark and the label both sit in the middle of the row.
       HStack(spacing: 14) {
-        SessionGlyph()
-          .fill(theme.ink)
-          .frame(width: 20, height: 20)
+        SessionStateMark(state: state)
 
         VStack(alignment: .leading, spacing: 3) {
           Text(agent.title)
