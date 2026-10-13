@@ -30,7 +30,7 @@ struct QuestionCard: View {
         footer(status: status)
       } else {
         Label("Answer this one on the Mac.", systemImage: "laptopcomputer")
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.textSecondary)
       }
     }
@@ -44,7 +44,7 @@ struct QuestionCard: View {
         Pill(text: header, color: theme.blue, strength: .soft)
       }
       Text(item.prompt)
-        .font(.body)
+        .font(.cera(.body))
         .foregroundStyle(theme.ink)
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -117,7 +117,7 @@ struct QuestionCard: View {
     }
     if !runtime.isCurrent, status?.phase != .done {
       Label("\(runtime.macName) is offline. Answer when it is back, or on the Mac.", systemImage: "wifi.slash")
-        .font(.footnote)
+        .font(.cera(.footnote))
         .foregroundStyle(theme.textSecondary)
     }
     if let status {
@@ -192,11 +192,11 @@ private struct OptionLabel: View {
     HStack(alignment: .firstTextBaseline, spacing: 10) {
       VStack(alignment: .leading, spacing: 3) {
         Text(option.label)
-          .font(.subheadline.weight(.semibold))
+          .font(.cera(.subheadline, .semibold))
           .foregroundStyle(theme.ink)
         if let description = option.description {
           Text(description)
-            .font(.footnote)
+            .font(.cera(.footnote))
             .foregroundStyle(theme.textSecondary)
         }
       }
@@ -204,7 +204,7 @@ private struct OptionLabel: View {
       .multilineTextAlignment(.leading)
       if let mark {
         Image(systemName: mark)
-          .font(.footnote.weight(.semibold))
+          .font(.cera(.footnote, .semibold))
           .foregroundStyle(theme.iconMuted)
       }
     }
@@ -237,7 +237,7 @@ private struct SecondaryButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.semibold))
+      .font(.cera(.body, .semibold))
       .foregroundStyle(theme.ink)
       .frame(maxWidth: .infinity)
       .padding(.vertical, 13)
@@ -261,20 +261,20 @@ private struct StatusLine: View {
       HStack(spacing: 8) {
         ProgressView().controlSize(.small).tint(theme.textSecondary)
         Text("Sending the answer…")
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.textSecondary)
       }
     case .done:
       Label("Answer sent. The agent resumes on the Mac.", systemImage: "checkmark.circle.fill")
-        .font(.footnote.weight(.semibold))
+        .font(.cera(.footnote, .semibold))
         .foregroundStyle(theme.green)
     case .failed(let message):
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Image(systemName: "exclamationmark.triangle.fill")
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.yellow)
         Text(message)
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.ink)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
