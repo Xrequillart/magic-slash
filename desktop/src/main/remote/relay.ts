@@ -23,6 +23,7 @@ import {
   type StoredRemoteDevice,
 } from './identity-store'
 import { PairingSession, type PairingOutgoing } from './pairing'
+import { logRelayEvent } from './relay-log'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
 import { buildSnapshot, isAgentTerminal, snapshotFor, SnapshotScheduler } from './snapshot'
 import { terminalOwner } from './terminal-owners'
@@ -307,8 +308,10 @@ async function sendEnvelope(envelope: RelayEnvelope): Promise<void> {
   const ch = channel
   if (!ch || !live) return
   try {
-    await ch.send({ type: 'broadcast', event: 'relay', payload: envelope })
+    const result = await ch.send({ type: 'broadcast', event: 'relay', payload: envelope })
+    if (result !== 'ok') logRelayEvent(`send ${envelope.type} answered ${String(result)}`)
   } catch (error) {
+    logRelayEvent(`send ${envelope.type} threw`)
     console.error('[remote] failed to send an envelope:', error)
   }
 }
@@ -542,6 +545,7 @@ function armSubscribeWatchdog(ch: RealtimeChannel): void {
     subscribeWatchdog = null
     void withLock(async () => {
       if (channel !== ch || live) return
+      logRelayEvent('watchdog: not live after its deadline, leaving the channel')
       console.warn('[remote] relay channel not live after its deadline, leaving it so the next connectivity check rejoins')
       await teardown()
       emitState()
@@ -553,6 +557,7 @@ function armSubscribeWatchdog(ch: RealtimeChannel): void {
 function setLive(next: boolean): void {
   if (next === live) return
   live = next
+  logRelayEvent(live ? 'live' : 'not live')
   if (live) {
     clearSubscribeWatchdog()
     // A (re)join: the phones may have missed anything while we were gone, and nothing is
@@ -589,6 +594,7 @@ async function trackUntilLive(ch: RealtimeChannel, join: number): Promise<void> 
     setLive(true)
     return
   }
+  logRelayEvent(`presence track answered ${result}`)
   console.warn(`[remote] presence track answered ${result}, retrying`)
   const retry = setTimeout(() => void trackUntilLive(ch, join), TRACK_RETRY_MS)
   retry.unref?.()
@@ -604,10 +610,16 @@ function join(c: SupabaseClient, uid: string, macId: string): void {
       if (channel === ch) handleIncoming(message?.payload)
     })
     .on('presence', { event: 'join' }, ({ key }: { key?: string }) => {
-      if (channel === ch && typeof key === 'string' && key.startsWith('phone:')) scheduler?.notifyPresenceJoin()
+      if (channel !== ch || typeof key !== 'string' || !key.startsWith('phone:')) return
+      logRelayEvent(`presence join ${key}`)
+      scheduler?.notifyPresenceJoin()
     })
-    .subscribe((status: string) => {
+    .on('presence', { event: 'leave' }, ({ key }: { key?: string }) => {
+      if (channel === ch && typeof key === 'string' && key.startsWith('phone:')) logRelayEvent(`presence leave ${key}`)
+    })
+    .subscribe((status: string, error?: Error) => {
       if (channel !== ch) return
+      logRelayEvent(`channel ${status}${error?.message ? ` (${error.message})` : ''}`)
       const current = ++joinCount
       if (status !== 'SUBSCRIBED') {
         setLive(false)
@@ -665,6 +677,7 @@ async function startInternal(): Promise<void> {
   epoch = crypto.randomUUID().toLowerCase()
   seq = 0
   nextGeneration(uid, identity)
+  logRelayEvent(`join (generation ${identity.generation})`)
   try {
     join(c, uid, identity.macId)
   } catch (error) {
@@ -690,6 +703,7 @@ function nextGeneration(uid: string, self: LoadedIdentity): void {
 }
 
 async function teardown(): Promise<void> {
+  if (channel) logRelayEvent('leave the channel')
   if (authListenerUnsub) {
     authListenerUnsub()
     authListenerUnsub = null
