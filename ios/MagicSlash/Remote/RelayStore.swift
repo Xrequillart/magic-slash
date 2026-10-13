@@ -872,9 +872,7 @@ final class RelayStore {
     let attempt = subscriptionCount
     // The private topic is authorized from the JWT the socket holds: hand it the current
     // one rather than rely on the auth listener having run already.
-    if let token = try? await client.auth.session.accessToken {
-      await client.realtimeV2.setAuth(token)
-    }
+    await authorizeSocket(forceRefresh: false)
     await unsubscribe()
     guard !stopped, attempt == subscriptionCount else { return }
 
@@ -900,8 +898,13 @@ final class RelayStore {
           try? await Task.sleep(for: .seconds(2))
           guard !Task.isCancelled, let self, !self.stopped, attempt == self.subscriptionCount else { return }
           // In a task of its own: the rejoin cancels this one (`unsubscribe` cancels `tasks`),
-          // and a join awaited from here would be cancelled with it.
-          Task { await self.refreshSubscription() }
+          // and a join awaited from here would be cancelled with it. The server drops a
+          // private channel whose token it no longer accepts (`phx_error`): a fresh one
+          // first, or the next join meets the same fate.
+          Task {
+            await self.authorizeSocket(forceRefresh: true)
+            await self.refreshSubscription()
+          }
           return
         }
       },
@@ -983,6 +986,25 @@ final class RelayStore {
   private func macLabel(_ key: String) -> String {
     let id = String(key.dropFirst(4))
     return macs.first(where: { $0.macId == id })?.name ?? String(id.prefix(8))
+  }
+
+  /// Hands the socket a token the server will accept for the private channel. The SDK
+  /// pauses its own refresh whenever the app leaves the foreground (Face ID included), so
+  /// the stored token can be past its expiry when the relay joins: refreshed when it has
+  /// under a minute left, or always when the server just dropped the channel.
+  func authorizeSocket(forceRefresh: Bool) async {
+    var session = try? await client.auth.session
+    let remaining = session.map { $0.expiresAt - Date().timeIntervalSince1970 } ?? 0
+    if forceRefresh || remaining < 60 {
+      session = try? await client.auth.refreshSession()
+      log(session == nil ? "token refresh failed" : "token refreshed")
+    }
+    guard let session else {
+      log("no session for the relay")
+      return
+    }
+    log("token valid for \(Int(session.expiresAt - Date().timeIntervalSince1970)) s")
+    await client.realtimeV2.setAuth(session.accessToken)
   }
 
   /// A join in flight, and when the last one started: the supervisor leaves both alone.
