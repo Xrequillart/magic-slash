@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.119.0] - 2026-10-13
+
+### Added
+
+- **Ios**: Show each session's ticket as a github or jira label
+- **Ios**: Rename the list to sessions and open a pairing status page
+- **Ios**: Order agents like the desktop sidebar and follow its sort mode
+- **Ios**: Add the desktop's rabbit splash screen and take-off animation
+- **Ios**: Pair with a mac and show the agents' live state
+- **Desktop**: Add the remote access settings page with qr pairing
+- **Desktop**: Publish the agents' live state to paired iphones
+- **Desktop**: Add the encrypted relay protocol and its owner-only channel
+- **Ios**: Add a read-only iphone app listing your agents and their details
+- **Ios**: Generate swift theme tokens from the desktop themes
+
+### Changed
+
+- **Ios**: Write secrets.xcconfig from xcode cloud environment variables
+- **Ios**: Apply xcode 26 recommended project settings
+- **Ios**: Use the desktop rabbit as the app icon
+- **Deps**: Sync lockfile versions with 0.118.5
+- **Ios**: Document the ios app in claude.md
+- **Ios**: Add the ios commit scope
+- **Ios**: Build the ios app on macos
+
+### Fixed
+
+- **Start**: Bound the simplify agent and stop it after ten minutes
+- **Ios**: Pin swift-issue-reporting so xcode cloud resolves packages
+- **Pr**: Address review feedback for 352
+- **Ios**: Let only the latest realtime subscribe win
+- **Ios**: Swap stores synchronously on account change
+- **Ios**: Address review feedback on realtime races and the live spec
+
 ## [0.118.5] - 2026-10-12
 
 ### Added
@@ -3952,6 +3986,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.119.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.119.0
 [0.118.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.5
 [0.118.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.4
 [0.118.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.3
