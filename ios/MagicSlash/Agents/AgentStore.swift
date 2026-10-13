@@ -19,6 +19,9 @@ final class AgentStore {
 
   private(set) var agents: [Agent] = []
   private(set) var loadState: LoadState = .loading
+  /// The configured repositories, named as the desktop names them, for the sidebar's
+  /// `repository` grouping. Empty until read, and kept as is when a read fails.
+  private(set) var repositories: [RepositoryEntry] = []
 
   @ObservationIgnored let client: SupabaseClient
   /// The account this store belongs to: the screen only shows a store whose owner is the
@@ -66,6 +69,56 @@ final class AgentStore {
   }
 
   func refresh() async {
+    // The first time, the groups are read before the agents, so the list does not show
+    // ungrouped for a moment and then reshuffle. After that both read at once: the
+    // groups already on screen stand in until the new ones land.
+    if repositories.isEmpty {
+      await refreshRepositories()
+      await refreshAgents()
+    } else {
+      async let repositoriesRead: Void = refreshRepositories()
+      async let agentsRead: Void = refreshAgents()
+      _ = await (repositoriesRead, agentsRead)
+    }
+  }
+
+  /// Read like `fetchRepositories` in desktop/src/main/store/CloudStore.ts: no filter,
+  /// RLS returns exactly the repositories the desktop sees, and the paths are this
+  /// user's own.
+  private func refreshRepositories() async {
+    do {
+      async let repoRows: [JSONObject] = client.from("repositories").select("id, name, org_id").execute().value
+      async let pathRows: [JSONObject] = client.from("repository_paths").select("repo_id, path").execute().value
+      async let orgRows: [JSONObject] = client.from("organizations").select("id, name").execute().value
+      let (repos, paths, orgs) = try await (repoRows, pathRows, orgRows)
+      guard !stopped else { return }
+
+      var pathById: [String: String] = [:]
+      for row in paths {
+        if let id = row["repo_id"]?.stringValue, let path = row["path"]?.stringValue {
+          pathById[id] = path
+        }
+      }
+      var orgNames: [String: String] = [:]
+      for row in orgs {
+        if let id = row["id"]?.stringValue, let name = row["name"]?.stringValue {
+          orgNames[id] = name
+        }
+      }
+      let entries = AgentOrder.entries(
+        repos.compactMap { row in
+          guard let id = row["id"]?.stringValue, let name = row["name"]?.stringValue else { return nil }
+          return (id: id, name: name, orgId: row["org_id"]?.stringValue, path: pathById[id])
+        },
+        orgNames: orgNames
+      )
+      if entries != repositories { repositories = entries }
+    } catch {
+      // Keep the groups already known; without any, every agent reads as ungrouped.
+    }
+  }
+
+  private func refreshAgents() async {
     readGeneration += 1
     let generation = readGeneration
     if changesDuringRead == nil { changesDuringRead = [:] }

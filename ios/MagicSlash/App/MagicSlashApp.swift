@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct MagicSlashApp: App {
-  @State private var theme = ThemeStore()
+  @State private var theme = DesktopSettingsStore()
   /// Whether the app knows what to show: the splash leaves once it does.
   @State private var ready = false
   @State private var showsSplash = true
@@ -37,7 +37,7 @@ struct MagicSlashApp: App {
 private struct RootView: View {
   @Environment(\.scenePhase) private var scenePhase
 
-  let theme: ThemeStore
+  let theme: DesktopSettingsStore
   /// Set once the screen shows more than a loader, which lets the splash go.
   @Binding var ready: Bool
   @State private var auth: AuthModel
@@ -46,7 +46,7 @@ private struct RootView: View {
   @State private var relay: RelayStore?
   @State private var wentToBackground = false
 
-  init(client: SupabaseClient, theme: ThemeStore, ready: Binding<Bool>) {
+  init(client: SupabaseClient, theme: DesktopSettingsStore, ready: Binding<Bool>) {
     self.theme = theme
     _ready = ready
     _auth = State(initialValue: AuthModel(client: client))
@@ -107,7 +107,7 @@ private struct RootView: View {
       // The owner check covers the frame between a sign-in and `apply`: another account's
       // list is never drawn under this one.
       if let agents, let relay, agents.ownerId == userId, relay.ownerId == userId {
-        AgentListView(store: agents, relay: relay) {
+        AgentListView(store: agents, relay: relay, sort: theme.agentSort) {
           Task { await auth.signOut() }
         }
       } else {

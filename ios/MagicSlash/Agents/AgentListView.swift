@@ -5,6 +5,8 @@ struct AgentListView: View {
 
   let store: AgentStore
   let relay: RelayStore
+  /// The order the desktop sidebar uses, followed live.
+  let sort: AgentSortMode
   let onSignOut: () -> Void
 
   private enum Sheet: String, Identifiable {
@@ -80,17 +82,54 @@ struct AgentListView: View {
     .refreshable { await store.refresh() }
   }
 
-  private var list: some View {
-    List(store.agents) { agent in
-      NavigationLink(value: agent.id) {
-        AgentRow(agent: agent, runtime: relay.runtime(for: agent.appAgentId))
+  /// The agents in the sidebar's order, cut into its repository groups in `repository`
+  /// mode and left as one run otherwise.
+  private var groups: [(key: String, agents: [OrderedAgent])] {
+    let ordered = AgentOrder.ordered(store.agents, sort: sort, repositories: store.repositories) { agent in
+      relay.runtime(for: agent.appAgentId)?.state
+    }
+    guard sort == .repository else { return [(key: "", agents: ordered)] }
+    var groups: [(key: String, agents: [OrderedAgent])] = []
+    for row in ordered {
+      if groups.last?.key == row.groupKey {
+        groups[groups.count - 1].agents.append(row)
+      } else {
+        groups.append((key: row.groupKey, agents: [row]))
       }
-      .listRowBackground(theme.bg)
-      .listRowSeparatorTint(theme.lineSubtle)
+    }
+    return groups
+  }
+
+  private var list: some View {
+    List {
+      ForEach(groups, id: \.key) { group in
+        if sort == .repository {
+          Section {
+            rows(group.agents)
+          } header: {
+            Text(AgentOrder.label(forGroup: group.key))
+              .font(.footnote.weight(.semibold))
+              .foregroundStyle(theme.textSecondary)
+              .textCase(nil)
+          }
+        } else {
+          rows(group.agents)
+        }
+      }
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
     .refreshable { await store.refresh() }
+  }
+
+  private func rows(_ agents: [OrderedAgent]) -> some View {
+    ForEach(agents) { row in
+      NavigationLink(value: row.agent.id) {
+        AgentRow(agent: row.agent, runtime: relay.runtime(for: row.agent.appAgentId))
+      }
+      .listRowBackground(theme.bg)
+      .listRowSeparatorTint(theme.lineSubtle)
+    }
   }
 }
 

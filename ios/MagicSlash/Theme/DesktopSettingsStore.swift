@@ -2,15 +2,16 @@ import Foundation
 import Observation
 import Supabase
 
-/// The theme the user picked on the desktop, read from `user_settings.theme` and kept
-/// current over Realtime.
+/// The desktop settings the iPhone follows, read from `user_settings` and kept current
+/// over Realtime: the theme, and how the sidebar sorts the agents.
 ///
-/// The last value seen is remembered on the device so the sign-in screen and the first
-/// frame after launch already wear it, instead of flashing the fallback.
+/// The last values seen are remembered on the device so the sign-in screen and the first
+/// frame after launch already wear them, instead of flashing the fallback.
 @MainActor
 @Observable
-final class ThemeStore {
+final class DesktopSettingsStore {
   private(set) var themeID: ThemeID
+  private(set) var agentSort: AgentSortMode
 
   var tokens: ThemeTokens { .tokens(for: themeID) }
 
@@ -28,10 +29,13 @@ final class ThemeStore {
   /// tear down the one that replaced it.
   @ObservationIgnored private var subscriptionCount = 0
 
-  private static let cacheKey = "lastThemeID"
+  private static let themeCacheKey = "lastThemeID"
+  private static let sortCacheKey = "lastAgentSort"
+  private static let columns = "theme, agent_sort"
 
   init() {
-    themeID = ThemeID(raw: UserDefaults.standard.string(forKey: Self.cacheKey))
+    themeID = ThemeID(raw: UserDefaults.standard.string(forKey: Self.themeCacheKey))
+    agentSort = AgentSortMode(raw: UserDefaults.standard.string(forKey: Self.sortCacheKey))
   }
 
   func start(client: SupabaseClient, userId: UUID) async {
@@ -42,7 +46,7 @@ final class ThemeStore {
   }
 
   /// Stops only if `userId` is still the account being followed: a sign-out that finishes
-  /// after the next sign-in must not stop the new account's theme.
+  /// after the next sign-in must not stop the new account's settings.
   func stop(for userId: UUID) async {
     guard self.userId == userId else { return }
     session += 1
@@ -68,16 +72,16 @@ final class ThemeStore {
     do {
       let rows: [JSONObject] = try await client
         .from("user_settings")
-        .select("theme")
+        .select(Self.columns)
         .eq("user_id", value: userId.uuidString.lowercased())
         .limit(1)
         .execute()
         .value
       guard revision == liveRevision, session == self.session else { return }
-      // No row yet means the user never changed anything: the desktop default applies.
-      apply(raw: rows.first?["theme"]?.stringValue)
+      // No row yet means the user never changed anything: the desktop defaults apply.
+      apply(rows.first ?? [:])
     } catch {
-      // Keep whatever theme is showing; a failed read is not a theme change.
+      // Keep whatever is showing; a failed read is not a settings change.
     }
   }
 
@@ -99,8 +103,8 @@ final class ThemeStore {
       Task { [weak self] in
         for await change in changes {
           switch change {
-          case .insert(let action): self?.applyLive(raw: action.record["theme"]?.stringValue)
-          case .update(let action): self?.applyLive(raw: action.record["theme"]?.stringValue)
+          case .insert(let action): self?.applyLive(action.record)
+          case .update(let action): self?.applyLive(action.record)
           default: break
           }
         }
@@ -122,14 +126,18 @@ final class ThemeStore {
     }
   }
 
-  private func applyLive(raw: String?) {
+  private func applyLive(_ row: JSONObject) {
     liveRevision += 1
-    apply(raw: raw)
+    apply(row)
   }
 
-  private func apply(raw: String?) {
-    let id = ThemeID(raw: raw)
+  private func apply(_ row: JSONObject) {
+    let id = ThemeID(raw: row["theme"]?.stringValue)
     if id != themeID { themeID = id }
-    UserDefaults.standard.set(id.rawValue, forKey: Self.cacheKey)
+    UserDefaults.standard.set(id.rawValue, forKey: Self.themeCacheKey)
+
+    let sort = AgentSortMode(raw: row["agent_sort"]?.stringValue)
+    if sort != agentSort { agentSort = sort }
+    UserDefaults.standard.set(sort.rawValue, forKey: Self.sortCacheKey)
   }
 }

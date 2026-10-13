@@ -5,7 +5,7 @@ private struct ThemeKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-  /// The desktop theme's tokens, injected once at the root by `ThemeStore`.
+  /// The desktop theme's tokens, injected once at the root by `DesktopSettingsStore`.
   var theme: ThemeTokens {
     get { self[ThemeKey.self] }
     set { self[ThemeKey.self] = newValue }
