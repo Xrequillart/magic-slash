@@ -45,12 +45,13 @@ struct TypeBadge: View {
 struct SectionCard<Content: View>: View {
   @Environment(\.theme) private var theme
 
-  let title: String
+  let title: LocalizedStringKey
   @ViewBuilder let content: Content
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text(title.uppercased())
+      Text(title)
+        .textCase(.uppercase)
         .font(.cera(.caption, .semibold))
         .tracking(0.6)
         .foregroundStyle(theme.textSecondary)
@@ -65,11 +66,10 @@ struct SectionCard<Content: View>: View {
   }
 }
 
-/// The explicit "nothing here" line every section falls back to.
 /// A short note that a list row cannot say on its own, in a small card under its section.
 struct NoteCard: View {
   @Environment(\.theme) private var theme
-  let text: String
+  let text: LocalizedStringKey
 
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -89,9 +89,10 @@ struct NoteCard: View {
   }
 }
 
+/// The explicit "nothing here" line every section falls back to.
 struct EmptyLine: View {
   @Environment(\.theme) private var theme
-  let text: String
+  let text: LocalizedStringKey
 
   var body: some View {
     Text(text)
@@ -103,7 +104,7 @@ struct EmptyLine: View {
 
 struct LabeledLine: View {
   @Environment(\.theme) private var theme
-  let label: String
+  let label: LocalizedStringKey
   let value: String?
   var monospaced = false
 
@@ -132,8 +133,8 @@ struct MessageScreen: View {
   @Environment(\.theme) private var theme
 
   let systemImage: String
-  let title: String
-  let message: String
+  let title: LocalizedStringKey
+  let message: LocalizedStringKey
 
   var body: some View {
     VStack(spacing: 12) {

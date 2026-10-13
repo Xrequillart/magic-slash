@@ -322,7 +322,7 @@ final class RelayStore {
     let generation = lockGeneration
     let keys = DeviceKeys.shared
     do {
-      try await keys.unlock(reason: "Unlock the encrypted link to your Mac.", createIfMissing: false)
+      try await keys.unlock(reason: String(localized: "Unlock the encrypted link to your Mac."), createIfMissing: false)
       guard !stopped, generation == lockGeneration else { return }
       let phoneId = keys.phoneId
       let phonePub = try keys.publicKey()
@@ -452,7 +452,7 @@ final class RelayStore {
     }
 
     guard offer.expiresAt > Date() else {
-      return fail("This code expired. Your Mac shows a fresh one: scan it again.")
+      return fail(String(localized: "This code expired. Your Mac shows a fresh one: scan it again."))
     }
 
     let keys = DeviceKeys.shared
@@ -460,7 +460,7 @@ final class RelayStore {
     let phonePub: Data
     let signPub: Data
     do {
-      try await keys.unlock(reason: "Link this iPhone to \(offer.name).", createIfMissing: true)
+      try await keys.unlock(reason: String(localized: "Link this iPhone to \(offer.name)."), createIfMissing: true)
       phonePub = try keys.publicKey()
       // Made once, then kept across pairings: the other Macs already hold its public half.
       try keys.ensureSigningKey()
@@ -472,7 +472,7 @@ final class RelayStore {
       case .invalidated:
         // The key was made under another face: start over with a new identity.
         invalidate()
-        return fail("Face ID changed since this iPhone was set up. Scan the code again.")
+        return fail(String(localized: "Face ID changed since this iPhone was set up. Scan the code again."))
       case .locked(let message), .unavailable(let message):
         return fail(message)
       }
@@ -487,7 +487,7 @@ final class RelayStore {
     }
     guard generation == pairingGeneration, !stopped else { return }
     guard let channel, channel.status == .subscribed else {
-      return fail("Could not reach the relay. Check your connection and try again.")
+      return fail(String(localized: "Could not reach the relay. Check your connection and try again."))
     }
 
     let phoneId = keys.phoneId
@@ -500,14 +500,14 @@ final class RelayStore {
     ]
     guard var envelope = Self.sealedEnvelope(
       type: "pair-request", from: phoneId, to: offer.macId, epoch: epoch, seq: 1, body: body, key: key
-    ) else { return fail("Could not encrypt the request.") }
+    ) else { return fail(String(localized: "Could not encrypt the request.")) }
     envelope["phonePub"] = .string(phonePub.base64EncodedString())
     // Over REST, not the socket just joined: the server says whether it took the request,
     // so the code only shows once the Mac can actually receive it.
     do {
       try await channel.httpSend(event: "relay", message: envelope)
     } catch {
-      return fail("Could not send the request to your Mac (\(error.localizedDescription)). Scan its code again.")
+      return fail(String(localized: "Could not send the request to your Mac (\(error.localizedDescription)). Scan its code again."))
     }
     guard generation == pairingGeneration else { return }
 
@@ -518,7 +518,7 @@ final class RelayStore {
       guard !Task.isCancelled, let self, generation == self.pairingGeneration,
             case .waiting = self.pairing?.phase
       else { return }
-      self.pairing?.phase = .failed("Your Mac did not answer. Check that remote access is still on, then scan its code again.")
+      self.pairing?.phase = .failed(String(localized: "Your Mac did not answer. Check that remote access is still on, then scan its code again."))
     }
   }
 
@@ -547,7 +547,7 @@ final class RelayStore {
     invalidatePairingWork()
     switch pairing?.phase {
     case .preparing, .waiting:
-      pairing?.phase = .failed("The pairing was cancelled when Magic Slash left the screen. Scan your Mac's code again.")
+      pairing?.phase = .failed(String(localized: "The pairing was cancelled when Magic Slash left the screen. Scan your Mac's code again."))
     default:
       break
     }
@@ -642,10 +642,10 @@ final class RelayStore {
     }
 
     guard let mac = macs.first(where: { $0.macId == macId }), let pairingId = mac.pairingId else {
-      return fail("This Mac is no longer paired.")
+      return fail(String(localized: "This Mac is no longer paired."))
     }
     guard pairKeys[macId] != nil else {
-      return fail("Unlock the link to your Mac with Face ID first.")
+      return fail(String(localized: "Unlock the link to your Mac with Face ID first."))
     }
     guard isOnline(macId) else {
       return fail(wording.offline(mac.name))
@@ -657,7 +657,7 @@ final class RelayStore {
     // replayed after a restart: it would refuse it anyway.
     let bootId = snapshots[macId]?.snapshot.bootId
     if command.needsBootId, bootId == nil {
-      return fail("Not sent: \(mac.name) runs a version of Magic Slash that can't take this yet. Update the desktop app.")
+      return fail(String(localized: "Not sent: \(mac.name) runs a version of Magic Slash that can't take this yet. Update the desktop app."))
     }
 
     record(target, appAgentId: appAgentId, .sending)
@@ -687,7 +687,7 @@ final class RelayStore {
     // they arrive, with no canonical form on either side.
     guard let payloadData = try? JSONEncoder().encode(payloadFields),
           let payload = String(data: payloadData, encoding: .utf8)
-    else { return fail("Could not prepare the \(wording.noun).") }
+    else { return fail(String(localized: "Could not prepare \(wording.nounPhrase).")) }
 
     let signature: Data
     do {
@@ -700,13 +700,13 @@ final class RelayStore {
       case .invalidated:
         // The key died with a new Face ID enrolment: so did every pairing.
         invalidate()
-        return fail("Face ID changed since this iPhone was paired. Pair your Mac again to \(wording.verb).")
+        return fail(String(localized: "Face ID changed since this iPhone was paired. Pair your Mac again to \(wording.verb)."))
       }
     }
     // Locked while Face ID was up: the keys are gone, and nothing was sent.
     guard generation == lockGeneration, !stopped else { return fail(Self.notSentMessage) }
     guard let key = pairKeys[macId], let channel, channel.status == .subscribed else {
-      return fail("Could not reach the relay. Check your connection and try again.")
+      return fail(String(localized: "Could not reach the relay. Check your connection and try again."))
     }
 
     commandSeq += 1
@@ -714,14 +714,14 @@ final class RelayStore {
     let body = ["payload": payload, "sig": signature.base64EncodedString()]
     guard let envelope = Self.sealedEnvelope(
       type: "command", from: phoneId, to: macId, epoch: commandEpoch, seq: seq, body: body, key: key
-    ) else { return fail("Could not encrypt the \(wording.noun).") }
+    ) else { return fail(String(localized: "Could not encrypt \(wording.nounPhrase).")) }
     // Registered before the broadcast, so a reply that is quicker than the await still finds it.
     let timeout = Task { [weak self] in
       try? await Task.sleep(for: Self.commandTimeout)
       guard !Task.isCancelled, let self,
             let pending = self.pendingCommands.removeValue(forKey: commandId)
       else { return }
-      self.settle(pending, .failed("\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again."))
+      self.settle(pending, .failed(String(localized: "\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again.")))
     }
     pendingCommands[commandId] = PendingCommand(
       macId: macId, pairingId: pairingId, appAgentId: appAgentId, kind: command.kind, target: target,
@@ -747,38 +747,45 @@ final class RelayStore {
     var bootId: String?
   }
 
-  private static let notSentMessage = "Not sent: Magic Slash left the screen. Try again."
+  private static let notSentMessage = String(localized: "Not sent: Magic Slash left the screen. Try again.")
 
   /// The words a command's messages use, so each says what was actually sent.
   private struct Wording {
     let kind: CommandKind
 
-    var noun: String { kind.rawValue }
+    /// The noun with its article, as the messages use it: "the answer", "la réponse".
+    var nounPhrase: String {
+      switch kind {
+      case .answer: String(localized: "the answer")
+      case .prompt: String(localized: "the prompt")
+      case .stop: String(localized: "the stop")
+      }
+    }
 
     /// What pairing again lets the user do.
     var verb: String {
       switch kind {
-      case .answer: "answer"
-      case .prompt: "send prompts"
-      case .stop: "stop agents"
+      case .answer: String(localized: "answer")
+      case .prompt: String(localized: "send prompts")
+      case .stop: String(localized: "stop agents")
       }
     }
 
-    var repair: String { "Pair this iPhone with the Mac again to \(verb) from it." }
+    var repair: String { String(localized: "Pair this iPhone with the Mac again to \(verb) from it.") }
 
     func offline(_ macName: String) -> String {
       switch kind {
-      case .answer: "\(macName) is offline. Answer when it is back, or on the Mac."
-      case .prompt: "\(macName) is offline. Send it when the Mac is back."
-      case .stop: "\(macName) is offline. Stop the agent on the Mac."
+      case .answer: String(localized: "\(macName) is offline. Answer when it is back, or on the Mac.")
+      case .prompt: String(localized: "\(macName) is offline. Send it when the Mac is back.")
+      case .stop: String(localized: "\(macName) is offline. Stop the agent on the Mac.")
       }
     }
 
     func signReason(_ macName: String) -> String {
       switch kind {
-      case .answer: "Answer \(macName)'s agent."
-      case .prompt: "Send a prompt to \(macName)'s agent."
-      case .stop: "Stop \(macName)'s agent."
+      case .answer: String(localized: "Answer \(macName)'s agent.")
+      case .prompt: String(localized: "Send a prompt to \(macName)'s agent.")
+      case .stop: String(localized: "Stop \(macName)'s agent.")
       }
     }
 
@@ -786,23 +793,23 @@ final class RelayStore {
     func refusal(_ reason: String?) -> String {
       switch (kind, reason) {
       case (_, "re-pair"): repair
-      case (.answer, "stale"): "Already answered on the Mac, or expired."
-      case (.answer, "unsupported"): "Answer this one on the Mac."
-      case (.answer, "busy"), (.answer, "write-failed"): "Your Mac could not take the answer. Try again, or check the Mac."
-      case (.answer, "invalid"): "Your Mac does not accept this answer. Answer it on the Mac."
-      case (.prompt, "stale"): "This agent is no longer available on the Mac."
-      case (.prompt, "busy"): "The agent is waiting on a question: answer it first."
+      case (.answer, "stale"): String(localized: "Already answered on the Mac, or expired.")
+      case (.answer, "unsupported"): String(localized: "Answer this one on the Mac.")
+      case (.answer, "busy"), (.answer, "write-failed"): String(localized: "Your Mac could not take the answer. Try again, or check the Mac.")
+      case (.answer, "invalid"): String(localized: "Your Mac does not accept this answer. Answer it on the Mac.")
+      case (.prompt, "stale"): String(localized: "This agent is no longer available on the Mac.")
+      case (.prompt, "busy"): String(localized: "The agent is waiting on a question: answer it first.")
       case (.prompt, "unsupported"):
-        "This command needs the Mac's terminal: shell (!) and interactive slash commands can't be sent from the iPhone."
-      case (.prompt, "write-failed"): "Your Mac could not write to the agent's terminal. Try again, or check the Mac."
-      case (.prompt, "invalid"): "Your Mac does not accept this prompt. Send it from the Mac."
-      case (.stop, "stale"): "Nothing to stop: the agent isn't working."
-      case (.stop, "busy"), (.stop, "write-failed"): "Your Mac could not stop the agent. Try again, or stop it on the Mac."
-      case (.stop, "unsupported"), (.stop, "invalid"): "Your Mac does not accept this stop. Stop the agent on the Mac."
+        String(localized: "This command needs the Mac's terminal: shell (!) and interactive slash commands can't be sent from the iPhone.")
+      case (.prompt, "write-failed"): String(localized: "Your Mac could not write to the agent's terminal. Try again, or check the Mac.")
+      case (.prompt, "invalid"): String(localized: "Your Mac does not accept this prompt. Send it from the Mac.")
+      case (.stop, "stale"): String(localized: "Nothing to stop: the agent isn't working.")
+      case (.stop, "busy"), (.stop, "write-failed"): String(localized: "Your Mac could not stop the agent. Try again, or stop it on the Mac.")
+      case (.stop, "unsupported"), (.stop, "invalid"): String(localized: "Your Mac does not accept this stop. Stop the agent on the Mac.")
       // A signature, identifier, launch or clock mismatch: the clock is the one a user can fix.
       case (_, "rejected"):
-        "Your Mac refused the \(noun). Check that the iPhone and the Mac show the same time, or pair again."
-      default: "Your Mac refused the \(noun)."
+        String(localized: "Your Mac refused \(nounPhrase). Check that the iPhone and the Mac show the same time, or pair again.")
+      default: String(localized: "Your Mac refused \(nounPhrase).")
       }
     }
   }
@@ -812,7 +819,7 @@ final class RelayStore {
   private func abandonPendingCommands() {
     for pending in pendingCommands.values {
       pending.timeout.cancel()
-      settle(pending, .failed("Magic Slash left the screen before your Mac confirmed. Check the Mac."))
+      settle(pending, .failed(String(localized: "Magic Slash left the screen before your Mac confirmed. Check the Mac.")))
     }
     pendingCommands = [:]
   }
@@ -1276,10 +1283,10 @@ final class RelayStore {
     guard let pairing, case .waiting = pairing.phase, envelope.from == pairing.offer.macId else { return }
     invalidatePairingWork()
     let message = switch envelope.reason {
-    case "expired": "The code expired before your Mac received the request. Scan the fresh one."
-    case "used": "This code was already used. Scan the fresh one your Mac shows."
-    case "declined": "The pairing was declined on your Mac."
-    default: "Your Mac refused the pairing."
+    case "expired": String(localized: "The code expired before your Mac received the request. Scan the fresh one.")
+    case "used": String(localized: "This code was already used. Scan the fresh one your Mac shows.")
+    case "declined": String(localized: "The pairing was declined on your Mac.")
+    default: String(localized: "Your Mac refused the pairing.")
     }
     self.pairing?.phase = .rejected(message)
   }

@@ -108,7 +108,7 @@ final class AuthModel {
 
       let factors = try await client.auth.mfa.listFactors()
       guard let factor = factors.totp.first else {
-        errorMessage = "This account requires a second factor this app does not support."
+        errorMessage = String(localized: "This account requires a second factor this app does not support.")
         await signOut()
         return
       }
@@ -125,7 +125,7 @@ final class AuthModel {
       return authError.message
     }
     if (error as? URLError) != nil {
-      return "Could not reach the server. Check your connection and try again."
+      return String(localized: "Could not reach the server. Check your connection and try again.")
     }
     return error.localizedDescription
   }

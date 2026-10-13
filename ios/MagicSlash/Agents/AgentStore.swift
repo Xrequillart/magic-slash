@@ -143,7 +143,7 @@ final class AgentStore {
       changesDuringRead = nil
       // A failed refresh keeps what is on screen; only an empty first load is an error.
       if agents.isEmpty, loadState != .loaded {
-        loadState = .failed("Could not load your agents. Pull to try again.")
+        loadState = .failed(String(localized: "Could not load your agents. Pull to try again."))
       }
     }
   }

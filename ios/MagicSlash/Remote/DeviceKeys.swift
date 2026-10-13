@@ -141,7 +141,7 @@ final class DeviceKeys {
       }
       guard generation == lockGeneration else {
         context.invalidate()
-        throw .locked("Face ID was cancelled.")
+        throw .locked(String(localized: "Face ID was cancelled."))
       }
       return context
     }
@@ -149,9 +149,9 @@ final class DeviceKeys {
 
   /// ECDH with a Mac's public point. Needs `unlock` first.
   func sharedSecret(with peer: Data) throws(DeviceKeyError) -> SharedSecret {
-    guard unlocked else { throw .locked("Unlock with Face ID first.") }
+    guard unlocked else { throw .locked(String(localized: "Unlock with Face ID first.")) }
     guard let peerKey = try? P256.KeyAgreement.PublicKey(x963Representation: peer) else {
-      throw .unavailable("The Mac's key is not valid.")
+      throw .unavailable(String(localized: "The Mac's key is not valid."))
     }
     let key = try privateKey(context: context)
     do {
@@ -189,7 +189,7 @@ final class DeviceKeys {
     private func createKey() throws(DeviceKeyError) {
       let key = P256.KeyAgreement.PrivateKey()
       guard Keychain.write(key.rawRepresentation, Self.keyAccount) else {
-        throw .unavailable("Could not store the key in the Keychain.")
+        throw .unavailable(String(localized: "Could not store the key in the Keychain."))
       }
     }
 
@@ -203,7 +203,7 @@ final class DeviceKeys {
     private func createSigningKey() throws(DeviceKeyError) {
       let key = P256.Signing.PrivateKey()
       guard Keychain.write(key.rawRepresentation, Self.signingKeyAccount) else {
-        throw .unavailable("Could not store the key in the Keychain.")
+        throw .unavailable(String(localized: "Could not store the key in the Keychain."))
       }
     }
 
@@ -216,17 +216,17 @@ final class DeviceKeys {
   #else
     private func createKey() throws(DeviceKeyError) {
       guard SecureEnclave.isAvailable else {
-        throw .unavailable("This iPhone has no Secure Enclave.")
+        throw .unavailable(String(localized: "This iPhone has no Secure Enclave."))
       }
       let access = try Self.accessControl()
       let key: SecureEnclave.P256.KeyAgreement.PrivateKey
       do {
         key = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
       } catch {
-        throw .unavailable("Could not create a key in the Secure Enclave. Make sure Face ID is set up.")
+        throw .unavailable(String(localized: "Could not create a key in the Secure Enclave. Make sure Face ID is set up."))
       }
       guard Keychain.write(key.dataRepresentation, Self.keyAccount) else {
-        throw .unavailable("Could not store the key in the Keychain.")
+        throw .unavailable(String(localized: "Could not store the key in the Keychain."))
       }
     }
 
@@ -239,17 +239,17 @@ final class DeviceKeys {
 
     private func createSigningKey() throws(DeviceKeyError) {
       guard SecureEnclave.isAvailable else {
-        throw .unavailable("This iPhone has no Secure Enclave.")
+        throw .unavailable(String(localized: "This iPhone has no Secure Enclave."))
       }
       let access = try Self.accessControl()
       let key: SecureEnclave.P256.Signing.PrivateKey
       do {
         key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: access)
       } catch {
-        throw .unavailable("Could not create a key in the Secure Enclave. Make sure Face ID is set up.")
+        throw .unavailable(String(localized: "Could not create a key in the Secure Enclave. Make sure Face ID is set up."))
       }
       guard Keychain.write(key.dataRepresentation, Self.signingKeyAccount) else {
-        throw .unavailable("Could not store the key in the Keychain.")
+        throw .unavailable(String(localized: "Could not store the key in the Keychain."))
       }
     }
 
@@ -270,7 +270,7 @@ final class DeviceKeys {
       &error
     ) else {
       error?.release()
-      throw .unavailable("Could not set up the key's access control.")
+      throw .unavailable(String(localized: "Could not set up the key's access control."))
     }
     return access
   }
@@ -288,16 +288,16 @@ final class DeviceKeys {
   }
 
   private static func mapped(_ error: (any Error)?) -> DeviceKeyError {
-    guard let error = error as? LAError else { return .locked("Face ID did not confirm.") }
+    guard let error = error as? LAError else { return .locked(String(localized: "Face ID did not confirm.")) }
     switch error.code {
     case .biometryNotEnrolled, .biometryNotAvailable, .passcodeNotSet:
-      return .unavailable("Set up Face ID on this iPhone to follow your Mac.")
+      return .unavailable(String(localized: "Set up Face ID on this iPhone to follow your Mac."))
     case .biometryLockout:
-      return .locked("Face ID is locked. Unlock your iPhone with its passcode, then try again.")
+      return .locked(String(localized: "Face ID is locked. Unlock your iPhone with its passcode, then try again."))
     case .userCancel, .appCancel, .systemCancel, .userFallback:
-      return .locked("Face ID was cancelled.")
+      return .locked(String(localized: "Face ID was cancelled."))
     default:
-      return .locked("Face ID did not confirm.")
+      return .locked(String(localized: "Face ID did not confirm."))
     }
   }
 

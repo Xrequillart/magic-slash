@@ -179,8 +179,8 @@ struct PromptComposer: View {
   /// took it: the conversation shows the prompt, its place in the queue, or the stop.
   private static func line(for status: AgentCommandStatus) -> StatusLine.Phase? {
     switch (status.action, status.phase) {
-    case (.prompt, .sending): .progress("Sending the prompt…")
-    case (.stop, .sending): .progress("Stopping the agent…")
+    case (.prompt, .sending): .progress(String(localized: "Sending the prompt…"))
+    case (.stop, .sending): .progress(String(localized: "Stopping the agent…"))
     case (_, .done): nil
     case (_, .failed(let message)): .failure(message)
     }

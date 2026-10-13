@@ -209,11 +209,11 @@ private struct AgentDetailContent: View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(spacing: 6) {
         if let number = plan.number ?? agent.planNumber {
-          Text("#\(number)")
+          Text(verbatim: "#\(number)")
             .font(.subheadline.monospacedDigit().weight(.semibold))
             .foregroundStyle(theme.textSecondary)
         }
-        Text(plan.title ?? "Untitled plan")
+        Text(plan.title ?? String(localized: "Untitled plan"))
           .font(.cera(.body, .semibold))
           .foregroundStyle(theme.ink)
       }
@@ -364,19 +364,19 @@ private struct PullRequestBlock: View {
 
   private static func label(_ state: RepositoryMetadata.PRState) -> String {
     switch state {
-    case .open: "Open"
-    case .draft: "Draft"
-    case .merged: "Merged"
-    case .closed: "Closed"
+    case .open: String(localized: "Open")
+    case .draft: String(localized: "Draft")
+    case .merged: String(localized: "Merged")
+    case .closed: String(localized: "Closed")
     }
   }
 
   private static func label(_ review: RepositoryMetadata.ReviewStatus) -> String {
     switch review {
-    case .approved: "Approved"
-    case .changesRequested: "Changes requested"
-    case .commented: "Commented"
-    case .pending: "Review pending"
+    case .approved: String(localized: "Approved")
+    case .changesRequested: String(localized: "Changes requested")
+    case .commented: String(localized: "Commented")
+    case .pending: String(localized: "Review pending")
     }
   }
 

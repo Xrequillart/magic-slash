@@ -307,7 +307,7 @@ struct ChatEmptyState: View {
 
   var body: some View {
     VStack(spacing: 20) {
-      ClaudeCodeMascot(greeting: "Hello!")
+      ClaudeCodeMascot(greeting: String(localized: "Hello!"))
         .frame(width: 96, height: 96)
       VStack(spacing: 6) {
         Text("Claude Code")

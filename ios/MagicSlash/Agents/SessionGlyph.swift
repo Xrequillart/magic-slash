@@ -62,7 +62,7 @@ struct SessionStateMark: View {
       }
     }
     .frame(width: 20, height: 20)
-    .accessibilityLabel(state.map(RuntimeStyle.label) ?? "Session")
+    .accessibilityLabel(state.map(RuntimeStyle.label) ?? String(localized: "Session"))
   }
 }
 

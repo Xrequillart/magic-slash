@@ -148,7 +148,7 @@ struct CameraScanner: View {
     .background(theme.surfaceSunken)
   }
 
-  private func notice(_ text: String) -> some View {
+  private func notice(_ text: LocalizedStringKey) -> some View {
     Text(text)
       .font(.cera(.subheadline))
       .foregroundStyle(theme.textSecondary)

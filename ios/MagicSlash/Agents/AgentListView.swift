@@ -87,7 +87,7 @@ struct AgentListView: View {
     case .loading where store.agents.isEmpty:
       LoadingScreen()
     case .failed(let message) where store.agents.isEmpty:
-      refreshableMessage(systemImage: "wifi.exclamationmark", title: "Agents unavailable", message: message)
+      refreshableMessage(systemImage: "wifi.exclamationmark", title: "Agents unavailable", message: "\(message)")
     default:
       if store.agents.isEmpty {
         refreshableMessage(
@@ -102,7 +102,7 @@ struct AgentListView: View {
   }
 
   /// A message that still pulls to refresh, for the states with no agent to list.
-  private func refreshableMessage(systemImage: String, title: String, message: String) -> some View {
+  private func refreshableMessage(systemImage: String, title: LocalizedStringKey, message: LocalizedStringKey) -> some View {
     ScrollView {
       MessageScreen(systemImage: systemImage, title: title, message: message)
         .frame(minHeight: 480)

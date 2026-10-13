@@ -58,7 +58,7 @@ struct Agent: Identifiable, Hashable, Sendable {
     status = pick("status", "status") ?? ""
     // Absent means coder: that is what every agent was before planning existed.
     type = AgentType(rawValue: pick("type", "type") ?? "") ?? .coder
-    title = metadata["title"]?.stringValue.nonEmpty ?? name.nonEmpty ?? "Untitled agent"
+    title = metadata["title"]?.stringValue.nonEmpty ?? name.nonEmpty ?? String(localized: "Untitled agent")
 
     repositories = (row["repositories"]?.arrayValue ?? []).compactMap { $0.stringValue.nonEmpty }
 
@@ -92,8 +92,8 @@ enum AgentType: String, Sendable {
 
   var label: String {
     switch self {
-    case .coder: "Coder"
-    case .planner: "Planner"
+    case .coder: String(localized: "Coder")
+    case .planner: String(localized: "Planner")
     }
   }
 }

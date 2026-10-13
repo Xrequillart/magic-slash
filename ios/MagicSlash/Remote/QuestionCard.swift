@@ -181,8 +181,8 @@ struct QuestionCard: View {
   /// Where the last answer stands: on its way, taken, or refused and why.
   private static func line(for phase: AnswerStatus.Phase) -> StatusLine.Phase {
     switch phase {
-    case .sending: .progress("Sending the answer…")
-    case .done: .success("Answer sent. The agent resumes on the Mac.")
+    case .sending: .progress(String(localized: "Sending the answer…"))
+    case .done: .success(String(localized: "Answer sent. The agent resumes on the Mac."))
     case .failed(let message): .failure(message)
     }
   }

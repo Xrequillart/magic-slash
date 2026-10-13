@@ -49,7 +49,7 @@ struct PairingView: View {
     case .preparing:
       progress("Confirm with Face ID…")
     case .waiting(let code):
-      waiting(code: code, macName: relay.pairing?.offer.name ?? "your Mac")
+      waiting(code: code, macName: relay.pairing?.offer.name ?? String(localized: "your Mac"))
     case .accepted(let macName):
       outcome(
         icon: "checkmark.circle.fill",
@@ -59,7 +59,7 @@ struct PairingView: View {
       )
     case .rejected(let message), .failed(let message):
       VStack(spacing: 20) {
-        outcome(icon: "xmark.circle.fill", color: theme.red, title: "Not paired", message: message)
+        outcome(icon: "xmark.circle.fill", color: theme.red, title: "Not paired", message: "\(message)")
         Button("Scan again") {
           Haptics.tap()
           scanError = nil
@@ -116,8 +116,8 @@ struct PairingView: View {
       Task { await relay.beginPairing(offer) }
     } catch {
       scanError = error == .expired
-        ? "This code has expired. Your Mac shows a fresh one every minute: scan it again."
-        : "This is not a Magic Slash pairing code."
+        ? String(localized: "This code has expired. Your Mac shows a fresh one every minute: scan it again.")
+        : String(localized: "This is not a Magic Slash pairing code.")
     }
   }
 
@@ -153,7 +153,7 @@ struct PairingView: View {
     .frame(maxWidth: .infinity)
   }
 
-  private func progress(_ text: String) -> some View {
+  private func progress(_ text: LocalizedStringKey) -> some View {
     VStack(spacing: 12) {
       ProgressView().tint(theme.textSecondary)
       Text(text)
@@ -163,7 +163,7 @@ struct PairingView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
-  private func outcome(icon: String, color: Color, title: String, message: String) -> some View {
+  private func outcome(icon: String, color: Color, title: LocalizedStringKey, message: LocalizedStringKey) -> some View {
     VStack(spacing: 12) {
       Image(systemName: icon)
         .font(.system(size: 44))
@@ -234,7 +234,7 @@ struct PairedMacsList: View {
               Text(status.name)
                 .font(.cera(.body, .semibold))
                 .foregroundStyle(theme.ink)
-              Text("Paired \(status.mac.pairedAt.formatted(date: .abbreviated, time: .omitted)), \(status.isOnline ? "online" : "offline")")
+              Text("Paired \(status.mac.pairedAt.formatted(date: .abbreviated, time: .omitted)), \(status.isOnline ? String(localized: "online") : String(localized: "offline"))")
                 .font(.cera(.caption))
                 .foregroundStyle(theme.textSecondary)
             }
@@ -288,7 +288,7 @@ struct PairedMacsList: View {
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(theme.bg, for: .navigationBar)
     .confirmationDialog(
-      "Forget \(forgetting?.name ?? "this Mac")?",
+      "Forget \(forgetting?.name ?? String(localized: "this Mac"))?",
       isPresented: Binding(get: { forgetting != nil }, set: { if !$0 { forgetting = nil } }),
       titleVisibility: .visible,
       presenting: forgetting

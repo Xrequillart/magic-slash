@@ -107,7 +107,7 @@ enum AgentOrder {
   /// The group header's label: first letter up, the rest exactly as configured.
   /// `repoLabel` on the desktop.
   static func label(forGroup key: String) -> String {
-    key.isEmpty ? "No repository" : key.prefix(1).uppercased() + key.dropFirst()
+    key.isEmpty ? String(localized: "No repository") : key.prefix(1).uppercased() + key.dropFirst()
   }
 
   /// Names the repositories like the desktop's `toRepositoryRecord`: ordered by

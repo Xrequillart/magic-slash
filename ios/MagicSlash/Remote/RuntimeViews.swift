@@ -5,11 +5,11 @@ import SwiftUI
 enum RuntimeStyle {
   static func label(_ state: String) -> String {
     switch state {
-    case "working": "Working"
-    case "waiting": "Waiting for input"
-    case "idle": "Idle"
-    case "completed": "Completed"
-    case "error": "Error"
+    case "working": String(localized: "Working")
+    case "waiting": String(localized: "Waiting for input")
+    case "idle": String(localized: "Idle")
+    case "completed": String(localized: "Completed")
+    case "error": String(localized: "Error")
     // A state this build does not know still shows, as sent.
     default: state
     }
@@ -56,7 +56,7 @@ struct RuntimePill: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(runtime.isCurrent
       ? RuntimeStyle.label(runtime.state)
-      : "Last known: \(RuntimeStyle.label(runtime.state))")
+      : String(localized: "Last known: \(RuntimeStyle.label(runtime.state))"))
   }
 }
 
@@ -123,7 +123,7 @@ struct UsageSection: View {
       let time = soon
         ? date.formatted(date: .omitted, time: .shortened)
         : date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
-      return "resets \(time)"
+      return String(localized: "resets \(time)")
     }
     switch (percent.map(Self.percent), resetText) {
     case let (p?, r?): return "\(p), \(r)"
