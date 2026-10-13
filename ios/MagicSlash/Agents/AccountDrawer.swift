@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 /// What lies under the sessions list, revealed when the list slides aside: who is signed
-/// in, whether this iPhone is paired with a Mac, and the account actions that go with them.
+/// in, and signing out. Pairing lives in the list's header.
 ///
 /// It does not move and has no open state of its own: `AgentListView` slides the list over
 /// it and back.
@@ -11,9 +11,6 @@ struct AccountDrawer: View {
   @Environment(\.theme) private var theme
 
   let client: SupabaseClient
-  let relay: RelayStore
-  let onPair: () -> Void
-  let onPairedMacs: () -> Void
   let onSignOut: () -> Void
 
   /// The name and photo the user set on the desktop (`profiles`), once read.
@@ -22,14 +19,9 @@ struct AccountDrawer: View {
 
   private var email: String? { client.auth.currentUser?.email }
 
-  private var isPaired: Bool {
-    !relay.macs.isEmpty && !relay.needsRepair
-  }
-
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       account
-      pairing
       Spacer(minLength: 0)
       Button(role: .destructive, action: onSignOut) {
         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
@@ -96,76 +88,6 @@ struct AccountDrawer: View {
       avatar = UIImage(data: data)
     } catch {
       // Keep the glyph: a missing photo is not worth an error on this screen.
-    }
-  }
-
-  // MARK: Pairing
-
-  private var pairing: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Mac")
-        .font(.cera(.footnote, .semibold))
-        .foregroundStyle(theme.textSecondary)
-
-      if isPaired {
-        HStack(spacing: 8) {
-          Image(systemName: "checkmark.circle.fill")
-            .foregroundStyle(theme.green)
-          Text("Paired")
-            .font(.cera(.body, .semibold))
-            .foregroundStyle(theme.ink)
-        }
-        ForEach(relay.statuses()) { status in
-          MacLine(status: status, now: relay.now)
-        }
-        lockNotice
-        Button("Paired Macs", systemImage: "laptopcomputer", action: onPairedMacs)
-          .font(.cera(.subheadline, .medium))
-          .foregroundStyle(theme.accent)
-      } else {
-        HStack(spacing: 8) {
-          Image(systemName: "link.badge.plus")
-            .foregroundStyle(theme.textSecondary)
-          Text(relay.needsRepair ? "Pair your Mac again" : "Not paired")
-            .font(.cera(.body, .semibold))
-            .foregroundStyle(theme.ink)
-        }
-        if relay.needsRepair {
-          Text("Face ID changed on this iPhone, so its Macs were unpaired.")
-            .font(.cera(.footnote))
-            .foregroundStyle(theme.textSecondary)
-        }
-        Button(action: onPair) {
-          Label("Pair a Mac", systemImage: "qrcode.viewfinder")
-            .font(.cera(.body, .semibold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(theme.accent)
-      }
-    }
-  }
-
-  /// The link's keys are locked behind Face ID until the iPhone unlocks them.
-  @ViewBuilder
-  private var lockNotice: some View {
-    switch relay.keyState {
-    case .locked(let message):
-      VStack(alignment: .leading, spacing: 6) {
-        Text(message)
-          .font(.cera(.footnote))
-          .foregroundStyle(theme.textSecondary)
-        Button("Unlock") { Task { await relay.unlock() } }
-          .font(.cera(.footnote, .semibold))
-          .foregroundStyle(theme.accent)
-      }
-    case .unavailable(let message):
-      Text(message)
-        .font(.cera(.footnote))
-        .foregroundStyle(theme.textSecondary)
-    case .unlocking, .idle, .unlocked:
-      EmptyView()
     }
   }
 }

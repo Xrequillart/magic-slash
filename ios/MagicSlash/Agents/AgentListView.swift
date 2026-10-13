@@ -27,25 +27,44 @@ struct AgentListView: View {
   private static let slide = Animation.snappy(duration: 0.3)
 
   var body: some View {
+    // Read outside the full-screen layers below, which no longer see the safe area.
+    GeometryReader { screen in
+      let insets = screen.safeAreaInsets
+      layers(insets: insets)
+    }
+    .sensoryFeedback(.impact(weight: .light), trigger: taps)
+    .sheet(item: $sheet) { sheet in
+      switch sheet {
+      case .pair:
+        PairingView(relay: relay)
+      case .macs:
+        PairedMacsView(relay: relay) { self.sheet = .pair }
+      }
+    }
+  }
+
+  private func layers(insets: EdgeInsets) -> some View {
     GeometryReader { proxy in
       let width = min(proxy.size.width * 0.82, 340)
       ZStack(alignment: .topLeading) {
         // Underneath, and still: the list slides aside to show it.
         AccountDrawer(
           client: store.client,
-          relay: relay,
-          onPair: { open(.pair) },
-          onPairedMacs: { open(.macs) },
           onSignOut: {
             withAnimation(Self.slide) { showsDrawer = false }
             onSignOut()
           }
         )
+        .padding(.top, insets.top)
+        .padding(.bottom, insets.bottom)
         .frame(width: width)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(theme.bgSecondary.ignoresSafeArea())
+        .background(theme.bgSecondary)
 
         sessions
+          // The list's own ground, full screen: it travels with the list, so nothing
+          // of the drawer shows at the edges while it is closed.
+          .background(theme.bg)
           .overlay {
             // While open, a tap anywhere on the list closes the drawer instead of
             // opening a session.
@@ -73,27 +92,28 @@ struct AgentListView: View {
           )
       }
     }
-    .sensoryFeedback(.impact(weight: .light), trigger: taps)
-    .sheet(item: $sheet) { sheet in
-      switch sheet {
-      case .pair:
-        PairingView(relay: relay)
-      case .macs:
-        PairedMacsView(relay: relay) { self.sheet = .pair }
-      }
-    }
+    // Both layers span the whole screen, status bar and home indicator included. Their
+    // content still keeps to the safe area: only the frames are stretched.
+    .ignoresSafeArea()
   }
 
   private var sessions: some View {
     NavigationStack(path: $path) {
       content
         .background(theme.bg.ignoresSafeArea())
+        // The bar's own backdrop is hidden for ours: a system material is a neutral grey
+        // whatever the theme, where this one is the theme's ground, blurred.
+        .overlay(alignment: .top) { HeaderBackdrop() }
         .navigationTitle("Sessions")
         .navigationBarTitleDisplayMode(.inline)
-        // The list scrolls under a blurred bar rather than a solid one.
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            PairingButton(relay: relay) {
+              taps += 1
+              open(isPaired ? .macs : .pair)
+            }
+          }
           ToolbarItem(placement: .topBarLeading) {
             Button {
               setDrawer(!showsDrawer)
@@ -101,7 +121,7 @@ struct AgentListView: View {
               Image(systemName: "line.3.horizontal")
                 .foregroundStyle(theme.icon)
             }
-            .accessibilityLabel("Account and pairing")
+            .accessibilityLabel("Account")
           }
         }
         .navigationDestination(for: String.self) { id in
@@ -113,6 +133,10 @@ struct AgentListView: View {
   private func setDrawer(_ open: Bool) {
     taps += 1
     withAnimation(Self.slide) { showsDrawer = open }
+  }
+
+  private var isPaired: Bool {
+    !relay.macs.isEmpty && !relay.needsRepair
   }
 
   /// Closes the drawer, then opens the sheet it asked for.
@@ -243,5 +267,65 @@ private struct AgentRow: View {
       }
     }
     .contentShape(Rectangle())
+  }
+}
+
+/// The header's ground: the theme's background, translucent over a blur, so the list
+/// scrolls under it in the theme's colour rather than a system grey. It covers the status
+/// bar and the navigation bar, which is the content's top safe area.
+private struct HeaderBackdrop: View {
+  @Environment(\.theme) private var theme
+
+  var body: some View {
+    GeometryReader { proxy in
+      let height = proxy.safeAreaInsets.top
+      ZStack(alignment: .bottom) {
+        Rectangle().fill(.ultraThinMaterial)
+        theme.bg.opacity(0.72)
+        Rectangle().fill(theme.lineSubtle.opacity(0.6)).frame(height: 0.5)
+      }
+      .environment(\.colorScheme, theme.isDark ? .dark : .light)
+      .frame(height: height)
+      .offset(y: -height)
+    }
+    .frame(height: 0)
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
+  }
+}
+
+/// The header's pairing control. Paired: a laptop with a dot, green while a Mac is online
+/// and red otherwise. Not paired yet: a QR code, which is where pairing starts.
+private struct PairingButton: View {
+  @Environment(\.theme) private var theme
+  let relay: RelayStore
+  let action: () -> Void
+
+  private var isPaired: Bool {
+    !relay.macs.isEmpty && !relay.needsRepair
+  }
+
+  private var anyOnline: Bool {
+    relay.statuses().contains(where: \.isOnline)
+  }
+
+  var body: some View {
+    Button(action: action) {
+      if isPaired {
+        Image(systemName: "laptopcomputer")
+          .foregroundStyle(theme.icon)
+          .overlay(alignment: .topTrailing) {
+            Circle()
+              .fill(anyOnline ? theme.green : theme.red)
+              .frame(width: 8, height: 8)
+              .overlay(Circle().stroke(theme.bg, lineWidth: 1.5))
+              .offset(x: 4, y: -3)
+          }
+      } else {
+        Image(systemName: "qrcode")
+          .foregroundStyle(theme.icon)
+      }
+    }
+    .accessibilityLabel(isPaired ? (anyOnline ? "Mac online" : "Mac offline") : "Pair a Mac")
   }
 }
