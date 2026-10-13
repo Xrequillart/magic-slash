@@ -1,97 +1,101 @@
+import Supabase
 import SwiftUI
+import UIKit
 
-/// The left-hand drawer behind the list's menu button: who is signed in, whether this
-/// iPhone is paired with a Mac, and the account actions that go with them.
+/// What lies under the sessions list, revealed when the list slides aside: who is signed
+/// in, whether this iPhone is paired with a Mac, and the account actions that go with them.
 ///
-/// Drawn over the whole screen rather than pushed: it slides in from the leading edge on
-/// a dimmed scrim, and a tap on the scrim or a swipe back to the left closes it.
+/// It does not move and has no open state of its own: `AgentListView` slides the list over
+/// it and back.
 struct AccountDrawer: View {
   @Environment(\.theme) private var theme
 
-  @Binding var isOpen: Bool
-  let email: String?
+  let client: SupabaseClient
   let relay: RelayStore
   let onPair: () -> Void
   let onPairedMacs: () -> Void
   let onSignOut: () -> Void
 
-  /// How far a drag has pulled the open drawer back to the left.
-  @GestureState private var drag: CGFloat = 0
+  /// The name and photo the user set on the desktop (`profiles`), once read.
+  @State private var name: String?
+  @State private var avatar: UIImage?
 
-  var body: some View {
-    GeometryReader { proxy in
-      let width = min(proxy.size.width * 0.82, 340)
-      ZStack(alignment: .leading) {
-        if isOpen {
-          Color.black.opacity(0.4)
-            .ignoresSafeArea()
-            .onTapGesture { close() }
-            .transition(.opacity)
-            .accessibilityLabel("Close")
-            .accessibilityAddTraits(.isButton)
-
-          panel
-            .frame(width: width)
-            .frame(maxHeight: .infinity)
-            .background(theme.bg.ignoresSafeArea())
-            .offset(x: min(0, drag))
-            .gesture(
-              DragGesture()
-                .updating($drag) { value, state, _ in state = value.translation.width }
-                .onEnded { value in
-                  if value.translation.width < -width / 3 { close() }
-                }
-            )
-            .transition(.move(edge: .leading))
-        }
-      }
-    }
-  }
-
-  private func close() {
-    withAnimation(.snappy(duration: 0.28)) { isOpen = false }
-  }
+  private var email: String? { client.auth.currentUser?.email }
 
   private var isPaired: Bool {
     !relay.macs.isEmpty && !relay.needsRepair
   }
 
-  private var panel: some View {
+  var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       account
       pairing
       Spacer(minLength: 0)
-      Button(role: .destructive) {
-        close()
-        onSignOut()
-      } label: {
+      Button(role: .destructive, action: onSignOut) {
         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-          .font(.body.weight(.medium))
+          .font(.cera(.body, .medium))
       }
       .foregroundStyle(theme.red)
     }
     .padding(.horizontal, 20)
     .padding(.top, 24)
     .padding(.bottom, 16)
+    .task { await loadProfile() }
   }
 
   // MARK: Account
 
   private var account: some View {
     HStack(spacing: 12) {
-      Image(systemName: "person.crop.circle.fill")
-        .font(.system(size: 40))
-        .foregroundStyle(theme.iconMuted)
+      Group {
+        if let avatar {
+          Image(uiImage: avatar)
+            .resizable()
+            .scaledToFill()
+        } else {
+          Image(systemName: "person.crop.circle.fill")
+            .resizable()
+            .foregroundStyle(theme.iconMuted)
+        }
+      }
+      .frame(width: 44, height: 44)
+      .clipShape(Circle())
+      .accessibilityHidden(true)
+
       VStack(alignment: .leading, spacing: 2) {
-        Text("Signed in as")
-          .font(.caption)
-          .foregroundStyle(theme.textSecondary)
+        Text(name ?? "Signed in as")
+          .font(.cera(name == nil ? .caption : .body, name == nil ? .regular : .semibold))
+          .foregroundStyle(name == nil ? theme.textSecondary : theme.ink)
+          .lineLimit(1)
         Text(email ?? "Unknown account")
-          .font(.body.weight(.semibold))
-          .foregroundStyle(theme.ink)
+          .font(.cera(name == nil ? .body : .footnote, name == nil ? .semibold : .regular))
+          .foregroundStyle(name == nil ? theme.ink : theme.textSecondary)
           .lineLimit(1)
           .truncationMode(.middle)
       }
+    }
+  }
+
+  /// The photo lives in the private `avatars` bucket, at the path `profiles.avatar_url`
+  /// holds: the user's own session may read it, as the desktop does. No photo, or any
+  /// failure, keeps the plain glyph.
+  private func loadProfile() async {
+    guard let userId = client.auth.currentUser?.id.uuidString.lowercased() else { return }
+    do {
+      let rows: [JSONObject] = try await client
+        .from("profiles")
+        .select("name, avatar_url")
+        .eq("user_id", value: userId)
+        .limit(1)
+        .execute()
+        .value
+      let row = rows.first
+      name = row?["name"]?.stringValue.nonEmpty
+      guard let path = row?["avatar_url"]?.stringValue.nonEmpty else { return }
+      let data = try await client.storage.from("avatars").download(path: path)
+      avatar = UIImage(data: data)
+    } catch {
+      // Keep the glyph: a missing photo is not worth an error on this screen.
     }
   }
 
@@ -100,7 +104,7 @@ struct AccountDrawer: View {
   private var pairing: some View {
     VStack(alignment: .leading, spacing: 12) {
       Text("Mac")
-        .font(.footnote.weight(.semibold))
+        .font(.cera(.footnote, .semibold))
         .foregroundStyle(theme.textSecondary)
 
       if isPaired {
@@ -108,7 +112,7 @@ struct AccountDrawer: View {
           Image(systemName: "checkmark.circle.fill")
             .foregroundStyle(theme.green)
           Text("Paired")
-            .font(.body.weight(.semibold))
+            .font(.cera(.body, .semibold))
             .foregroundStyle(theme.ink)
         }
         ForEach(relay.statuses()) { status in
@@ -116,24 +120,24 @@ struct AccountDrawer: View {
         }
         lockNotice
         Button("Paired Macs", systemImage: "laptopcomputer", action: onPairedMacs)
-          .font(.subheadline.weight(.medium))
+          .font(.cera(.subheadline, .medium))
           .foregroundStyle(theme.accent)
       } else {
         HStack(spacing: 8) {
           Image(systemName: "link.badge.plus")
             .foregroundStyle(theme.textSecondary)
           Text(relay.needsRepair ? "Pair your Mac again" : "Not paired")
-            .font(.body.weight(.semibold))
+            .font(.cera(.body, .semibold))
             .foregroundStyle(theme.ink)
         }
         if relay.needsRepair {
           Text("Face ID changed on this iPhone, so its Macs were unpaired.")
-            .font(.footnote)
+            .font(.cera(.footnote))
             .foregroundStyle(theme.textSecondary)
         }
         Button(action: onPair) {
           Label("Pair a Mac", systemImage: "qrcode.viewfinder")
-            .font(.body.weight(.semibold))
+            .font(.cera(.body, .semibold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
         }
@@ -150,15 +154,15 @@ struct AccountDrawer: View {
     case .locked(let message):
       VStack(alignment: .leading, spacing: 6) {
         Text(message)
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.textSecondary)
         Button("Unlock") { Task { await relay.unlock() } }
-          .font(.footnote.weight(.semibold))
+          .font(.cera(.footnote, .semibold))
           .foregroundStyle(theme.accent)
       }
     case .unavailable(let message):
       Text(message)
-        .font(.footnote)
+        .font(.cera(.footnote))
         .foregroundStyle(theme.textSecondary)
     case .unlocking, .idle, .unlocked:
       EmptyView()
