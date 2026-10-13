@@ -234,10 +234,17 @@ export class ChatTranscript {
     return prompt.text
   }
 
+  /**
+   * The call that launched each background agent, by the agent's own id: newer notifications
+   * name the task by that id alone, with no `<tool-use-id>`.
+   */
+  private taskCalls = new Map<string, string>()
+
   /** An Agent call's result that says it went on in the background. */
   private startBackground(toolUseId: string, result: unknown, summary: string, timestamp: unknown): void {
-    const r = result as { status?: unknown; description?: unknown } | null
+    const r = result as { status?: unknown; description?: unknown; agentId?: unknown } | null
     if (r?.status !== 'async_launched' || this.background.some((a) => a.id === toolUseId)) return
+    if (typeof r.agentId === 'string' && r.agentId) this.taskCalls.set(r.agentId, toolUseId)
     const at = typeof timestamp === 'string' ? Date.parse(timestamp) : NaN
     const description = typeof r.description === 'string' && r.description.trim() ? r.description.trim() : summary
     this.background = [...this.background, { id: toolUseId, description, ...(Number.isFinite(at) ? { at } : {}) }]
@@ -245,7 +252,8 @@ export class ChatTranscript {
 
   /** A `<task-notification>` that says a background agent ended. Returns whether one did. */
   private endBackground(content: unknown): boolean {
-    const id = typeof content === 'string' ? endedTask(content) : null
+    const ended = typeof content === 'string' ? endedTask(content) : null
+    const id = ended && (ended.toolUseId ?? (ended.taskId ? this.taskCalls.get(ended.taskId) : undefined))
     if (!id || !this.background.some((a) => a.id === id)) return false
     this.background = this.background.filter((a) => a.id !== id)
     return true
@@ -296,14 +304,17 @@ export function liveBackground(agents: ChatBackgroundAgent[], processStart: numb
 }
 
 /**
- * The tool call a `<task-notification>` says has ended, or null: not a notification, or
- * one that says the task still runs.
+ * The task a `<task-notification>` says has ended, by its tool call and, when it has one,
+ * its own id (all a newer notification gives), or null: not a notification, or one that
+ * says the task still runs.
  */
-export function endedTask(raw: string): string | null {
+export function endedTask(raw: string): { toolUseId?: string; taskId?: string } | null {
   if (!raw.trimStart().startsWith('<task-notification>')) return null
-  const id = raw.match(/<tool-use-id>([^<]+)<\/tool-use-id>/)?.[1]?.trim()
+  const toolUseId = raw.match(/<tool-use-id>([^<]+)<\/tool-use-id>/)?.[1]?.trim()
+  const taskId = raw.match(/<task-id>([^<]+)<\/task-id>/)?.[1]?.trim()
   const status = raw.match(/<status>([^<]+)<\/status>/)?.[1]?.trim()
-  return id && status !== 'running' ? id : null
+  if ((!toolUseId && !taskId) || status === 'running') return null
+  return { ...(toolUseId ? { toolUseId } : {}), ...(taskId ? { taskId } : {}) }
 }
 
 type QueuedAttachment = { type?: string; prompt?: unknown; commandMode?: string; origin?: { kind?: string } }

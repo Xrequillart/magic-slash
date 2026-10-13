@@ -167,6 +167,16 @@ describe('ChatTranscript background agents', () => {
     expect(t.entries.every((e) => e.kind !== 'user')).toBe(true)
   })
 
+  it('ends an agent whose notification names only its task id', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 't1', name: 'Agent', input: { description: 'Simplify', run_in_background: true } }] } }))
+    t.push(line({ type: 'user', uuid: 'r', timestamp: '2026-10-13T11:42:22.787Z', toolUseResult: { isAsync: true, status: 'async_launched', agentId: 'ae45', description: 'Simplify' }, message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'Async agent launched successfully.' }] } }))
+    expect(t.background.map((a) => a.id)).toEqual(['t1'])
+    const ended = '<task-notification>\n<task-id>ae45</task-id>\n<status>completed</status>\n</task-notification>'
+    expect(t.push(line({ type: 'queue-operation', operation: 'enqueue', content: ended }))).toBe(true)
+    expect(t.background).toEqual([])
+  })
+
   it('leaves a foreground agent and a notification that it still runs alone', () => {
     const t = new ChatTranscript()
     t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 'f', name: 'Agent', input: { description: 'Sync' } }] } }))
