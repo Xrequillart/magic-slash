@@ -174,3 +174,61 @@ struct PrimaryButtonStyle: ButtonStyle {
       .opacity(isEnabled ? 1 : 0.5)
   }
 }
+
+/// The quiet twin of `PrimaryButtonStyle`, for Deny and Stop.
+struct SecondaryButtonStyle: ButtonStyle {
+  @Environment(\.theme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(.cera(.body, .semibold))
+      .foregroundStyle(theme.ink)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 13)
+      .background(
+        RoundedRectangle(cornerRadius: 10)
+          .fill(configuration.isPressed ? theme.surfaceStrong : theme.surface)
+      )
+      .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(theme.lineStrong))
+      .opacity(isEnabled ? 1 : 0.5)
+  }
+}
+
+/// Where the last command sent from the phone stands: on its way, taken, or refused and why.
+struct StatusLine: View {
+  enum Phase: Equatable {
+    case progress(String)
+    case success(String)
+    case failure(String)
+  }
+
+  @Environment(\.theme) private var theme
+  let phase: Phase
+
+  var body: some View {
+    switch phase {
+    case .progress(let text):
+      HStack(spacing: 8) {
+        ProgressView().controlSize(.small).tint(theme.textSecondary)
+        Text(text)
+          .font(.cera(.footnote))
+          .foregroundStyle(theme.textSecondary)
+      }
+    case .success(let text):
+      Label(text, systemImage: "checkmark.circle.fill")
+        .font(.cera(.footnote, .semibold))
+        .foregroundStyle(theme.green)
+    case .failure(let message):
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .font(.cera(.footnote))
+          .foregroundStyle(theme.yellow)
+        Text(message)
+          .font(.cera(.footnote))
+          .foregroundStyle(theme.ink)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+    }
+  }
+}

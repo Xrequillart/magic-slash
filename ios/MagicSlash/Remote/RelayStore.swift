@@ -69,6 +69,29 @@ struct AnswerStatus: Equatable, Sendable {
   let phase: Phase
 }
 
+/// Where the phone's last prompt or stop for one agent stands, for the composer that sent it.
+struct AgentCommandStatus: Equatable, Sendable {
+  enum Action: Equatable, Sendable {
+    case prompt
+    case stop
+  }
+
+  enum Phase: Equatable, Sendable {
+    /// Face ID, then waiting for the Mac's `command-result`.
+    case sending
+    /// The Mac took it. `queued`: a prompt that reached a working agent, which reads it after
+    /// the current turn.
+    case done(queued: Bool)
+    /// Not done: the message says why, and whether trying again can help.
+    case failed(String)
+  }
+
+  /// The command it reports on: a late result for an earlier one never replaces it.
+  let commandId: String
+  let action: Action
+  let phase: Phase
+}
+
 /// The QR a Mac shows while pairing (PROTOCOL.md §7, step 1), checked field by field.
 struct PairingOffer: Equatable, Sendable {
   enum Problem: Error, Equatable {
@@ -175,6 +198,8 @@ final class RelayStore {
   private(set) var now = Date()
   /// The last answer sent per agent (`appAgentId`), until the next one.
   private(set) var answers: [String: AnswerStatus] = [:]
+  /// The last prompt or stop sent per agent (`appAgentId`), until the next one.
+  private(set) var agentCommands: [String: AgentCommandStatus] = [:]
   /// Presence refs per key: one Mac may briefly hold two connections while its relay restarts.
   private var presence: [String: Set<String>] = [:]
 
@@ -208,7 +233,8 @@ final class RelayStore {
     let macId: String
     let pairingId: String
     let appAgentId: String
-    let token: String
+    let kind: CommandKind
+    let target: CommandTarget
     let timeout: Task<Void, Never>
   }
 
@@ -494,14 +520,84 @@ final class RelayStore {
     return status
   }
 
+  /// The status of the last prompt or stop sent to an agent, nil when none.
+  func commandStatus(for appAgentId: String) -> AgentCommandStatus? {
+    agentCommands[appAgentId]
+  }
+
   /// Answers an agent's pending question (PROTOCOL.md §10): Face ID signs the payload, the
   /// pair key seals it, and the Mac's `command-result` lands in `answers`.
   func answer(macId: String, appAgentId: String, token: String, choice: AnswerChoice) async {
     // Only an answer to this same question is in the way: one still in flight for an earlier
     // question must not leave a newer one's buttons doing nothing until it settles.
     if let current = answers[appAgentId], current.token == token, case .sending = current.phase { return }
+    await send(.answer(token: token, choice: choice), macId: macId, appAgentId: appAgentId)
+  }
+
+  /// Sends a prompt to an agent (§10). The Mac submits it to an idle agent, queues it behind a
+  /// working one's turn, and refuses it while a question waits. The result lands in
+  /// `agentCommands`.
+  func prompt(macId: String, appAgentId: String, text: String) async {
+    if case .sending = agentCommands[appAgentId]?.phase { return }
+    await send(.prompt(text: text), macId: macId, appAgentId: appAgentId)
+  }
+
+  /// Interrupts a working or waiting agent's turn (§10), as Esc does on the Mac.
+  func stop(macId: String, appAgentId: String) async {
+    if case .sending = agentCommands[appAgentId]?.phase { return }
+    await send(.stop, macId: macId, appAgentId: appAgentId)
+  }
+
+  /// What the phone asks of an agent, and what each action carries on top of the common fields.
+  private enum Command {
+    case answer(token: String, choice: AnswerChoice)
+    case prompt(text: String)
+    case stop
+
+    var kind: CommandKind {
+      switch self {
+      case .answer: .answer
+      case .prompt: .prompt
+      case .stop: .stop
+      }
+    }
+
+    /// Only a prompt or a stop quotes the Mac's `bootId`: an answer is already bound to the
+    /// question's token.
+    var needsBootId: Bool {
+      if case .answer = self { return false }
+      return true
+    }
+  }
+
+  /// A command's `action` (§10), without what it carries.
+  private enum CommandKind: String {
+    case answer, prompt, stop
+  }
+
+  /// Which status a command's outcome lands in.
+  private enum CommandTarget {
+    /// `answers`, for the question it answers.
+    case answer(token: String)
+    /// `agentCommands`, for as long as this command is the agent's last one.
+    case agent(AgentCommandStatus.Action, commandId: String)
+  }
+
+  /// How a command stands, whatever its target: the agent's phase, the richer of the two.
+  private typealias CommandOutcome = AgentCommandStatus.Phase
+
+  /// The one path every command takes (§10): checks, Face ID signs the payload, the pair key
+  /// seals it, and the `command-result` (or the timeout) settles it in its target.
+  private func send(_ command: Command, macId: String, appAgentId: String) async {
+    let commandId = UUID().uuidString.lowercased()
+    let target: CommandTarget = switch command {
+    case .answer(let token, _): .answer(token: token)
+    case .prompt: .agent(.prompt, commandId: commandId)
+    case .stop: .agent(.stop, commandId: commandId)
+    }
+    let wording = Wording(kind: command.kind)
     func fail(_ message: String) {
-      answers[appAgentId] = AnswerStatus(token: token, phase: .failed(message))
+      record(target, appAgentId: appAgentId, .failed(message))
     }
 
     guard let mac = macs.first(where: { $0.macId == macId }), let pairingId = mac.pairingId else {
@@ -511,37 +607,50 @@ final class RelayStore {
       return fail("Unlock the link to your Mac with Face ID first.")
     }
     guard isOnline(macId) else {
-      return fail("\(mac.name) is offline. Answer when it is back, or on the Mac.")
+      return fail(wording.offline(mac.name))
     }
     let keys = DeviceKeys.shared
     // Paired before commands existed: no Mac holds a key to check this phone's signature.
-    guard keys.hasSigningKey else { return fail(Self.repairMessage) }
+    guard keys.hasSigningKey else { return fail(wording.repair) }
+    // A Mac that does not say which launch it is cannot tell a prompt meant for it from one
+    // replayed after a restart: it would refuse it anyway.
+    let bootId = snapshots[macId]?.snapshot.bootId
+    if command.needsBootId, bootId == nil {
+      return fail("Not sent: \(mac.name) runs a version of Magic Slash that can't take this yet. Update the desktop app.")
+    }
 
-    answers[appAgentId] = AnswerStatus(token: token, phase: .sending)
+    record(target, appAgentId: appAgentId, .sending)
     let generation = lockGeneration
     let phoneId = keys.phoneId
-    let commandId = UUID().uuidString.lowercased()
-    let command = CommandPayload(
+    var payloadFields = CommandPayload(
       v: 1,
-      action: "answer",
+      action: command.kind.rawValue,
       macId: macId,
       phoneId: phoneId,
       pairingId: pairingId,
       commandId: commandId,
       issuedAt: Int64((Date().timeIntervalSince1970 * 1000).rounded()),
-      appAgentId: appAgentId,
-      token: token,
-      choice: choice
+      appAgentId: appAgentId
     )
+    switch command {
+    case .answer(let token, let choice):
+      payloadFields.token = token
+      payloadFields.choice = choice
+    case .prompt(let text):
+      payloadFields.text = text
+      payloadFields.bootId = bootId
+    case .stop:
+      payloadFields.bootId = bootId
+    }
     // Serialized once: the signature covers these exact bytes, and the Mac checks them as
     // they arrive, with no canonical form on either side.
-    guard let payloadData = try? JSONEncoder().encode(command),
+    guard let payloadData = try? JSONEncoder().encode(payloadFields),
           let payload = String(data: payloadData, encoding: .utf8)
-    else { return fail("Could not prepare the answer.") }
+    else { return fail("Could not prepare the \(wording.noun).") }
 
     let signature: Data
     do {
-      signature = try await keys.sign(Data(payload.utf8), reason: "Answer \(mac.name)'s agent.")
+      signature = try await keys.sign(Data(payload.utf8), reason: wording.signReason(mac.name))
     } catch {
       guard generation == lockGeneration, !stopped else { return fail(Self.notSentMessage) }
       switch error {
@@ -550,7 +659,7 @@ final class RelayStore {
       case .invalidated:
         // The key died with a new Face ID enrolment: so did every pairing.
         invalidate()
-        return fail("Face ID changed since this iPhone was paired. Pair your Mac again to answer.")
+        return fail("Face ID changed since this iPhone was paired. Pair your Mac again to \(wording.verb).")
       }
     }
     // Locked while Face ID was up: the keys are gone, and nothing was sent.
@@ -564,7 +673,7 @@ final class RelayStore {
     let body = ["payload": payload, "sig": signature.base64EncodedString()]
     guard let envelope = Self.sealedEnvelope(
       type: "command", from: phoneId, to: macId, epoch: commandEpoch, seq: seq, body: body, key: key
-    ) else { return fail("Could not encrypt the answer.") }
+    ) else { return fail("Could not encrypt the \(wording.noun).") }
     // Registered before the broadcast, so a reply that is quicker than the await still finds it.
     let timeout = Task { [weak self] in
       try? await Task.sleep(for: Self.commandTimeout)
@@ -574,13 +683,14 @@ final class RelayStore {
       self.settle(pending, .failed("\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again."))
     }
     pendingCommands[commandId] = PendingCommand(
-      macId: macId, pairingId: pairingId, appAgentId: appAgentId, token: token, timeout: timeout
+      macId: macId, pairingId: pairingId, appAgentId: appAgentId, kind: command.kind, target: target,
+      timeout: timeout
     )
     await channel.broadcast(event: "relay", message: envelope)
   }
 
-  /// What a `command` box signs (§10). Field order is the encoder's: the bytes are signed as
-  /// sent, never rebuilt.
+  /// What a `command` box signs (§10). Field order is the encoder's, and a field left nil is
+  /// left out rather than sent as null: the bytes are signed as sent, never rebuilt.
   private struct CommandPayload: Encodable {
     let v: Int
     let action: String
@@ -590,35 +700,95 @@ final class RelayStore {
     let commandId: String
     let issuedAt: Int64
     let appAgentId: String
-    let token: String
-    let choice: AnswerChoice
+    var token: String?
+    var choice: AnswerChoice?
+    var text: String?
+    var bootId: String?
   }
 
-  static let repairMessage = "Pair this iPhone with the Mac again to answer from it."
   private static let notSentMessage = "Not sent: Magic Slash left the screen. Try again."
 
-  /// A refusal's `reason` (§10), as the card shows it.
-  private static func message(for reason: String?) -> String {
-    switch reason {
-    case "stale": "Already answered on the Mac, or expired."
-    case "unsupported": "Answer this one on the Mac."
-    case "busy", "write-failed": "Your Mac could not take the answer. Try again, or check the Mac."
-    case "re-pair": repairMessage
-    // A signature, identifier or clock mismatch: the clock is the one a user can fix.
-    case "rejected": "Your Mac refused the answer. Check that the iPhone and the Mac show the same time, or pair again."
-    case "invalid": "Your Mac does not accept this answer. Answer it on the Mac."
-    default: "Your Mac refused the answer."
+  /// The words a command's messages use, so each says what was actually sent.
+  private struct Wording {
+    let kind: CommandKind
+
+    var noun: String { kind.rawValue }
+
+    /// What pairing again lets the user do.
+    var verb: String {
+      switch kind {
+      case .answer: "answer"
+      case .prompt: "send prompts"
+      case .stop: "stop agents"
+      }
+    }
+
+    var repair: String { "Pair this iPhone with the Mac again to \(verb) from it." }
+
+    func offline(_ macName: String) -> String {
+      switch kind {
+      case .answer: "\(macName) is offline. Answer when it is back, or on the Mac."
+      case .prompt: "\(macName) is offline. Send it when the Mac is back."
+      case .stop: "\(macName) is offline. Stop the agent on the Mac."
+      }
+    }
+
+    func signReason(_ macName: String) -> String {
+      switch kind {
+      case .answer: "Answer \(macName)'s agent."
+      case .prompt: "Send a prompt to \(macName)'s agent."
+      case .stop: "Stop \(macName)'s agent."
+      }
+    }
+
+    /// A refusal's `reason` (§10), as the card or the composer shows it.
+    func refusal(_ reason: String?) -> String {
+      switch (kind, reason) {
+      case (_, "re-pair"): repair
+      case (.answer, "stale"): "Already answered on the Mac, or expired."
+      case (.answer, "unsupported"): "Answer this one on the Mac."
+      case (.answer, "busy"), (.answer, "write-failed"): "Your Mac could not take the answer. Try again, or check the Mac."
+      case (.answer, "invalid"): "Your Mac does not accept this answer. Answer it on the Mac."
+      case (.prompt, "stale"): "This agent is no longer available on the Mac."
+      case (.prompt, "busy"): "The agent is waiting on a question: answer it first."
+      case (.prompt, "unsupported"):
+        "This command needs the Mac's terminal: shell (!) and interactive slash commands can't be sent from the iPhone."
+      case (.prompt, "write-failed"): "Your Mac could not write to the agent's terminal. Try again, or check the Mac."
+      case (.prompt, "invalid"): "Your Mac does not accept this prompt. Send it from the Mac."
+      case (.stop, "stale"): "Nothing to stop: the agent isn't working."
+      case (.stop, "busy"), (.stop, "write-failed"): "Your Mac could not stop the agent. Try again, or stop it on the Mac."
+      case (.stop, "unsupported"), (.stop, "invalid"): "Your Mac does not accept this stop. Stop the agent on the Mac."
+      // A signature, identifier, launch or clock mismatch: the clock is the one a user can fix.
+      case (_, "rejected"):
+        "Your Mac refused the \(noun). Check that the iPhone and the Mac show the same time, or pair again."
+      default: "Your Mac refused the \(noun)."
+      }
     }
   }
 
-  /// Commands still waiting when the keys go: their result can no longer be read. The answer
-  /// may well have reached the Mac, so the card says to look there.
+  /// Commands still waiting when the keys go: their result can no longer be read. The command
+  /// may well have reached the Mac, so the status says to look there.
   private func abandonPendingCommands() {
     for pending in pendingCommands.values {
       pending.timeout.cancel()
       settle(pending, .failed("Magic Slash left the screen before your Mac confirmed. Check the Mac."))
     }
     pendingCommands = [:]
+  }
+
+  /// Writes a command's outcome into its target's status.
+  private func record(_ target: CommandTarget, appAgentId: String, _ outcome: CommandOutcome) {
+    switch target {
+    case .answer(let token):
+      let phase: AnswerStatus.Phase = switch outcome {
+      case .sending: .sending
+      case .done: .done
+      case .failed(let message): .failed(message)
+      }
+      answers[appAgentId] = AnswerStatus(token: token, phase: phase)
+    case .agent(let action, let commandId):
+      agentCommands[appAgentId] = AgentCommandStatus(commandId: commandId, action: action, phase: outcome)
+    }
   }
 
   // MARK: - Realtime
@@ -831,14 +1001,23 @@ final class RelayStore {
     else { return }
     pendingCommands[commandId] = nil
     pending.timeout.cancel()
-    settle(pending, ok ? .done : .failed(Self.message(for: body["reason"] as? String)))
+    guard ok else {
+      return settle(pending, .failed(Wording(kind: pending.kind).refusal(body["reason"] as? String)))
+    }
+    // Only a prompt that reached a working agent is queued: anything else ran now.
+    settle(pending, .done(queued: body["queued"] as? Bool == true))
   }
 
   /// Records how a sent command ended, unless the agent's status already belongs to a newer
-  /// question: a late reply or timeout for an earlier one must not overwrite it.
-  private func settle(_ pending: PendingCommand, _ phase: AnswerStatus.Phase) {
-    if let current = answers[pending.appAgentId], current.token != pending.token { return }
-    answers[pending.appAgentId] = AnswerStatus(token: pending.token, phase: phase)
+  /// question or command: a late reply or timeout for an earlier one must not overwrite it.
+  private func settle(_ pending: PendingCommand, _ outcome: CommandOutcome) {
+    switch pending.target {
+    case .answer(let token):
+      if let current = answers[pending.appAgentId], current.token != token { return }
+    case .agent(_, let commandId):
+      guard agentCommands[pending.appAgentId]?.commandId == commandId else { return }
+    }
+    record(pending.target, appAgentId: pending.appAgentId, outcome)
   }
 
   private func receiveRevoked(_ envelope: Envelope) {

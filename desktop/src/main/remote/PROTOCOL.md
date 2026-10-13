@@ -98,6 +98,7 @@ can do is cancel a pairing on screen, which is accepted.
 {
   "pairingId": "<uuid>",
   "generation": 12,
+  "bootId": "<uuid>",
   "sentAt": 1760000000000,
   "macName": "MacBook Pro",
   "agents": [
@@ -129,6 +130,10 @@ can do is cancel a pairing on screen, which is accepted.
 }
 ```
 
+- `bootId` is drawn at random at each launch of the Mac app, and again whenever the Mac forgets
+  the `commandId`s it remembered (the relay paused on a refused session, or another account
+  signed in). A relay that only restarts keeps it. A `prompt` or a `stop` quotes it (§10); the
+  phone keeps the latest it read for that Mac, and orders nothing by it.
 - `state` is `TerminalState`: `idle`, `working`, `waiting`, `completed` or `error`.
 - `usage` is `null` until Claude Code's status line has reported once. Any of its fields may be
   `null`. `*ResetsAt` are epoch **seconds**, as Claude Code reports them.
@@ -244,8 +249,7 @@ covers.
 
 ## 10. Commands (phone → Mac)
 
-The action set is closed: `answer` here; `prompt` and `stop` are reserved and refused as
-`invalid` until their own version of this section names them.
+The action set is closed: `answer`, `prompt` and `stop`. Any other is refused as `invalid`.
 
 A `command` box holds `{ "payload": "<string>", "sig": "<b64>" }`. `payload` is a JSON object
 serialized **once** by the phone, and `sig` is the ECDSA P-256 / SHA-256 signature of its exact
@@ -261,6 +265,36 @@ before checking, so neither side needs a canonical JSON form.
   "choice": { "kind": "option", "index": 0 }
 }
 ```
+
+A `prompt` and a `stop` carry the same common fields (`v` to `appAgentId`), no `token` and no
+`choice`, and the `bootId` of the last snapshot the phone read from that Mac (§5):
+
+```json
+{
+  "v": 1, "action": "prompt",
+  "macId": "<uuid>", "phoneId": "<uuid>", "pairingId": "<uuid>",
+  "commandId": "<uuid>", "issuedAt": 1760000000000,
+  "appAgentId": "claude-1760000000000",
+  "text": "Add a test for the refund", "bootId": "<uuid>"
+}
+```
+
+```json
+{
+  "v": 1, "action": "stop",
+  "macId": "<uuid>", "phoneId": "<uuid>", "pairingId": "<uuid>",
+  "commandId": "<uuid>", "issuedAt": 1760000000000,
+  "appAgentId": "claude-1760000000000",
+  "bootId": "<uuid>"
+}
+```
+
+- `text` is what the person typed, sent as is. The Mac formats it as the desktop chat does
+  (a newline or more than 200 characters goes as a bracketed paste, control bytes are
+  dropped), then submits it with Return, through the chat's own sequence.
+- `text` must hold something once its control bytes are dropped, and at most **10 000**
+  characters (UTF-16 code units). Otherwise: `invalid`.
+- An `answer` may carry a `bootId` too; it is ignored there.
 
 `choice` is one of:
 
@@ -286,33 +320,65 @@ before checking, so neither side needs a canonical JSON form.
    answers with the `command-result` it sent the first time, so a phone that retried after a
    lost reply still learns the outcome. A `commandId` is remembered only once its signature has
    verified, until `issuedAt` + 5 minutes, at most 1000 at a time.
-8. `action` is `answer` and `choice` has one of the shapes above. Otherwise: `invalid`.
-9. Right before answering: the device is still paired, the relay still serves an account, and
+8. `action` is one of the closed set, with its fields: for `answer`, a `token` and a `choice`
+   in one of the shapes above; for `prompt`, a `text` as above and a string `bootId`; for
+   `stop`, a string `bootId`. Otherwise: `invalid`. A `prompt` or `stop` whose `bootId` is not
+   this launch's: `rejected`.
+9. Right before acting: the device is still paired, the relay still serves an account, and
    `appAgentId` is an agent terminal owned by that account (as for snapshots, §5). Otherwise:
-   `stale`. The answer then goes through the same path as the Mac's own tray, with `token`.
+   `stale`. Then:
+   - an `answer` goes through the same path as the Mac's own tray, with `token`;
+   - a `prompt` is refused `unsupported` when `text`, past its leading whitespace, starts with
+     `!` (Claude Code's shell mode: the phone does not run shell commands) or is one of the
+     built-in commands that open a dialog of the TUI (`/model`, `/mcp`, `/permissions`… the
+     desktop chat's list), since nobody at the Mac would be there to close it. It is refused
+     `busy` while the agent is `waiting` or has a pending question: the bytes would land in
+     the dialog. Otherwise it is submitted, and to a `working` agent it is **queued** by
+     Claude Code, read after the current turn, as from the desktop chat;
+   - a `stop` on a `working` or `waiting` agent sends Escape, as the chat's Stop button does,
+     and on a `waiting` one forgets the pending question too. On any other state it is
+     `stale`: there is no turn to stop, and Escape at an idle prompt is not harmless (twice
+     opens Claude Code's rewind menu). A prompt Escape took back, before Claude answered it,
+     goes back to the desktop chat's composer.
 
-The question token does most of the freshness work: the Mac draws a new random one for every
-question, keeps it in memory only and accepts it once. That is why a restart, which forgets the
-`commandId` cache, opens no replay: no token from before it still matches. `issuedAt` bounds
-what is left, a capture replayed while the same question is still pending.
+   The state is read, then the terminal written. An agent that moves in between (its turn
+   ends, a question arrives) still gets the bytes: that race is accepted, and the desktop
+   chat has the same one. Step 9 itself (paired, same account, an agent of it) is asked again
+   at the moment the text is typed, since a submission already in flight on that terminal can
+   hold it back: a phone revoked meanwhile gets nothing typed.
+
+The question token does most of the freshness work for an `answer`: the Mac draws a new random
+one for every question, keeps it in memory only and accepts it once. That is why a restart,
+which forgets the `commandId` cache, opens no replay: no token from before it still matches.
+`issuedAt` bounds what is left, a capture replayed while the same question is still pending.
+
+A `prompt` or a `stop` has no token, so `bootId` does that work: a restart draws a new one, as
+does anything else that empties the `commandId` cache, and a command captured before it no
+longer quotes the Mac's. This closes the replay after a
+restart without trusting the phone's clock: a phone whose clock runs minutes ahead would
+otherwise sign a command that, replayed right after a restart, still falls within step 6's
+window while the `commandId` that would have refused it is forgotten. Within one launch, the
+`commandId` cache refuses the replay; a command signed just before a restart is refused
+`rejected`, by design, and the phone sends it again once it has read the new snapshot.
 
 This is the one place the Mac's clock is compared to the phone's. §6 keeps the phone from
 reading the Mac's clock for ordering; a command is different, since it is a request the Mac
 judges alone.
 
 `command-result` (Mac → phone, sealed for that device) answers every command that reached
-step 3:
+step 3: `{ "pairingId", "commandId", "ok", "reason"?, "queued"? }`. `queued: true` is present
+only on an `ok` prompt that was sent while the agent was `working`.
 
-| `reason` | Meaning |
-| --- | --- |
-| none (`ok: true`) | the answer reached the agent |
-| `stale` | already answered on the Mac, replaced by a newer question, expired, or the agent is gone |
-| `unsupported` | the question cannot be answered remotely: answer it on the Mac |
-| `busy` | another answer to it is being typed right now |
-| `write-failed` | the terminal did not take the keystrokes; the question is still pending |
-| `invalid` | an action or a choice the Mac does not accept |
-| `rejected` | signature, identifiers or clock |
-| `re-pair` | this phone was paired before commands existed: pair it again |
+| `reason` | `answer` | `prompt` | `stop` |
+| --- | --- | --- | --- |
+| none (`ok: true`) | the answer reached the agent | the prompt was submitted (`queued`: after the current turn), after any submission already in flight on that terminal, so two never merge | Escape was sent |
+| `stale` | already answered on the Mac, replaced by a newer question, expired, or the agent is gone | the agent is gone | nothing to stop (idle, finished), or the agent is gone |
+| `unsupported` | the question cannot be answered remotely: answer it on the Mac | a `!` shell line or a command that opens a dialog | |
+| `busy` | another answer to it is being typed right now | the agent waits on a question: answer it first | |
+| `write-failed` | the terminal did not take the keystrokes; the question is still pending | the terminal did not take the text | the terminal did not take Escape; nothing stopped, the question is still pending |
+| `invalid` | an action or a choice the Mac does not accept | no text, an empty one or one over 10 000 characters, or no `bootId` | no `bootId` |
+| `rejected` | signature, identifiers or clock | the same, or a `bootId` the Mac has since replaced | the same |
+| `re-pair` | this phone was paired before commands existed: pair it again | the same | the same |
 
 The phone accepts a `command-result` only from the Mac it sent the command to, carrying that
 Mac's saved `pairingId` and a `commandId` it is waiting on; it ignores any other. It is not part

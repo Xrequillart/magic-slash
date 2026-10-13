@@ -51,6 +51,7 @@ import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import { clearTerminalOwners, forgetTerminalOwner, recordTerminalOwner } from '../remote/terminal-owners'
 import type { HistoryAction, LaunchMetadata } from '../../types'
+import { submitDelay } from '../../prompt-submit'
 
 /**
  * Strict repo-path guard used on agent creation (⌘N). When the launch cwd maps
@@ -63,6 +64,74 @@ import type { HistoryAction, LaunchMetadata } from '../../types'
  * "[Request interrupted…]" line within milliseconds; this is room for a busy disk.
  */
 const INTERRUPT_GRACE_MS = 500
+
+/** The submission in flight on each terminal, which the next one waits for. */
+const submissions = new Map<string, Promise<void>>()
+
+/**
+ * Submit a prompt to an agent: `bytes`, then the Return that sends it once the TUI has taken
+ * them in. THE ONE SEQUENCE for it — the desktop chat calls it over `terminal:submit`, a
+ * paired iPhone's `prompt` through main/index.ts — so the two cannot drift apart in timing.
+ * `bytes` are formatted by the caller (`promptBytes`, plus the chat's attachment paths), and
+ * never formatted again here.
+ *
+ * Reported to the question store and marked as talked to, as a write from the terminal view
+ * is (see `terminal:write` below): it is someone typing at the agent, wherever they sit.
+ *
+ * Resolves with whether the text reached a pty: false is a dead session, and no Return is
+ * written then. Submissions to one terminal run in turn, each text with its own Return.
+ *
+ * `stillWanted`, when given, is asked again as the submission starts, after any wait in line:
+ * a paired phone revoked while its prompt queued gets nothing typed (false, nothing written).
+ */
+export function submitToTerminal(id: string, bytes: string, stillWanted?: () => boolean): Promise<boolean> {
+  // One submission at a time per terminal: a second text typed during the first one's delay
+  // would land before its Return, and Claude would read the two as one prompt.
+  const previous = submissions.get(id)
+  const start = () => (stillWanted && !stillWanted() ? Promise.resolve(false) : submitNow(id, bytes))
+  const run = previous ? previous.then(start) : start()
+  const settled = run.then(() => undefined, () => undefined)
+  submissions.set(id, settled)
+  void settled.then(() => {
+    if (submissions.get(id) === settled) submissions.delete(id)
+  })
+  return run
+}
+
+async function submitNow(id: string, bytes: string): Promise<boolean> {
+  noteTerminalInput(id, bytes)
+  if (isUserInput(bytes)) noteTerminalUserInput(id)
+  if (!writeToTerminal(id, bytes)) return false
+  await new Promise((resolve) => setTimeout(resolve, submitDelay(bytes)))
+  noteTerminalInput(id, '\r')
+  noteTerminalUserInput(id)
+  return writeToTerminal(id, '\r')
+}
+
+/**
+ * Escape, and what it did. Answers null when no pty took the Escape, so nothing was stopped;
+ * otherwise the prompt it took back, if any.
+ *
+ * Escape after Claude has started answering writes an "[Request interrupted…]" line,
+ * which the transcript watcher turns into a settled turn (see settleInterruptedTurn).
+ * Escape BEFORE anything came back leaves no line at all: Claude Code takes the prompt
+ * back into its input box, as if it had never been sent, and fires no hook either. So
+ * a transcript still ending on that prompt, once Escape has had time to land, is the
+ * sign: the turn is settled here, the prompt leaves the chat, and the input box it
+ * went back to is emptied (Ctrl+C, which clears it whole, however many lines it has)
+ * so that it is the chat's composer that holds it, not text the next send would be
+ * typed after.
+ *
+ * The chat's Stop button (`terminal:interrupt`) and a paired iPhone's `stop` share it.
+ */
+export async function interruptTerminal(id: string): Promise<{ draft: string | null } | null> {
+  if (!writeToTerminal(id, '\x1b')) return null
+  await new Promise((resolve) => setTimeout(resolve, INTERRUPT_GRACE_MS))
+  if (!hasUnansweredPrompt(id) || !settleInterruptedTurn(id, Date.now())) return { draft: null }
+  clearPendingQuestion(id)
+  writeToTerminal(id, '\x03')
+  return { draft: dropUnansweredPrompt(id) }
+}
 
 function assertLaunchTargetValid(cwd: unknown): void {
   if (typeof cwd !== 'string' || cwd.length === 0) return
@@ -671,6 +740,12 @@ export function setupTerminalHandlers(
     return writeToTerminal(id, data)
   })
 
+  // A chat message, submitted (see submitToTerminal): the text, then its Return.
+  ipcMain.handle('terminal:submit', async (_event, { id, data }) => {
+    if (typeof id !== 'string' || typeof data !== 'string' || !data) return false
+    return submitToTerminal(id, data)
+  })
+
   // Resize terminal
   ipcMain.handle('terminal:resize', async (_event, { id, cols, rows }) => {
     if (typeof id !== 'string' || typeof cols !== 'number' || typeof rows !== 'number') return
@@ -794,24 +869,10 @@ export function setupTerminalHandlers(
     return getChatSnapshot(id)
   })
 
-  // Escape from the chat view, and what it did. Answers the prompt it took back, if any.
-  //
-  // Escape after Claude has started answering writes an "[Request interrupted…]" line,
-  // which the transcript watcher turns into a settled turn (see settleInterruptedTurn).
-  // Escape BEFORE anything came back leaves no line at all: Claude Code takes the prompt
-  // back into its input box, as if it had never been sent, and fires no hook either. So
-  // a transcript still ending on that prompt, once Escape has had time to land, is the
-  // sign: the turn is settled here, the prompt leaves the chat, and the input box it
-  // went back to is emptied (Ctrl+C, which clears it whole, however many lines it has)
-  // so that it is the chat's composer that holds it, not text the next send would be
-  // typed after.
+  // Escape from the chat view, and what it did: see interruptTerminal.
   ipcMain.handle('terminal:interrupt', async (_event, { id }) => {
-    if (typeof id !== 'string' || !writeToTerminal(id, '\x1b')) return null
-    await new Promise((resolve) => setTimeout(resolve, INTERRUPT_GRACE_MS))
-    if (!hasUnansweredPrompt(id) || !settleInterruptedTurn(id, Date.now())) return null
-    clearPendingQuestion(id)
-    writeToTerminal(id, '\x03')
-    return dropUnansweredPrompt(id)
+    if (typeof id !== 'string') return null
+    return (await interruptTerminal(id))?.draft ?? null
   })
 
   // Claude Code's `:emoji:` typeahead as this agent's session merges it, from its cwd (see

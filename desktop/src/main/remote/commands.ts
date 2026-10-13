@@ -1,13 +1,16 @@
-import type { TrayAnswerChoice, TrayAnswerRefusal, TrayAnswerResult } from '../../types'
+import * as crypto from 'crypto'
+import type { TrayAnswerChoice, TrayAnswerRefusal } from '../../types'
+import { promptBytes } from '../../prompt-submit'
 import { verifySignature } from './crypto'
 import { UUID_RE } from './envelope'
 import type { StoredRemoteDevice } from './identity-store'
 
 /**
- * A phone's `command`, Mac side (PROTOCOL.md §10, steps 3 to 8). Pure: the clock is injected
- * and nothing here touches a channel or a terminal, so every refusal the ticket names is
- * tested without either. relay.ts does steps 1 and 2 (whose device, does the box open) before
- * it calls in, and step 9 plus the answer itself inside `run`.
+ * A phone's `command`, Mac side (PROTOCOL.md §10, steps 3 to 8). Pure: the clock and this
+ * launch's `bootId` are injected and nothing here touches a channel or a terminal, so every
+ * refusal the ticket names is tested without either. relay.ts does steps 1 and 2 (whose
+ * device, does the box open) before it calls in, and step 9 plus the action itself inside
+ * `run`.
  *
  * NOTHING RUNS TWICE. A `commandId` whose signature verified is remembered with the result it
  * got, and the same command again gets that result back without `run` being called: a phone
@@ -20,6 +23,8 @@ import type { StoredRemoteDevice } from './identity-store'
 export const COMMAND_WINDOW_MS = 5 * 60 * 1000
 /** §10: the most `commandId`s remembered at a time. */
 export const REMEMBERED_COMMANDS = 1000
+/** §10: the longest `prompt` text, in UTF-16 code units (JavaScript's `length`). */
+export const PROMPT_MAX_CHARS = 10_000
 
 export type CommandRefusal = TrayAnswerRefusal | 'rejected' | 're-pair'
 
@@ -29,13 +34,38 @@ export interface CommandResultBody {
   commandId: string
   ok: boolean
   reason?: CommandRefusal
+  /** A `prompt` typed while the agent was working: Claude Code reads it after the turn. */
+  queued?: true
 }
 
 /** An `answer` that passed steps 3 to 8: what step 9 and the answer itself act on. */
 export interface AnswerCommand {
+  action: 'answer'
   appAgentId: string
   token: string
   choice: TrayAnswerChoice
+}
+
+/** A `prompt` that passed steps 3 to 8: `text` as the phone sent it, not yet formatted. */
+export interface PromptCommand {
+  action: 'prompt'
+  appAgentId: string
+  text: string
+}
+
+/** A `stop` that passed steps 3 to 8. */
+export interface StopCommand {
+  action: 'stop'
+  appAgentId: string
+}
+
+export type RemoteCommand = AnswerCommand | PromptCommand | StopCommand
+
+/** What running a command came to: the answer path's result, and `queued` for a prompt. */
+export interface CommandOutcome {
+  ok: boolean
+  reason?: CommandRefusal
+  queued?: boolean
 }
 
 interface Remembered {
@@ -77,6 +107,34 @@ export function parseChoice(value: unknown): TrayAnswerChoice | null {
   }
 }
 
+/**
+ * Step 8: `payload` as one of the closed set's actions, rebuilt with only the fields that
+ * action names, or null (`invalid`). `bootId` is only read for being a string here: whether
+ * it is this launch's is the gate's call.
+ */
+export function parseCommand(payload: Record<string, unknown>): RemoteCommand | null {
+  const { action, appAgentId } = payload
+  if (typeof appAgentId !== 'string' || !appAgentId) return null
+  switch (action) {
+    case 'answer': {
+      const choice = parseChoice(payload.choice)
+      const { token } = payload
+      return choice && typeof token === 'string' && token ? { action, appAgentId, token, choice } : null
+    }
+    case 'prompt': {
+      const { text, bootId } = payload
+      if (typeof bootId !== 'string' || typeof text !== 'string') return null
+      // Nothing left once formatted (only control bytes, or nothing at all): nothing to send.
+      if (text.length > PROMPT_MAX_CHARS || !promptBytes(text)) return null
+      return { action, appAgentId, text }
+    }
+    case 'stop':
+      return typeof payload.bootId === 'string' ? { action, appAgentId } : null
+    default:
+      return null
+  }
+}
+
 function parseJson(text: string): Record<string, unknown> | null {
   try {
     const value: unknown = JSON.parse(text)
@@ -97,13 +155,28 @@ export interface CommandInput {
   device: StoredRemoteDevice
 }
 
+function drawBootId(): string {
+  return crypto.randomUUID().toLowerCase()
+}
+
 export class CommandGate {
   private readonly now: () => number
+  /**
+   * This launch of the Mac's command history (§5, §10): published in every snapshot, quoted by
+   * every `prompt` and `stop`. Drawn again whenever the remembered `commandId`s are forgotten
+   * (`clear`), so a command signed before a restart, or before the relay paused, is refused.
+   */
+  private current: string
   /** By `phoneId|commandId`: a command id only means something within the phone that drew it. */
   private readonly seen = new Map<string, Remembered>()
 
-  constructor(now: () => number = () => Date.now()) {
+  constructor(now: () => number = () => Date.now(), bootId: string = drawBootId()) {
     this.now = now
+    this.current = bootId
+  }
+
+  get bootId(): string {
+    return this.current
   }
 
   /** How many command ids are remembered right now (tests). */
@@ -116,7 +189,7 @@ export class CommandGate {
    * `command-result` to seal back, or null when there is nothing to answer: a box that is not
    * a command, or one whose `commandId` cannot be read, which no phone could match a reply to.
    */
-  async handle(input: CommandInput, run: (command: AnswerCommand) => Promise<TrayAnswerResult>): Promise<CommandResultBody | null> {
+  async handle(input: CommandInput, run: (command: RemoteCommand) => Promise<CommandOutcome>): Promise<CommandResultBody | null> {
     const { box, from, macId, device } = input
     // 3. The box's shape.
     if (!box || typeof box !== 'object') return null
@@ -171,25 +244,25 @@ export class CommandGate {
     payload: Record<string, unknown>,
     commandId: string,
     device: StoredRemoteDevice,
-    run: (command: AnswerCommand) => Promise<TrayAnswerResult>,
+    run: (command: RemoteCommand) => Promise<CommandOutcome>,
   ): Promise<CommandResultBody> {
-    const reply = (outcome: TrayAnswerResult): CommandResultBody => ({
+    const reply = (outcome: CommandOutcome): CommandResultBody => ({
       pairingId: device.pairingId,
       commandId,
       ok: outcome.ok,
       ...(!outcome.ok && outcome.reason ? { reason: outcome.reason } : {}),
+      ...(outcome.ok && outcome.queued ? { queued: true as const } : {}),
     })
 
-    // 8. The closed action set, and a choice in one of its shapes. `prompt` and `stop` are
-    // reserved: refused until their own version of §10 names them.
-    const choice = parseChoice(payload.choice)
-    const { action, appAgentId, token } = payload
-    if (action !== 'answer' || !choice || typeof appAgentId !== 'string' || !appAgentId || typeof token !== 'string' || !token) {
-      return reply({ ok: false, reason: 'invalid' })
-    }
+    // 8. The closed action set, each with its own fields.
+    const command = parseCommand(payload)
+    if (!command) return reply({ ok: false, reason: 'invalid' })
+    // A `prompt` or `stop` signed before this Mac restarted, or before its command memory was
+    // cleared: the `commandId`s it remembered are gone, so the `bootId` refuses the replay (§10).
+    if (command.action !== 'answer' && payload.bootId !== this.bootId) return reply({ ok: false, reason: 'rejected' })
 
     try {
-      return reply(await run({ appAgentId, token, choice }))
+      return reply(await run(command))
     } catch (error) {
       // Not expected (the answer path returns its refusals): nothing is claimed to have landed.
       console.error('[remote] a command failed to run:', error instanceof Error ? error.message : 'unknown error')
@@ -198,8 +271,10 @@ export class CommandGate {
   }
 
   private remember(key: string, until: number, result: Promise<CommandResultBody>): void {
-    // Bounded: past the cap the oldest goes first. Its question token, single use, is what
-    // still stands between a replay of it and the terminal.
+    // Bounded: past the cap the oldest goes first. For an `answer`, its question token, single
+    // use, is what still stands between a replay of it and the terminal. A `prompt` or `stop`
+    // has no such token: it would take this phone signing a thousand commands within five
+    // minutes to push one out while it can still be replayed, and §10 accepts that.
     while (this.seen.size >= REMEMBERED_COMMANDS) {
       const oldest = this.seen.keys().next().value
       if (oldest === undefined) break
@@ -217,5 +292,7 @@ export class CommandGate {
   /** Forget every id: a new account, or the relay torn down. */
   clear(): void {
     this.seen.clear()
+    // The memory that refused a replayed `commandId` is gone: so is the id that vouched for it.
+    this.current = drawBootId()
   }
 }

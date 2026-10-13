@@ -12,6 +12,8 @@ import {
 } from './snapshot'
 import type { TrayQuestion } from '../../types'
 
+const BOOT_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+
 describe('buildSnapshot', () => {
   const terminals: SnapshotTerminal[] = [
     { id: 'claude-1', name: 'Agent 1', state: 'working', metadata: { title: 'PROJ-12: refunds', usage: {
@@ -25,9 +27,10 @@ describe('buildSnapshot', () => {
   ]
 
   it('drops script- and sidebar- terminals, and titles fall back to the name', () => {
-    const snap = buildSnapshot(terminals, 'MacBook Pro', 42, 7, () => true)
+    const snap = buildSnapshot(terminals, 'MacBook Pro', 42, 7, BOOT_ID, () => true)
     expect(snap.sentAt).toBe(42)
     expect(snap.generation).toBe(7)
+    expect(snap.bootId).toBe(BOOT_ID)
     expect(snap.macName).toBe('MacBook Pro')
     expect(snap.agents.map((a) => [a.appAgentId, a.title, a.state])).toEqual([
       ['claude-1', 'PROJ-12: refunds', 'working'],
@@ -37,7 +40,7 @@ describe('buildSnapshot', () => {
   })
 
   it('maps usage to the protocol fields only, with nulls for the missing ones', () => {
-    const [first, second, third] = buildSnapshot(terminals, 'Mac', 0, 1, () => true).agents
+    const [first, second, third] = buildSnapshot(terminals, 'Mac', 0, 1, BOOT_ID, () => true).agents
     expect(first.usage).toEqual({
       costUsd: 1.23, contextPercent: 41, model: 'Opus 4.5', fiveHourPercent: 12, fiveHourResetsAt: 1760003600,
       sevenDayPercent: 30, sevenDayResetsAt: 1760500000,
@@ -51,22 +54,22 @@ describe('buildSnapshot', () => {
 
   it('carries only the terminals the account owns', () => {
     const owners: Record<string, string> = { 'claude-1': 'me', 'claude-2': 'someone-else' }
-    const snap = buildSnapshot(terminals, 'Mac', 0, 1, (id) => owners[id] === 'me')
+    const snap = buildSnapshot(terminals, 'Mac', 0, 1, BOOT_ID, (id) => owners[id] === 'me')
     // claude-2 belongs to another account, claude-3 has no recorded owner: both stay out.
     expect(snap.agents.map((a) => a.appAgentId)).toEqual(['claude-1'])
   })
 
   it('is addressed per phone by its pairing id, the body shared', () => {
-    const body = buildSnapshot(terminals, 'Mac', 42, 3, () => true)
+    const body = buildSnapshot(terminals, 'Mac', 42, 3, BOOT_ID, () => true)
     const mine = snapshotFor(body, 'dddddddd-dddd-4ddd-8ddd-dddddddddddd')
     expect(mine).toEqual({ pairingId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', ...body })
-    expect(Object.keys(mine)).toEqual(['pairingId', 'generation', 'sentAt', 'macName', 'agents'])
+    expect(Object.keys(mine)).toEqual(['pairingId', 'generation', 'bootId', 'sentAt', 'macName', 'agents'])
     expect(body).not.toHaveProperty('pairingId')
   })
 
   it('carries each agent\'s pending question, and null for the others', () => {
     const question: TrayQuestion = { token: 'tok-1', kind: 'permission', prompt: 'Claude needs your permission to use Bash', options: [], receivedAt: 5 }
-    const snap = buildSnapshot(terminals, 'Mac', 0, 1, () => true, (id) => (id === 'claude-3' ? question : undefined))
+    const snap = buildSnapshot(terminals, 'Mac', 0, 1, BOOT_ID, () => true, (id) => (id === 'claude-3' ? question : undefined))
     expect(snap.agents.map((a) => a.question?.token ?? null)).toEqual([null, null, 'tok-1'])
   })
 })

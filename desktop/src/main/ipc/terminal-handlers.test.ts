@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // terminal-handlers pulls in Electron + node-pty (native) + the config/store
 // modules transitively. Mock every dependency so we exercise only the session-end
@@ -28,6 +28,7 @@ const term = vi.hoisted(() => ({
   noteTerminalUserInput: vi.fn((_id: string) => {}),
   syncTerminalCwd: vi.fn((_id: string): { action: string; cwd?: string; from?: string } => ({ action: 'none' })),
   relaunchTerminalInResolvedCwd: vi.fn((_id: string): string | null => null),
+  settleInterruptedTurn: vi.fn((_id: string, _at: number): boolean => true),
 }))
 // Captured onExit callback from the most recent createTerminal call.
 let capturedOnExit: ((code: number) => void) | undefined
@@ -58,6 +59,19 @@ vi.mock('../pty/terminal-manager', () => ({
   noteTerminalUserInput: (id: string) => term.noteTerminalUserInput(id),
   syncTerminalCwd: (id: string) => term.syncTerminalCwd(id),
   relaunchTerminalInResolvedCwd: (id: string) => term.relaunchTerminalInResolvedCwd(id),
+  settleInterruptedTurn: (id: string, at: number) => term.settleInterruptedTurn(id, at),
+}))
+
+// The transcript's view of an Escape: whether the prompt is still unanswered, and taking it out.
+const chat = vi.hoisted(() => ({
+  hasUnansweredPrompt: vi.fn((_id: string): boolean => false),
+  dropUnansweredPrompt: vi.fn((_id: string): string | null => null),
+}))
+vi.mock('../chat/transcript-watcher', () => ({
+  getChatSnapshot: vi.fn(() => ({ entries: [], queue: [] })),
+  hasUnansweredPrompt: (id: string) => chat.hasUnansweredPrompt(id),
+  dropUnansweredPrompt: (id: string) => chat.dropUnansweredPrompt(id),
+  watchTranscript: vi.fn(),
 }))
 
 const archiveAgent = vi.fn()
@@ -71,8 +85,10 @@ vi.mock('../config/agents', () => ({
 vi.mock('../config/activity-history', () => ({ addHistoryEntry: vi.fn() }))
 
 const noteTerminalInput = vi.fn()
+const clearPendingQuestion = vi.fn()
 vi.mock('../questions/pending-questions', () => ({
   noteTerminalInput: (...args: unknown[]) => noteTerminalInput(...args),
+  clearPendingQuestion: (...args: unknown[]) => clearPendingQuestion(...args),
   // A stub rather than the real strip-the-terminal-reports implementation (which
   // has its own tests): these cases only need genuine keystrokes to get through.
   isUserInput: (data: string) => data.length > 0,
@@ -100,7 +116,8 @@ vi.mock('../remote/terminal-owners', () => ({
 
 import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { setupTerminalHandlers, STATUS_TO_ACTION } from './terminal-handlers'
+import { interruptTerminal, setupTerminalHandlers, STATUS_TO_ACTION, submitToTerminal } from './terminal-handlers'
+import { submitDelay } from '../../prompt-submit'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function invoke(channel: string, arg: unknown): any {
@@ -426,6 +443,125 @@ describe('the pending question and a write from the terminal view (terminal:writ
     await invoke('terminal:write', { id: 'claude-1', data: 'y' })
 
     expect(term.noteTerminalUserInput).toHaveBeenCalledWith('claude-1')
+  })
+})
+
+describe('submitting a prompt (submitToTerminal, terminal:submit)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  /** Every write, with the input notes taken between them, in order. */
+  function sequence(): unknown[][] {
+    const calls = [
+      ...term.writeToTerminal.mock.calls.map((args, i) => ({ at: term.writeToTerminal.mock.invocationCallOrder[i], call: ['write', ...args] })),
+      ...noteTerminalInput.mock.calls.map((args, i) => ({ at: noteTerminalInput.mock.invocationCallOrder[i], call: ['note', ...args] })),
+    ]
+    return calls.sort((a, b) => a.at - b.at).map((c) => c.call)
+  }
+
+  it('writes the text, waits for the TUI to take it in, then the Return', async () => {
+    const text = 'x'.repeat(3_000)
+    const done = submitToTerminal('claude-1', text)
+    expect(term.writeToTerminal).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(submitDelay(text) - 1)
+    expect(term.writeToTerminal).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(done).resolves.toBe(true)
+    expect(sequence()).toEqual([
+      ['note', 'claude-1', text],
+      ['write', 'claude-1', text],
+      ['note', 'claude-1', '\r'],
+      ['write', 'claude-1', '\r'],
+    ])
+  })
+
+  it('lets a second text wait for the first one\'s Return, so the two never merge', async () => {
+    const first = submitToTerminal('claude-1', 'from the phone')
+    const second = submitToTerminal('claude-1', 'from the desktop')
+    await vi.runAllTimersAsync()
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true])
+    expect(term.writeToTerminal.mock.calls).toEqual([
+      ['claude-1', 'from the phone'],
+      ['claude-1', '\r'],
+      ['claude-1', 'from the desktop'],
+      ['claude-1', '\r'],
+    ])
+  })
+
+  it('asks again, once its turn comes, whether a queued text is still wanted', async () => {
+    let wanted = true
+    const first = submitToTerminal('claude-1', 'from the desktop')
+    const second = submitToTerminal('claude-1', 'from a phone', () => wanted)
+    wanted = false
+    await vi.runAllTimersAsync()
+    await expect(Promise.all([first, second])).resolves.toEqual([true, false])
+    expect(term.writeToTerminal.mock.calls).toEqual([['claude-1', 'from the desktop'], ['claude-1', '\r']])
+  })
+
+  it('marks the session as talked to', async () => {
+    const done = submitToTerminal('claude-1', 'hello')
+    await vi.runAllTimersAsync()
+    await done
+    expect(term.noteTerminalUserInput).toHaveBeenCalledWith('claude-1')
+  })
+
+  it('writes no Return after a text no pty took, and says so', async () => {
+    term.writeToTerminal.mockReturnValueOnce(false)
+    const done = submitToTerminal('claude-1', 'hello')
+    await vi.runAllTimersAsync()
+    await expect(done).resolves.toBe(false)
+    expect(term.writeToTerminal).toHaveBeenCalledTimes(1)
+  })
+
+  it('is what terminal:submit runs, and refuses a malformed call without writing', async () => {
+    const done = invoke('terminal:submit', { id: 'claude-1', data: 'hello' })
+    await vi.runAllTimersAsync()
+    await expect(done).resolves.toBe(true)
+    expect(term.writeToTerminal.mock.calls).toEqual([['claude-1', 'hello'], ['claude-1', '\r']])
+
+    term.writeToTerminal.mockClear()
+    for (const arg of [{ id: 'claude-1', data: '' }, { id: 'claude-1' }, { id: 7, data: 'hello' }]) {
+      await expect(invoke('terminal:submit', arg)).resolves.toBe(false)
+    }
+    expect(term.writeToTerminal).not.toHaveBeenCalled()
+  })
+})
+
+describe('stopping a turn (interruptTerminal, terminal:interrupt)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('sends Escape, and answers nothing when Claude had already started answering', async () => {
+    const done = interruptTerminal('claude-1')
+    await vi.runAllTimersAsync()
+    await expect(done).resolves.toEqual({ draft: null })
+    expect(term.writeToTerminal.mock.calls).toEqual([['claude-1', '\x1b']])
+    expect(clearPendingQuestion).not.toHaveBeenCalled()
+  })
+
+  it('takes back a prompt nothing answered yet, and empties the input box it went back to', async () => {
+    chat.hasUnansweredPrompt.mockReturnValueOnce(true)
+    chat.dropUnansweredPrompt.mockReturnValueOnce('the prompt')
+    const done = interruptTerminal('claude-1')
+    await vi.runAllTimersAsync()
+    await expect(done).resolves.toEqual({ draft: 'the prompt' })
+    expect(term.writeToTerminal.mock.calls).toEqual([['claude-1', '\x1b'], ['claude-1', '\x03']])
+    expect(clearPendingQuestion).toHaveBeenCalledWith('claude-1')
+  })
+
+  it('does nothing more for a terminal that took no Escape', async () => {
+    term.writeToTerminal.mockReturnValueOnce(false)
+    await expect(interruptTerminal('claude-1')).resolves.toBeNull()
+    expect(chat.hasUnansweredPrompt).not.toHaveBeenCalled()
+  })
+
+  it('is what terminal:interrupt runs', async () => {
+    chat.hasUnansweredPrompt.mockReturnValueOnce(true)
+    chat.dropUnansweredPrompt.mockReturnValueOnce('the prompt')
+    const done = invoke('terminal:interrupt', { id: 'claude-1' })
+    await vi.runAllTimersAsync()
+    await expect(done).resolves.toBe('the prompt')
+    await expect(invoke('terminal:interrupt', { id: 42 })).resolves.toBeNull()
   })
 })
 

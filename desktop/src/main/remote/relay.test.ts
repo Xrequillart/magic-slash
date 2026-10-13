@@ -76,13 +76,18 @@ import {
   setRemoteAnswerer,
   setRemoteEmitters,
   setRemoteEnabled,
+  setRemotePrompter,
+  setRemoteStopper,
   startRemotePairing,
   suspendRemoteRelay,
   type RemoteAnswerer,
+  type RemotePrompter,
+  type RemoteStopper,
 } from './relay'
+import { runRemotePrompt, runRemoteStop } from './agent-control'
 import { setRemoteModeEnabled } from './remote-mode'
 import { clearTerminalOwners, recordTerminalOwner } from './terminal-owners'
-import type { RemotePairing } from '../../types'
+import type { RemotePairing, TerminalState } from '../../types'
 
 function fakeChannel(topic: string, opts: unknown): FakeChannel {
   const channel: FakeChannel = {
@@ -127,6 +132,7 @@ interface PairedPhone extends Phone {
 interface OpenedSnapshot {
   pairingId: string
   generation: number
+  bootId: string
   sentAt: number
   agents: { appAgentId: string; question: { token: string; kind: string; unsupported: boolean; questions: unknown[] } | null }[]
 }
@@ -162,6 +168,13 @@ let pairings: (RemotePairing | null)[]
 /** What the answer path typed, terminal by terminal, as main/index.ts's `writeToTerminal` would. */
 let typed: [string, string][]
 let answerer: Mock<RemoteAnswerer>
+let prompter: Mock<RemotePrompter>
+let stopper: Mock<RemoteStopper>
+/** What the prompt path submitted, and the drafts a stop handed back, as main/index.ts would. */
+let submitted: [string, string][]
+let restored: [string, string][]
+/** What `interruptTerminal` answers: the prompt Claude Code took back, if any. */
+let takenBack: string | null
 
 beforeEach(async () => {
   fs.rmSync(h.TEST_CONFIG_DIR, { recursive: true, force: true })
@@ -191,6 +204,34 @@ beforeEach(async () => {
       wait: () => Promise.resolve(),
     }))
   setRemoteAnswerer(answerer)
+  // main/index.ts's `promptFromRemote` and `stopFromRemote`, over the real rules; only the
+  // terminals are fake.
+  submitted = []
+  restored = []
+  takenBack = null
+  const stateOf = (id: string) => (h.terminals as { id: string; state: TerminalState }[]).find((t) => t.id === id)?.state
+  prompter = vi.fn<RemotePrompter>((id, text, stillWanted) =>
+    runRemotePrompt(id, text, {
+      state: stateOf,
+      hasQuestion: (terminal) => getPendingQuestion(terminal) !== undefined,
+      submit: async (terminal, bytes, wanted) => {
+        if (!wanted()) return false
+        submitted.push([terminal, bytes])
+        return true
+      },
+    }, stillWanted))
+  stopper = vi.fn<RemoteStopper>((id) =>
+    runRemoteStop(id, {
+      state: stateOf,
+      interrupt: async (terminal) => {
+        typed.push([terminal, '\x1b'])
+        return { draft: takenBack }
+      },
+      clearQuestion: clearPendingQuestion,
+      restoreDraft: (terminal, text) => restored.push([terminal, text]),
+    }))
+  setRemotePrompter(prompter)
+  setRemoteStopper(stopper)
   setRemoteEmitters(null)
   await __resetRemoteRelayForTests()
   h.blockers.clear()
@@ -282,6 +323,8 @@ describe('remote mode on', () => {
       // Named by that phone's pairing, and ordered by the relay's generation (§5, §6).
       expect(snapshot.pairingId).toBe(mine.pairingId)
       expect(snapshot.generation).toBe(1)
+      // This launch's, which a `prompt` or `stop` quotes (§10).
+      expect(snapshot.bootId).toMatch(/^[0-9a-f-]{36}$/)
       expect(typeof snapshot.sentAt).toBe('number')
       expect(openEnvelope(envelope, deriveKey(other.keys.privateKey, macPub, macId, envelope.to))).toBeNull()
       // Nothing readable rides in clear.
@@ -555,20 +598,33 @@ describe('commands from a paired phone', () => {
   let phone: PairedPhone
   let other: PairedPhone
   let seq: number
+  /** The launch id the phone read in its first snapshot. */
+  let bootId: string
 
-  /** An `answer` command as the phone builds it (§10): payload serialized once, signed, sealed. */
+  /** What each action carries beside the common fields (§10). */
+  const ACTION_FIELDS: Record<'answer' | 'prompt' | 'stop', () => Record<string, unknown>> = {
+    answer: () => ({ token: 'none', choice: { kind: 'option', index: 0 } }),
+    prompt: () => ({ text: 'Add a test for the refund', bootId }),
+    stop: () => ({ bootId }),
+  }
+
+  /**
+   * A command as the phone builds it (§10): payload serialized once, signed, sealed. An
+   * `answer` unless `overrides.action` names another; `prompt` and `stop` quote the boot id
+   * the phone read in its last snapshot.
+   */
   function command(from: PairedPhone, overrides: Record<string, unknown> = {}, signer = from.signing.privateKey): RelayEnvelope {
+    const action = (overrides.action ?? 'answer') as keyof typeof ACTION_FIELDS
     const payload = JSON.stringify({
       v: 1,
-      action: 'answer',
+      action,
       macId,
       phoneId: from.id,
       pairingId: from.pairingId,
       commandId: crypto.randomUUID(),
       issuedAt: Date.now(),
       appAgentId: 'claude-1',
-      token: 'none',
-      choice: { kind: 'option', index: 0 },
+      ...(ACTION_FIELDS[action]?.() ?? {}),
       ...overrides,
     })
     const box = { payload, sig: sign(signer, Buffer.from(payload, 'utf8')).toString('base64') }
@@ -604,6 +660,8 @@ describe('commands from a paired phone', () => {
     seq = 0
     await setRemoteEnabled(true)
     await goLive(h.channels[0])
+    const first = sentOn(h.channels[0]).find((e) => e.type === 'state' && e.to === phone.id)!
+    bootId = (openEnvelope(first, phoneKey(phone, macId, macPub)) as OpenedSnapshot).bootId
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -760,5 +818,105 @@ describe('commands from a paired phone', () => {
     const [first, again] = results(phone)
     expect(again).toEqual(first)
     expect(first.ok).toBe(true)
+  })
+
+  it('submits a prompt to an idle agent, formatted as the desktop chat does, and tells the phone', async () => {
+    h.terminals = [{ id: 'claude-1', name: 'Agent 1', state: 'idle' }]
+    await send(command(phone, { action: 'prompt', text: 'first line\nsecond line' }))
+    expect(prompter).toHaveBeenCalledWith('claude-1', 'first line\nsecond line', expect.any(Function))
+    expect(submitted).toEqual([['claude-1', '\x1b[200~first line\nsecond line\x1b[201~']])
+    expect(results(phone)).toEqual([{ pairingId: phone.pairingId, commandId: expect.any(String), ok: true }])
+  })
+
+  it('queues a prompt to a working agent, and the phone is told it was queued', async () => {
+    await send(command(phone, { action: 'prompt', text: 'and then the docs' }))
+    expect(submitted).toEqual([['claude-1', 'and then the docs']])
+    expect(results(phone)[0]).toMatchObject({ ok: true, queued: true })
+  })
+
+  it('refuses a prompt `busy` while the agent waits on an answer, and types nothing', async () => {
+    setFromAskQuestion('claude-1', ask(ONE))
+    await send(command(phone, { action: 'prompt' }))
+    h.terminals = [{ id: 'claude-1', name: 'Agent 1', state: 'waiting' }]
+    clearPendingQuestion('claude-1')
+    await send(command(phone, { action: 'prompt' }))
+    expect(submitted).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['busy', 'busy'])
+  })
+
+  it('refuses a shell line or a command that opens a dialog `unsupported`, and types nothing', async () => {
+    h.terminals = [{ id: 'claude-1', name: 'Agent 1', state: 'idle' }]
+    for (const text of ['!rm -rf build', '  ! ls', '/model', '/mcp']) await send(command(phone, { action: 'prompt', text }))
+    expect(submitted).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['unsupported', 'unsupported', 'unsupported', 'unsupported'])
+  })
+
+  it('stops a working agent, and hands a prompt it took back to the desktop chat', async () => {
+    takenBack = 'the prompt it had not started on'
+    await send(command(phone, { action: 'stop' }))
+    expect(stopper).toHaveBeenCalledWith('claude-1')
+    expect(typed).toEqual([['claude-1', '\x1b']])
+    expect(restored).toEqual([['claude-1', 'the prompt it had not started on']])
+    expect(results(phone)[0]).toMatchObject({ ok: true })
+  })
+
+  it('stops a waiting agent and forgets its question', async () => {
+    h.terminals = [{ id: 'claude-1', name: 'Agent 1', state: 'waiting' }]
+    setFromNotification('claude-1', { message: 'Claude needs your permission to use Bash' })
+    await send(command(phone, { action: 'stop' }))
+    expect(typed).toEqual([['claude-1', '\x1b']])
+    expect(getPendingQuestion('claude-1')).toBeUndefined()
+    expect(restored).toEqual([])
+    expect(results(phone)[0]).toMatchObject({ ok: true })
+  })
+
+  it('answers `stale` to a stop on an idle agent, and sends no Escape', async () => {
+    for (const state of ['idle', 'completed', 'error']) {
+      h.terminals = [{ id: 'claude-1', name: 'Agent 1', state }]
+      await send(command(phone, { action: 'stop' }))
+    }
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['stale', 'stale', 'stale'])
+  })
+
+  it('answers `stale` to a prompt or a stop for an agent of another account, or no agent at all', async () => {
+    h.terminals = [...h.terminals, { id: 'claude-2', name: 'Theirs', state: 'working' }, { id: 'claude-3', name: 'Unowned', state: 'working' }]
+    recordTerminalOwner('claude-2', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')
+    for (const id of ['claude-2', 'claude-3', 'script-dev']) {
+      await send(command(phone, { action: 'prompt', appAgentId: id }))
+      await send(command(phone, { action: 'stop', appAgentId: id }))
+    }
+    expect(prompter).not.toHaveBeenCalled()
+    expect(stopper).not.toHaveBeenCalled()
+    expect(submitted).toEqual([])
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(Array(6).fill('stale'))
+  })
+
+  it('rejects a prompt or a stop quoting another launch of the Mac, and runs neither', async () => {
+    const before = crypto.randomUUID()
+    await send(command(phone, { action: 'prompt', bootId: before }))
+    await send(command(phone, { action: 'stop', bootId: before }))
+    expect(prompter).not.toHaveBeenCalled()
+    expect(stopper).not.toHaveBeenCalled()
+    expect(results(phone).map((r) => r.reason)).toEqual(['rejected', 'rejected'])
+  })
+
+  it('keeps the boot id across relay restarts within one launch', async () => {
+    await setRemoteEnabled(false)
+    await setRemoteEnabled(true)
+    await goLive(h.channels[1])
+    const envelope = sentOn(h.channels[1]).find((e) => e.type === 'state' && e.to === phone.id)!
+    expect((openEnvelope(envelope, phoneKey(phone, macId, macPub)) as OpenedSnapshot).bootId).toBe(bootId)
+  })
+
+  it('submits a replayed prompt once, and answers the replay with the first result', async () => {
+    const envelope = command(phone, { action: 'prompt' })
+    await send(envelope)
+    await send(envelope)
+    expect(submitted).toHaveLength(1)
+    const [first, again] = results(phone)
+    expect(again).toEqual(first)
+    expect(first).toMatchObject({ ok: true, queued: true })
   })
 })

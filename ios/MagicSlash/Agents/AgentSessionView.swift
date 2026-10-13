@@ -4,8 +4,9 @@ import SwiftUI
 /// link's state when it is, and a way to pair when it is not. The cloud details live
 /// behind the Info button.
 ///
-/// The chat and its input will take this screen over once the iPhone can read the
-/// conversation and send a prompt (#354).
+/// While the agent runs on a paired Mac, its pending question and a composer sit under its
+/// state: the iPhone answers, sends a prompt or stops the turn. The conversation itself
+/// is not readable from the iPhone yet.
 struct AgentSessionView: View {
   @Environment(\.theme) private var theme
 
@@ -104,6 +105,15 @@ struct AgentSessionView: View {
         } else {
           EmptyLine(text: "Not running on a paired Mac right now")
         }
+      }
+
+      if let runtime = relay.runtime(for: agent.appAgentId), let appAgentId = agent.appAgentId {
+        // Answered here too: a prompt waits on it.
+        if let question = runtime.question {
+          QuestionCard(relay: relay, runtime: runtime, question: question, appAgentId: appAgentId)
+            .id(question.token)
+        }
+        PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId)
       }
     }
   }
