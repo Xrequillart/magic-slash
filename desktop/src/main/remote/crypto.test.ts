@@ -11,6 +11,8 @@ import {
   publicKeyFromRaw,
   publicRawOf,
   seal,
+  sign,
+  verifySignature,
 } from './crypto'
 
 const hex = (s: string) => Buffer.from(s, 'hex')
@@ -42,6 +44,44 @@ describe('relay vectors', () => {
 
   it('computes the pairing code', () => {
     expect(pairingCode(Buffer.from(vectors.token, 'base64url'), hex(vectors.macPublic), hex(vectors.phonePublic))).toBe(vectors.pairingCode)
+  })
+
+  it('verifies the command signature over the exact payload bytes', () => {
+    expect(publicRawOf(privateKeyFromRaw(hex(vectors.signPrivate))).toString('hex')).toBe(vectors.signPublic)
+    const payload = Buffer.from(vectors.signedPayload, 'utf8')
+    expect(verifySignature(hex(vectors.signPublic), payload, Buffer.from(vectors.signature, 'base64'))).toBe(true)
+  })
+
+  it('verifies a signature CryptoKit made, the direction a command travels', () => {
+    const payload = Buffer.from(vectors.signedPayload, 'utf8')
+    expect(verifySignature(hex(vectors.signPublic), payload, Buffer.from(vectors.signatureCryptoKit, 'base64'))).toBe(true)
+  })
+})
+
+describe('verifySignature', () => {
+  const pub = hex(vectors.signPublic)
+  const payload = Buffer.from(vectors.signedPayload, 'utf8')
+  const signature = Buffer.from(vectors.signature, 'base64')
+
+  it('refuses a tampered payload, a tampered signature and another key', () => {
+    const tampered = Buffer.from(payload)
+    tampered[10] ^= 1
+    expect(verifySignature(pub, tampered, signature)).toBe(false)
+    const badSig = Buffer.from(signature)
+    badSig[5] ^= 1
+    expect(verifySignature(pub, payload, badSig)).toBe(false)
+    expect(verifySignature(hex(vectors.phonePublic), payload, signature)).toBe(false)
+  })
+
+  it('refuses a DER signature, a truncated one and a key that is not a point', () => {
+    expect(verifySignature(pub, payload, signature.subarray(0, 63))).toBe(false)
+    expect(verifySignature(pub, payload, Buffer.alloc(72))).toBe(false)
+    expect(verifySignature(Buffer.alloc(65), payload, signature)).toBe(false)
+  })
+
+  it('a fresh signature verifies', () => {
+    const k = generateKeyPair()
+    expect(verifySignature(k.publicRaw, payload, sign(k.privateKey, payload))).toBe(true)
   })
 })
 

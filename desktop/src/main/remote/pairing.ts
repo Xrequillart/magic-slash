@@ -1,6 +1,6 @@
 import * as crypto from 'crypto'
 import type { RemotePairing } from '../../types'
-import { deriveKey, pairingCode } from './crypto'
+import { deriveKey, pairingCode, publicKeyFromRaw } from './crypto'
 import { openEnvelope, UUID_RE, type PairRejectReason, type RelayEnvelope } from './envelope'
 import type { StoredRemoteDevice } from './identity-store'
 
@@ -87,6 +87,8 @@ interface PendingPhone {
   key: Buffer
   /** The request envelope's epoch, echoed back in `pair-accepted`. */
   requestEpoch: string
+  /** The phone's command-signing key (§3), standard base64; absent from an older phone. */
+  signPub?: string
 }
 
 function defaultTimer(fn: () => void, ms: number): () => void {
@@ -94,6 +96,22 @@ function defaultTimer(fn: () => void, ms: number): () => void {
   // Never hold the process open for a QR nobody is looking at (matters in tests/teardown).
   timer.unref?.()
   return () => clearTimeout(timer)
+}
+
+/**
+ * The phone's command-signing key (§4), re-encoded, or undefined. Optional, and never a reason
+ * to refuse the pairing: a phone that sends none, or one that is not a P-256 point, is paired
+ * all the same and told `re-pair` for any command it sends (§10).
+ */
+function cleanSignPub(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const raw = Buffer.from(value, 'base64')
+  try {
+    publicKeyFromRaw(raw)
+  } catch {
+    return undefined
+  }
+  return raw.toString('base64')
 }
 
 /** A phone's name, as the phone sent it: printable, trimmed, bounded. */
@@ -213,7 +231,7 @@ export class PairingSession {
     } catch {
       return // Not a P-256 point: nobody who scanned the QR sent this.
     }
-    const body = openEnvelope(envelope, key) as { token?: unknown; name?: unknown } | null
+    const body = openEnvelope(envelope, key) as { token?: unknown; name?: unknown; signPub?: unknown } | null
     // A box that does not open is ignored, and consumes nothing (see the header).
     if (!body || typeof body !== 'object' || typeof body.token !== 'string') return
 
@@ -235,7 +253,9 @@ export class PairingSession {
     }
 
     const name = cleanName(body.name)
-    this.pending = { phoneId, phonePub, name, key, requestEpoch: envelope.epoch }
+    // Read from the box only: the signing key is as authenticated as the pairing itself.
+    const signPub = cleanSignPub(body.signPub)
+    this.pending = { phoneId, phonePub, name, key, requestEpoch: envelope.epoch, ...(signPub ? { signPub } : {}) }
     this.stopRefresh()
     this.confirmOpenedAt = this.now()
     this.expireAfterApproval = false
@@ -297,6 +317,7 @@ export class PairingSession {
         pub: phone.phonePub.toString('base64'),
         pairedAt: this.now(),
         pairingId,
+        ...(phone.signPub ? { signPub: phone.signPub } : {}),
       })
       try {
         await this.deps.send({

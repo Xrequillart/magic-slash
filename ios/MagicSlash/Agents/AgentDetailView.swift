@@ -91,11 +91,16 @@ private struct AgentDetailContent: View {
 
   // MARK: Live
 
-  /// Runtime state and usage, from the paired Mac over the encrypted relay.
+  /// Runtime state, the pending question and usage, from the paired Mac over the encrypted
+  /// relay.
   @ViewBuilder
   private var live: some View {
     let runtime = relay.runtime(for: agent.appAgentId)
     LiveSection(runtime: runtime, hasPairedMac: !relay.macs.isEmpty)
+    if let runtime, let question = runtime.question, let appAgentId = agent.appAgentId {
+      QuestionCard(relay: relay, runtime: runtime, question: question, appAgentId: appAgentId)
+        .id(question.token)
+    }
     if runtime != nil {
       UsageSection(runtime: runtime)
     }

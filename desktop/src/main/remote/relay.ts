@@ -2,12 +2,14 @@ import * as crypto from 'crypto'
 import * as os from 'os'
 import { powerSaveBlocker } from 'electron'
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
-import type { RemoteDevice, RemotePairing, RemoteRelayStatus, RemoteState } from '../../types'
+import type { RemoteDevice, RemotePairing, RemoteRelayStatus, RemoteState, TrayAnswerChoice, TrayAnswerResult } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { getAllTerminals } from '../pty/terminal-manager'
+import { getPendingQuestion } from '../questions/pending-questions'
+import { CommandGate, type AnswerCommand } from './commands'
 import { privateKeyFromRaw, publicRawOf, deriveKey } from './crypto'
-import { parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
+import { openEnvelope, parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
 import {
   addDevice,
   listDevices,
@@ -20,7 +22,7 @@ import {
 } from './identity-store'
 import { PairingSession, type PairingOutgoing } from './pairing'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
-import { buildSnapshot, snapshotFor, SnapshotScheduler } from './snapshot'
+import { buildSnapshot, isAgentTerminal, snapshotFor, SnapshotScheduler } from './snapshot'
 import { terminalOwner } from './terminal-owners'
 
 // ---------------------------------------------------------------------------
@@ -56,6 +58,16 @@ export function setRemoteEmitters(next: RemoteEmitters | null): void {
   emitters = next
 }
 
+/** Answers an agent's pending question: main/index.ts's `answerQuestion`, the tray's own path. */
+export type RemoteAnswerer = (id: string, token: string, choice: TrayAnswerChoice) => Promise<TrayAnswerResult>
+
+let answerer: RemoteAnswerer | null = null
+
+/** Wire the path a verified `answer` command takes (§10 step 9). Pass null to clear. */
+export function setRemoteAnswerer(next: RemoteAnswerer | null): void {
+  answerer = next
+}
+
 interface LoadedIdentity {
   macId: string
   privateKey: crypto.KeyObject
@@ -74,6 +86,8 @@ let identity: LoadedIdentity | null = null
 const pairKeys = new Map<string, Buffer>()
 /** The session was refused: shown as signed out until the next `ok` starts us again. */
 let suspended = false
+/** The phones' commands seen so far (§10 step 7), for the account loaded. */
+const commands = new CommandGate()
 
 let client: SupabaseClient | null = null
 let channel: RealtimeChannel | null = null
@@ -206,6 +220,7 @@ function forgetAccount(): void {
   userId = null
   identity = null
   pairKeys.clear()
+  commands.clear()
 }
 
 /**
@@ -280,7 +295,15 @@ function sendSealed(type: RelayMessageType, device: StoredRemoteDevice, body: un
 function publishSnapshot(): void {
   const account = userId
   if (!live || !channel || !identity || !account || identity.devices.length === 0) return
-  const body = buildSnapshot(getAllTerminals(), macName(), Date.now(), identity.generation, (id) => terminalOwner(id) === account)
+  const body = buildSnapshot(
+    getAllTerminals(),
+    macName(),
+    Date.now(),
+    identity.generation,
+    (id) => terminalOwner(id) === account,
+    // Read through the TTL: a question past its 30 minutes is not published.
+    getPendingQuestion,
+  )
   for (const device of identity.devices) void sendSealed('state', device, snapshotFor(body, device.pairingId))
 }
 
@@ -333,8 +356,55 @@ function handleIncoming(payload: unknown): void {
   const envelope = parseEnvelope(payload)
   // Not addressed to this Mac: another Mac of the account, or our own phones' traffic.
   if (!envelope || !identity || envelope.to !== identity.macId) return
-  // The only message a phone sends a Mac in v1. Anything else from a phone is dropped.
+  // The two messages a phone sends a Mac. Anything else from a phone is dropped.
   if (envelope.type === 'pair-request') pairing?.handleRequest(envelope)
+  else if (envelope.type === 'command') void handleCommand(envelope)
+}
+
+/** The same pairing of the same phone, still in the identity loaded: not revoked meanwhile. */
+function stillPaired(self: LoadedIdentity, device: StoredRemoteDevice): StoredRemoteDevice | null {
+  if (identity !== self) return null
+  return self.devices.find((d) => d.phoneId === device.phoneId && d.pairingId === device.pairingId) ?? null
+}
+
+/**
+ * A phone's `command` (§10). Steps 1 and 2 here: a sender that is not a paired phone, or a box
+ * that does not open with its key, is dropped without a word, since there is no key to answer
+ * with. commands.ts does steps 3 to 8, and the `command-result` it returns is sealed back to
+ * that phone alone, unless it was revoked while the answer ran: nothing is ever sealed for a
+ * revoked phone again (§8).
+ */
+async function handleCommand(envelope: RelayEnvelope): Promise<void> {
+  const self = identity
+  const account = userId
+  if (!self || !account) return
+  const device = self.devices.find((d) => d.phoneId === envelope.from)
+  if (!device) return
+  const key = pairKey(device)
+  if (!key) return
+  const box = openEnvelope(envelope, key)
+  if (box === null) return
+  const result = await commands.handle(
+    { box, from: envelope.from, macId: self.macId, device },
+    (command) => runCommand(command, self, account, device),
+  )
+  if (!result) return
+  const current = stillPaired(self, device)
+  if (current) await sendSealed('command-result', current, result)
+}
+
+/**
+ * §10 step 9, right before the answer: the phone is still paired, the relay still serves the
+ * account it was paired under, and the agent is one this account's snapshots carry (§5).
+ * Anything else is `stale`, and nothing reaches a terminal. The answer then takes the tray's
+ * own path, token check and keystrokes included.
+ */
+async function runCommand(command: AnswerCommand, self: LoadedIdentity, account: string, device: StoredRemoteDevice): Promise<TrayAnswerResult> {
+  const { appAgentId, token, choice } = command
+  if (!stillPaired(self, device) || userId !== account || !answerer) return { ok: false, reason: 'stale' }
+  if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) return { ok: false, reason: 'stale' }
+  // A question it clears is republished by the question listener (main/index.ts).
+  return answerer(appAgentId, token, choice)
 }
 
 // --- channel ----------------------------------------------------------------

@@ -4051,13 +4051,23 @@ export type TrayAnswerChoice =
   | { kind: 'answers'; answers: string[] }
 
 /**
- * Outcome of `tray:answerQuestion`. `ok: false` always means nothing at all was
- * written to the PTY — which is the only distinction the panel acts on. Why it
- * refused (a stale token, or keystrokes we would have had to guess) is logged in
- * main rather than carried here, since no caller branches on it.
+ * Why an answer was refused. `stale`: the question was answered, replaced or expired;
+ * `unsupported`: it cannot be answered from a choice; `busy`: another answer to it is
+ * being typed; `write-failed`: the terminal did not take the keystrokes (the question is
+ * kept); `invalid`: a choice that does not fit the question.
+ */
+export type TrayAnswerRefusal = 'stale' | 'unsupported' | 'busy' | 'write-failed' | 'invalid'
+
+/**
+ * Outcome of `tray:answerQuestion`. `ok: false` means the agent was not answered,
+ * which is the only distinction the panel acts on; for every reason but
+ * `write-failed` (some keystrokes may have landed, so the question is kept to be
+ * finished by hand), nothing at all reached the PTY. `reason` is for the iPhone
+ * (remote/PROTOCOL.md §10), which tells its user why; the panel ignores it.
  */
 export interface TrayAnswerResult {
   ok: boolean
+  reason?: TrayAnswerRefusal
 }
 
 /**

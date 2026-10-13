@@ -40,8 +40,13 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 - **iPhone:**
   - one Secure Enclave `P256.KeyAgreement` key, with access control
     `[.privateKeyUsage, .biometryCurrentSet]`;
+  - one Secure Enclave `P256.Signing` key, with the same access control, that signs commands
+    (§10). Each signature evaluates a fresh `LAContext`, so every command asks for Face ID. It
+    is created on the first pairing that finds it missing and never rotated by a later one: the
+    other Macs already hold its public half. Losing it (a new face or fingerprint invalidates
+    `biometryCurrentSet`) means pairing again;
   - `phoneId` is a random UUID;
-  - in DEBUG Simulator builds only, a software key stands in for the Secure Enclave key.
+  - in DEBUG Simulator builds only, software keys stand in for the Secure Enclave keys.
 - **Pair key:**
   ```
   shared = ECDH(own private, peer public)          // 32-byte X coordinate
@@ -71,11 +76,18 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 
 | `type` | Direction | Box plaintext (JSON) | Extra clear fields |
 | --- | --- | --- | --- |
-| `pair-request` | phone → Mac | `{ "token": "<b64url>", "name": "Xavier's iPhone" }` | `phonePub` |
+| `pair-request` | phone → Mac | `{ "token": "<b64url>", "name": "Xavier's iPhone", "signPub": "<b64 x963>" }` | `phonePub` |
 | `pair-accepted` | Mac → phone | `{ "macName": "MacBook Pro", "requestEpoch": "<uuid>", "pairingId": "<uuid>" }` | |
 | `pair-rejected` | Mac → phone | none: `box` is absent | `reason`: `expired`, `used`, `declined` |
 | `state` | Mac → phone | snapshot (§5) | |
 | `revoked` | Mac → phone | `{ "pairingId": "<uuid>" }` | |
+| `command` | phone → Mac | `{ "payload": "<json string>", "sig": "<b64>" }` (§10) | |
+| `command-result` | Mac → phone | `{ "pairingId": "<uuid>", "commandId": "<uuid>", "ok": false, "reason": "stale" }` (§10) | |
+
+`signPub` travels inside the box, so it is as authenticated as the pairing itself: the Mac
+learns a phone's signing key only from a `pair-request` that the code on both screens
+confirmed, and never from any later message. It is optional: a phone paired before it existed
+is stored without one, still receives `state`, and gets `re-pair` for any command.
 
 `pair-rejected` is clear text and can be forged by anyone on the channel. The worst a forgery
 can do is cancel a pairing on screen, which is accepted.
@@ -97,6 +109,20 @@ can do is cancel a pairing on screen, which is accepted.
         "costUsd": 1.23, "contextPercent": 41, "model": "Opus 4.5",
         "fiveHourPercent": 12, "fiveHourResetsAt": 1760003600,
         "sevenDayPercent": 30, "sevenDayResetsAt": 1760500000
+      },
+      "question": {
+        "token": "<uuid>",
+        "kind": "ask",
+        "receivedAt": 1760000000000,
+        "unsupported": false,
+        "questions": [
+          {
+            "prompt": "Which database?",
+            "header": "Database",
+            "multiSelect": false,
+            "options": [{ "label": "Postgres", "description": "The default" }, { "label": "SQLite" }]
+          }
+        ]
       }
     }
   ]
@@ -106,6 +132,25 @@ can do is cancel a pairing on screen, which is accepted.
 - `state` is `TerminalState`: `idle`, `working`, `waiting`, `completed` or `error`.
 - `usage` is `null` until Claude Code's status line has reported once. Any of its fields may be
   `null`. `*ResetsAt` are epoch **seconds**, as Claude Code reports them.
+- `question` is the agent's pending question, or `null`:
+  - `kind` is `ask` (AskUserQuestion) or `permission`. A permission has one question whose
+    options are empty: the phone offers Allow and Deny.
+  - `questions` holds one entry, or several for an AskUserQuestion that asked more than one.
+    `header` and `description` may be absent.
+  - `unsupported` means the Mac cannot answer it from a remote choice (several questions or no
+    options in terminal mode, or the user typed in that terminal): the phone shows it with
+    "answer on the Mac" and offers no choice.
+  - `token` is what a `command` must quote. A new question gets a new token, and a question
+    expires 30 minutes after `receivedAt`.
+  - `preview` is present on a permission only: the terminal's last lines, which show the
+    command the permission is about (its `prompt` is just the notification's one-liner). It
+    keeps its last 4000 characters.
+  - It is bounded: at most 4 questions, at most 10 options each, a header or description cut
+    at 300 characters. A prompt and a label are never cut, since the user answers what they
+    read: a question with more than 4 questions, a prompt over 2000 characters or a label
+    over 300 is sent `unsupported` instead. Options past the 10th are
+    left out, past the 9th for a multi-select asked in terminal mode (it is answered by
+    single digits), and only those can no longer be picked from the phone.
 - `appAgentId` is the desktop terminal id, which is also `agents.app_agent_id`. The phone joins
   on it.
 - The snapshot is complete: the phone replaces everything it knows about that Mac with it.
@@ -196,3 +241,79 @@ is off:
 While it is on, `powerSaveBlocker('prevent-app-suspension')` is held. That keeps the app
 running but does not stop a closed lid from sleeping the Mac, which is what §6's 75 s rule
 covers.
+
+## 10. Commands (phone → Mac)
+
+The action set is closed: `answer` here; `prompt` and `stop` are reserved and refused as
+`invalid` until their own version of this section names them.
+
+A `command` box holds `{ "payload": "<string>", "sig": "<b64>" }`. `payload` is a JSON object
+serialized **once** by the phone, and `sig` is the ECDSA P-256 / SHA-256 signature of its exact
+UTF-8 bytes, as CryptoKit's `rawRepresentation` (`r‖s`, 64 bytes). Nothing is re-serialized
+before checking, so neither side needs a canonical JSON form.
+
+```json
+{
+  "v": 1, "action": "answer",
+  "macId": "<uuid>", "phoneId": "<uuid>", "pairingId": "<uuid>",
+  "commandId": "<uuid>", "issuedAt": 1760000000000,
+  "appAgentId": "claude-1760000000000", "token": "<question token>",
+  "choice": { "kind": "option", "index": 0 }
+}
+```
+
+`choice` is one of:
+
+- `{ "kind": "option", "index": n }`: one option, or Allow (index 0) for a permission;
+- `{ "kind": "options", "indexes": [n, …] }`: a multi-select question;
+- `{ "kind": "answers", "answers": ["…"] }`: one label per question, for a question asked
+  several at once;
+- `{ "kind": "deny" }`: deny a permission. It is `invalid` on an ask: Escape would
+  interrupt the agent rather than answer it.
+
+**The Mac checks, in this order**, and nothing reaches a terminal unless every step passes:
+
+1. `from` is a paired device. Unknown or revoked: dropped, no answer, since there is no key to
+   answer with.
+2. The box opens with that device's pair key. Otherwise: dropped.
+3. The box parses as `{payload, sig}`. A device stored without `signPub`: `re-pair`.
+4. `sig` verifies against the device's `signPub` over the bytes of `payload`. Otherwise:
+   `rejected`.
+5. `payload` parses, `v` is 1, `phoneId` equals `from`, `macId` is this Mac and `pairingId`
+   is the device's. Otherwise: `rejected`.
+6. `issuedAt` is within **5 minutes** of the Mac's clock, either way. Otherwise: `rejected`.
+7. `commandId` was not seen before. A command seen before is **not run again**: the Mac
+   answers with the `command-result` it sent the first time, so a phone that retried after a
+   lost reply still learns the outcome. A `commandId` is remembered only once its signature has
+   verified, until `issuedAt` + 5 minutes, at most 1000 at a time.
+8. `action` is `answer` and `choice` has one of the shapes above. Otherwise: `invalid`.
+9. Right before answering: the device is still paired, the relay still serves an account, and
+   `appAgentId` is an agent terminal owned by that account (as for snapshots, §5). Otherwise:
+   `stale`. The answer then goes through the same path as the Mac's own tray, with `token`.
+
+The question token does most of the freshness work: the Mac draws a new random one for every
+question, keeps it in memory only and accepts it once. That is why a restart, which forgets the
+`commandId` cache, opens no replay: no token from before it still matches. `issuedAt` bounds
+what is left, a capture replayed while the same question is still pending.
+
+This is the one place the Mac's clock is compared to the phone's. §6 keeps the phone from
+reading the Mac's clock for ordering; a command is different, since it is a request the Mac
+judges alone.
+
+`command-result` (Mac → phone, sealed for that device) answers every command that reached
+step 3:
+
+| `reason` | Meaning |
+| --- | --- |
+| none (`ok: true`) | the answer reached the agent |
+| `stale` | already answered on the Mac, replaced by a newer question, expired, or the agent is gone |
+| `unsupported` | the question cannot be answered remotely: answer it on the Mac |
+| `busy` | another answer to it is being typed right now |
+| `write-failed` | the terminal did not take the keystrokes; the question is still pending |
+| `invalid` | an action or a choice the Mac does not accept |
+| `rejected` | signature, identifiers or clock |
+| `re-pair` | this phone was paired before commands existed: pair it again |
+
+The phone accepts a `command-result` only from the Mac it sent the command to, carrying that
+Mac's saved `pairingId` and a `commandId` it is waiting on; it ignores any other. It is not part
+of §6's `(generation, epoch, seq)` ordering, which is for `state` alone.

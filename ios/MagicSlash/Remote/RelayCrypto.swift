@@ -36,6 +36,16 @@ enum RelayCrypto {
     return try? AES.GCM.open(box, using: key, authenticating: aad)
   }
 
+  /// Whether `signature` (CryptoKit's `rawRepresentation`, `r‖s`, 64 bytes) is an ECDSA
+  /// P-256 / SHA-256 signature of `message` by `publicKey` (X9.63). The phone never needs to
+  /// verify a command; this is here so the check script proves Node accepts what CryptoKit
+  /// signs, and the reverse.
+  static func verify(signature: Data, message: Data, publicKey: Data) -> Bool {
+    guard let key = try? P256.Signing.PublicKey(x963Representation: publicKey),
+          let sig = try? P256.Signing.ECDSASignature(rawRepresentation: signature) else { return false }
+    return key.isValidSignature(sig, for: message)
+  }
+
   /// The 4-digit code both screens show: SHA-256(token ‖ macPub ‖ phonePub), first 4 bytes
   /// as a big-endian UInt32, mod 10000, zero-padded.
   static func pairingCode(token: Data, macPublic: Data, phonePublic: Data) -> String {

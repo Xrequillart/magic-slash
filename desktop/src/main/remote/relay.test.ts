@@ -1,6 +1,6 @@
 import * as crypto from 'crypto'
 import * as fs from 'fs'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 // The relay end to end over the real crypto, envelope, pairing, snapshot and identity store,
 // with only the machine's edges faked: the keychain, the Supabase client and its channel (in
@@ -52,7 +52,17 @@ vi.mock('../cloud/session-store', () => ({
 }))
 vi.mock('../pty/terminal-manager', () => ({ getAllTerminals: () => h.terminals }))
 
-import { deriveKey, generateKeyPair, type RelayKeyPair } from './crypto'
+import { deriveKey, generateKeyPair, sign, type RelayKeyPair } from './crypto'
+import { answerPendingQuestion } from '../questions/answer-question'
+import {
+  answerHeld,
+  clearAllPendingQuestions,
+  clearPendingQuestion,
+  getPendingQuestion,
+  holdAsk,
+  setFromAskQuestion,
+  setFromNotification,
+} from '../questions/pending-questions'
 import { openEnvelope, sealEnvelope, type RelayEnvelope } from './envelope'
 import { addDevice, listDevices, loadIdentity, loadOrCreateIdentity, saveIdentity } from './identity-store'
 import {
@@ -63,10 +73,12 @@ import {
   notifyRemoteState,
   resumeRemoteRelay,
   revokeRemoteDevice,
+  setRemoteAnswerer,
   setRemoteEmitters,
   setRemoteEnabled,
   startRemotePairing,
   suspendRemoteRelay,
+  type RemoteAnswerer,
 } from './relay'
 import { setRemoteModeEnabled } from './remote-mode'
 import { clearTerminalOwners, recordTerminalOwner } from './terminal-owners'
@@ -107,6 +119,8 @@ interface Phone {
 
 interface PairedPhone extends Phone {
   pairingId: string
+  /** The phone's command-signing key (§3). */
+  signing: RelayKeyPair
 }
 
 /** A snapshot as the phone reads it once opened (§5). */
@@ -114,7 +128,7 @@ interface OpenedSnapshot {
   pairingId: string
   generation: number
   sentAt: number
-  agents: { appAgentId: string }[]
+  agents: { appAgentId: string; question: { token: string; kind: string; unsupported: boolean; questions: unknown[] } | null }[]
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
@@ -145,6 +159,9 @@ function phoneKey(phone: Phone, macId: string, macPub: Buffer): Buffer {
 }
 
 let pairings: (RemotePairing | null)[]
+/** What the answer path typed, terminal by terminal, as main/index.ts's `writeToTerminal` would. */
+let typed: [string, string][]
+let answerer: Mock<RemoteAnswerer>
 
 beforeEach(async () => {
   fs.rmSync(h.TEST_CONFIG_DIR, { recursive: true, force: true })
@@ -159,6 +176,21 @@ beforeEach(async () => {
   clearTerminalOwners()
   recordTerminalOwner('claude-1', h.userId)
   pairings = []
+  typed = []
+  clearAllPendingQuestions()
+  // main/index.ts's `answerQuestion`, over the real store and answer path; only the PTY is fake.
+  answerer = vi.fn<RemoteAnswerer>((id, token, choice) =>
+    answerPendingQuestion(id, token, choice, {
+      getQuestion: getPendingQuestion,
+      answerHeld,
+      write: (terminal, keys) => {
+        typed.push([terminal, keys])
+        return true
+      },
+      clear: clearPendingQuestion,
+      wait: () => Promise.resolve(),
+    }))
+  setRemoteAnswerer(answerer)
   setRemoteEmitters(null)
   await __resetRemoteRelayForTests()
   h.blockers.clear()
@@ -173,7 +205,12 @@ afterEach(async () => {
 /** Two phones already paired with this Mac's (pre-created) identity. */
 function seedPairedPhones(): { macId: string; macPub: Buffer; phones: PairedPhone[] } {
   const identity = loadOrCreateIdentity(h.userId!)
-  const phones = [0, 1].map(() => ({ id: crypto.randomUUID(), keys: generateKeyPair(), pairingId: crypto.randomUUID() }))
+  const phones = [0, 1].map(() => ({
+    id: crypto.randomUUID(),
+    keys: generateKeyPair(),
+    pairingId: crypto.randomUUID(),
+    signing: generateKeyPair(),
+  }))
   for (const phone of phones) {
     addDevice(h.userId!, {
       phoneId: phone.id,
@@ -181,6 +218,7 @@ function seedPairedPhones(): { macId: string; macPub: Buffer; phones: PairedPhon
       pub: phone.keys.publicRaw.toString('base64'),
       pairedAt: 1,
       pairingId: phone.pairingId,
+      signPub: phone.signing.publicRaw.toString('base64'),
     })
   }
   const ecdh = crypto.createECDH('prime256v1')
@@ -508,5 +546,219 @@ describe('remote mode on', () => {
     await __resetRemoteRelayForTests()
     await resumeRemoteRelay()
     expect(h.channels).toHaveLength(1)
+  })
+})
+
+describe('commands from a paired phone', () => {
+  let macId: string
+  let macPub: Buffer
+  let phone: PairedPhone
+  let other: PairedPhone
+  let seq: number
+
+  /** An `answer` command as the phone builds it (§10): payload serialized once, signed, sealed. */
+  function command(from: PairedPhone, overrides: Record<string, unknown> = {}, signer = from.signing.privateKey): RelayEnvelope {
+    const payload = JSON.stringify({
+      v: 1,
+      action: 'answer',
+      macId,
+      phoneId: from.id,
+      pairingId: from.pairingId,
+      commandId: crypto.randomUUID(),
+      issuedAt: Date.now(),
+      appAgentId: 'claude-1',
+      token: 'none',
+      choice: { kind: 'option', index: 0 },
+      ...overrides,
+    })
+    const box = { payload, sig: sign(signer, Buffer.from(payload, 'utf8')).toString('base64') }
+    seq += 1
+    const header = { type: 'command' as const, from: from.id, to: macId, epoch: crypto.randomUUID(), seq }
+    return sealEnvelope(header, phoneKey(from, macId, macPub), box)
+  }
+
+  /** The `command-result`s sealed for `to`, opened with its key. */
+  function results(to: PairedPhone): { commandId: string; pairingId: string; ok: boolean; reason?: string }[] {
+    return sentOn(h.channels[0])
+      .filter((e) => e.type === 'command-result' && e.to === to.id)
+      .map((e) => openEnvelope(e, phoneKey(to, macId, macPub)) as { commandId: string; pairingId: string; ok: boolean; reason?: string })
+  }
+
+  async function send(envelope: RelayEnvelope): Promise<void> {
+    broadcast(h.channels[0], envelope)
+    await tick()
+  }
+
+  function ask(questions: { question: string; options: { label: string }[]; multiSelect?: boolean }[]) {
+    return { hook_event_name: 'PreToolUse', tool_input: { questions } }
+  }
+
+  const ONE = [{ question: 'Which branch?', options: [{ label: 'main' }, { label: 'develop' }, { label: 'staging' }] }]
+  const TWO = [...ONE, { question: 'Which colours?', multiSelect: true, options: [{ label: 'Red' }, { label: 'Blue' }] }]
+
+  beforeEach(async () => {
+    const seeded = seedPairedPhones()
+    macId = seeded.macId
+    macPub = seeded.macPub
+    ;[phone, other] = seeded.phones
+    seq = 0
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('publishes the pending question in each snapshot, with its token', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    h.channels[0].send.mockClear()
+    notifyRemoteState()
+    await tick()
+    const envelope = sentOn(h.channels[0]).find((e) => e.to === phone.id)!
+    const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as OpenedSnapshot
+    expect(snapshot.agents[0].question).toMatchObject({ token: question.token, kind: 'ask', unsupported: false })
+    expect(snapshot.agents[0].question?.questions).toHaveLength(1)
+  })
+
+  it('types the chosen option into the agent\'s terminal and tells the phone it landed', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    const envelope = command(phone, { token: question.token, choice: { kind: 'option', index: 1 } })
+    await send(envelope)
+    expect(typed).toEqual([['claude-1', '\x1b[B'], ['claude-1', '\r']])
+    expect(getPendingQuestion('claude-1')).toBeUndefined()
+    const [result] = results(phone)
+    expect(result).toEqual({ pairingId: phone.pairingId, commandId: expect.any(String), ok: true })
+    // Sealed for that phone alone.
+    expect(results(other)).toEqual([])
+  })
+
+  it('answers a question held for the chat through its hook, never the terminal', async () => {
+    const { question, reply } = holdAsk('claude-1', ask(TWO))
+    await send(command(phone, { token: question!.token, choice: { kind: 'answers', answers: ['develop', 'Red, Blue'] } }))
+    const output = JSON.parse((await reply)!)
+    expect(output.hookSpecificOutput.updatedInput.answers).toEqual({ 'Which branch?': 'develop', 'Which colours?': 'Red, Blue' })
+    expect(typed).toEqual([])
+    expect(results(phone)[0]).toMatchObject({ ok: true })
+  })
+
+  it('allows and denies a permission request', async () => {
+    const allow = setFromNotification('claude-1', { message: 'Claude needs your permission to use Bash' })!
+    await send(command(phone, { token: allow.token, choice: { kind: 'option', index: 0 } }))
+    expect(typed).toEqual([['claude-1', '\r']])
+
+    const deny = setFromNotification('claude-1', { message: 'Claude needs your permission to use Bash' })!
+    await send(command(phone, { token: deny.token, choice: { kind: 'deny' } }))
+    expect(typed).toEqual([['claude-1', '\r'], ['claude-1', '\x1b']])
+    expect(results(phone).map((r) => r.ok)).toEqual([true, true])
+  })
+
+  it('tells the phone `stale` for a question already answered on the Mac, and types nothing', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    clearPendingQuestion('claude-1')
+    await send(command(phone, { token: question.token }))
+    // Replaced by a newer question: the old token is stale too.
+    const replaced = setFromAskQuestion('claude-1', ask(ONE))!
+    setFromAskQuestion('claude-1', ask(ONE))
+    await send(command(phone, { token: replaced.token }))
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['stale', 'stale'])
+  })
+
+  it('tells the phone `stale` for a question past its 30 minutes', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    const realNow = Date.now
+    const later = realNow() + 31 * 60 * 1000
+    vi.spyOn(Date, 'now').mockImplementation(() => later)
+    try {
+      await send(command(phone, { token: question.token, issuedAt: later }))
+    } finally {
+      vi.mocked(Date.now).mockRestore()
+    }
+    expect(typed).toEqual([])
+    expect(results(phone)[0]).toMatchObject({ ok: false, reason: 'stale' })
+  })
+
+  it('flags a question the terminal cannot answer as unsupported, and types nothing', async () => {
+    // Two questions at once, typed into the TUI: the keystrokes cannot drive that.
+    const question = setFromAskQuestion('claude-1', ask(TWO))!
+    expect(question.unsupported).toBe(true)
+    await send(command(phone, { token: question.token, choice: { kind: 'answers', answers: ['main', 'Red'] } }))
+    await send(command(phone, { token: question.token, choice: { kind: 'option', index: 0 } }))
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['unsupported', 'unsupported'])
+    expect(getPendingQuestion('claude-1')?.token).toBe(question.token)
+  })
+
+  it('answers `stale` for an agent of another account, or no agent at all, and types nothing', async () => {
+    h.terminals = [...h.terminals, { id: 'claude-2', name: 'Theirs', state: 'waiting' }, { id: 'claude-3', name: 'Unowned', state: 'waiting' }]
+    recordTerminalOwner('claude-2', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')
+    for (const id of ['claude-2', 'claude-3', 'script-dev']) {
+      const question = setFromNotification(id, { message: 'Claude needs your permission to use Bash' })!
+      await send(command(phone, { appAgentId: id, token: question.token }))
+    }
+    expect(answerer).not.toHaveBeenCalled()
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['stale', 'stale', 'stale'])
+  })
+
+  it('drops a revoked phone\'s command: no answer, and nothing sealed back', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    await revokeRemoteDevice(phone.id)
+    h.channels[0].send.mockClear()
+    await send(command(phone, { token: question.token }))
+    expect(answerer).not.toHaveBeenCalled()
+    expect(h.channels[0].send).not.toHaveBeenCalled()
+    expect(getPendingQuestion('claude-1')).toBeDefined()
+  })
+
+  it('drops a command from an unknown sender, or whose box does not open', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    const stranger: PairedPhone = { id: crypto.randomUUID(), keys: generateKeyPair(), pairingId: crypto.randomUUID(), signing: generateKeyPair() }
+    h.channels[0].send.mockClear()
+    await send(command(stranger, { token: question.token }))
+    // Sealed with another phone's key, under this phone's name.
+    await send({ ...command(other, { token: question.token }), from: phone.id })
+    expect(answerer).not.toHaveBeenCalled()
+    expect(h.channels[0].send).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unsigned or wrongly signed command, and types nothing', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    // Signed by the other phone's key.
+    await send(command(phone, { token: question.token }, other.signing.privateKey))
+    // A box with no signature at all.
+    const unsigned = JSON.stringify({ v: 1, action: 'answer', commandId: crypto.randomUUID() })
+    seq += 1
+    await send(sealEnvelope({ type: 'command', from: phone.id, to: macId, epoch: crypto.randomUUID(), seq }, phoneKey(phone, macId, macPub), { payload: unsigned, sig: '' }))
+    expect(answerer).not.toHaveBeenCalled()
+    expect(typed).toEqual([])
+    expect(results(phone).map((r) => r.reason)).toEqual(['rejected', 'rejected'])
+  })
+
+  it('asks a phone paired before commands existed to pair again', async () => {
+    // The relay reads the identity once per account: start it afresh on the stored one.
+    await __resetRemoteRelayForTests()
+    const identity = loadIdentity(h.userId!)!
+    saveIdentity(h.userId!, { ...identity, devices: identity.devices.map(({ signPub: _signPub, ...d }) => d) })
+    await setRemoteEnabled(true)
+    await goLive(h.channels[1])
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    broadcast(h.channels[1], command(phone, { token: question.token }))
+    await tick()
+    expect(answerer).not.toHaveBeenCalled()
+    const replies = sentOn(h.channels[1]).filter((e) => e.type === 'command-result')
+    expect(replies.map((e) => openEnvelope(e, phoneKey(phone, macId, macPub)))).toEqual([
+      { pairingId: phone.pairingId, commandId: expect.any(String), ok: false, reason: 're-pair' },
+    ])
+  })
+
+  it('runs a replayed command once, and answers the replay with the first result', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    const envelope = command(phone, { token: question.token, choice: { kind: 'option', index: 2 } })
+    await send(envelope)
+    await send(envelope)
+    expect(answerer).toHaveBeenCalledTimes(1)
+    expect(typed).toEqual([['claude-1', '\x1b[B'], ['claude-1', '\x1b[B'], ['claude-1', '\r']])
+    const [first, again] = results(phone)
+    expect(again).toEqual(first)
+    expect(first.ok).toBe(true)
   })
 })

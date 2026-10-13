@@ -14,7 +14,8 @@ enum DeviceKeyError: Error, Equatable {
   case unavailable(String)
 }
 
-/// The phone's relay identity: `phoneId` and one P-256 key-agreement key (PROTOCOL.md §3).
+/// The phone's relay identity: `phoneId`, one P-256 key-agreement key, and one P-256 signing
+/// key for commands (PROTOCOL.md §3, §10).
 ///
 /// The private key lives in the Secure Enclave, behind `[.privateKeyUsage, .biometryCurrentSet]`:
 /// it never leaves the chip, each use needs Face ID, and enrolling a new face kills it. The
@@ -23,6 +24,8 @@ enum DeviceKeyError: Error, Equatable {
 ///
 /// One `LAContext` is evaluated per foreground session, so a single Face ID prompt unlocks
 /// every ECDH that session needs. `lock()` drops it when the app goes to the background.
+/// The signing key never shares it: each `sign` evaluates a context of its own, so every
+/// command the phone sends asks for Face ID.
 ///
 /// The Simulator has no Secure Enclave: DEBUG Simulator builds use a software key kept in the
 /// Keychain instead. That path is compiled out of every other build.
@@ -32,6 +35,7 @@ final class DeviceKeys {
 
   private static let phoneIdAccount = "phone-id"
   private static let keyAccount = "device-key"
+  private static let signingKeyAccount = "signing-key"
 
   /// Lower-case UUID, as the protocol requires.
   private(set) var phoneId: String
@@ -45,10 +49,51 @@ final class DeviceKeys {
   }
 
   var hasKey: Bool { Keychain.read(Self.keyAccount) != nil }
+  /// False on a phone paired before commands existed, until its next pairing.
+  var hasSigningKey: Bool { Keychain.read(Self.signingKeyAccount) != nil }
 
   /// The public point, X9.63 (65 bytes). Readable without Face ID.
   func publicKey() throws(DeviceKeyError) -> Data {
     try privateKey(context: nil).publicKey.x963Representation
+  }
+
+  /// The signing key's public point, X9.63 (65 bytes), as `pair-request` carries it.
+  /// Readable without Face ID.
+  func signPub() throws(DeviceKeyError) -> Data {
+    try signingKey(context: nil).publicKey.x963Representation
+  }
+
+  /// For pairing: makes the signing key if this phone has none yet. Never replaces one, since
+  /// every Mac paired before holds its public half (§3).
+  func ensureSigningKey() throws(DeviceKeyError) {
+    if !hasSigningKey { try createSigningKey() }
+  }
+
+  /// Signs `data` (ECDSA P-256 / SHA-256) and returns `rawRepresentation`, `r‖s`, 64 bytes.
+  /// Evaluates a fresh `LAContext` every time: one Face ID prompt per command, whatever the
+  /// session already unlocked.
+  func sign(_ data: Data, reason: String) async throws(DeviceKeyError) -> Data {
+    guard hasSigningKey else { throw .invalidated }
+    #if DEBUG && targetEnvironment(simulator)
+      let key = try signingKey(context: nil)
+      do {
+        return try key.signature(for: data).rawRepresentation
+      } catch {
+        throw .invalidated
+      }
+    #else
+      let context = try await authenticate(operation: .useKeySign, reason: reason)
+      // Used once, then dropped: the next command asks again.
+      defer { context.invalidate() }
+      let key = try signingKey(context: context)
+      do {
+        return try key.signature(for: data).rawRepresentation
+      } catch {
+        // Face ID passed for this very context: a refusal is the enclave saying the key died
+        // with a new enrolment, as for `sharedSecret`.
+        throw .invalidated
+      }
+    #endif
   }
 
   /// Asks for Face ID once, then keeps the authenticated context until `lock()`.
@@ -64,6 +109,15 @@ final class DeviceKeys {
     #if DEBUG && targetEnvironment(simulator)
       unlocked = true
     #else
+      context = try await authenticate(operation: .useKeyKeyExchange, reason: reason)
+      unlocked = true
+    #endif
+  }
+
+  #if !(DEBUG && targetEnvironment(simulator))
+    /// One Face ID prompt for `operation`, returning the evaluated context. A `lock()` that
+    /// lands while the prompt is up wins: the context is dropped and nothing unlocks.
+    private func authenticate(operation: LAAccessControlOperation, reason: String) async throws(DeviceKeyError) -> LAContext {
       let context = LAContext()
       context.localizedReason = reason
       var policyError: NSError?
@@ -74,7 +128,7 @@ final class DeviceKeys {
       let generation = lockGeneration
       do {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-          Self.evaluate(context, access: access, reason: reason) { ok, error in
+          Self.evaluate(context, access: access, operation: operation, reason: reason) { ok, error in
             if ok {
               continuation.resume()
             } else {
@@ -89,10 +143,9 @@ final class DeviceKeys {
         context.invalidate()
         throw .locked("Face ID was cancelled.")
       }
-      self.context = context
-      unlocked = true
-    #endif
-  }
+      return context
+    }
+  #endif
 
   /// ECDH with a Mac's public point. Needs `unlock` first.
   func sharedSecret(with peer: Data) throws(DeviceKeyError) -> SharedSecret {
@@ -118,11 +171,12 @@ final class DeviceKeys {
     unlocked = false
   }
 
-  /// Deletes the key and draws a new phone id: what follows an invalidated key, since no
+  /// Deletes both keys and draws a new phone id: what follows an invalidated key, since no
   /// Mac can read this phone's old identity anymore.
   func reset() {
     lock()
     Keychain.delete(Self.keyAccount)
+    Keychain.delete(Self.signingKeyAccount)
     Keychain.delete(Self.phoneIdAccount)
     phoneId = Self.loadOrCreatePhoneId()
   }
@@ -142,6 +196,20 @@ final class DeviceKeys {
     private func privateKey(context: LAContext?) throws(DeviceKeyError) -> P256.KeyAgreement.PrivateKey {
       guard let data = Keychain.read(Self.keyAccount),
             let key = try? P256.KeyAgreement.PrivateKey(rawRepresentation: data)
+      else { throw .invalidated }
+      return key
+    }
+
+    private func createSigningKey() throws(DeviceKeyError) {
+      let key = P256.Signing.PrivateKey()
+      guard Keychain.write(key.rawRepresentation, Self.signingKeyAccount) else {
+        throw .unavailable("Could not store the key in the Keychain.")
+      }
+    }
+
+    private func signingKey(context: LAContext?) throws(DeviceKeyError) -> P256.Signing.PrivateKey {
+      guard let data = Keychain.read(Self.signingKeyAccount),
+            let key = try? P256.Signing.PrivateKey(rawRepresentation: data)
       else { throw .invalidated }
       return key
     }
@@ -168,6 +236,29 @@ final class DeviceKeys {
       else { throw .invalidated }
       return key
     }
+
+    private func createSigningKey() throws(DeviceKeyError) {
+      guard SecureEnclave.isAvailable else {
+        throw .unavailable("This iPhone has no Secure Enclave.")
+      }
+      let access = try Self.accessControl()
+      let key: SecureEnclave.P256.Signing.PrivateKey
+      do {
+        key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: access)
+      } catch {
+        throw .unavailable("Could not create a key in the Secure Enclave. Make sure Face ID is set up.")
+      }
+      guard Keychain.write(key.dataRepresentation, Self.signingKeyAccount) else {
+        throw .unavailable("Could not store the key in the Keychain.")
+      }
+    }
+
+    private func signingKey(context: LAContext?) throws(DeviceKeyError) -> SecureEnclave.P256.Signing.PrivateKey {
+      guard let data = Keychain.read(Self.signingKeyAccount),
+            let key = try? SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: data, authenticationContext: context)
+      else { throw .invalidated }
+      return key
+    }
   #endif
 
   private static func accessControl() throws(DeviceKeyError) -> SecAccessControl {
@@ -189,10 +280,11 @@ final class DeviceKeys {
   nonisolated private static func evaluate(
     _ context: LAContext,
     access: SecAccessControl,
+    operation: LAAccessControlOperation,
     reason: String,
     reply: @escaping @Sendable (Bool, (any Error)?) -> Void
   ) {
-    context.evaluateAccessControl(access, operation: .useKeyKeyExchange, localizedReason: reason, reply: reply)
+    context.evaluateAccessControl(access, operation: operation, localizedReason: reason, reply: reply)
   }
 
   private static func mapped(_ error: (any Error)?) -> DeviceKeyError {

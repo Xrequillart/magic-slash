@@ -35,10 +35,11 @@ function qr(): { token: string; exp: number; pub: string; macId: string; name: s
   return JSON.parse(session.current.qr!)
 }
 
-function request(phone: Phone, token: string, opts: { key?: Buffer; name?: string } = {}): RelayEnvelope {
+function request(phone: Phone, token: string, opts: { key?: Buffer; name?: string; signPub?: unknown } = {}): RelayEnvelope {
   const header = { type: 'pair-request' as const, from: phone.id, to: MAC_ID, epoch: crypto.randomUUID(), seq: 1 }
+  const body = { token, name: opts.name ?? "Xavier's iPhone", ...(opts.signPub !== undefined ? { signPub: opts.signPub } : {}) }
   return {
-    ...sealEnvelope(header, opts.key ?? phone.key, { token, name: opts.name ?? "Xavier's iPhone" }),
+    ...sealEnvelope(header, opts.key ?? phone.key, body),
     phonePub: phone.keys.publicRaw.toString('base64'),
   }
 }
@@ -221,6 +222,45 @@ describe('the decision', () => {
     // It names the request it answers and the pairing it creates (§6).
     expect(openEnvelope(envelope, phone.key)).toEqual({ macName: 'MacBook Pro', requestEpoch: req.epoch, pairingId })
     expect(session.current).toEqual({ phase: 'paired', deviceName: "Xavier's iPhone" })
+  })
+
+  it('stores the signing key the request\'s box carries (§3)', async () => {
+    const phone = makePhone()
+    const signing = generateKeyPair()
+    session.handleRequest(request(phone, qr().token, { signPub: signing.publicRaw.toString('base64') }))
+    await session.approve()
+    expect(stored).toHaveLength(1)
+    expect(stored[0].signPub).toBe(signing.publicRaw.toString('base64'))
+  })
+
+  it('pairs a phone that sends no signing key, stored without one', async () => {
+    const phone = makePhone()
+    session.handleRequest(request(phone, qr().token))
+    await session.approve()
+    expect(session.current.phase).toBe('paired')
+    expect(stored[0]).not.toHaveProperty('signPub')
+  })
+
+  it('pairs all the same when the signing key is not a P-256 point, and drops it', async () => {
+    for (const signPub of [Buffer.alloc(65).toString('base64'), 'not base64 at all', 42, { x: 1 }]) {
+      stored = []
+      const fresh = new PairingSession({
+        macId: MAC_ID,
+        macPrivate: mac.privateKey,
+        macPublicRaw: mac.publicRaw,
+        macName: 'MacBook Pro',
+        onChange: () => {},
+        send: () => {},
+        storeDevice: (d) => stored.push(d),
+      })
+      const qrCode = JSON.parse(fresh.start().qr!)
+      fresh.handleRequest(request(makePhone(), qrCode.token, { signPub }))
+      await fresh.approve()
+      expect(fresh.current.phase).toBe('paired')
+      expect(stored).toHaveLength(1)
+      expect(stored[0]).not.toHaveProperty('signPub')
+      fresh.cancel()
+    }
   })
 
   it('names every pairing afresh, lower-case, even for the same phone (§6)', async () => {

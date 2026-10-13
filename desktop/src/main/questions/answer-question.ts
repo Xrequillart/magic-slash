@@ -100,38 +100,52 @@ export async function answerPendingQuestion(
   choice: TrayAnswerChoice,
   deps: AnswerDeps,
 ): Promise<TrayAnswerResult> {
-  if (typeof id !== 'string' || typeof token !== 'string' || !id || !token) return { ok: false }
+  if (typeof id !== 'string' || typeof token !== 'string' || !id || !token) return { ok: false, reason: 'invalid' }
   if (!isAnswerChoice(choice)) {
     console.error(`[Questions] Refusing to answer ${id}: malformed choice payload`)
-    return { ok: false }
+    return { ok: false, reason: 'invalid' }
   }
 
   const question = deps.getQuestion(id)
   if (!question || question.token !== token) {
     console.error(`[Questions] Ignoring a stale answer for ${id}`)
-    return { ok: false }
+    return { ok: false, reason: 'stale' }
   }
 
   // HELD: the hook is waiting for the answer and the TUI shows nothing to type into.
+  // Whatever happens in here, it returns: a held question never reaches the keystrokes,
+  // whatever its shape.
   if (question.held) {
     const answers = heldAnswers(question, choice)
-    if (!answers || !deps.answerHeld?.(id, token, answers)) {
+    if (!answers) {
       console.error(`[Questions] Refusing to answer ${id}: the answer does not fit the held question`)
-      return { ok: false }
+      return { ok: false, reason: 'invalid' }
+    }
+    // Nothing held under that token any more: the hold went with the agent's view, or an
+    // answer from elsewhere got there first.
+    if (!deps.answerHeld?.(id, token, answers)) {
+      console.error(`[Questions] Refusing to answer ${id}: the question is no longer held`)
+      return { ok: false, reason: 'stale' }
     }
     deps.clear(id)
     return { ok: true }
   }
 
+  // keysFor refuses it too; said here so the refusal carries its own reason.
+  if (question.unsupported) {
+    console.error(`[Questions] Refusing to answer ${id}: the question cannot be answered from here`)
+    return { ok: false, reason: 'unsupported' }
+  }
+
   const keys = keysFor(question, choice)
   if (keys === null) {
     console.error(`[Questions] Refusing to answer ${id}: no keystrokes for this choice`)
-    return { ok: false }
+    return { ok: false, reason: 'invalid' }
   }
 
   if (inFlight.has(id)) {
     console.error(`[Questions] Ignoring an answer for ${id}: one is already being typed`)
-    return { ok: false }
+    return { ok: false, reason: 'busy' }
   }
 
   const wait = deps.wait ?? sleep
@@ -154,7 +168,7 @@ export async function answerPendingQuestion(
         console.error(
           `[Questions] Answer for ${id} reached no terminal (keystroke ${index + 1}/${keys.length})`,
         )
-        return { ok: false }
+        return { ok: false, reason: 'write-failed' }
       }
     }
   } finally {
