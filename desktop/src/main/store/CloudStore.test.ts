@@ -3444,6 +3444,28 @@ describe('saveConfig user_settings', () => {
     expect(settingsUpserts(calls)).toEqual([{ user_id: UID, notifications_enabled: false }])
   })
 
+  it('carries a failed write into the save queued while it was out', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      user_settings: [{ data: REMOTE, error: null }, { error: { message: 'offline' } }, { data: null, error: null }],
+    })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    config.notifications = { ...config.notifications, enabled: false }
+    const first = store.saveConfig(config).catch(() => undefined)
+    // The theme changes while the notifications write is out.
+    while (settingsUpserts(calls).length === 0) await Promise.resolve()
+    const second = store.saveConfig({ ...config, theme: 'light' })
+    await Promise.all([first, second])
+
+    expect(settingsUpserts(calls)).toEqual([
+      { user_id: UID, notifications_enabled: false },
+      { user_id: UID, notifications_enabled: false, theme: 'light' },
+    ])
+  })
+
   it('drops a settings save made before a sign-out', async () => {
     const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
     h.state.client = client

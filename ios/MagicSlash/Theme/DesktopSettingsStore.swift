@@ -61,6 +61,10 @@ final class DesktopSettingsStore {
     /// The server took it. Until its echo arrives, a row still carrying `fallback` is
     /// older than the write and is not applied; any other value is newer and wins.
     var confirmed = false
+    /// Its own echo came back before the server answered: the answer settles it at once.
+    var echoed = false
+    /// A row newer than that early echo, applied once the answer has settled the edit.
+    var newer: AnyJSON?
   }
 
   private static let themeCacheKey = "lastThemeID"
@@ -249,8 +253,17 @@ final class DesktopSettingsStore {
   private func confirm(_ column: EditableSetting, id: Int, value: AnyJSON) {
     guard var write = pending[column] else { return }
     if write.id == id {
-      write.confirmed = true
-      pending[column] = write
+      guard write.echoed else {
+        write.confirmed = true
+        pending[column] = write
+        return
+      }
+      pending[column] = nil
+      if let newer = write.newer {
+        var next = values
+        next[column.rawValue] = newer
+        install(next)
+      }
     } else {
       // A later edit is still in flight: should it fail, the server now holds this value,
       // and any row seen so far predates it.
@@ -292,8 +305,14 @@ final class DesktopSettingsStore {
           // Not sent yet, or not answered: only its own write settles it, even when an
           // older row happens to carry the same value. A row carrying the edit's own value
           // (its echo, ahead of the answer) is not the value it replaced.
-          guard !Self.same(incoming, write.value) else { continue }
-          write.fallback = incoming
+          if Self.same(incoming, write.value) {
+            write.echoed = true
+            write.newer = nil
+          } else if write.echoed {
+            write.newer = incoming
+          } else {
+            write.fallback = incoming
+          }
           pending[column] = write
         }
         continue

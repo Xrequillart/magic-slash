@@ -628,6 +628,12 @@ export class CloudStore implements Store {
     if (generation !== settingsSyncGeneration()) return
     if (error) {
       settingsWriteFailed(changes)
+      // A save queued meanwhile was compared with this write as if it had landed, so it
+      // lacks these columns: carry them into it, under anything it changed since.
+      const queued = this.pendingSettingsChanges
+      if (queued && queued.generation === generation) {
+        this.pendingSettingsChanges = { generation, changes: { ...changes, ...queued.changes } }
+      }
       throw new Error(`saveUserSettings failed: ${error.message}`)
     }
     settingsWriteSucceeded(changes)
