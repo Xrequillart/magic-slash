@@ -218,11 +218,9 @@ private struct AgentRow: View {
     HStack(spacing: 12) {
       // The mark sits on the title's line, the label in the middle of the row.
       HStack(alignment: .firstTextBaseline, spacing: 14) {
-        Image(.sessionIcon)
-          .resizable()
-          .scaledToFit()
+        SessionGlyph()
+          .fill(theme.ink)
           .frame(width: 20, height: 20)
-          .foregroundStyle(theme.iconMuted)
           .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 4 }
 
         VStack(alignment: .leading, spacing: 3) {
