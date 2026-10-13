@@ -200,6 +200,8 @@ final class RelayStore {
   private(set) var answers: [String: AnswerStatus] = [:]
   /// The last prompt or stop sent per agent (`appAgentId`), until the next one.
   private(set) var agentCommands: [String: AgentCommandStatus] = [:]
+  /// The conversation each agent's Mac last sent (§11), by `appAgentId`. Memory only.
+  private(set) var chats: [String: AgentChat] = [:]
   /// Presence refs per key: one Mac may briefly hold two connections while its relay restarts.
   private var presence: [String: Set<String>] = [:]
 
@@ -284,6 +286,7 @@ final class RelayStore {
     ticker?.cancel()
     ticker = nil
     pairKeys = [:]
+    chats = [:]
     endPairing()
     abandonPendingCommands()
     await unsubscribe()
@@ -393,9 +396,36 @@ final class RelayStore {
     setMacs(macs.filter { $0.macId != macId })
     pairKeys[macId] = nil
     snapshots[macId] = nil
+    chats = chats.filter { $0.value.macId != macId }
     SnapshotCache.save(snapshots, userId: userId)
     if macs.isEmpty { keyState = .idle }
     Task { await refreshSubscription() }
+  }
+
+  // MARK: - Conversation
+
+  /// How often the session's screen renews its lease on the conversation (§11): well inside
+  /// the Mac's 45 s, so one lost request costs nothing.
+  static let chatRenewal: Duration = .seconds(15)
+
+  /// Asks for an agent's conversation, and to be sent every change of it for the next 45 s
+  /// (§11). To the Mac that reports the agent, or to every paired Mac when none does yet: the
+  /// others drop it. Not a command: no signature, no Face ID, so it runs on every renewal.
+  func requestChat(appAgentId: String) async {
+    guard !stopped, let channel, channel.status == .subscribed else { return }
+    let targets = runtime(for: appAgentId).map { [$0.macId] } ?? macs.map(\.macId)
+    let phoneId = DeviceKeys.shared.phoneId
+    for macId in targets {
+      guard let key = pairKeys[macId],
+            let pairingId = macs.first(where: { $0.macId == macId })?.pairingId
+      else { continue }
+      commandSeq += 1
+      let body = ["pairingId": pairingId, "appAgentId": appAgentId]
+      guard let envelope = Self.sealedEnvelope(
+        type: "chat-request", from: phoneId, to: macId, epoch: commandEpoch, seq: commandSeq, body: body, key: key
+      ) else { continue }
+      await channel.broadcast(event: "relay", message: envelope)
+    }
   }
 
   // MARK: - Pairing
@@ -951,6 +981,7 @@ final class RelayStore {
     case "pair-accepted": receivePairAccepted(envelope)
     case "pair-rejected": receivePairRejected(envelope)
     case "command-result": receiveCommandResult(envelope)
+    case "chat": receiveChat(envelope)
     default: break
     }
   }
@@ -982,6 +1013,28 @@ final class RelayStore {
       setMacs(renamed)
     }
     SnapshotCache.save(snapshots, userId: userId)
+  }
+
+  /// §11: from a paired Mac, for its current pairing, and newer by §6's rule than the last
+  /// conversation that Mac sent for the same agent.
+  private func receiveChat(_ envelope: Envelope) {
+    guard let key = pairKeys[envelope.from],
+          let plain = envelope.open(with: key),
+          let chat = try? JSONDecoder().decode(RemoteChat.self, from: plain),
+          let mac = macs.first(where: { $0.macId == envelope.from }),
+          let pairingId = mac.pairingId, chat.pairingId == pairingId,
+          let generation = chat.generation, generation >= 0
+    else { return }
+    if let last = chats[chat.appAgentId], last.macId == envelope.from {
+      let newer = generation != last.generation
+        ? generation > last.generation
+        : envelope.epoch == last.epoch && envelope.seq > last.seq
+      guard newer else { return }
+    }
+    chats[chat.appAgentId] = AgentChat(
+      macId: envelope.from, generation: generation, epoch: envelope.epoch, seq: envelope.seq,
+      entries: chat.entries, queue: chat.queue, hasEarlier: chat.hasEarlier
+    )
   }
 
   /// Not part of §6's ordering: only a `commandId` still pending counts, and only once.
@@ -1099,6 +1152,7 @@ final class RelayStore {
     let hadMacs = !macs.isEmpty
     setMacs([])
     snapshots = [:]
+    chats = [:]
     SnapshotCache.save([:], userId: userId)
     keyState = .idle
     if hadMacs { setNeedsRepair(true) }

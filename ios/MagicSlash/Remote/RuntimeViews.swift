@@ -60,49 +60,6 @@ struct RuntimePill: View {
   }
 }
 
-/// One paired Mac: name, and whether it is online right now.
-struct MacLine: View {
-  @Environment(\.theme) private var theme
-  let status: RelayStore.MacStatus
-  let now: Date
-
-  var body: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 8) {
-      Circle()
-        .fill(status.isOnline ? theme.green : theme.textSecondary.opacity(0.5))
-        .frame(width: 8, height: 8)
-        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
-      VStack(alignment: .leading, spacing: 2) {
-        HStack(spacing: 6) {
-          Image(systemName: "laptopcomputer")
-            .font(.cera(.footnote))
-            .foregroundStyle(theme.iconMuted)
-          Text(status.name)
-            .font(.cera(.subheadline, .semibold))
-            .foregroundStyle(theme.ink)
-            .lineLimit(1)
-          Spacer(minLength: 4)
-          Text(status.isOnline ? "Online" : "Offline")
-            .font(.cera(.footnote, .semibold))
-            .foregroundStyle(status.isOnline ? theme.green : theme.textSecondary)
-        }
-        if !status.isOnline {
-          Text(offlineDetail)
-            .font(.cera(.caption))
-            .foregroundStyle(theme.textSecondary)
-        }
-      }
-    }
-    .accessibilityElement(children: .combine)
-  }
-
-  private var offlineDetail: String {
-    guard let last = status.lastUpdate else { return "Waiting for the Mac to send its state." }
-    let ago = last.formatted(.relative(presentation: .named, unitsStyle: .wide))
-    return "Showing the last known state, from \(ago)."
-  }
-}
-
 /// The detail screen's live block: runtime state, and whether it is current.
 struct LiveSection: View {
   @Environment(\.theme) private var theme

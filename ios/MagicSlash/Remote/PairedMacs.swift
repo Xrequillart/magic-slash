@@ -190,7 +190,7 @@ struct RemoteUsage: Codable, Hashable, Sendable {
 }
 
 /// Decodes an element or yields nil, so one bad element does not fail its array.
-private struct Lossy<Value: Codable & Sendable>: Codable, Sendable {
+struct Lossy<Value: Codable & Sendable>: Codable, Sendable {
   let value: Value?
 
   init(from decoder: any Decoder) throws {

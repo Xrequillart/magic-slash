@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Sends a prompt to an agent, or stops its turn, from the phone (PROTOCOL.md §10).
+/// Sends a prompt to an agent, or stops its turn, from the phone (PROTOCOL.md §10): a field
+/// and one round button, in Liquid Glass like the bar's buttons, floating over the chat.
 ///
 /// An idle agent takes the prompt at once; a working one queues it behind the current turn,
 /// as the desktop chat does. A waiting agent refuses it, since the text would land in its
-/// question: answer that first. Stop shows while the agent works or waits. Each command asks
-/// for Face ID, since it is signed on its own.
+/// question: answer that first. The button stops the turn while the agent works or waits and
+/// the field is empty, and sends otherwise. Each command asks for Face ID, since it is signed
+/// on its own.
 struct PromptComposer: View {
   @Environment(\.theme) private var theme
 
@@ -23,55 +25,86 @@ struct PromptComposer: View {
     let status = relay.commandStatus(for: appAgentId)
     let sending = isSending(status)
     let length = trimmed.utf16.count
-    SectionCard(title: "Prompt") {
-      TextField("Message Claude", text: $text, axis: .vertical)
-        .font(.cera(.body))
-        .lineLimit(1...6)
-        .focused($focused)
-        .disabled(sending)
-        .modifier(ThemedFieldStyle())
-
-      HStack(spacing: 10) {
-        if canStop {
-          Button {
-            stop()
-          } label: {
-            Label("Stop", systemImage: "stop.fill")
-          }
-          .buttonStyle(SecondaryButtonStyle())
-          .disabled(!runtime.isCurrent || sending)
-        }
-        Button {
-          send()
-        } label: {
-          Label("Send", systemImage: "arrow.up")
-        }
-        .buttonStyle(PrimaryButtonStyle())
-        .disabled(!canSend(length: length, sending: sending))
+    let stops = canStop && trimmed.isEmpty
+    VStack(alignment: .leading, spacing: 8) {
+      if hasNotice(length: length, status: status) {
+        notices(length: length, status: status)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 10)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .liquidGlass(in: RoundedRectangle(cornerRadius: 18))
+          .transition(.move(edge: .bottom).combined(with: .opacity))
       }
 
-      notices(length: length)
-      if let status {
-        StatusLine(phase: Self.line(for: status))
+      HStack(alignment: .bottom, spacing: 8) {
+        TextField("Message Claude", text: $text, axis: .vertical)
+          .font(.cera(.body))
+          .foregroundStyle(theme.ink)
+          .tint(theme.accent)
+          .lineLimit(1...6)
+          .focused($focused)
+          .disabled(sending)
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+          .frame(minHeight: 48)
+          .liquidGlass(in: RoundedRectangle(cornerRadius: 24))
+
+        Button {
+          stops ? stop() : send()
+        } label: {
+          Group {
+            if sending {
+              ProgressView().tint(theme.onBrand)
+            } else {
+              Image(systemName: stops ? "stop.fill" : "arrow.up")
+                .font(.system(size: stops ? 16 : 18, weight: .bold))
+            }
+          }
+          .foregroundStyle(stops ? theme.ink : theme.onBrand)
+          .frame(width: 48, height: 48)
+          .contentShape(Circle())
+          .liquidGlass(in: Circle(), tint: stops ? nil : theme.accent)
+        }
+        .buttonStyle(.plain)
+        .disabled(stops ? (!runtime.isCurrent || sending) : !canSend(length: length, sending: sending))
+        .opacity(buttonDimmed(stops: stops, length: length, sending: sending) ? 0.5 : 1)
+        .accessibilityLabel(stops ? "Stop" : "Send")
       }
     }
+    .sensoryFeedback(.impact(weight: .light), trigger: status?.commandId)
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }
     }
   }
 
-  /// Why Send is off, when the user can do something about it.
+  private func buttonDimmed(stops: Bool, length: Int, sending: Bool) -> Bool {
+    if sending { return false }
+    return stops ? !runtime.isCurrent : !canSend(length: length, sending: sending)
+  }
+
+  /// Why Send is off, when the user can do something about it, and where the last command
+  /// stands until the chat itself shows it.
   @ViewBuilder
-  private func notices(length: Int) -> some View {
-    if !runtime.isCurrent {
-      notice("\(runtime.macName) is offline. Send when it is back, or on the Mac.", systemImage: "wifi.slash")
-    } else if runtime.state == "waiting" {
-      notice("The agent is waiting on a question: answer it first.", systemImage: "questionmark.bubble")
+  private func notices(length: Int, status: AgentCommandStatus?) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      if !runtime.isCurrent {
+        notice("\(runtime.macName) is offline. Send when it is back, or on the Mac.", systemImage: "wifi.slash")
+      } else if runtime.state == "waiting" {
+        notice("The agent is waiting on a question: answer it first.", systemImage: "questionmark.bubble")
+      }
+      if length > Self.maxLength {
+        notice("Too long to send from the iPhone: keep it under \(Self.maxLength.formatted()) characters.", systemImage: "text.badge.xmark")
+      }
+      if let status, let phase = Self.line(for: status) {
+        StatusLine(phase: phase)
+      }
     }
-    if length > Self.maxLength {
-      notice("Too long to send from the iPhone: keep it under \(Self.maxLength.formatted()) characters.", systemImage: "text.badge.xmark")
-    }
+  }
+
+  private func hasNotice(length: Int, status: AgentCommandStatus?) -> Bool {
+    !runtime.isCurrent || runtime.state == "waiting" || length > Self.maxLength
+      || status.flatMap(Self.line(for:)) != nil
   }
 
   private func notice(_ text: String, systemImage: String) -> some View {
@@ -120,14 +153,13 @@ struct PromptComposer: View {
     Task { await relay.stop(macId: macId, appAgentId: appAgentId) }
   }
 
-  /// Where the last prompt or stop stands, in the words of what was sent.
-  private static func line(for status: AgentCommandStatus) -> StatusLine.Phase {
+  /// Where the last prompt or stop stands, in the words of what was sent. Nil once the Mac
+  /// took it: the conversation shows the prompt, its place in the queue, or the stop.
+  private static func line(for status: AgentCommandStatus) -> StatusLine.Phase? {
     switch (status.action, status.phase) {
     case (.prompt, .sending): .progress("Sending the prompt…")
     case (.stop, .sending): .progress("Stopping the agent…")
-    case (.prompt, .done(queued: true)): .success("Queued: Claude will read it after the current turn.")
-    case (.prompt, .done): .success("Prompt sent. The agent works on it on the Mac.")
-    case (.stop, .done): .success("Stopped. The agent waits for your next prompt.")
+    case (_, .done): nil
     case (_, .failed(let message)): .failure(message)
     }
   }
