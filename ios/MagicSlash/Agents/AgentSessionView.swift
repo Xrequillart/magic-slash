@@ -172,8 +172,8 @@ struct AgentSessionView: View {
   private static let thread = "thread"
   private static let stick: CGFloat = 48
 
-  /// To the end without animation, then again once the lazy rows above have measured
-  /// themselves: their first estimate leaves the end short of the bottom.
+  /// To the end without animation, then again once the rows (markdown, tables) have laid
+  /// themselves out: the first pass can leave the end short of the bottom.
   private func land(_ proxy: ScrollViewProxy) {
     proxy.scrollTo(Self.bottom, anchor: .bottom)
     Task {

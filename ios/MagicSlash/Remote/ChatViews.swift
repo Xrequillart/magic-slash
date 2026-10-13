@@ -11,7 +11,9 @@ struct ChatTranscriptView: View {
   let chat: AgentChat
 
   var body: some View {
-    LazyVStack(alignment: .leading, spacing: 12) {
+    // Not lazy: the Mac sends at most 80 entries, and a lazy stack's estimated heights made
+    // the scroll to the end land below the thread, on an empty screen, after each update.
+    VStack(alignment: .leading, spacing: 12) {
       if chat.hasEarlier {
         Text("Earlier messages are on the Mac")
           .font(.cera(.caption))
