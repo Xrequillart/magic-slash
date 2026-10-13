@@ -15,42 +15,57 @@ struct AgentListView: View {
   }
 
   @State private var sheet: Sheet?
+  /// The sessions opened, as a path: rows push onto it themselves, which keeps the list
+  /// free of the disclosure chevron a `NavigationLink` row draws.
+  @State private var path: [String] = []
+  @State private var showsDrawer = false
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       content
-        .safeAreaInset(edge: .top, spacing: 0) {
-          MacPresenceBanner(relay: relay) { sheet = .pair }
-        }
         .background(theme.bg.ignoresSafeArea())
         .navigationTitle("Sessions")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(theme.bg, for: .navigationBar)
         .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-              Button("Pair a Mac", systemImage: "qrcode.viewfinder") { sheet = .pair }
-              Button("Paired Macs", systemImage: "laptopcomputer") { sheet = .macs }
-              Divider()
-              Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive, action: onSignOut)
+          ToolbarItem(placement: .topBarLeading) {
+            Button {
+              withAnimation(.snappy(duration: 0.28)) { showsDrawer = true }
             } label: {
-              Image(systemName: "person.crop.circle")
+              Image(systemName: "line.3.horizontal")
                 .foregroundStyle(theme.icon)
             }
-            .accessibilityLabel("Account")
+            .accessibilityLabel("Account and pairing")
           }
         }
         .navigationDestination(for: String.self) { id in
           AgentSessionView(store: store, relay: relay, agentId: id)
         }
-        .sheet(item: $sheet) { sheet in
-          switch sheet {
-          case .pair:
-            PairingView(relay: relay)
-          case .macs:
-            PairedMacsView(relay: relay) { self.sheet = .pair }
-          }
-        }
     }
+    .overlay {
+      AccountDrawer(
+        isOpen: $showsDrawer,
+        email: store.client.auth.currentUser?.email,
+        relay: relay,
+        onPair: { open(.pair) },
+        onPairedMacs: { open(.macs) },
+        onSignOut: onSignOut
+      )
+    }
+    .sheet(item: $sheet) { sheet in
+      switch sheet {
+      case .pair:
+        PairingView(relay: relay)
+      case .macs:
+        PairedMacsView(relay: relay) { self.sheet = .pair }
+      }
+    }
+  }
+
+  /// Closes the drawer, then opens the sheet it asked for.
+  private func open(_ next: Sheet) {
+    withAnimation(.snappy(duration: 0.28)) { showsDrawer = false }
+    sheet = next
   }
 
   @ViewBuilder
@@ -124,44 +139,51 @@ struct AgentListView: View {
 
   private func rows(_ agents: [OrderedAgent]) -> some View {
     ForEach(agents) { row in
-      NavigationLink(value: row.agent.id) {
-        AgentRow(agent: row.agent, runtime: relay.runtime(for: row.agent.appAgentId))
+      Button {
+        path.append(row.agent.id)
+      } label: {
+        AgentRow(agent: row.agent)
       }
+      .buttonStyle(.plain)
       .listRowBackground(theme.bg)
-      .listRowSeparatorTint(theme.lineSubtle)
+      .listRowSeparator(.hidden)
+      .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 16))
     }
   }
 }
 
+/// One session: a chat mark, its title and when it last moved, and the ticket it took.
 private struct AgentRow: View {
   @Environment(\.theme) private var theme
   let agent: Agent
-  let runtime: AgentRuntime?
 
   var body: some View {
-    HStack(spacing: 10) {
-      VStack(alignment: .leading, spacing: 6) {
-        Text(agent.title)
-          .font(.body.weight(.semibold))
-          .foregroundStyle(theme.ink)
-          .lineLimit(2)
+    HStack(spacing: 12) {
+      // The mark sits on the title's line, the label in the middle of the row.
+      HStack(alignment: .firstTextBaseline, spacing: 14) {
+        Image(systemName: "bubble.left")
+          .font(.body)
+          .foregroundStyle(theme.iconMuted)
 
-        HStack(spacing: 6) {
-          TypeBadge(type: agent.type)
-          StatusPill(status: agent.status)
-          if let runtime {
-            RuntimePill(runtime: runtime)
+        VStack(alignment: .leading, spacing: 3) {
+          Text(agent.title)
+            .font(.body)
+            .foregroundStyle(theme.ink)
+            .lineLimit(1)
+          if let updated = agent.updatedAt {
+            Text(updated.formatted(.relative(presentation: .named)))
+              .font(.subheadline)
+              .foregroundStyle(theme.textSecondary)
+              .lineLimit(1)
           }
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
-      // The ticket the agent took, as the desktop draws it: the tracker's mark and the
-      // id, printed exactly as stored.
       if let ticket = agent.ticketId {
         DSLabel(text: ticket, tone: DSLabel.Tone(ticketId: ticket))
       }
     }
-    .padding(.vertical, 4)
+    .contentShape(Rectangle())
   }
 }
