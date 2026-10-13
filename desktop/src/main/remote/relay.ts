@@ -120,6 +120,8 @@ const commands = new CommandGate()
 /** Which phone reads which agent's conversation (§11), and the last request seq each sent. */
 const chatLeases = new ChatLeases()
 const chatRequestSeen = new Map<string, { epoch: string; seq: number }>()
+/** The same, for `state-request` (§12). */
+const stateRequestSeen = new Map<string, { epoch: string; seq: number }>()
 
 let client: SupabaseClient | null = null
 let channel: RealtimeChannel | null = null
@@ -255,6 +257,7 @@ function forgetAccount(): void {
   commands.clear()
   chatLeases.clear()
   chatRequestSeen.clear()
+  stateRequestSeen.clear()
 }
 
 /**
@@ -419,6 +422,7 @@ function handleIncoming(payload: unknown): void {
   if (envelope.type === 'pair-request') pairing?.handleRequest(envelope)
   else if (envelope.type === 'command') void handleCommand(envelope)
   else if (envelope.type === 'chat-request') handleChatRequest(envelope)
+  else if (envelope.type === 'state-request') handleStateRequest(envelope)
 }
 
 /**
@@ -430,6 +434,25 @@ function logPairRequest(envelope: RelayEnvelope | null): void {
   else if (!identity) console.warn('[remote] pair-request dropped: no relay identity loaded')
   else if (envelope.to !== identity.macId) console.warn('[remote] pair-request dropped: addressed to another Mac')
   else if (!pairing) console.warn('[remote] pair-request dropped: no pairing on screen')
+}
+
+/**
+ * A phone asks for a snapshot now (§12): it just joined, and would otherwise wait for the next
+ * heartbeat. Answered with a snapshot to every paired phone, debounced like a presence join.
+ * It must come from a paired phone, open with its key, name its current pairing and move
+ * forward in seq, so a replay does nothing.
+ */
+function handleStateRequest(envelope: RelayEnvelope): void {
+  const device = identity?.devices.find((d) => d.phoneId === envelope.from)
+  const key = device && pairKey(device)
+  if (!device || !key) return
+  const box = openEnvelope(envelope, key)
+  if (!box || typeof box !== 'object' || (box as { pairingId?: unknown }).pairingId !== device.pairingId) return
+  const seen = stateRequestSeen.get(device.phoneId)
+  if (seen && seen.epoch === envelope.epoch && envelope.seq <= seen.seq) return
+  stateRequestSeen.set(device.phoneId, { epoch: envelope.epoch, seq: envelope.seq })
+  logRelayEvent(`state-request from phone:${device.phoneId}`)
+  scheduler?.notifyPresenceJoin()
 }
 
 /**

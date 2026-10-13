@@ -984,6 +984,25 @@ describe('the conversation, read from a paired phone (§11)', () => {
     expect(chats(other)).toEqual([])
   })
 
+  it('answers a state-request with a snapshot, and drops a replay or another pairing\'s', async () => {
+    const stateRequest = (box: Record<string, unknown>, at: number): RelayEnvelope =>
+      sealEnvelope({ type: 'state-request', from: phone.id, to: macId, epoch: 'phone-epoch', seq: at }, phoneKey(phone, macId, macPub), box)
+    const states = () => sentOn(h.channels[0]).filter((e) => e.type === 'state' && e.to === phone.id).length
+    vi.useFakeTimers()
+    try {
+      const before = states()
+      broadcast(h.channels[0], stateRequest({ pairingId: phone.pairingId }, 5))
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(states()).toBe(before + 1)
+      broadcast(h.channels[0], stateRequest({ pairingId: phone.pairingId }, 5))
+      broadcast(h.channels[0], stateRequest({ pairingId: 'another' }, 6))
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(states()).toBe(before + 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('sends every change while the lease runs, and none once it has run out', async () => {
     await send(chatRequest(phone))
     notifyRemoteChat('claude-1')

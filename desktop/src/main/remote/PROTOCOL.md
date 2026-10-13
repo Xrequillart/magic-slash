@@ -25,7 +25,9 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
   itself may join (`relay_topic_owned`).
 - Every Mac with remote mode on, and every paired iPhone, joins it.
 - **Presence:**
-  - key `mac:<macId>` or `phone:<phoneId>`;
+  - key `mac:<macId>`, tracked by each Mac; `phone:<phoneId>` from phones that still track it
+    (older builds). Current phones only listen: Realtime's presence `track` timed out for a
+    phone key and took the channel down with it (§12);
   - payload `{}`. Presence is clear text, so it never carries a name or a state.
 - **Broadcast:** one event name, `relay`, whose payload is an envelope (§4). Broadcast is not
   replayed: whatever is sent while a socket is down is lost. §6 covers how the protocol lives
@@ -85,6 +87,7 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 | `command-result` | Mac → phone | `{ "pairingId": "<uuid>", "commandId": "<uuid>", "ok": false, "reason": "stale" }` (§10) | |
 | `chat-request` | phone → Mac | `{ "pairingId": "<uuid>", "appAgentId": "claude-…" }` (§11) | |
 | `chat` | Mac → phone | the conversation's tail (§11) | |
+| `state-request` | phone → Mac | `{ "pairingId": "<uuid>" }` (§12) | |
 
 `signPub` travels inside the box, so it is as authenticated as the pairing itself: the Mac
 learns a phone's signing key only from a `pair-request` that the code on both screens
@@ -167,7 +170,7 @@ The Mac sends a snapshot to every paired phone:
 
 - immediately on a runtime state change;
 - on a usage change, at most once every 2 s;
-- when a `phone:` presence joins, debounced by 1 s;
+- when a `phone:` presence joins, or a `state-request` arrives (§12), debounced by 1 s;
 - every 30 s as a heartbeat.
 
 ## 6. Freshness and replay (phone side)
@@ -428,3 +431,16 @@ is open on the phone.
    `(generation, epoch, seq)`, `generation` read from the box. The conversation is held in
    memory only, never cached to disk.
 
+## 12. State request (phone → Mac)
+
+A phone that joins the channel asks each paired Mac for a snapshot rather than waiting up to
+30 s for the next heartbeat. It used to signal its arrival with a `phone:` presence, but the
+presence `track` timed out on Realtime's side (`Presence_shard … :track … time out`) and the
+server closed the phone's channel each time, seconds after the join.
+
+- **`state-request`** (phone → Mac): `{ "pairingId" }`, sealed with the pair key, with the
+  phone's own `epoch` and a growing `seq` (shared with commands and `chat-request`).
+- The Mac drops it unless it comes from a paired phone, opens, names that phone's current
+  `pairingId`, and moves forward in `seq`. Otherwise it sends a snapshot to every paired phone,
+  debounced by 1 s like a presence join. It changes nothing else, so it needs no signature.
+- A Mac that does not know the type drops it: the phone then gets the next heartbeat.
