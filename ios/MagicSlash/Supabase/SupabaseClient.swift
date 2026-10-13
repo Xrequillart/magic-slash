@@ -31,7 +31,11 @@ enum Backend {
       options: SupabaseClientOptions(
         // Opt in to the next major's behaviour now: the stored session is emitted as is,
         // and AuthModel checks its expiry itself.
-        auth: .init(emitLocalSessionAsInitialSession: true)
+        auth: .init(emitLocalSessionAsInitialSession: true),
+        // Realtime's protocol 1.0.0, as the desktop speaks it. Under 2.0.0 (the SDK's default)
+        // the relay channel was closed by the server seconds after each join, and the
+        // phone's presence never reached the Mac.
+        realtime: RealtimeClientOptions(vsn: .v1)
       )
     )
   }
