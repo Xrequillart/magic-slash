@@ -859,7 +859,22 @@ final class RelayStore {
     // Streams before subscribing: callbacks added after the join are not part of it.
     let messages = channel.broadcastStream(event: "relay")
     let presenceChanges = channel.presenceChange()
+    let statuses = channel.statusChange
     tasks = [
+      // A channel that was joined and dropped, while the app stays open, is joined again
+      // here: otherwise only a return to the foreground would. Our own removal cancels this
+      // task first, so it never answers it.
+      Task { [weak self] in
+        var joined = false
+        for await status in statuses {
+          if status == .subscribed { joined = true; continue }
+          guard joined, status == .unsubscribed else { continue }
+          try? await Task.sleep(for: .seconds(2))
+          guard !Task.isCancelled, let self, !self.stopped, attempt == self.subscriptionCount else { return }
+          await self.refreshSubscription()
+          return
+        }
+      },
       Task { [weak self] in
         for await message in messages { self?.receive(message) }
       },
