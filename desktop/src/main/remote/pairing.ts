@@ -22,6 +22,11 @@ import type { StoredRemoteDevice } from './identity-store'
  * consume nothing: whoever never saw the QR (it carries the Mac's key and the token) cannot
  * even burn it.
  */
+/** Why a `pair-request` went nowhere: silent towards the phone (§7), so logged here. */
+function dropped(why: string): void {
+  console.warn(`[remote] pair-request dropped: ${why}`)
+}
+
 export const TOKEN_TTL_MS = 60_000
 /**
  * How long the confirmation stays approvable once the request opened (§7 step 6). Under the
@@ -220,25 +225,25 @@ export class PairingSession {
     if (this.closed || envelope.type !== 'pair-request' || envelope.to !== this.deps.macId) return
     // Past `waiting` only a replay or a second phone can arrive: one confirmation at a time,
     // and the token it would carry is already consumed (answered below, screen untouched).
-    if (this.state.phase !== 'waiting' && this.state.phase !== 'confirm') return
+    if (this.state.phase !== 'waiting' && this.state.phase !== 'confirm') return dropped(`pairing is ${this.state.phase}`)
     const phoneId = envelope.from
-    if (!UUID_RE.test(phoneId) || !envelope.phonePub) return
+    if (!UUID_RE.test(phoneId) || !envelope.phonePub) return dropped('bad phone id or no phone key')
 
     const phonePub = Buffer.from(envelope.phonePub, 'base64')
     let key: Buffer
     try {
       key = deriveKey(this.deps.macPrivate, phonePub, this.deps.macId, phoneId)
     } catch {
-      return // Not a P-256 point: nobody who scanned the QR sent this.
+      return dropped('phone key is not a P-256 point') // Nobody who scanned the QR sent this.
     }
     const body = openEnvelope(envelope, key) as { token?: unknown; name?: unknown; signPub?: unknown } | null
     // A box that does not open is ignored, and consumes nothing (see the header).
-    if (!body || typeof body !== 'object' || typeof body.token !== 'string') return
+    if (!body || typeof body !== 'object' || typeof body.token !== 'string') return dropped('box does not open')
 
     const token = this.findToken(Buffer.from(body.token, 'base64url'))
     // Never issued (or long forgotten): ignored, like a box that does not open. Neither
     // reaches the screen, and nothing is said to a sender that never saw the current QR.
-    if (!token) return
+    if (!token) return dropped('token never issued by this QR')
     let reason: PairRejectReason | null = null
     if (token.used) reason = 'used'
     else if (this.now() > token.exp) reason = 'expired'
@@ -246,6 +251,7 @@ export class PairingSession {
     token.used = true
 
     if (reason || this.state.phase !== 'waiting') {
+      dropped(`answered pair-rejected: ${reason ?? 'used'}`)
       // Answered to that sender only. The Mac's screen stays as it was: a QR keeps refreshing,
       // and a confirmation is never taken away from the user mid-decision.
       this.deps.send({ type: 'pair-rejected', to: phoneId, reason: reason ?? 'used' })

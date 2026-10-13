@@ -407,12 +407,24 @@ export function notifyRemoteUsage(): void {
 
 function handleIncoming(payload: unknown): void {
   const envelope = parseEnvelope(payload)
+  if ((payload as { type?: unknown } | null)?.type === 'pair-request') logPairRequest(envelope)
   // Not addressed to this Mac: another Mac of the account, or our own phones' traffic.
   if (!envelope || !identity || envelope.to !== identity.macId) return
   // The two messages a phone sends a Mac. Anything else from a phone is dropped.
   if (envelope.type === 'pair-request') pairing?.handleRequest(envelope)
   else if (envelope.type === 'command') void handleCommand(envelope)
   else if (envelope.type === 'chat-request') handleChatRequest(envelope)
+}
+
+/**
+ * Where a `pair-request` stops before the pairing session reads it: every later refusal is
+ * silent towards the phone (§7), so the log is the only place it shows.
+ */
+function logPairRequest(envelope: RelayEnvelope | null): void {
+  if (!envelope) console.warn('[remote] pair-request dropped: malformed envelope')
+  else if (!identity) console.warn('[remote] pair-request dropped: no relay identity loaded')
+  else if (envelope.to !== identity.macId) console.warn('[remote] pair-request dropped: addressed to another Mac')
+  else if (!pairing) console.warn('[remote] pair-request dropped: no pairing on screen')
 }
 
 /**
