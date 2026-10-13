@@ -15,11 +15,13 @@ struct SettingsView: View {
   let onSignOut: () -> Void
 
   @AppStorage(AppPreferences.hapticsKey) private var haptics = true
+  @AppStorage(AppPreferences.themeKey) private var themeChoice = "desktop"
   @State private var path: [Page] = []
   @State private var confirmingSignOut = false
 
   enum Page: Hashable {
     case macs
+    case theme
   }
 
   var body: some View {
@@ -31,6 +33,26 @@ struct SettingsView: View {
         }
 
         Section {
+          Button {
+            Haptics.tap()
+            path.append(.theme)
+          } label: {
+            NavigationRow(title: "Theme", systemImage: "paintpalette", value: ThemeChoice(raw: themeChoice).summary)
+          }
+          .buttonStyle(.plain)
+          .listRowBackground(theme.surface)
+
+          Button {
+            Haptics.tap()
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+              UIApplication.shared.open(url)
+            }
+          } label: {
+            NavigationRow(title: "Language", systemImage: "globe", value: Text(AppPreferences.languageName), external: true)
+          }
+          .buttonStyle(.plain)
+          .listRowBackground(theme.surface)
+
           Toggle(isOn: $haptics) {
             RowLabel(title: "Haptic feedback", systemImage: "hand.tap")
           }
@@ -45,16 +67,7 @@ struct SettingsView: View {
             Haptics.tap()
             path.append(.macs)
           } label: {
-            HStack(spacing: 14) {
-              RowLabel(title: "Paired Macs", systemImage: "laptopcomputer")
-              Spacer(minLength: 8)
-              Text(macsSummary)
-                .foregroundStyle(theme.textSecondary)
-              Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(theme.iconMuted)
-            }
-            .contentShape(Rectangle())
+            NavigationRow(title: "Paired Macs", systemImage: "laptopcomputer", value: Text(macsSummary))
           }
           .buttonStyle(.plain)
           .listRowBackground(theme.surface)
@@ -109,6 +122,7 @@ struct SettingsView: View {
       .navigationDestination(for: Page.self) { page in
         switch page {
         case .macs: PairedMacsList(relay: relay, onPair: onPair)
+        case .theme: ThemePicker(choiceRaw: $themeChoice)
         }
       }
       .confirmationDialog("Sign out of Magic Slash?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
@@ -124,9 +138,11 @@ struct SettingsView: View {
   /// How many Macs, and how many of them are online.
   private var macsSummary: String {
     let statuses = relay.statuses()
-    guard !statuses.isEmpty else { return "None" }
+    guard !statuses.isEmpty else { return String(localized: "None") }
     let online = statuses.filter(\.isOnline).count
-    return online == statuses.count ? "\(online) online" : "\(online) of \(statuses.count) online"
+    return online == statuses.count
+      ? String(localized: "\(online) online")
+      : String(localized: "\(online) of \(statuses.count) online")
   }
 
   private func header(_ title: String) -> some View {
@@ -137,10 +153,115 @@ struct SettingsView: View {
   }
 }
 
+/// A row that opens something: its label, its current value, and a chevron, or an arrow
+/// when it leaves the app.
+private struct NavigationRow: View {
+  @Environment(\.theme) private var theme
+  let title: LocalizedStringKey
+  let systemImage: String
+  let value: Text
+  var external = false
+
+  var body: some View {
+    HStack(spacing: 14) {
+      RowLabel(title: title, systemImage: systemImage)
+      Spacer(minLength: 8)
+      value
+        .foregroundStyle(theme.textSecondary)
+        .lineLimit(1)
+      Image(systemName: external ? "arrow.up.forward" : "chevron.right")
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(theme.iconMuted)
+    }
+    .contentShape(Rectangle())
+  }
+}
+
+/// The iPhone's own theme: the desktop's, one that follows the iPhone's appearance, or
+/// one of the desktop's themes picked here.
+private struct ThemePicker: View {
+  @Environment(\.theme) private var theme
+  @Binding var choiceRaw: String
+
+  var body: some View {
+    List {
+      Section {
+        row(.desktop)
+        row(.system)
+      }
+      Section {
+        ForEach(ThemeID.allCases, id: \.self) { id in
+          row(.fixed(id))
+        }
+      } header: {
+        Text("Themes")
+          .font(.cera(.subheadline))
+          .foregroundStyle(theme.textSecondary)
+          .textCase(nil)
+      }
+    }
+    .font(.cera(.body))
+    .scrollContentBackground(.hidden)
+    .background(theme.bg.ignoresSafeArea())
+    .navigationTitle("Theme")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(theme.bg, for: .navigationBar)
+  }
+
+  private func row(_ choice: ThemeChoice) -> some View {
+    Button {
+      Haptics.tap()
+      choiceRaw = choice.raw
+    } label: {
+      HStack(spacing: 12) {
+        if case .fixed(let id) = choice {
+          ThemeSwatch(tokens: .tokens(for: id))
+        }
+        choice.summary
+          .foregroundStyle(theme.ink)
+        Spacer(minLength: 8)
+        if ThemeChoice(raw: choiceRaw) == choice {
+          Image(systemName: "checkmark")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(theme.accent)
+        }
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .listRowBackground(theme.surface)
+  }
+}
+
+/// A theme in a dot: its background, with its accent inside.
+private struct ThemeSwatch: View {
+  @Environment(\.theme) private var theme
+  let tokens: ThemeTokens
+
+  var body: some View {
+    Circle()
+      .fill(tokens.bg)
+      .overlay(Circle().fill(tokens.accent).padding(6))
+      .overlay(Circle().strokeBorder(theme.lineStrong))
+      .frame(width: 22, height: 22)
+  }
+}
+
+extension ThemeChoice {
+  /// The choice as the settings name it.
+  var summary: Text {
+    switch self {
+    case .desktop: Text("Same as desktop")
+    case .system: Text("Match iPhone")
+    case .fixed(let id): Text(id.displayName)
+    }
+  }
+}
+
 /// A row's icon and title, the icon in a fixed column so the titles line up.
 private struct RowLabel: View {
   @Environment(\.theme) private var theme
-  let title: String
+  let title: LocalizedStringKey
   let systemImage: String
 
   var body: some View {
@@ -164,7 +285,7 @@ private struct UserCard: View {
     HStack(spacing: 14) {
       ProfileAvatar(profile: profile, size: 52)
       VStack(alignment: .leading, spacing: 3) {
-        Text(profile.name ?? profile.username.map { "@\($0)" } ?? "Your account")
+        Text(profile.name ?? profile.username.map { "@\($0)" } ?? String(localized: "Your account"))
           .font(.cera(.headline))
           .foregroundStyle(theme.ink)
           .lineLimit(1)

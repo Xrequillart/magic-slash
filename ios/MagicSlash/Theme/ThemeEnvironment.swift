@@ -21,3 +21,34 @@ extension View {
       .tint(tokens.accent)
   }
 }
+
+/// Wears the theme the iPhone's own setting picks (`ThemeChoice`). Following the iPhone
+/// leaves the colour scheme to the system and reads it back, so the tokens can follow it.
+struct ThemeRoot<Content: View>: View {
+  @AppStorage(AppPreferences.themeKey) private var choiceRaw = "desktop"
+  let desktop: ThemeID
+  @ViewBuilder var content: Content
+
+  var body: some View {
+    let choice = ThemeChoice(raw: choiceRaw)
+    if choice == .system {
+      SystemThemed(desktop: desktop) { content }
+    } else {
+      content.themed(.tokens(for: choice.resolve(desktop: desktop, scheme: .light)))
+    }
+  }
+}
+
+private struct SystemThemed<Content: View>: View {
+  @Environment(\.colorScheme) private var scheme
+  let desktop: ThemeID
+  @ViewBuilder var content: Content
+
+  var body: some View {
+    let tokens = ThemeTokens.tokens(for: ThemeChoice.system.resolve(desktop: desktop, scheme: scheme))
+    content
+      .environment(\.theme, tokens)
+      .tint(tokens.accent)
+      .preferredColorScheme(nil)
+  }
+}

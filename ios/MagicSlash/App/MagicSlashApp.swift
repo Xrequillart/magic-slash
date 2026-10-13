@@ -14,25 +14,26 @@ struct MagicSlashApp: App {
 
   var body: some Scene {
     WindowGroup {
-      Group {
-        if let client = Backend.client {
-          RootView(client: client, theme: theme, ready: $ready)
-        } else {
-          MessageScreen(
-            systemImage: "gearshape.2",
-            title: "Not configured",
-            message: "This build has no Supabase host or key. Copy ios/Config/Secrets.example.xcconfig to Secrets.xcconfig, fill it in, and rebuild."
-          )
-          .onAppear { ready = true }
+      ThemeRoot(desktop: theme.themeID) {
+        Group {
+          if let client = Backend.client {
+            RootView(client: client, theme: theme, ready: $ready)
+          } else {
+            MessageScreen(
+              systemImage: "gearshape.2",
+              title: "Not configured",
+              message: "This build has no Supabase host or key. Copy ios/Config/Secrets.example.xcconfig to Secrets.xcconfig, fill it in, and rebuild."
+            )
+            .onAppear { ready = true }
+          }
         }
-      }
-      .themed(theme.tokens)
-      .environment(\.chatToolDetail, theme.chatToolDetail)
-      // Any text that does not pick a style of its own is still Cera Pro.
-      .font(.cera(.body))
-      .overlay {
-        if showsSplash {
-          SplashView(ready: ready) { showsSplash = false }
+        .environment(\.chatToolDetail, theme.chatToolDetail)
+        // Any text that does not pick a style of its own is still Cera Pro.
+        .font(.cera(.body))
+        .overlay {
+          if showsSplash {
+            SplashView(ready: ready) { showsSplash = false }
+          }
         }
       }
     }
