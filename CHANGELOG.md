@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.122.0] - 2026-10-13
+
+### Added
+
+- **Ios**: Turn the account menu into a settings screen with a user card
+
+### Changed
+
+- **Ios**: Give the chat text more line height
+- **Ios**: Draw the header's pairing icons in white
+
+### Fixed
+
+- **Ios**: Rejoin the relay when its channel drops while the app is open
+- **Desktop**: Rejoin the relay when a live channel drops and stays down
+- **Ios**: Open a session at the end of its conversation
+- **Ios**: Send the pairing request over rest and show why it failed
+- **Desktop**: Log why a pairing request is dropped
+
 ## [0.121.0] - 2026-10-13
 
 ### Added
@@ -4037,6 +4056,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.122.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.122.0
 [0.121.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.121.0
 [0.120.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.120.0
 [0.119.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.119.0
