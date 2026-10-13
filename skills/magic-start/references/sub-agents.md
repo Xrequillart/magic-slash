@@ -73,4 +73,11 @@ git ls-files --others --exclude-standard
 2. If no files changed, skip this step silently.
 3. Display `MSG_SIMPLIFY`.
 4. Launch an `Agent` with: worktree path, changed files list (only these modifiable), instruction to invoke `/simplify` (may explore full codebase but modify only changed files). If `.magic/design-brief.md` exists, give its absolute path as read-only context: simplification must not drop markup or classes required by the mockup.
-5. If no issues found, continue silently.
+
+   The prompt must also bound the agent, because an unbounded one never comes back:
+   - **One pass.** Invoke `/simplify` once, apply what it finds, then return a short summary of the changes. Never re-run it on its own result, never start a second review round.
+   - **No command that does not exit by itself.** No dev server, no `--watch`, no bare `vitest` or `jest` (use `vitest run` / `--watchAll=false`), no `tail -f`, no interactive prompt. A check it needs runs once and returns.
+   - **A budget.** If it has not finished after about 8 minutes of work, it stops where it is and returns what it changed so far.
+
+5. **The orchestrator kills it when it runs over.** The simplify pass is an improvement, never a requirement: it must not hold the workflow. If the agent has not returned after **10 minutes**, or its output shows it looping (the same files reviewed again, the same command restarted), stop it with `TaskStop` on its task id, display `MSG_SIMPLIFY_STOPPED`, and continue to Step 5.5 with the files as they are. Edits it already made stay: they are reviewed by Step 5.5 like the rest of the diff.
+6. If no issues found, continue silently.

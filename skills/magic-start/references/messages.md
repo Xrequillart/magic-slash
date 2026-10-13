@@ -1114,6 +1114,20 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 🔍 Passe de simplification en cours sur les fichiers modifiés...
 ```
 
+## MSG_SIMPLIFY_STOPPED
+
+### en
+
+```text
+⏱️ The simplification pass ran too long and was stopped. Moving on with the code as it is.
+```
+
+### fr
+
+```text
+⏱️ La passe de simplification a duré trop longtemps et a été arrêtée. On continue avec le code tel quel.
+```
+
 ## MSG_MULTI_REPO_CONTEXT
 
 ### en

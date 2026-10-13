@@ -476,7 +476,7 @@ Display `MSG_PROGRESS_MULTI`. Use the `Agent` tool to launch subagents in parall
 
 When `$START_SIMPLIFY` is `false` (Step 0.6), still collect the changed files (step 1 of `references/sub-agents.md` §5.4.5, which Step 5.5.3 reuses), then skip the rest of this step silently.
 
-After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task**. Read `references/sub-agents.md` §5.4.5 and follow it: it collects the changed files (reused by Step 5.5.3), skips silently when none changed, displays `MSG_SIMPLIFY` and launches the `/simplify` agent on the changed files only.
+After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task**. Read `references/sub-agents.md` §5.4.5 and follow it: it collects the changed files (reused by Step 5.5.3), skips silently when none changed, displays `MSG_SIMPLIFY` and launches the `/simplify` agent on the changed files only. That agent gets **one pass and 10 minutes**: past that, or as soon as it loops, stop it with `TaskStop` and carry on (`MSG_SIMPLIFY_STOPPED`). The pass never blocks the workflow.
 
 ### 5.5: Confidence assessment and final summary
 
