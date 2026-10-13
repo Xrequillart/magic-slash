@@ -1,5 +1,6 @@
 import type { Config } from '../../types'
-import { applySettingsRow, SETTINGS_KEYS, type UserSettingsRow } from '../store/user-settings-mapper'
+import { applySettingsRow, configToSettingsRow, SETTINGS_KEYS, type UserSettingsRow } from '../store/user-settings-mapper'
+import { takeIncomingSettingsRow } from '../store/user-settings-sync'
 import { applyAppearanceFromConfig } from '../store/hydrate'
 import { hasConfigCache, hydrateConfig, installRemoteConfig, readConfig } from './config'
 import { hydrateWorkflows } from '../workflow/workflows'
@@ -91,11 +92,10 @@ function publish(change: ConfigChange): void {
 /**
  * A stable string for just the keys user_settings owns.
  *
- * Used to recognise our OWN writes coming back: saving any single preference
- * upserts every settings column (CloudStore.saveUserSettings), so each local
- * toggle produces an event carrying values the app already holds. Ignoring those
- * keeps a Cmd+/ split toggle from costing a repaint, a Claude theme file rewrite
- * and a renderer update for no change at all.
+ * Used to recognise our OWN writes coming back: each local toggle produces an
+ * event carrying values the app already holds. Ignoring those keeps a Cmd+/ split
+ * toggle from costing a repaint, a Claude theme file rewrite and a renderer update
+ * for no change at all.
  *
  * Iterating SETTINGS_KEYS rather than stringifying the config gives a
  * deterministic key order, and both sides are built by the same mapper, so
@@ -111,6 +111,12 @@ function settingsFingerprint(config: Config): string {
 /**
  * Apply an incoming user_settings row to the cached config.
  *
+ * Only the columns that moved since the row the app last adopted are taken (see
+ * store/user-settings-sync.ts). The row is complete, but the phone writes one column
+ * at a time and its event still carries the desktop's previous value for every other
+ * one: applied whole, it would undo, for a moment, a toggle the desktop has just
+ * saved. Without a known row the whole of it applies, as it always did.
+ *
  * The settings-owned keys are cleared before the row is applied, so a column the
  * row leaves NULL falls back to the app's default instead of keeping whatever
  * value happened to be in memory — applySettingsRow only ever sets keys.
@@ -122,6 +128,9 @@ export function applyRemoteSettingsRow(row: UserSettingsRow): void {
   // reads the same row anyway.
   if (!hasConfigCache()) return
 
+  const changes = takeIncomingSettingsRow(row)
+  if (changes && Object.keys(changes).length === 0) return
+
   const prev = readConfig()
   const before = settingsFingerprint(prev)
 
@@ -130,7 +139,8 @@ export function applyRemoteSettingsRow(row: UserSettingsRow): void {
   // the draft leaves prev's own values intact for the comparison below.
   const draft: Config = { ...prev }
   for (const key of SETTINGS_KEYS) delete draft[key]
-  applySettingsRow(draft, row)
+  // The moved columns over what the app holds, rather than the row as it came.
+  applySettingsRow(draft, changes ? { ...configToSettingsRow(prev), ...changes } : row)
 
   const next = installRemoteConfig(draft)
   if (settingsFingerprint(next) === before) return

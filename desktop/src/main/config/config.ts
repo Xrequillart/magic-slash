@@ -3,7 +3,7 @@ import * as os from 'os'
 import { randomUUID } from 'crypto'
 import type { AgentSortMode, AgentType, Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, PlanSettingsInput, SettingsInput, ThemeId } from '../../types'
 import { PLAN_ACCEPTANCE_CRITERIA_FORMATS, PLAN_SPLITTING_MODES, PLAN_TRACKERS } from '../../types'
-import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
+import { applySettingsDefaults, DEFAULT_REPOSITORY_FIELDS } from './defaults'
 import {
   GITHUB_REMOTE_URL_PATTERN,
   expandPath,
@@ -12,6 +12,7 @@ import {
 } from './validation'
 import { CONFIG_DIR } from './paths'
 import { getStore, reportWriteError } from '../store/Store'
+import { adoptLoadedSettingsRow, resetUserSettingsSync } from '../store/user-settings-sync'
 
 /**
  * Applies a single settings field: removes on 'default'/null/resetValue,
@@ -94,15 +95,7 @@ function defaultConfig(): Config {
  */
 function withDefaults(config: Config): Config {
   config.repositories = config.repositories || {}
-  if (config.splitEnabled === undefined) config.splitEnabled = false
-  if (config.splitActive === undefined) config.splitActive = false
-  if (!config.integrations) config.integrations = { github: true, atlassian: true }
-  if (!isValidSpotlightConfig(config.spotlight)) {
-    config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
-    if (!isValidSpotlightConfig(config.spotlight)) {
-      config.spotlight = { ...DEFAULT_SPOTLIGHT }
-    }
-  }
+  applySettingsDefaults(config)
   return config
 }
 
@@ -121,8 +114,7 @@ let configCache: Config | null = null
  * mutation is a synchronous read-modify-write on the cached object — so a load
  * that started before a local edit would, on resolving, reinstall a snapshot
  * taken BEFORE it and silently revert the user's change. Worse, the next write
- * would push that stale snapshot back to the database, because saveUserSettings
- * writes every settings column at once.
+ * would push that stale snapshot back to the database as if the user had made it.
  *
  * Callers that load asynchronously capture this counter first and discard their
  * result if it moved (see hydrateConfig).
@@ -163,6 +155,8 @@ export async function hydrateConfig(): Promise<Config> {
   if (configGeneration !== generation) return readConfig()
 
   if (loaded) {
+    // Kept: the row it was built from is now what the settings saves diff against.
+    adoptLoadedSettingsRow(loaded)
     configCache = withDefaults(loaded)
   } else if (!configCache) {
     configCache = withDefaults(defaultConfig())
@@ -195,6 +189,7 @@ export function resetConfigCache(): void {
   configCache = null
   configGeneration++
   capturedRemoteAttempts.clear()
+  resetUserSettingsSync()
 }
 
 export function readConfig(): Config {

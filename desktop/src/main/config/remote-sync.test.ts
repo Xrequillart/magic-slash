@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Config } from '../../types'
-import type { UserSettingsRow } from '../store/user-settings-mapper'
+import { normalizeSettingsRow, type UserSettingsRow } from '../store/user-settings-mapper'
 import type { Store, StoredWorkflow } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 
@@ -12,7 +12,14 @@ vi.mock('../store/hydrate', () => ({
 }))
 
 import { applyAppearanceFromConfig } from '../store/hydrate'
-import { hydrateConfig, readConfig, resetConfigCache } from './config'
+import { hydrateConfig, readConfig, resetConfigCache, writeConfig } from './config'
+import {
+  beginSettingsWrite,
+  rememberLoadedSettingsRow,
+  settingsBaseline,
+  settingsChangesToSave,
+  settingsWriteSucceeded,
+} from '../store/user-settings-sync'
 import { overlayForRepo, resetWorkflowsCache, revisionForRepo } from '../workflow/workflows'
 import {
   addConfigChangeListener,
@@ -210,6 +217,119 @@ describe('applyRemoteSettingsRow', () => {
     applyRemoteSettingsRow({ ...emptyRow(), usage_logs_enabled: false })
 
     expect(pushed).toHaveLength(1)
+  })
+})
+
+describe('a setting changed on the phone and another on the Mac in the same second', () => {
+  /** What the database holds when the app loads: dark, notifications on. */
+  const remote = (): UserSettingsRow => ({ ...emptyRow(), theme: 'dark', notifications_enabled: true })
+  /** The phone picked light: its event still carries the Mac's notifications. */
+  const phoneRow = (): UserSettingsRow => ({ ...remote(), theme: 'light' })
+
+  let sent: Partial<UserSettingsRow>[]
+  /** A Mac write that has not come back yet, or null when the store answers at once. */
+  let parked: (() => void) | null
+
+  /** The store as CloudStore behaves: it remembers the row it loaded, and diffs on save. */
+  const syncingStore = (deferWrites: boolean): Store => ({
+    ...NOOP_STORE,
+    loadConfig: async () => {
+      const config = { version: '1.0.0', repositories: {} } as Config
+      // The real store applies the row too; the config cache only cares about the result.
+      Object.assign(config, { theme: 'dark', notifications: { enabled: true } })
+      rememberLoadedSettingsRow(config, remote())
+      return config
+    },
+    saveConfig: async (config) => {
+      const changes = settingsChangesToSave(config)
+      if (!changes) return
+      beginSettingsWrite(changes)
+      sent.push(changes)
+      if (deferWrites) parked = () => settingsWriteSucceeded(changes)
+      else settingsWriteSucceeded(changes)
+    },
+  })
+
+  /** A local toggle, made the way every settings mutator makes one. */
+  const turnNotificationsOff = (): void => {
+    const config = readConfig()
+    config.notifications = { ...config.notifications, enabled: false }
+    writeConfig(config)
+  }
+
+  beforeEach(() => {
+    sent = []
+    parked = null
+  })
+
+  it('keeps both, whether the phone event lands before or after the Mac write returns', async () => {
+    for (const deferWrites of [false, true]) {
+      resetConfigCache()
+      sent = []
+      setStore(syncingStore(deferWrites))
+      await hydrateConfig()
+
+      turnNotificationsOff()
+      // Only the Mac's own column leaves: the theme is the phone's to write.
+      expect(sent).toEqual([{ notifications_enabled: false }])
+
+      applyRemoteSettingsRow(phoneRow())
+      parked?.()
+      expect(readConfig().theme).toBe('light')
+      expect(readConfig().notifications?.enabled).toBe(false)
+
+      // Then the Mac's own event, carrying both.
+      applyRemoteSettingsRow({ ...phoneRow(), notifications_enabled: false })
+      expect(readConfig().theme).toBe('light')
+      expect(readConfig().notifications?.enabled).toBe(false)
+      expect(settingsBaseline()).toEqual(normalizeSettingsRow({ ...phoneRow(), notifications_enabled: false }))
+    }
+  })
+
+  it('never shows the notifications back on in between', async () => {
+    setStore(syncingStore(false))
+    await hydrateConfig()
+    turnNotificationsOff()
+
+    applyRemoteSettingsRow(phoneRow())
+
+    // One adoption, the theme — no config with notifications on was ever published.
+    expect(pushed).toHaveLength(1)
+    expect(pushed.every((config) => config.notifications?.enabled === false)).toBe(true)
+  })
+
+  it('a save with nothing changed writes nothing', async () => {
+    setStore(syncingStore(false))
+    await hydrateConfig()
+
+    writeConfig(readConfig())
+
+    expect(sent).toEqual([])
+  })
+
+  it('a reload thrown away for a local edit does not move the baseline', async () => {
+    setStore(syncingStore(false))
+    await hydrateConfig()
+    const before = settingsBaseline()
+
+    let release!: () => void
+    setStore({
+      ...syncingStore(false),
+      loadConfig: () => new Promise<Config>((resolve) => {
+        release = () => {
+          const config = { version: '1.0.0', repositories: {}, theme: 'mist' } as Config
+          rememberLoadedSettingsRow(config, { ...emptyRow(), theme: 'mist' })
+          resolve(config)
+        }
+      }),
+    })
+    const reload = hydrateConfig()
+    turnNotificationsOff()
+    release()
+    await reload
+
+    expect(readConfig().theme).toBe('dark')
+    expect(settingsBaseline()).toEqual({ ...before, notifications_enabled: false })
   })
 })
 

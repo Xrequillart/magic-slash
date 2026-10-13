@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Agent } from '../../types'
+import type { Agent, Config } from '../../types'
 import { AVATAR_MAX_BYTES } from '../../avatar'
 
 // Mock the cloud dependencies so CloudStore exercises only its own mapping /
@@ -59,6 +59,12 @@ vi.mock('./pending-archives', () => ({
 }))
 
 import { CloudStore } from './CloudStore'
+import { applySettingsDefaults } from '../config/defaults'
+import { USER_SETTINGS_COLUMN_NAMES, type UserSettingsRow } from './user-settings-mapper'
+import { adoptLoadedSettingsRow, resetUserSettingsSync, takeIncomingSettingsRow } from './user-settings-sync'
+
+const emptyRow = (): UserSettingsRow =>
+  Object.fromEntries(USER_SETTINGS_COLUMN_NAMES.map((column) => [column, null])) as unknown as UserSettingsRow
 
 // ── Supabase client fake ────────────────────────────────────────────────────
 //
@@ -3374,5 +3380,107 @@ describe('savePlanSpec — the plan history', () => {
 
     const upsert = calls.find((c) => c.table === 'plan_sessions' && c.method === 'upsert')
     expect(upsert?.args[0]).not.toHaveProperty('edit_policy')
+  })
+})
+
+describe('saveConfig user_settings', () => {
+  /** What the database holds: a dark Mac with notifications on, every other column unset. */
+  const REMOTE = { theme: 'dark', notifications_enabled: true }
+
+  /** Load the config as hydrateConfig does: through the store, defaulted, then kept. */
+  async function hydrate(store: CloudStore): Promise<Config> {
+    const config = (await store.loadConfig())!
+    applySettingsDefaults(config)
+    adoptLoadedSettingsRow(config)
+    return config
+  }
+
+  const settingsUpserts = (calls: RecordedCall[]) =>
+    calls.filter((c) => c.table === 'user_settings' && c.method === 'upsert').map((c) => c.args[0])
+
+  beforeEach(() => {
+    resetUserSettingsSync()
+  })
+
+  it('writes no settings when a save follows a load with nothing changed', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    await store.saveConfig(config)
+
+    expect(settingsUpserts(calls)).toEqual([])
+  })
+
+  it('sends only the column the Mac changed, never the theme the phone just set', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    // The phone has set a light theme; its event has not arrived when the Mac saves.
+    config.notifications = { ...config.notifications, enabled: false }
+    await store.saveConfig(config)
+
+    expect(settingsUpserts(calls)).toEqual([{ user_id: UID, notifications_enabled: false }])
+    // The phone's event, still carrying notifications on, brings the theme alone.
+    expect(takeIncomingSettingsRow({ ...emptyRow(), ...REMOTE, theme: 'light' })).toEqual({ theme: 'light' })
+  })
+
+  it('sends a column again after its write failed', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      user_settings: [{ data: REMOTE, error: null }, { error: { message: 'offline' } }, { data: null, error: null }],
+    })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    config.language = 'fr'
+    await expect(store.saveConfig(config)).rejects.toThrow(/offline/)
+    await store.saveConfig(config)
+
+    expect(settingsUpserts(calls)).toEqual([
+      { user_id: UID, language: 'fr' },
+      { user_id: UID, language: 'fr' },
+    ])
+  })
+
+  it('runs saves one at a time, each against the latest config', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    // Two quick toggles: the first write already carries both, the second has nothing left.
+    const first = { ...config, language: 'fr' as const }
+    const second = { ...first, theme: 'light' as const }
+    await Promise.all([store.saveConfig(first), store.saveConfig(second)])
+
+    expect(settingsUpserts(calls)).toEqual([{ user_id: UID, language: 'fr', theme: 'light' }])
+  })
+
+  it('writes no settings after their read failed, rather than defaults over the row', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { error: { message: 'offline' } } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    await store.saveConfig(config)
+
+    expect(settingsUpserts(calls)).toEqual([])
+  })
+
+  it('sends the whole row when the user has none yet', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: null, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    await store.saveConfig(config)
+
+    const [sent] = settingsUpserts(calls) as Record<string, unknown>[]
+    expect(Object.keys(sent).sort()).toEqual(['user_id', ...USER_SETTINGS_COLUMN_NAMES].sort())
   })
 })
