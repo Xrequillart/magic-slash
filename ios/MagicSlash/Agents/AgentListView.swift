@@ -11,7 +11,7 @@ struct AgentListView: View {
   let onSignOut: () -> Void
 
   private enum Sheet: String, Identifiable {
-    case account, settings, pair, macs
+    case account, pair, macs
     var id: String { rawValue }
   }
 
@@ -62,14 +62,10 @@ struct AgentListView: View {
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .account:
-        AccountSheet(profile: profile) {
-          self.sheet = .settings
-        } onSignOut: {
+        SettingsView(settings: settings, profile: profile) {
           self.sheet = nil
           onSignOut()
         }
-      case .settings:
-        SettingsView(settings: settings)
       case .pair:
         PairingView(relay: relay)
       case .macs:

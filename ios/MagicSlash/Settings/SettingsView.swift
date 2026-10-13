@@ -1,64 +1,179 @@
 import Supabase
 import SwiftUI
 
-/// The desktop's settings, from the account menu. The editable ones have their control
-/// and apply on the Mac live (the theme re-themes this screen too). The sensitive ones,
-/// which decide what an agent may do on the Mac, are listed at the end as plain text: the
-/// iPhone has no way to change them.
+/// The account menu, laid out as a settings screen: the user's card on top, then one row per
+/// group of the desktop's settings, each opening its own page, and signing out at the end.
 ///
-/// A value never chosen shows the desktop's default, as the desktop does.
+/// The editable settings have their control and apply on the Mac live (the theme re-themes
+/// this screen too). The sensitive ones, which decide what an agent may do on the Mac, are
+/// listed on their own page as plain text: the iPhone has no way to change them. A value
+/// never chosen shows the desktop's default, as the desktop does.
 struct SettingsView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dismiss) private var dismiss
 
   let settings: DesktopSettingsStore
+  let profile: ProfileStore
+  let onSignOut: () -> Void
+
+  @State private var path: [Page] = []
+  @State private var confirmingSignOut = false
+
+  enum Page: String, CaseIterable, Hashable {
+    case appearance, notifications, chat, sidebar, agents, integrations, managed
+
+    var title: String {
+      switch self {
+      case .appearance: "Appearance"
+      case .notifications: "Notifications"
+      case .chat: "Chat view"
+      case .sidebar: "Sidebar"
+      case .agents: "Agents"
+      case .integrations: "Integrations"
+      case .managed: "Managed on your Mac"
+      }
+    }
+
+    var systemImage: String {
+      switch self {
+      case .appearance: "paintpalette"
+      case .notifications: "bell"
+      case .chat: "bubble.left.and.text.bubble.right"
+      case .sidebar: "sidebar.left"
+      case .agents: "person.2"
+      case .integrations: "puzzlepiece.extension"
+      case .managed: "lock.shield"
+      }
+    }
+  }
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       List {
-        if !settings.isLoaded {
-          Section {
-            HStack(spacing: 10) {
-              ProgressView().controlSize(.small).tint(theme.textSecondary)
-              Text("Reading your settings…")
-                .font(.cera(.subheadline))
-                .foregroundStyle(theme.textSecondary)
-            }
+        Section {
+          UserCard(profile: profile)
             .listRowBackground(theme.surface)
+        }
+
+        Section {
+          ForEach(Page.allCases.filter { $0 != .managed }, id: \.self, content: row)
+        } header: {
+          header("Desktop app")
+        } footer: {
+          Text("Changes apply to Magic Slash on your Mac right away.")
+            .foregroundStyle(theme.textSecondary)
+        }
+
+        Section {
+          row(.managed)
+        }
+
+        Section {
+          Button(role: .destructive) {
+            Haptics.tap()
+            confirmingSignOut = true
+          } label: {
+            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+              .foregroundStyle(theme.red)
           }
+          .listRowBackground(theme.surface)
         }
-
-        Group {
-          appearance
-          notifications
-          chat
-          sidebar
-          agents
-          integrations
-        }
-        .disabled(!settings.isLoaded)
-
-        managedOnMac
       }
       .font(.cera(.body))
       .tint(theme.accent)
       .scrollContentBackground(.hidden)
       .background(theme.bg.ignoresSafeArea())
-      .refreshable { await settings.refresh() }
       .task { if !settings.isLoaded { await settings.refresh() } }
       .navigationTitle("Settings")
       .navigationBarTitleDisplayMode(.inline)
       .toolbarBackground(theme.bg, for: .navigationBar)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
+        ToolbarItem(placement: .topBarLeading) {
+          Button("Close", systemImage: "xmark") {
             Haptics.tap()
             dismiss()
           }
-            .foregroundStyle(theme.accent)
+          .tint(theme.ink)
+        }
+      }
+      .navigationDestination(for: Page.self, destination: page)
+      .confirmationDialog("Sign out of Magic Slash?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
+        Button("Sign out", role: .destructive) {
+          Haptics.destructive()
+          onSignOut()
         }
       }
     }
+    .presentationBackground(theme.bg)
+  }
+
+  /// A group's row: its icon, its name and the chevron. A button rather than a link, so the
+  /// tap is felt like every other one.
+  private func row(_ page: Page) -> some View {
+    Button {
+      Haptics.tap()
+      path.append(page)
+    } label: {
+      HStack(spacing: 14) {
+        Image(systemName: page.systemImage)
+          .font(.system(size: 17))
+          .foregroundStyle(theme.icon)
+          .frame(width: 26)
+        Text(page.title)
+          .foregroundStyle(theme.ink)
+        Spacer(minLength: 8)
+        Image(systemName: "chevron.right")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(theme.iconMuted)
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .listRowBackground(theme.surface)
+  }
+
+  private func header(_ title: String) -> some View {
+    Text(title)
+      .font(.cera(.subheadline))
+      .foregroundStyle(theme.textSecondary)
+      .textCase(nil)
+  }
+
+  /// One group of settings on its own page.
+  private func page(_ page: Page) -> some View {
+    List {
+      if !settings.isLoaded {
+        Section {
+          HStack(spacing: 10) {
+            ProgressView().controlSize(.small).tint(theme.textSecondary)
+            Text("Reading your settings…")
+              .font(.cera(.subheadline))
+              .foregroundStyle(theme.textSecondary)
+          }
+          .listRowBackground(theme.surface)
+        }
+      }
+      Group {
+        switch page {
+        case .appearance: appearance
+        case .notifications: notifications
+        case .chat: chat
+        case .sidebar: sidebar
+        case .agents: agents
+        case .integrations: integrations
+        case .managed: managedOnMac
+        }
+      }
+      .disabled(page != .managed && !settings.isLoaded)
+    }
+    .font(.cera(.body))
+    .tint(theme.accent)
+    .scrollContentBackground(.hidden)
+    .background(theme.bg.ignoresSafeArea())
+    .refreshable { await settings.refresh() }
+    .navigationTitle(page.title)
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(theme.bg, for: .navigationBar)
   }
 
   // MARK: - Sections
@@ -161,9 +276,6 @@ struct SettingsView: View {
         }
         .listRowBackground(theme.surface)
       }
-    } header: {
-      Text("Managed on your Mac")
-        .foregroundStyle(theme.textSecondary)
     } footer: {
       Text("These decide what agents may do on your Mac, so they only change there.")
         .foregroundStyle(theme.textSecondary)
@@ -173,13 +285,11 @@ struct SettingsView: View {
   // MARK: - Rows
 
   private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    // The page's title names the group: no header repeating it.
     Section {
       content()
         .foregroundStyle(theme.ink)
         .listRowBackground(theme.surface)
-    } header: {
-      Text(title)
-        .foregroundStyle(theme.textSecondary)
     }
   }
 
@@ -285,5 +395,32 @@ struct SettingsView: View {
       items.isEmpty ? "None" : items.map { display($0) }.joined(separator: ", ")
     case .object: "Set"
     }
+  }
+}
+
+/// The user at the top of the settings: photo, name or handle, and email.
+private struct UserCard: View {
+  @Environment(\.theme) private var theme
+  let profile: ProfileStore
+
+  var body: some View {
+    HStack(spacing: 14) {
+      ProfileAvatar(profile: profile, size: 52)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(profile.name ?? profile.username.map { "@\($0)" } ?? "Your account")
+          .font(.cera(.headline))
+          .foregroundStyle(theme.ink)
+          .lineLimit(1)
+        if let email = profile.email {
+          Text([profile.name != nil ? profile.username.map { "@\($0)" } : nil, email].compactMap { $0 }.joined(separator: " · "))
+            .font(.cera(.subheadline))
+            .foregroundStyle(theme.textSecondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+        }
+      }
+    }
+    .padding(.vertical, 6)
+    .accessibilityElement(children: .combine)
   }
 }
