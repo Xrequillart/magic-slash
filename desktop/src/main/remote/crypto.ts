@@ -117,6 +117,28 @@ export function open(key: Buffer, combined: Buffer, aad: Buffer): Buffer | null 
   }
 }
 
+const SIGNATURE_BYTES = 64
+
+/**
+ * ECDSA P-256 over SHA-256, the signature a phone puts on a command (`PROTOCOL.md` §10).
+ * The signature is CryptoKit's `rawRepresentation`, `r‖s` (64 bytes), which Node calls
+ * `ieee-p1363`. False on any failure: a wrong key, a key that is not a P-256 point, a
+ * signature of the wrong length, a tampered message.
+ */
+export function verifySignature(publicRaw: Buffer, message: Buffer, signature: Buffer): boolean {
+  if (signature.length !== SIGNATURE_BYTES) return false
+  try {
+    return crypto.verify('sha256', message, { key: publicKeyFromRaw(publicRaw), dsaEncoding: 'ieee-p1363' }, signature)
+  } catch {
+    return false
+  }
+}
+
+/** The phone's half of `verifySignature`, for tests and fixtures: the Mac never signs. */
+export function sign(privateKey: crypto.KeyObject, message: Buffer): Buffer {
+  return crypto.sign('sha256', message, { key: privateKey, dsaEncoding: 'ieee-p1363' })
+}
+
 /**
  * The 4-digit code both screens show: SHA-256(token ‖ macPub ‖ phonePub), first 4 bytes as
  * a big-endian UInt32, mod 10000, zero-padded. The token is the 32 raw bytes from the QR.
