@@ -50,6 +50,19 @@ let unreadable = false
  */
 const awaitingEcho = new Map<keyof UserSettingsRow, { sent: string; stale: Set<string> }>()
 
+/**
+ * Columns of a write that went out and has not answered yet, with the value sent. A save
+ * made meanwhile is compared with them over the baseline: turning a toggle back before
+ * the first write returns must still be written, though the baseline says nothing moved.
+ */
+const inFlight = new Map<keyof UserSettingsRow, unknown>()
+
+/**
+ * Bumped on sign-out. Work started for one account carries the value it began with, and
+ * is dropped if it changed: an edit queued before a sign-out never lands on the next user.
+ */
+let generation = 0
+
 /** The row each loaded config was built from, until hydrateConfig keeps or drops it. */
 const loadedRows = new WeakMap<Config, UserSettingsRow | null | undefined>()
 
@@ -87,12 +100,14 @@ export function settingsChangesToSave(config: Config): Partial<UserSettingsRow> 
   if (unreadable) return null
   const next = configToSettingsRow(config)
   if (!baseline) return next
-  const changes = diffSettingsRow(baseline, next)
+  const expected = { ...baseline, ...Object.fromEntries(inFlight) } as UserSettingsRow
+  const changes = diffSettingsRow(expected, next)
   return Object.keys(changes).length > 0 ? changes : null
 }
 
 /** The upsert of `changes` is about to go out. */
 export function beginSettingsWrite(changes: Partial<UserSettingsRow>): void {
+  for (const [column, value] of Object.entries(changes)) inFlight.set(column as keyof UserSettingsRow, value)
   // Without a baseline the replaced values are unknown, so there is nothing to guard.
   if (!baseline) return
   for (const column of Object.keys(changes) as (keyof UserSettingsRow)[]) {
@@ -107,6 +122,7 @@ export function beginSettingsWrite(changes: Partial<UserSettingsRow>): void {
 
 /** The upsert of `changes` succeeded: the database now holds them. */
 export function settingsWriteSucceeded(changes: Partial<UserSettingsRow>): void {
+  settleInFlight(changes)
   if (baseline) {
     baseline = { ...baseline, ...changes }
     return
@@ -120,8 +136,16 @@ export function settingsWriteSucceeded(changes: Partial<UserSettingsRow>): void 
  * sends these columns again; nothing will echo, so nothing is awaited.
  */
 export function settingsWriteFailed(changes: Partial<UserSettingsRow>): void {
+  settleInFlight(changes)
   for (const column of Object.keys(changes) as (keyof UserSettingsRow)[]) {
     if (awaitingEcho.get(column)?.sent === settingValueKey(changes[column])) awaitingEcho.delete(column)
+  }
+}
+
+/** The write of `changes` answered: its columns are no longer in flight, unless a later write re-sent them. */
+function settleInFlight(changes: Partial<UserSettingsRow>): void {
+  for (const [column, value] of Object.entries(changes) as [keyof UserSettingsRow, unknown][]) {
+    if (inFlight.has(column) && settingValueKey(inFlight.get(column)) === settingValueKey(value)) inFlight.delete(column)
   }
 }
 
@@ -152,9 +176,16 @@ export function takeIncomingSettingsRow(row: UserSettingsRow): Partial<UserSetti
 
 /** Forget everything (sign-out, tests): the next user starts with no baseline. */
 export function resetUserSettingsSync(): void {
+  generation += 1
+  inFlight.clear()
   baseline = null
   unreadable = false
   awaitingEcho.clear()
+}
+
+/** Which account's sync this is: changes after every sign-out. */
+export function settingsSyncGeneration(): number {
+  return generation
 }
 
 /** The current baseline. For tests. */

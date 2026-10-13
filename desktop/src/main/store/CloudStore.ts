@@ -29,6 +29,7 @@ import {
   beginSettingsWrite,
   rememberLoadedSettingsRow,
   settingsChangesToSave,
+  settingsSyncGeneration,
   settingsWriteFailed,
   settingsWriteSucceeded,
 } from './user-settings-sync'
@@ -427,8 +428,8 @@ export class CloudStore implements Store {
   private agentWrites: Promise<unknown> = Promise.resolve()
   /** Tail of the user_settings write chain — see saveUserSettings. */
   private settingsWrites: Promise<void> = Promise.resolve()
-  /** The columns the latest save changed, waiting for the next write in the chain. */
-  private pendingSettingsChanges: Partial<UserSettingsRow> | null = null
+  /** The columns the latest save changed, and the account sync they belong to. */
+  private pendingSettingsChanges: { changes: Partial<UserSettingsRow>; generation: number } | null = null
   /**
    * Storage object path → the bytes last fetched for it, and when. Null means the
    * download failed, which is cached too. See loadAvatarDataUrls.
@@ -604,7 +605,8 @@ export class CloudStore implements Store {
    * column the desktop did not change is one the phone may just have.
    */
   private saveUserSettings(config: Config): Promise<void> {
-    this.pendingSettingsChanges = settingsChangesToSave(config)
+    const changes = settingsChangesToSave(config)
+    this.pendingSettingsChanges = changes ? { changes, generation: settingsSyncGeneration() } : null
     const write = this.settingsWrites.then(() => this.writeUserSettings())
     this.settingsWrites = write.catch(() => undefined)
     return write
@@ -613,13 +615,17 @@ export class CloudStore implements Store {
   private async writeUserSettings(): Promise<void> {
     const ctx = await this.userContext()
     if (!ctx) return
-    const changes = this.pendingSettingsChanges
+    const pending = this.pendingSettingsChanges
     this.pendingSettingsChanges = null
-    if (!changes) return
+    // Made before a sign-out: the account that made it is gone, whoever is signed in now.
+    if (!pending || pending.generation !== settingsSyncGeneration()) return
+    const { changes, generation } = pending
     beginSettingsWrite(changes)
     const { error } = await ctx.client
       .from('user_settings')
       .upsert({ user_id: ctx.uid, ...changes }, { onConflict: 'user_id' })
+    // A sign-out while it was out already forgot this account's baseline.
+    if (generation !== settingsSyncGeneration()) return
     if (error) {
       settingsWriteFailed(changes)
       throw new Error(`saveUserSettings failed: ${error.message}`)

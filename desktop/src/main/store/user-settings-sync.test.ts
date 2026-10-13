@@ -44,6 +44,18 @@ beforeEach(() => {
 })
 
 describe('saving', () => {
+  it('writes a toggle turned back while its first write is still out', () => {
+    noteAppliedSettingsRow(REMOTE)
+    const off = configFrom({ ...REMOTE, notifications_enabled: false })
+    const first = settingsChangesToSave(off)!
+    beginSettingsWrite(first)
+
+    // Back on before the first write answered: the baseline still says on, the write does not.
+    expect(settingsChangesToSave(configFrom(REMOTE))).toEqual({ notifications_enabled: true })
+    settingsWriteSucceeded(first)
+    expect(settingsChangesToSave(configFrom(REMOTE))).toEqual({ notifications_enabled: true })
+  })
+
   it('sends the whole row while no row is known', () => {
     const changes = save(configFrom({ ...emptyRow(), theme: 'light' }))
     expect(changes).toEqual(normalizeSettingsRow({ ...emptyRow(), theme: 'light' }))

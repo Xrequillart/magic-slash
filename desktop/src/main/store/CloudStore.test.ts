@@ -3444,6 +3444,21 @@ describe('saveConfig user_settings', () => {
     expect(settingsUpserts(calls)).toEqual([{ user_id: UID, notifications_enabled: false }])
   })
 
+  it('drops a settings save made before a sign-out', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    config.language = 'fr'
+    const saving = store.saveConfig(config)
+    // Signed out, and someone else signed in, before the write went out.
+    resetUserSettingsSync()
+    await saving
+
+    expect(settingsUpserts(calls)).toEqual([])
+  })
+
   it('sends a column again after its write failed', async () => {
     const { client, calls } = makeClient({
       memberships: membershipsOk,

@@ -276,20 +276,23 @@ final class DesktopSettingsStore {
   }
 
   /// Takes a whole row: a column it lacks was never chosen. A pending column keeps the
-  /// edit, and stops being pending once a row carries the value that was sent, or, once
-  /// confirmed, a value newer than the one it replaced.
+  /// edit until the server confirms its write, then until a row carries anything but the
+  /// value it replaced (its own echo included).
   private func apply(_ row: JSONObject) {
     var next = values
     for key in Self.columnNames {
       let incoming = row[key] ?? .null
       if let column = EditableSetting(rawValue: key), var write = pending[column] {
-        if Self.same(incoming, write.value) {
-          pending[column] = nil
-        } else if write.confirmed {
-          guard !Self.same(incoming, write.fallback) else { continue }
+        if write.confirmed {
+          // The echo, or a value newer than the one the edit replaced.
+          if Self.same(incoming, write.fallback) { continue }
           pending[column] = nil
           next[key] = incoming
         } else {
+          // Not sent yet, or not answered: only its own write settles it, even when an
+          // older row happens to carry the same value. A row carrying the edit's own value
+          // (its echo, ahead of the answer) is not the value it replaced.
+          guard !Self.same(incoming, write.value) else { continue }
           write.fallback = incoming
           pending[column] = write
         }
