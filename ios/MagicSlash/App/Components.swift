@@ -66,30 +66,27 @@ struct SectionCard<Content: View>: View {
   }
 }
 
-/// A short note that a list row cannot say on its own, in a small card under its section.
-struct NoteCard: View {
+/// A short note that a list row cannot say on its own, as a row of its own: it sits in its
+/// section like every other card, on the same surface, with smaller, quieter text.
+struct NoteRow: View {
   @Environment(\.theme) private var theme
   let text: LocalizedStringKey
 
   var body: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 8) {
+    HStack(alignment: .firstTextBaseline, spacing: 10) {
       Image(systemName: "info.circle")
-        .font(.system(size: 12))
+        .font(.system(size: 13))
         .foregroundStyle(theme.iconMuted)
       Text(text)
-        .font(.cera(.caption))
+        .font(.cera(.footnote))
         .foregroundStyle(theme.textSecondary)
         .fixedSize(horizontal: false, vertical: true)
     }
-    .padding(12)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(RoundedRectangle(cornerRadius: 10).fill(theme.surfaceSunken))
-    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(theme.lineSubtle))
-    .textCase(nil)
+    .padding(.vertical, 2)
+    .listRowBackground(theme.surface)
   }
 }
 
-/// The explicit "nothing here" line every section falls back to.
 struct EmptyLine: View {
   @Environment(\.theme) private var theme
   let text: LocalizedStringKey

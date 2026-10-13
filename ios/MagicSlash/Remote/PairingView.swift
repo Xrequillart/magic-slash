@@ -249,10 +249,11 @@ struct PairedMacsList: View {
           }
           .listRowBackground(theme.surface)
         }
-      } footer: {
-        if !relay.macs.isEmpty {
-          NoteCard(text: "Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
-            .padding(.top, 8)
+      }
+
+      if !relay.macs.isEmpty {
+        Section {
+          NoteRow(text: "Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
         }
       }
 
