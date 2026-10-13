@@ -5,8 +5,9 @@ import SwiftUI
 ///
 /// An idle agent takes the prompt at once; a working one queues it behind the current turn,
 /// as the desktop chat does. A waiting agent refuses it, since the text would land in its
-/// question: answer that first. The button stops the turn while the agent works or waits and
-/// the field is empty, and sends otherwise. Each command asks for Face ID, since it is signed
+/// question: answer that first. The send button springs in with the first character typed;
+/// with the field empty, the button stops the turn while the agent works or waits, and is
+/// gone otherwise. Each command asks for Face ID, since it is signed
 /// on its own.
 struct PromptComposer: View {
   @Environment(\.theme) private var theme
@@ -25,7 +26,7 @@ struct PromptComposer: View {
     let status = relay.commandStatus(for: appAgentId)
     let sending = isSending(status)
     let length = trimmed.utf16.count
-    let stops = canStop && trimmed.isEmpty
+    let action = buttonAction(status: status)
     VStack(alignment: .leading, spacing: 8) {
       if hasNotice(length: length, status: status) {
         notices(length: length, status: status)
@@ -45,31 +46,39 @@ struct PromptComposer: View {
           .focused($focused)
           .disabled(sending)
           .padding(.horizontal, 16)
-          .padding(.vertical, 12)
-          .frame(minHeight: 48)
+          .padding(.vertical, 10)
+          // Cera sits high on its line: the field's own box is centred, then nudged so
+          // the placeholder's x-height is, not its ascender.
+          .offset(y: 1.5)
+          .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
           .liquidGlass(in: RoundedRectangle(cornerRadius: 24))
 
-        Button {
-          stops ? stop() : send()
-        } label: {
-          Group {
-            if sending {
-              ProgressView().tint(theme.onBrand)
-            } else {
-              Image(systemName: stops ? "stop.fill" : "arrow.up")
-                .font(.system(size: stops ? 16 : 18, weight: .bold))
+        if let action {
+          Button {
+            action == .stop ? stop() : send()
+          } label: {
+            Group {
+              if sending {
+                ProgressView().tint(action == .stop ? theme.ink : theme.onBrand)
+              } else {
+                Image(systemName: action == .stop ? "stop.fill" : "arrow.up")
+                  .font(.system(size: action == .stop ? 16 : 18, weight: .bold))
+              }
             }
+            .foregroundStyle(action == .stop ? theme.ink : theme.onBrand)
+            .frame(width: 48, height: 48)
+            .contentShape(Circle())
+            .liquidGlass(in: Circle(), tint: action == .stop ? nil : theme.accent)
           }
-          .foregroundStyle(stops ? theme.ink : theme.onBrand)
-          .frame(width: 48, height: 48)
-          .contentShape(Circle())
-          .liquidGlass(in: Circle(), tint: stops ? nil : theme.accent)
+          .buttonStyle(.plain)
+          .disabled(action == .stop ? (!runtime.isCurrent || sending) : !canSend(length: length, sending: sending))
+          .opacity(buttonDimmed(action, length: length, sending: sending) ? 0.5 : 1)
+          .accessibilityLabel(action == .stop ? "Stop" : "Send")
+          .transition(.scale(scale: 0.3).combined(with: .opacity))
+          .id(action)
         }
-        .buttonStyle(.plain)
-        .disabled(stops ? (!runtime.isCurrent || sending) : !canSend(length: length, sending: sending))
-        .opacity(buttonDimmed(stops: stops, length: length, sending: sending) ? 0.5 : 1)
-        .accessibilityLabel(stops ? "Stop" : "Send")
       }
+      .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
     .sensoryFeedback(.impact(weight: .light), trigger: status?.commandId)
     .onChange(of: status) { _, status in
@@ -78,9 +87,22 @@ struct PromptComposer: View {
     }
   }
 
-  private func buttonDimmed(stops: Bool, length: Int, sending: Bool) -> Bool {
+  private enum ButtonAction {
+    case send, stop
+  }
+
+  /// Send as soon as there is text, Stop while the agent works or waits and the field is
+  /// empty, nothing otherwise: the field then takes the whole width. A command on its way
+  /// keeps its own button, spinning, whatever the field holds.
+  private func buttonAction(status: AgentCommandStatus?) -> ButtonAction? {
+    if let status, case .sending = status.phase { return status.action == .stop ? .stop : .send }
+    if !trimmed.isEmpty { return .send }
+    return canStop ? .stop : nil
+  }
+
+  private func buttonDimmed(_ action: ButtonAction, length: Int, sending: Bool) -> Bool {
     if sending { return false }
-    return stops ? !runtime.isCurrent : !canSend(length: length, sending: sending)
+    return action == .stop ? !runtime.isCurrent : !canSend(length: length, sending: sending)
   }
 
   /// Why Send is off, when the user can do something about it, and where the last command
