@@ -114,7 +114,7 @@ private struct RootView: View {
       // The owner check covers the frame between a sign-in and `apply`: another account's
       // list is never drawn under this one.
       if let agents, let relay, agents.ownerId == userId, relay.ownerId == userId {
-        AgentListView(store: agents, relay: relay, sort: theme.agentSort) {
+        AgentListView(store: agents, relay: relay, settings: theme) {
           Task { await auth.signOut() }
         }
       } else {

@@ -72,10 +72,11 @@ struct ProfileAvatar: View {
 }
 
 /// The sheet behind the header's avatar: a card with the user's photo, handle and email,
-/// and signing out.
+/// the desktop settings, and signing out.
 struct AccountSheet: View {
   @Environment(\.theme) private var theme
   let profile: ProfileStore
+  let onSettings: () -> Void
   let onSignOut: () -> Void
 
   var body: some View {
@@ -95,6 +96,15 @@ struct AccountSheet: View {
               .truncationMode(.middle)
           }
         }
+        Button(action: onSettings) {
+          Label("Settings", systemImage: "gearshape")
+            .font(.cera(.body, .semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.bordered)
+        .tint(theme.ink)
+        .padding(.top, 6)
         Button(role: .destructive, action: onSignOut) {
           Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
             .font(.cera(.body, .semibold))
@@ -103,7 +113,6 @@ struct AccountSheet: View {
         }
         .buttonStyle(.bordered)
         .tint(theme.red)
-        .padding(.top, 6)
       }
       .padding(20)
       .frame(maxWidth: .infinity)
@@ -113,7 +122,7 @@ struct AccountSheet: View {
     .padding(.top, 28)
     .frame(maxHeight: .infinity, alignment: .top)
     .background(theme.bg.ignoresSafeArea())
-    .presentationDetents([.height(300)])
+    .presentationDetents([.height(352)])
     .presentationDragIndicator(.visible)
     .presentationBackground(theme.bg)
   }
