@@ -85,7 +85,11 @@ struct AgentSessionView: View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(spacing: 16) {
-          if let chat {
+          if let chat, chat.entries.isEmpty, chat.queue.isEmpty, runtime?.state != "working", runtime?.question == nil {
+            // Nothing said yet: the desktop's robot, in the middle of the screen.
+            ChatEmptyState()
+              .containerRelativeFrame(.vertical)
+          } else if let chat {
             ChatTranscriptView(chat: chat)
           } else {
             placeholder(runtime: runtime)

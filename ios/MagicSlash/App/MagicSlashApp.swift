@@ -27,6 +27,7 @@ struct MagicSlashApp: App {
         }
       }
       .themed(theme.tokens)
+      .environment(\.chatToolDetail, theme.chatToolDetail)
       // Any text that does not pick a style of its own is still Cera Pro.
       .font(.cera(.body))
       .overlay {

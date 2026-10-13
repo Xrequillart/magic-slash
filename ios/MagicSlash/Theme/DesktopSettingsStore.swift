@@ -1,9 +1,11 @@
 import Foundation
 import Observation
 import Supabase
+import SwiftUI
 
 /// The desktop settings the iPhone follows, read from `user_settings` and kept current
-/// over Realtime: the theme, and how the sidebar sorts the agents.
+/// over Realtime: the theme, how the sidebar sorts the agents, and which tool calls the
+/// chat draws a line for.
 ///
 /// The last values seen are remembered on the device so the sign-in screen and the first
 /// frame after launch already wear them, instead of flashing the fallback.
@@ -12,6 +14,7 @@ import Supabase
 final class DesktopSettingsStore {
   private(set) var themeID: ThemeID
   private(set) var agentSort: AgentSortMode
+  private(set) var chatToolDetail: ChatToolDetail
 
   var tokens: ThemeTokens { .tokens(for: themeID) }
 
@@ -31,11 +34,13 @@ final class DesktopSettingsStore {
 
   private static let themeCacheKey = "lastThemeID"
   private static let sortCacheKey = "lastAgentSort"
-  private static let columns = "theme, agent_sort"
+  private static let toolDetailCacheKey = "lastChatToolDetail"
+  private static let columns = "theme, agent_sort, chat_tool_detail"
 
   init() {
     themeID = ThemeID(raw: UserDefaults.standard.string(forKey: Self.themeCacheKey))
     agentSort = AgentSortMode(raw: UserDefaults.standard.string(forKey: Self.sortCacheKey))
+    chatToolDetail = ChatToolDetail(raw: UserDefaults.standard.string(forKey: Self.toolDetailCacheKey))
   }
 
   func start(client: SupabaseClient, userId: UUID) async {
@@ -139,5 +144,37 @@ final class DesktopSettingsStore {
     let sort = AgentSortMode(raw: row["agent_sort"]?.stringValue)
     if sort != agentSort { agentSort = sort }
     UserDefaults.standard.set(sort.rawValue, forKey: Self.sortCacheKey)
+
+    let detail = ChatToolDetail(raw: row["chat_tool_detail"]?.stringValue)
+    if detail != chatToolDetail { chatToolDetail = detail }
+    UserDefaults.standard.set(detail.rawValue, forKey: Self.toolDetailCacheKey)
+  }
+}
+
+/// Which tool calls the chat draws a line for: the desktop's `chatToolDetail` setting
+/// (`user_settings.chat_tool_detail`).
+enum ChatToolDetail: String, Sendable {
+  /// One line per call.
+  case all
+  /// Only the calls that change files or run commands, and the ones that failed.
+  case changes
+  /// Each run of calls folded into one line, opened on a tap.
+  case grouped
+
+  /// An unknown or missing value is the desktop default.
+  init(raw: String?) {
+    self = raw.flatMap(Self.init(rawValue:)) ?? .all
+  }
+}
+
+private struct ChatToolDetailKey: EnvironmentKey {
+  static let defaultValue: ChatToolDetail = .all
+}
+
+extension EnvironmentValues {
+  /// The desktop's `chatToolDetail`, injected at the root with the theme.
+  var chatToolDetail: ChatToolDetail {
+    get { self[ChatToolDetailKey.self] }
+    set { self[ChatToolDetailKey.self] = newValue }
   }
 }
