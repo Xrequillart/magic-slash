@@ -38,9 +38,6 @@ struct SettingsView: View {
           .listRowBackground(theme.surface)
         } header: {
           header("App")
-        } footer: {
-          Text("A light tap under the finger on every button.")
-            .foregroundStyle(theme.textSecondary)
         }
 
         Section {
@@ -67,11 +64,6 @@ struct SettingsView: View {
           }
         } header: {
           header("Connection")
-        } footer: {
-          if !relay.macs.isEmpty {
-            Text("Reconnect when a Mac that is on shows offline here.")
-              .foregroundStyle(theme.textSecondary)
-          }
         }
 
         Section {

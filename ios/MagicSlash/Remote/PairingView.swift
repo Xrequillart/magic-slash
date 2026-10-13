@@ -250,8 +250,10 @@ struct PairedMacsList: View {
           .listRowBackground(theme.surface)
         }
       } footer: {
-        Text("Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
-          .foregroundStyle(theme.textSecondary)
+        if !relay.macs.isEmpty {
+          NoteCard(text: "Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
+            .padding(.top, 8)
+        }
       }
 
       Section {
@@ -276,9 +278,6 @@ struct PairedMacsList: View {
               .foregroundStyle(theme.ink)
           }
           .listRowBackground(theme.surface)
-        } footer: {
-          Text("What the link to your Macs went through. Copy it when the connection drops.")
-            .foregroundStyle(theme.textSecondary)
         }
       }
     }
