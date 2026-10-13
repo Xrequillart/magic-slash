@@ -343,7 +343,8 @@ final class RelayStore {
       pairKeys = derived
       keyState = macs.isEmpty ? .idle : .unlocked
       log("keys unlocked")
-      if rejoin, !wasUnlocked { await refreshSubscription() }
+      // Keys that just opened read the next snapshot: ask for one now.
+      if rejoin, !wasUnlocked { await refreshSubscription() } else { await requestState() }
     } catch {
       switch error {
       case .invalidated: invalidate()
@@ -930,8 +931,25 @@ final class RelayStore {
       return
     }
     guard !stopped, attempt == subscriptionCount else { return }
-    // Presence carries no payload: it is clear text (§2).
-    await channel.track(state: [:])
+    // No presence of our own (§12): Realtime's `track` timed out for the phone's key and the
+    // server closed the channel each time. The Macs are asked for a snapshot instead.
+    await requestState()
+  }
+
+  /// Asks every paired Mac for a snapshot now (§12), rather than waiting for its heartbeat.
+  /// A Mac whose key is not unlocked yet is skipped: its snapshot could not be read.
+  func requestState() async {
+    guard !stopped, let channel, channel.status == .subscribed else { return }
+    let phoneId = DeviceKeys.shared.phoneId
+    for mac in macs {
+      guard let key = pairKeys[mac.macId], let pairingId = mac.pairingId else { continue }
+      commandSeq += 1
+      guard let envelope = Self.sealedEnvelope(
+        type: "state-request", from: phoneId, to: mac.macId, epoch: commandEpoch, seq: commandSeq,
+        body: ["pairingId": pairingId], key: key
+      ) else { continue }
+      await channel.broadcast(event: "relay", message: envelope)
+    }
   }
 
   /// Detaches synchronously, then removes the channel, after any removal still in flight.
