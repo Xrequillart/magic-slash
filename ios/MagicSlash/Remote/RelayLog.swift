@@ -13,9 +13,23 @@ final class RelayLog {
 
   private(set) var events: [String] = []
 
+  /// Kept on disk, so the log of a session the user had to quit to get the link back is
+  /// still there to copy after relaunching.
+  private static let file = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+    .appendingPathComponent("relay-log.txt")
+
+  private init() {
+    if let saved = try? String(contentsOf: Self.file, encoding: .utf8) {
+      events = saved.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+    }
+    add("app launched")
+  }
+
   func add(_ event: String) {
-    events.append("\(Date().formatted(date: .omitted, time: .standard))  \(event)")
-    if events.count > 400 { events.removeFirst(events.count - 400) }
+    let stamp = Date().formatted(.dateTime.day().month(.twoDigits).hour().minute().second())
+    events.append("\(stamp)  \(event)")
+    if events.count > 600 { events.removeFirst(events.count - 600) }
+    try? events.joined(separator: "\n").write(to: Self.file, atomically: true, encoding: .utf8)
   }
 }
 
