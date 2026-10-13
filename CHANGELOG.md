@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.123.0] - 2026-10-13
+
+### Added
+
+- **Ios**: Replace the desktop settings with the phone's own, a reconnect button and a connection log
+- **Desktop**: Log the relay's events to a file
+
 ## [0.122.0] - 2026-10-13
 
 ### Added
@@ -4056,6 +4063,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.123.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.0
 [0.122.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.122.0
 [0.121.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.121.0
 [0.120.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.120.0
