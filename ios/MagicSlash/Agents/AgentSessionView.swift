@@ -17,6 +17,10 @@ struct AgentSessionView: View {
   }
 
   @State private var sheet: Sheet?
+  /// Whether the thread is read at its end: only then does a new line pull it down.
+  @State private var atBottom = true
+  /// The thread's visible height, to tell where its end marker sits.
+  @State private var viewportHeight: CGFloat = 0
 
   var body: some View {
     Group {
@@ -100,14 +104,33 @@ struct AgentSessionView: View {
               .id(question.token)
           }
           Color.clear.frame(height: 1).id(Self.bottom)
+            .background {
+              GeometryReader { marker in
+                Color.clear.preference(key: BottomMarkerKey.self, value: marker.frame(in: .named(Self.thread)).minY)
+              }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .frame(maxWidth: .infinity)
       }
-      .defaultScrollAnchor(.bottom)
+      .coordinateSpace(name: Self.thread)
+      .background {
+        GeometryReader { viewport in
+          Color.clear
+            .onAppear { viewportHeight = viewport.size.height }
+            .onChange(of: viewport.size.height) { _, height in viewportHeight = height }
+        }
+      }
+      .openingAtBottom()
       .scrollDismissesKeyboard(.interactively)
+      // The desktop's `STICK_PX`: within 48 pt of the end counts as reading it. Above that,
+      // the reader is looking at something, and the thread stays where they put it.
+      .onPreferenceChange(BottomMarkerKey.self) { minY in
+        atBottom = minY <= viewportHeight + Self.stick
+      }
       .onChange(of: scrollKey(chat: chat, runtime: runtime)) {
+        guard atBottom else { return }
         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.bottom, anchor: .bottom) }
       }
       .safeAreaInset(edge: .bottom) {
@@ -130,6 +153,8 @@ struct AgentSessionView: View {
   }
 
   private static let bottom = "bottom"
+  private static let thread = "thread"
+  private static let stick: CGFloat = 48
 
   /// What moves the view to the newest line: a new entry, a tool settling, a question.
   private func scrollKey(chat: AgentChat?, runtime: AgentRuntime?) -> String {
@@ -296,5 +321,27 @@ private struct StatusHeader: View {
         .multilineTextAlignment(.center)
     }
     .padding(.top, 16)
+  }
+}
+
+/// Where the thread's end marker sits, in the scroll view's own space.
+private struct BottomMarkerKey: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
+  }
+}
+
+private extension View {
+  /// Opens the thread at its end. From iOS 18, only that: the anchor's other roles would
+  /// also hold the end in place as the thread grows, moving whatever the reader scrolled
+  /// up to. Following new lines is `atBottom`'s call alone.
+  @ViewBuilder
+  func openingAtBottom() -> some View {
+    if #available(iOS 18, *) {
+      defaultScrollAnchor(.bottom, for: .initialOffset)
+    } else {
+      defaultScrollAnchor(.bottom)
+    }
   }
 }
