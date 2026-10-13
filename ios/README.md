@@ -115,6 +115,16 @@ npm run ios:relay-check
 
 ## TestFlight (internal testers)
 
+### With Xcode Cloud
+
+`ci_scripts/ci_post_clone.sh` writes `Secrets.xcconfig` on the build machine from two
+environment variables of the workflow (App Store Connect > Xcode Cloud > the workflow >
+Environment): `SUPABASE_HOST` and `SUPABASE_ANON_KEY`. An archive without them fails,
+rather than reaching TestFlight with the "Not configured" screen. Xcode Cloud signs with
+the app's team and numbers the builds itself.
+
+### By hand
+
 1. Make sure `DEVELOPMENT_TEAM` is set in `Secrets.xcconfig` and that the bundle id
    `io.poppins.magicslash` exists in App Store Connect, with an app record.
 2. Bump `CURRENT_PROJECT_VERSION` (build number) in the target's build settings for every
