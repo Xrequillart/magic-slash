@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.120.0] - 2026-10-13
+
+### Added
+
+- **Ios**: Show each session's live agent state in place of its chat mark
+- **Ios**: Show the session's conversation with a liquid glass composer
+- **Desktop**: Send an agent's conversation to the paired phones that read it
+- **Ios**: Send a prompt to an agent and stop it from the iphone
+- **Desktop**: Take prompt and stop commands from the paired iphone
+- **Ios**: Open the account from the user's avatar in a bottom sheet
+- **Ios**: Show the desktop's pulsing live dot beside the mac in the header
+- **Ios**: Move pairing to a header button and fix the sessions layout and header
+- **Ios**: Slide the sessions list over the account drawer and show the user's avatar
+- **Ios**: Use cera pro, the desktop's typeface, across the app
+- **Ios**: Simplify the sessions list and add an account and pairing drawer
+- **Ios**: Answer an agent's question from the iphone with face id
+- **Desktop**: Publish pending questions on the relay and answer signed phone commands
+- **Desktop**: Give every refused question answer a reason
+- **Ios**: Check relay command signatures against the node vectors
+- **Desktop**: Verify ecdsa p-256 command signatures in the relay crypto
+
+### Changed
+
+- **Ios**: Center each session's icon vertically, like its ticket label
+- **Ios**: Set the question card in cera pro
+
+### Fixed
+
+- **Pr**: Address review feedback for #354
+- **Ios**: Draw the session icon so its outline renders, in the title's colour
+- **Desktop**: Offer a terminal multi-select only the options a digit can reach
+- **Ios**: Scope the answer guard and late results to the question token
+
 ## [0.119.0] - 2026-10-13
 
 ### Added
@@ -3986,6 +4019,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.120.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.120.0
 [0.119.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.119.0
 [0.118.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.5
 [0.118.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.4
