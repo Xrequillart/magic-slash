@@ -128,6 +128,7 @@ private struct UserBubble: View {
       Text(text)
         .font(.cera(.body))
         .foregroundStyle(theme.ink)
+        .lineSpacing(6)
         .textSelection(.enabled)
         .padding(.horizontal, 14)
         .padding(.vertical, 9)

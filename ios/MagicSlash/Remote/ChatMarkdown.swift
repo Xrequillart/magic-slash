@@ -298,7 +298,7 @@ private struct MarkdownBlocks: View {
   let blocks: [MarkdownBlock]
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
+    VStack(alignment: .leading, spacing: 14) {
       ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
         view(for: block)
           // Headings breathe above, as `mt-4` does, except at the top.
@@ -316,7 +316,7 @@ private struct MarkdownBlocks: View {
     case .paragraph(let text):
       InlineText(text: text, font: .cera(.body))
     case .list(let ordered, let items):
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 8) {
         ForEach(Array(items.enumerated()), id: \.offset) { _, item in
           HStack(alignment: .firstTextBaseline, spacing: 8) {
             if let checked = item.checked {
@@ -378,6 +378,8 @@ private struct InlineText: View {
       .font(font)
       .foregroundStyle(color ?? theme.ink)
       .tint(theme.accent)
+      // The desktop's `leading-relaxed`: Cera set solid reads cramped on a phone.
+      .lineSpacing(6)
       .textSelection(.enabled)
       .fixedSize(horizontal: false, vertical: true)
       .frame(maxWidth: .infinity, alignment: .leading)
