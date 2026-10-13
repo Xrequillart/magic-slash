@@ -24,21 +24,10 @@ struct PairingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(theme.bg, for: .navigationBar)
         .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button(isFinished ? "Done" : "Cancel") {
-              Haptics.tap()
-              dismiss()
-            }
-              .foregroundStyle(theme.accent)
-          }
+          CloseToolbarItem { dismiss() }
         }
     }
     .onDisappear { relay.endPairing() }
-  }
-
-  private var isFinished: Bool {
-    if case .accepted = relay.pairing?.phase { return true }
-    return false
   }
 
   @ViewBuilder
@@ -194,13 +183,7 @@ struct PairedMacsView: View {
     NavigationStack {
       PairedMacsList(relay: relay, onPair: onPair)
         .toolbar {
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Done") {
-              Haptics.tap()
-              dismiss()
-            }
-            .foregroundStyle(theme.accent)
-          }
+          CloseToolbarItem { dismiss() }
         }
     }
   }
@@ -226,10 +209,19 @@ struct PairedMacsList: View {
             .listRowBackground(theme.surface)
         }
         ForEach(statuses) { status in
-          HStack(spacing: 10) {
-            Circle()
-              .fill(status.isOnline ? theme.green : theme.textSecondary.opacity(0.5))
-              .frame(width: 8, height: 8)
+          HStack(spacing: 12) {
+            // The laptop, with its presence dot on its corner.
+            Image(systemName: "laptopcomputer")
+              .font(.system(size: 20))
+              .foregroundStyle(theme.icon)
+              .frame(width: 30)
+              .overlay(alignment: .bottomTrailing) {
+                Circle()
+                  .fill(status.isOnline ? theme.green : theme.textSecondary)
+                  .frame(width: 9, height: 9)
+                  .overlay(Circle().strokeBorder(theme.bg, lineWidth: 1.5))
+                  .offset(x: 3, y: 3)
+              }
             VStack(alignment: .leading, spacing: 2) {
               Text(status.name)
                 .font(.cera(.body, .semibold))
@@ -243,8 +235,13 @@ struct PairedMacsList: View {
               Haptics.tap()
               forgetting = status
             }
-            .font(.cera(.subheadline, .semibold))
+            .font(.cera(.footnote, .semibold))
             .foregroundStyle(theme.red)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(theme.red.opacity(0.14)))
+            .overlay(Capsule().strokeBorder(theme.red.opacity(0.3)))
+            .contentShape(Capsule())
             .buttonStyle(.borderless)
           }
           .listRowBackground(theme.surface)

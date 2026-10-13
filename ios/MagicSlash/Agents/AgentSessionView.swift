@@ -69,12 +69,7 @@ struct AgentSessionView: View {
         NavigationStack {
           AgentDetailView(store: store, relay: relay, agentId: agentId)
             .toolbar {
-              ToolbarItem(placement: .confirmationAction) {
-                Button("Done") {
-                  Haptics.tap()
-                  self.sheet = nil
-                }
-              }
+              CloseToolbarItem { self.sheet = nil }
             }
         }
       case .pair:

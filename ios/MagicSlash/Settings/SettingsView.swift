@@ -111,13 +111,7 @@ struct SettingsView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbarBackground(theme.bg, for: .navigationBar)
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button("Close", systemImage: "xmark") {
-            Haptics.tap()
-            dismiss()
-          }
-          .tint(theme.ink)
-        }
+        CloseToolbarItem { dismiss() }
       }
       .navigationDestination(for: Page.self) { page in
         switch page {
