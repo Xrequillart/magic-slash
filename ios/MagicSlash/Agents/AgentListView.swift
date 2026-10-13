@@ -23,7 +23,7 @@ struct AgentListView: View {
           MacPresenceBanner(relay: relay) { sheet = .pair }
         }
         .background(theme.bg.ignoresSafeArea())
-        .navigationTitle("Agents")
+        .navigationTitle("Sessions")
         .toolbarBackground(theme.bg, for: .navigationBar)
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
@@ -40,7 +40,7 @@ struct AgentListView: View {
           }
         }
         .navigationDestination(for: String.self) { id in
-          AgentDetailView(store: store, relay: relay, agentId: id)
+          AgentSessionView(store: store, relay: relay, agentId: id)
         }
         .sheet(item: $sheet) { sheet in
           switch sheet {

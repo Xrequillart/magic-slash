@@ -131,7 +131,8 @@ struct MacPresenceBanner: View {
   }
 }
 
-private struct MacLine: View {
+/// One paired Mac: name, and whether it is online right now.
+struct MacLine: View {
   @Environment(\.theme) private var theme
   let status: RelayStore.MacStatus
   let now: Date
