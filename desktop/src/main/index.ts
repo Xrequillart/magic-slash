@@ -53,7 +53,7 @@ import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { setupRemoteHandlers } from './ipc/remote-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { closePlanLive } from './cloud/plan-live'
-import { notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, setRemotePrompter, setRemoteStopper, stopRemoteRelay } from './remote/relay'
+import { notifyRemoteChat, notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, setRemotePrompter, setRemoteStopper, stopRemoteRelay } from './remote/relay'
 import { runRemotePrompt, runRemoteStop } from './remote/agent-control'
 import type { CommandOutcome } from './remote/commands'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
@@ -853,6 +853,8 @@ async function initializeHooksAndSessions() {
 
     setChatListener((terminalId, chat) => {
       if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, ...chat })
+      // The paired phones reading this conversation get its new tail (remote/PROTOCOL.md §11).
+      notifyRemoteChat(terminalId)
     })
     // What an agent's shell commands change on disk, shown under them in the chat.
     setCommandDiffCallback((phase, terminalId, body) =>

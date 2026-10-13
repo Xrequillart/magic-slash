@@ -12,6 +12,8 @@ const RELAY_MESSAGE_TYPES = [
   'revoked',
   'command',
   'command-result',
+  'chat-request',
+  'chat',
 ] as const
 
 export type RelayMessageType = (typeof RELAY_MESSAGE_TYPES)[number]

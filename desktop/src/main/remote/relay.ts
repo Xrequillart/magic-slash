@@ -7,6 +7,8 @@ import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { getAllTerminals } from '../pty/terminal-manager'
 import { getPendingQuestion } from '../questions/pending-questions'
+import { getChatSnapshot } from '../chat/transcript-watcher'
+import { ChatLeases, toRelayChat } from './chat'
 import { CommandGate, type CommandOutcome, type RemoteCommand } from './commands'
 import { privateKeyFromRaw, publicRawOf, deriveKey } from './crypto'
 import { openEnvelope, parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
@@ -114,6 +116,9 @@ let suspended = false
  * before the memory that would have refused its replay was cleared, runs after it.
  */
 const commands = new CommandGate()
+/** Which phone reads which agent's conversation (§11), and the last request seq each sent. */
+const chatLeases = new ChatLeases()
+const chatRequestSeen = new Map<string, { epoch: string; seq: number }>()
 
 let client: SupabaseClient | null = null
 let channel: RealtimeChannel | null = null
@@ -247,6 +252,8 @@ function forgetAccount(): void {
   identity = null
   pairKeys.clear()
   commands.clear()
+  chatLeases.clear()
+  chatRequestSeen.clear()
 }
 
 /**
@@ -372,6 +379,25 @@ export function notifyRemoteState(): void {
   scheduler?.notifyState()
 }
 
+/**
+ * An agent's conversation moved (transcript-watcher.ts's listener, already debounced): every
+ * phone whose lease is on it gets the new tail (§11). Nothing at all when none reads it.
+ */
+export function notifyRemoteChat(appAgentId: string): void {
+  if (!live || !channel || !identity || !userId) return
+  const readers = chatLeases.readers(appAgentId, Date.now())
+  if (readers.length === 0 || terminalOwner(appAgentId) !== userId) return
+  for (const device of identity.devices) {
+    if (readers.includes(device.phoneId)) sendChat(device, appAgentId)
+  }
+}
+
+function sendChat(device: StoredRemoteDevice, appAgentId: string): void {
+  if (!identity) return
+  const body = toRelayChat(getChatSnapshot(appAgentId), appAgentId, identity.generation)
+  void sendSealed('chat', device, { pairingId: device.pairingId, ...body })
+}
+
 /** Usage moved: the phones get it at most every 2 s, the status line reports far more often. */
 export function notifyRemoteUsage(): void {
   scheduler?.notifyUsage()
@@ -386,6 +412,37 @@ function handleIncoming(payload: unknown): void {
   // The two messages a phone sends a Mac. Anything else from a phone is dropped.
   if (envelope.type === 'pair-request') pairing?.handleRequest(envelope)
   else if (envelope.type === 'command') void handleCommand(envelope)
+  else if (envelope.type === 'chat-request') handleChatRequest(envelope)
+}
+
+/**
+ * A phone asks to read an agent's conversation (§11). Not a command: it changes nothing on
+ * this Mac and only ever answers the phone that sent it, sealed with its own key, so it needs
+ * no signature, no Face ID, no bootId. It still has to come from a paired phone, open with
+ * its key, name its current pairing, move forward in seq (a replay renews nothing), and name
+ * an agent this account's snapshots carry.
+ */
+function handleChatRequest(envelope: RelayEnvelope): void {
+  const self = identity
+  const account = userId
+  if (!self || !account) return
+  const device = self.devices.find((d) => d.phoneId === envelope.from)
+  if (!device) return
+  const key = pairKey(device)
+  if (!key) return
+  const box = openEnvelope(envelope, key)
+  if (!box || typeof box !== 'object') return
+  const { pairingId, appAgentId } = box as Record<string, unknown>
+  if (pairingId !== device.pairingId || typeof appAgentId !== 'string') return
+  const seen = chatRequestSeen.get(device.phoneId)
+  if (seen && seen.epoch === envelope.epoch && envelope.seq <= seen.seq) return
+  chatRequestSeen.set(device.phoneId, { epoch: envelope.epoch, seq: envelope.seq })
+  if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) {
+    chatLeases.forget(device.phoneId)
+    return
+  }
+  chatLeases.renew(device.phoneId, appAgentId, Date.now())
+  sendChat(device, appAgentId)
 }
 
 /** The same pairing of the same phone, still in the identity loaded: not revoked meanwhile. */
@@ -806,6 +863,7 @@ export function revokeRemoteDevice(phoneId: string): Promise<RemoteState> {
       // Out of memory FIRST: whatever the write does, this session never seals for it again.
       self.devices = self.devices.filter((d) => d.phoneId !== phoneId)
       pairKeys.delete(phoneId)
+      chatLeases.forget(phoneId)
       try {
         removeDevice(uid, phoneId)
       } finally {

@@ -27,6 +27,7 @@ const h = vi.hoisted(() => ({
   nextBlocker: 1,
   terminals: [] as unknown[],
   keychain: true,
+  chats: new Map<string, unknown>(),
 }))
 
 vi.mock('electron', () => ({
@@ -51,6 +52,9 @@ vi.mock('../cloud/session-store', () => ({
   loadSession: () => (h.userId ? { access_token: 'access-token', user: { id: h.userId } } : null),
 }))
 vi.mock('../pty/terminal-manager', () => ({ getAllTerminals: () => h.terminals }))
+vi.mock('../chat/transcript-watcher', () => ({
+  getChatSnapshot: (id: string) => h.chats.get(id) ?? { entries: [], queue: [], background: [] },
+}))
 
 import { deriveKey, generateKeyPair, sign, type RelayKeyPair } from './crypto'
 import { answerPendingQuestion } from '../questions/answer-question'
@@ -70,6 +74,7 @@ import {
   approveRemotePairing,
   cancelRemotePairing,
   getRemoteState,
+  notifyRemoteChat,
   notifyRemoteState,
   resumeRemoteRelay,
   revokeRemoteDevice,
@@ -182,6 +187,7 @@ beforeEach(async () => {
   h.client = makeClient()
   h.userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   h.keychain = true
+  h.chats.clear()
   h.terminals = [
     { id: 'claude-1', name: 'Agent 1', state: 'working', metadata: { title: 'PROJ-12: refunds' } },
     { id: 'script-dev', name: 'dev', state: 'working', metadata: {} },
@@ -918,5 +924,77 @@ describe('commands from a paired phone', () => {
     const [first, again] = results(phone)
     expect(again).toEqual(first)
     expect(first).toMatchObject({ ok: true, queued: true })
+  })
+})
+
+describe('the conversation, read from a paired phone (§11)', () => {
+  let macId: string
+  let macPub: Buffer
+  let phone: PairedPhone
+  let other: PairedPhone
+  let seq: number
+
+  function chatRequest(from: PairedPhone, box: Record<string, unknown> = {}, at?: number): RelayEnvelope {
+    seq = at ?? seq + 1
+    const header = { type: 'chat-request' as const, from: from.id, to: macId, epoch: 'phone-epoch', seq }
+    return sealEnvelope(header, phoneKey(from, macId, macPub), { pairingId: from.pairingId, appAgentId: 'claude-1', ...box })
+  }
+
+  function chats(to: PairedPhone): { pairingId: string; appAgentId: string; entries: { text?: string }[] }[] {
+    return sentOn(h.channels[0])
+      .filter((e) => e.type === 'chat' && e.to === to.id)
+      .map((e) => openEnvelope(e, phoneKey(to, macId, macPub)) as { pairingId: string; appAgentId: string; entries: { text?: string }[] })
+  }
+
+  async function send(envelope: RelayEnvelope): Promise<void> {
+    broadcast(h.channels[0], envelope)
+    await tick()
+  }
+
+  beforeEach(async () => {
+    const seeded = seedPairedPhones()
+    macId = seeded.macId
+    macPub = seeded.macPub
+    ;[phone, other] = seeded.phones
+    seq = 0
+    h.chats.set('claude-1', { entries: [{ kind: 'user', id: 'u1', text: 'Fix the refund' }], queue: [], background: [] })
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+  })
+
+  it('answers a request with the tail, sealed for that phone alone, and nothing for the others', async () => {
+    await send(chatRequest(phone))
+    expect(chats(phone)).toEqual([expect.objectContaining({ pairingId: phone.pairingId, appAgentId: 'claude-1', entries: [expect.objectContaining({ text: 'Fix the refund' })] })])
+    expect(chats(other)).toEqual([])
+  })
+
+  it('sends every change while the lease runs, and none once it has run out', async () => {
+    await send(chatRequest(phone))
+    notifyRemoteChat('claude-1')
+    await tick()
+    expect(chats(phone)).toHaveLength(2)
+    const now = Date.now()
+    vi.spyOn(Date, 'now').mockReturnValue(now + 60_000)
+    notifyRemoteChat('claude-1')
+    await tick()
+    vi.mocked(Date.now).mockRestore()
+    expect(chats(phone)).toHaveLength(2)
+  })
+
+  it('drops a replayed request, another pairing\'s, or one for an agent of no one here', async () => {
+    await send(chatRequest(phone))
+    await send(chatRequest(phone, {}, 1))
+    await send(chatRequest(phone, { pairingId: crypto.randomUUID() }))
+    await send(chatRequest(phone, { appAgentId: 'script-dev' }))
+    await send(chatRequest(phone, { appAgentId: 'claude-404' }))
+    expect(chats(phone)).toHaveLength(1)
+  })
+
+  it('a revoked phone is sent nothing more', async () => {
+    await send(chatRequest(phone))
+    await revokeRemoteDevice(phone.id)
+    notifyRemoteChat('claude-1')
+    await tick()
+    expect(chats(phone)).toHaveLength(1)
   })
 })

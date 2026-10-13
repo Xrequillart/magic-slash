@@ -83,6 +83,8 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 | `revoked` | Mac → phone | `{ "pairingId": "<uuid>" }` | |
 | `command` | phone → Mac | `{ "payload": "<json string>", "sig": "<b64>" }` (§10) | |
 | `command-result` | Mac → phone | `{ "pairingId": "<uuid>", "commandId": "<uuid>", "ok": false, "reason": "stale" }` (§10) | |
+| `chat-request` | phone → Mac | `{ "pairingId": "<uuid>", "appAgentId": "claude-…" }` (§11) | |
+| `chat` | Mac → phone | the conversation's tail (§11) | |
 
 `signPub` travels inside the box, so it is as authenticated as the pairing itself: the Mac
 learns a phone's signing key only from a `pair-request` that the code on both screens
@@ -383,3 +385,46 @@ only on an `ok` prompt that was sent while the agent was `working`.
 The phone accepts a `command-result` only from the Mac it sent the command to, carrying that
 Mac's saved `pairingId` and a `commandId` it is waiting on; it ignores any other. It is not part
 of §6's `(generation, epoch, seq)` ordering, which is for `state` alone.
+
+## 11. Conversation (phone ↔ Mac)
+
+The phone reads an agent's conversation as the desktop chat shows it: the entries
+`desktop/src/main/chat/transcript.ts` reads off Claude Code's transcript, bounded
+(`remote/chat.ts`). It is pulled, never pushed unasked, and only while the session's screen
+is open on the phone.
+
+1. **`chat-request`** (phone → Mac): `{ "pairingId", "appAgentId" }`, sealed with the pair key,
+   with the phone's own `epoch` and a `seq` that grows across every envelope it sends (commands
+   included). It is not a command: it changes nothing on the Mac and is only ever answered to its
+   sender, so it carries no signature and asks for no Face ID. The Mac drops it unless it comes
+   from a paired phone, opens, names that phone's current `pairingId`, moves forward in `seq`
+   within its epoch (a replay renews nothing), and names an agent this account's snapshots carry.
+2. **Lease.** A request accepted subscribes that phone to that agent for **45 s**, and to no other:
+   one agent per phone, the screen it has open. The phone renews it every 15 s while the screen
+   stays open, and on every snapshot that brings its Mac back online. Leaving the screen just
+   stops the renewals. A revoked phone loses its lease with its key.
+3. **`chat`** (Mac → phone): sent at once in answer to a request, then on every change of that
+   conversation while the lease runs.
+   ```json
+   {
+     "pairingId": "<uuid>", "appAgentId": "claude-1760000000000", "generation": 12,
+     "entries": [
+       { "kind": "user", "id": "u1", "text": "Fix the refund", "at": 1760000000000 },
+       { "kind": "assistant", "id": "a1", "text": "Looking at it.", "cut": true },
+       { "kind": "tool", "id": "t1", "name": "Bash", "summary": "npm test", "status": "done" },
+       { "kind": "notice", "id": "n1", "text": "Total cost: $0.42" }
+     ],
+     "queue": [{ "id": "q1", "text": "Then commit" }],
+     "hasEarlier": true
+   }
+   ```
+   - Each `chat` is the **complete tail**, never a delta: a lost one is made good by the next.
+   - Bounded: the last 80 entries at most, within about 96 kB of JSON, newest kept first. A
+     message longer than 4 000 code points is cut and marked `cut`. Tool outputs and diffs stay
+     on the Mac. `hasEarlier` says older entries were left out.
+   - `tool.status` is `running`, `done` or `error`. An unknown `kind` is skipped by the phone.
+4. **Ordering.** The phone accepts a `chat` only from a paired Mac, naming that Mac's saved
+   `pairingId`, and newer than the last `chat` it accepted from that Mac by §6's rule on
+   `(generation, epoch, seq)`, `generation` read from the box. The conversation is held in
+   memory only, never cached to disk.
+
