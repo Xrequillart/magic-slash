@@ -21,6 +21,9 @@ struct AgentSessionView: View {
   @State private var atBottom = true
   /// The thread's visible height, to tell where its end marker sits.
   @State private var viewportHeight: CGFloat = 0
+  /// Whether the thread was taken to its end once it arrived: the first transcript lands
+  /// after the screen opens, so the scroll view's initial anchor alone misses it.
+  @State private var landed = false
 
   var body: some View {
     Group {
@@ -135,7 +138,14 @@ struct AgentSessionView: View {
       .onPreferenceChange(BottomMarkerKey.self) { minY in
         atBottom = minY <= viewportHeight + Self.stick
       }
-      .onChange(of: scrollKey(chat: chat, runtime: runtime)) {
+      .onChange(of: scrollKey(chat: chat, runtime: runtime), initial: true) {
+        if !landed {
+          // Opening the session: straight to the newest line, whatever came in meanwhile.
+          guard chat != nil else { return }
+          landed = true
+          land(proxy)
+          return
+        }
         guard atBottom else { return }
         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.bottom, anchor: .bottom) }
       }
@@ -161,6 +171,16 @@ struct AgentSessionView: View {
   private static let bottom = "bottom"
   private static let thread = "thread"
   private static let stick: CGFloat = 48
+
+  /// To the end without animation, then again once the lazy rows above have measured
+  /// themselves: their first estimate leaves the end short of the bottom.
+  private func land(_ proxy: ScrollViewProxy) {
+    proxy.scrollTo(Self.bottom, anchor: .bottom)
+    Task {
+      try? await Task.sleep(for: .milliseconds(150))
+      proxy.scrollTo(Self.bottom, anchor: .bottom)
+    }
+  }
 
   /// What moves the view to the newest line: a new entry, a tool settling, a question.
   private func scrollKey(chat: AgentChat?, runtime: AgentRuntime?) -> String {
