@@ -151,9 +151,8 @@ struct AgentSessionView: View {
       }
       .safeAreaInset(edge: .bottom) {
         if let runtime, let appAgentId = agent.appAgentId {
-          PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+          // Drawn back while the reader is up the thread, full size again at the end.
+          PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId, compact: !atBottom)
         }
       }
     }

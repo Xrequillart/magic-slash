@@ -15,6 +15,9 @@ struct PromptComposer: View {
   let relay: RelayStore
   let runtime: AgentRuntime
   let appAgentId: String
+  /// The reader has scrolled up the thread: the composer draws back, narrower, shorter and
+  /// closer to the bottom edge, until they are back at the end or start typing.
+  var compact = false
 
   @State private var text = ""
   @FocusState private var focused: Bool
@@ -27,13 +30,15 @@ struct PromptComposer: View {
     let sending = isSending(status)
     let length = trimmed.utf16.count
     let action = buttonAction(status: status)
+    let compact = compact && !focused
+    let height: CGFloat = compact ? 38 : 48
     VStack(alignment: .leading, spacing: 8) {
       if hasNotice(length: length, status: status) {
         notices(length: length, status: status)
           .padding(.horizontal, 14)
           .padding(.vertical, 10)
           .frame(maxWidth: .infinity, alignment: .leading)
-          .liquidGlass(in: RoundedRectangle(cornerRadius: 18))
+          .liquidGlass(in: RoundedRectangle(cornerRadius: 18), tint: fieldTint)
           .transition(.move(edge: .bottom).combined(with: .opacity))
       }
 
@@ -46,12 +51,12 @@ struct PromptComposer: View {
           .focused($focused)
           .disabled(sending)
           .padding(.horizontal, 16)
-          .padding(.vertical, 10)
+          .padding(.vertical, compact ? 6 : 10)
           // Cera sits high on its line: the field's own box is centred, then nudged so
           // the placeholder's x-height is, not its ascender.
           .offset(y: 1.5)
-          .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-          .liquidGlass(in: RoundedRectangle(cornerRadius: 24))
+          .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
+          .liquidGlass(in: RoundedRectangle(cornerRadius: height / 2), tint: fieldTint)
 
         if let action {
           Button {
@@ -63,13 +68,13 @@ struct PromptComposer: View {
                 ProgressView().tint(action == .stop ? theme.ink : theme.onBrand)
               } else {
                 Image(systemName: action == .stop ? "stop.fill" : "arrow.up")
-                  .font(.system(size: action == .stop ? 16 : 18, weight: .bold))
+                  .font(.system(size: (action == .stop ? 16 : 18) - (compact ? 3 : 0), weight: .bold))
               }
             }
             .foregroundStyle(action == .stop ? theme.ink : theme.onBrand)
-            .frame(width: 48, height: 48)
+            .frame(width: height, height: height)
             .contentShape(Circle())
-            .liquidGlass(in: Circle(), tint: action == .stop ? nil : theme.accent)
+            .liquidGlass(in: Circle(), tint: action == .stop ? fieldTint : theme.accent)
           }
           .buttonStyle(.plain)
           .disabled(action == .stop ? (!runtime.isCurrent || sending) : !canSend(length: length, sending: sending))
@@ -81,10 +86,19 @@ struct PromptComposer: View {
       }
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
+    .padding(.horizontal, compact ? 36 : 12)
+    .padding(.bottom, compact ? 2 : 8)
+    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: compact)
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }
     }
+  }
+
+  /// The glass takes the theme's raised surface, so the field reads as part of the theme
+  /// (Midnight's is blue) rather than the system's neutral grey.
+  private var fieldTint: Color {
+    theme.bgTertiary.opacity(0.7)
   }
 
   private enum ButtonAction {
