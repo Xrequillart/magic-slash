@@ -95,25 +95,24 @@ describe('answerPendingQuestion', () => {
     // The panel is up to 2s stale: the user answered in the main window and a new
     // question already took this agent's slot.
     const result = await answerPendingQuestion('term-1', 'tok-old', { kind: 'option', index: 0 }, deps(ASK))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'stale' })
     expect(write).not.toHaveBeenCalled()
     expect(clear).not.toHaveBeenCalled()
   })
 
   it('writes NOTHING when the question is already gone', async () => {
     const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 0 }, deps(undefined))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'stale' })
     expect(write).not.toHaveBeenCalled()
   })
 
   it('writes NOTHING when no keystrokes can be derived', async () => {
     // Out of range, an unsupported question, and denying an AskUserQuestion (where
     // Escape would interrupt the agent rather than answer it).
-    expect((await answerPendingQuestion('t', 'tok-1', { kind: 'option', index: 9 }, deps(ASK))).ok).toBe(false)
-    expect((await answerPendingQuestion('t', 'tok-1', { kind: 'deny' }, deps(ASK))).ok).toBe(false)
-    expect(
-      (await answerPendingQuestion('t', 'tok-1', { kind: 'option', index: 0 }, deps({ ...ASK, unsupported: true }))).ok,
-    ).toBe(false)
+    expect(await answerPendingQuestion('t', 'tok-1', { kind: 'option', index: 9 }, deps(ASK))).toEqual({ ok: false, reason: 'invalid' })
+    expect(await answerPendingQuestion('t', 'tok-1', { kind: 'deny' }, deps(ASK))).toEqual({ ok: false, reason: 'invalid' })
+    expect(await answerPendingQuestion('t', 'tok-1', { kind: 'option', index: 0 }, deps({ ...ASK, unsupported: true })))
+      .toEqual({ ok: false, reason: 'unsupported' })
     expect(write).not.toHaveBeenCalled()
   })
 
@@ -131,7 +130,7 @@ describe('answerPendingQuestion', () => {
     for (const choice of malformed) {
       await expect(
         answerPendingQuestion('term-1', 'tok-1', choice as never, deps(ASK)),
-      ).resolves.toEqual({ ok: false })
+      ).resolves.toEqual({ ok: false, reason: 'invalid' })
     }
     expect(write).not.toHaveBeenCalled()
   })
@@ -139,7 +138,7 @@ describe('answerPendingQuestion', () => {
   it('writes NOTHING on a malformed id or token', async () => {
     for (const [id, token] of [['', 'tok-1'], ['term-1', ''], [null, 'tok-1'], ['term-1', undefined]]) {
       const result = await answerPendingQuestion(id as string, token as string, { kind: 'option', index: 0 }, deps(ASK))
-      expect(result.ok).toBe(false)
+      expect(result).toEqual({ ok: false, reason: 'invalid' })
     }
     expect(write).not.toHaveBeenCalled()
   })
@@ -167,7 +166,7 @@ describe('answerPendingQuestion', () => {
 
   it('writes NOTHING for a multiSelect answer with no box ticked', async () => {
     const result = await answerPendingQuestion('t', 'tok-3', { kind: 'options', indexes: [] }, deps(MULTI))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'invalid' })
     expect(write).not.toHaveBeenCalled()
   })
 
@@ -176,7 +175,7 @@ describe('answerPendingQuestion', () => {
     // disappear as if the agent had been advanced.
     write.mockReturnValue(false)
     const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 0 }, deps(ASK))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'write-failed' })
     expect(clear).not.toHaveBeenCalled()
   })
 
@@ -185,7 +184,7 @@ describe('answerPendingQuestion', () => {
     // submitted. Keeping the card is what lets the user see it and finish by hand.
     write.mockImplementation(() => write.mock.calls.length < 3)
     const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 3 }, deps(ASK))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'write-failed' })
     expect(write).toHaveBeenCalledTimes(3)
     expect(clear).not.toHaveBeenCalled()
   })
@@ -202,7 +201,7 @@ describe('answerPendingQuestion', () => {
     await Promise.resolve()
 
     const second = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 1 }, deps(ASK))
-    expect(second).toEqual({ ok: false })
+    expect(second).toEqual({ ok: false, reason: 'busy' })
 
     // Drain the first sequence: each release lets it through one more keypress.
     for (let i = 0; i < 5; i++) { release(); await Promise.resolve() }
@@ -240,9 +239,25 @@ describe('a held question', () => {
     expect(clear).toHaveBeenCalledWith('term-1')
   })
 
+  it('refuses answers that do not fit the held questions, without calling the hook', async () => {
+    const answerHeld = vi.fn(() => true)
+    const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 0 }, { ...deps(HELD), answerHeld })
+    expect(result).toEqual({ ok: false, reason: 'invalid' })
+    expect(answerHeld).not.toHaveBeenCalled()
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('never types into the terminal, even in a shape the keystrokes cannot drive', async () => {
+    // Several questions is `unsupported` for the TUI. Held, it is the hook's to answer,
+    // and a refusal there must not fall through to the keystrokes.
+    const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 0 }, { ...deps({ ...HELD, unsupported: true }), answerHeld: () => false })
+    expect(result.ok).toBe(false)
+    expect(write).not.toHaveBeenCalled()
+  })
+
   it('keeps the question when the hook is no longer held', async () => {
     const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'answers', answers: ['main', 'Red'] }, { ...deps(HELD), answerHeld: () => false })
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'stale' })
     expect(clear).not.toHaveBeenCalled()
   })
 
@@ -256,7 +271,7 @@ describe('a held question', () => {
 
   it('types no free-text answer into a terminal', async () => {
     const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'answers', answers: ['main'] }, deps(ASK))
-    expect(result).toEqual({ ok: false })
+    expect(result).toEqual({ ok: false, reason: 'invalid' })
     expect(write).not.toHaveBeenCalled()
   })
 })
