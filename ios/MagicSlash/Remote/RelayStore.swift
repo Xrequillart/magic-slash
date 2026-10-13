@@ -497,7 +497,9 @@ final class RelayStore {
   /// Answers an agent's pending question (PROTOCOL.md §10): Face ID signs the payload, the
   /// pair key seals it, and the Mac's `command-result` lands in `answers`.
   func answer(macId: String, appAgentId: String, token: String, choice: AnswerChoice) async {
-    if case .sending = answers[appAgentId]?.phase { return }
+    // Only an answer to this same question is in the way: one still in flight for an earlier
+    // question must not leave a newer one's buttons doing nothing until it settles.
+    if let current = answers[appAgentId], current.token == token, case .sending = current.phase { return }
     func fail(_ message: String) {
       answers[appAgentId] = AnswerStatus(token: token, phase: .failed(message))
     }
@@ -569,10 +571,7 @@ final class RelayStore {
       guard !Task.isCancelled, let self,
             let pending = self.pendingCommands.removeValue(forKey: commandId)
       else { return }
-      self.answers[pending.appAgentId] = AnswerStatus(
-        token: pending.token,
-        phase: .failed("\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again.")
-      )
+      self.settle(pending, .failed("\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again."))
     }
     pendingCommands[commandId] = PendingCommand(
       macId: macId, pairingId: pairingId, appAgentId: appAgentId, token: token, timeout: timeout
@@ -617,10 +616,7 @@ final class RelayStore {
   private func abandonPendingCommands() {
     for pending in pendingCommands.values {
       pending.timeout.cancel()
-      answers[pending.appAgentId] = AnswerStatus(
-        token: pending.token,
-        phase: .failed("Magic Slash left the screen before your Mac confirmed. Check the Mac.")
-      )
+      settle(pending, .failed("Magic Slash left the screen before your Mac confirmed. Check the Mac."))
     }
     pendingCommands = [:]
   }
@@ -835,7 +831,13 @@ final class RelayStore {
     else { return }
     pendingCommands[commandId] = nil
     pending.timeout.cancel()
-    let phase: AnswerStatus.Phase = ok ? .done : .failed(Self.message(for: body["reason"] as? String))
+    settle(pending, ok ? .done : .failed(Self.message(for: body["reason"] as? String)))
+  }
+
+  /// Records how a sent command ended, unless the agent's status already belongs to a newer
+  /// question: a late reply or timeout for an earlier one must not overwrite it.
+  private func settle(_ pending: PendingCommand, _ phase: AnswerStatus.Phase) {
+    if let current = answers[pending.appAgentId], current.token != pending.token { return }
     answers[pending.appAgentId] = AnswerStatus(token: pending.token, phase: phase)
   }
 
