@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.121.0] - 2026-10-13
+
+### Added
+
+- **Ios**: Give every button a haptic tap
+- **Ios**: Edit the desktop's non-sensitive settings from the phone
+- **Ios**: Generate the editable and sensitive settings from the desktop's list
+- **Desktop**: Sync only the settings columns that changed, both ways
+- **Ios**: Spring the send button in only once the prompt has text, and center the placeholder
+- **Ios**: Draw the conversation like the desktop chat, with its markdown, tool settings and empty state
+- **Ios**: Add the desktop's animated claude code robot
+
+### Fixed
+
+- **Desktop**: End a background agent whose notification names only its task id
+- **Ios**: Follow the conversation's end only while the reader is already there
+- **Desktop**: Resume a session where it started when its agent moved to a worktree
+
 ## [0.120.0] - 2026-10-13
 
 ### Added
@@ -4019,6 +4037,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.121.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.121.0
 [0.120.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.120.0
 [0.119.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.119.0
 [0.118.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.118.5
