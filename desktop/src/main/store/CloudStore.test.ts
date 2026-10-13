@@ -3428,6 +3428,22 @@ describe('saveConfig user_settings', () => {
     expect(takeIncomingSettingsRow({ ...emptyRow(), ...REMOTE, theme: 'light' })).toEqual({ theme: 'light' })
   })
 
+  it('never sends the old value of a column the phone changed while the write waited', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
+    h.state.client = client
+    const store = new CloudStore()
+    const config = await hydrate(store)
+
+    // The Mac saves; the phone's theme lands before the write goes out, while the
+    // config handed to the save still holds the old theme.
+    config.notifications = { ...config.notifications, enabled: false }
+    const saving = store.saveConfig(config)
+    takeIncomingSettingsRow({ ...emptyRow(), ...REMOTE, theme: 'light' })
+    await saving
+
+    expect(settingsUpserts(calls)).toEqual([{ user_id: UID, notifications_enabled: false }])
+  })
+
   it('sends a column again after its write failed', async () => {
     const { client, calls } = makeClient({
       memberships: membershipsOk,
@@ -3447,7 +3463,7 @@ describe('saveConfig user_settings', () => {
     ])
   })
 
-  it('runs saves one at a time, each against the latest config', async () => {
+  it('runs saves one at a time, the latest save carrying every change', async () => {
     const { client, calls } = makeClient({ memberships: membershipsOk, user_settings: { data: REMOTE, error: null } })
     h.state.client = client
     const store = new CloudStore()

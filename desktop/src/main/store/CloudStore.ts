@@ -427,8 +427,8 @@ export class CloudStore implements Store {
   private agentWrites: Promise<unknown> = Promise.resolve()
   /** Tail of the user_settings write chain — see saveUserSettings. */
   private settingsWrites: Promise<void> = Promise.resolve()
-  /** The latest config handed to saveUserSettings: what the next write in the chain diffs. */
-  private pendingSettingsConfig: Config | null = null
+  /** The columns the latest save changed, waiting for the next write in the chain. */
+  private pendingSettingsChanges: Partial<UserSettingsRow> | null = null
   /**
    * Storage object path → the bytes last fetched for it, and when. Null means the
    * download failed, which is cached too. See loadAvatarDataUrls.
@@ -595,25 +595,26 @@ export class CloudStore implements Store {
    * context()) on purpose: preferences belong to the USER, so they must persist even when
    * no org is active — which is exactly the case the old org-scoped blob dropped.
    *
-   * Saves run one at a time, and each computes its columns when it RUNS, against the
-   * latest config handed in, so two quick toggles never send a stale difference, and the
-   * second one usually finds nothing left to write (see user-settings-sync.ts). Never the
+   * Each save computes its columns when it is CALLED, while the config it was handed and
+   * the baseline still agree: a phone event applied while the write waits moves both, and
+   * diffing the older config then would send the phone's column back with its old value.
+   * Writes run one at a time and only the latest save's columns go out, so two quick
+   * toggles make one write (see user-settings-sync.ts). Never the
    * whole row once a baseline is known: the iPhone writes this table too, and every
    * column the desktop did not change is one the phone may just have.
    */
   private saveUserSettings(config: Config): Promise<void> {
-    this.pendingSettingsConfig = config
+    this.pendingSettingsChanges = settingsChangesToSave(config)
     const write = this.settingsWrites.then(() => this.writeUserSettings())
     this.settingsWrites = write.catch(() => undefined)
     return write
   }
 
   private async writeUserSettings(): Promise<void> {
-    const config = this.pendingSettingsConfig
-    if (!config) return
     const ctx = await this.userContext()
     if (!ctx) return
-    const changes = settingsChangesToSave(config)
+    const changes = this.pendingSettingsChanges
+    this.pendingSettingsChanges = null
     if (!changes) return
     beginSettingsWrite(changes)
     const { error } = await ctx.client

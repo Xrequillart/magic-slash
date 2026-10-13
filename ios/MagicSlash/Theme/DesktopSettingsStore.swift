@@ -43,9 +43,12 @@ final class DesktopSettingsStore {
   /// Each subscription gets its own channel name, so removing an old channel can never
   /// tear down the one that replaced it.
   @ObservationIgnored private var subscriptionCount = 0
-  /// The edits the server has not confirmed yet, by column.
+  /// The edits whose own Realtime event has not come back yet, by column.
   @ObservationIgnored private var pending: [EditableSetting: PendingWrite] = [:]
   @ObservationIgnored private var writeCount = 0
+  /// The last write queued for each column. Writes to one column go out in edit order, so
+  /// an earlier pick can never reach the server after a later one.
+  @ObservationIgnored private var writeQueues: [EditableSetting: Task<Void, Never>] = [:]
 
   private struct PendingWrite {
     /// Tells this write from a later edit of the same column.
@@ -55,6 +58,9 @@ final class DesktopSettingsStore {
     /// the edit, then the column of any row seen while the write was in flight (the
     /// server's word), or an earlier edit of it once confirmed.
     var fallback: AnyJSON
+    /// The server took it. Until its echo arrives, a row still carrying `fallback` is
+    /// older than the write and is not applied; any other value is newer and wins.
+    var confirmed = false
   }
 
   private static let themeCacheKey = "lastThemeID"
@@ -209,12 +215,13 @@ final class DesktopSettingsStore {
 
     writeCount += 1
     let id = writeCount
-    // An edit over an unconfirmed one keeps what the server held before both.
+    // An edit over an unconfirmed one keeps what the server held before both; over a
+    // confirmed one, the server holds that edit.
     let earlier = pending[column]
     pending[column] = PendingWrite(
       id: id,
       value: value,
-      fallback: earlier?.fallback ?? current
+      fallback: earlier.map { $0.confirmed ? $0.value : $0.fallback } ?? current
     )
     // A read already in flight predates this edit: it must not land over it.
     liveRevision += 1
@@ -223,13 +230,17 @@ final class DesktopSettingsStore {
     install(next)
 
     let session = session
-    Task { [weak self] in
+    let previous = writeQueues[column]
+    writeQueues[column] = Task { [weak self] in
+      await previous?.value
+      // A later edit of this column replaced this one before it went out: that one is sent.
+      guard let self, session == self.session, self.pending[column]?.id == id else { return }
       do {
         try await SettingsWriter.write(column, value, client: client, userId: userId)
-        guard let self, session == self.session else { return }
+        guard session == self.session else { return }
         self.confirm(column, id: id, value: value)
       } catch {
-        guard let self, session == self.session else { return }
+        guard session == self.session else { return }
         self.fail(column, id: id)
       }
     }
@@ -238,7 +249,8 @@ final class DesktopSettingsStore {
   private func confirm(_ column: EditableSetting, id: Int, value: AnyJSON) {
     guard var write = pending[column] else { return }
     if write.id == id {
-      pending[column] = nil
+      write.confirmed = true
+      pending[column] = write
     } else {
       // A later edit is still in flight: should it fail, the server now holds this value,
       // and any row seen so far predates it.
@@ -264,7 +276,8 @@ final class DesktopSettingsStore {
   }
 
   /// Takes a whole row: a column it lacks was never chosen. A pending column keeps the
-  /// edit, and stops being pending once a row carries the value that was sent.
+  /// edit, and stops being pending once a row carries the value that was sent, or, once
+  /// confirmed, a value newer than the one it replaced.
   private func apply(_ row: JSONObject) {
     var next = values
     for key in Self.columnNames {
@@ -272,6 +285,10 @@ final class DesktopSettingsStore {
       if let column = EditableSetting(rawValue: key), var write = pending[column] {
         if Self.same(incoming, write.value) {
           pending[column] = nil
+        } else if write.confirmed {
+          guard !Self.same(incoming, write.fallback) else { continue }
+          pending[column] = nil
+          next[key] = incoming
         } else {
           write.fallback = incoming
           pending[column] = write
@@ -312,6 +329,7 @@ final class DesktopSettingsStore {
   private func reset() {
     values = [:]
     pending = [:]
+    writeQueues = [:]
     isLoaded = false
   }
 
