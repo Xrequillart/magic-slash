@@ -4,7 +4,17 @@ import { aadFor, open, seal, type EnvelopeHeader } from './crypto'
  * The relay envelope (PROTOCOL.md §4), shared by the pairing and the relay. Only the shape
  * lives here; the crypto is `crypto.ts`'s.
  */
-export type RelayMessageType = 'pair-request' | 'pair-accepted' | 'pair-rejected' | 'state' | 'revoked'
+const RELAY_MESSAGE_TYPES = [
+  'pair-request',
+  'pair-accepted',
+  'pair-rejected',
+  'state',
+  'revoked',
+  'command',
+  'command-result',
+] as const
+
+export type RelayMessageType = (typeof RELAY_MESSAGE_TYPES)[number]
 
 export type PairRejectReason = 'expired' | 'used' | 'declined'
 
@@ -22,7 +32,7 @@ export interface RelayEnvelope extends EnvelopeHeader {
 /** A lowercase UUID: every id in the protocol (user, Mac, phone) is one. */
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
-const TYPES: ReadonlySet<string> = new Set(['pair-request', 'pair-accepted', 'pair-rejected', 'state', 'revoked'])
+const TYPES: ReadonlySet<string> = new Set(RELAY_MESSAGE_TYPES)
 const REASONS: ReadonlySet<string> = new Set(['expired', 'used', 'declined'])
 
 /**

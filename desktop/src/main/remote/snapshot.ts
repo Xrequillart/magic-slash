@@ -1,4 +1,4 @@
-import type { TerminalMetadata, TerminalState } from '../../types'
+import type { TerminalMetadata, TerminalState, TrayQuestion, TrayQuestionItem } from '../../types'
 
 /**
  * The state snapshot (PROTOCOL.md §5) and the schedule it is sent on.
@@ -17,11 +17,44 @@ export interface RelayAgentUsage {
   sevenDayResetsAt: number | null
 }
 
+/** One option of a published question (§5). */
+export interface RelayQuestionOption {
+  label: string
+  description?: string
+}
+
+/** One question of a published question: an AskUserQuestion may ask several at once. */
+export interface RelayQuestionItem {
+  prompt: string
+  header?: string
+  multiSelect: boolean
+  /** Empty for a permission: the phone offers Allow and Deny. */
+  options: RelayQuestionOption[]
+}
+
+/** The question an agent is blocked on, as the phones see it (§5). */
+export interface RelayQuestion {
+  /** What an `answer` command quotes (§10). */
+  token: string
+  kind: 'ask' | 'permission'
+  /** Mac clock, epoch ms: the question expires 30 minutes after it. */
+  receivedAt: number
+  /** The Mac cannot answer it from a remote choice: "answer on the Mac". */
+  unsupported: boolean
+  questions: RelayQuestionItem[]
+  /**
+   * A permission's terminal tail: the command it asks about. The prompt is only the
+   * notification's one-liner, so without it the phone would allow blind. Absent on an ask.
+   */
+  preview?: string
+}
+
 export interface RelayAgent {
   appAgentId: string
   title: string
   state: TerminalState
   usage: RelayAgentUsage | null
+  question: RelayQuestion | null
 }
 
 /** What every phone of the Mac is sent alike: the snapshot before it is addressed. */
@@ -63,6 +96,68 @@ export function toRelayUsage(usage: TerminalMetadata['usage']): RelayAgentUsage 
   }
 }
 
+/** The bounds of a published question (§5): the box is sealed whole, and a phone lays it out. */
+export const QUESTION_LIMITS = { questions: 4, options: 10, prompt: 2000, text: 300, preview: 4000 } as const
+
+/** `text` cut at `max` code points: a cut through a surrogate pair would not encode. */
+function cut(text: string, max: number): { text: string; cut: boolean } {
+  // UTF-16 length is never below the code-point count: a short string needs no split.
+  if (text.length <= max) return { text, cut: false }
+  const points = Array.from(text)
+  return points.length <= max ? { text, cut: false } : { text: points.slice(0, max).join(''), cut: true }
+}
+
+/** The last `max` code points of `text`: a terminal tail ends with what matters. */
+function tail(text: string, max: number): string {
+  if (text.length <= max) return text
+  const points = Array.from(text)
+  return points.length <= max ? text : points.slice(points.length - max).join('')
+}
+
+/**
+ * A pending question in the protocol's shape (§5), or null. Only what the phone needs to
+ * answer it: the terminal preview, and an option's markdown preview, stay on the Mac.
+ *
+ * Bounded. A cut that changes what an answer would say or what it is about (a question beyond
+ * the fourth, a prompt shortened, or a label shortened, which a held question takes back as
+ * the answer's text) marks the question `unsupported`: the phone then sends the user to the
+ * Mac rather than answer something it was not fully shown. Options beyond the tenth are
+ * simply not offered. A permission's preview keeps its end, where the command is.
+ */
+export function toRelayQuestion(question: TrayQuestion | undefined): RelayQuestion | null {
+  if (!question) return null
+  let truncated = false
+  const preview = question.kind === 'permission' && question.preview ? tail(question.preview, QUESTION_LIMITS.preview) : undefined
+  const items: TrayQuestionItem[] = question.kind === 'permission'
+    ? [{ prompt: question.prompt, options: [] }]
+    : question.questions ?? [{ prompt: question.prompt, options: question.options, multiSelect: question.multiSelect }]
+  if (items.length > QUESTION_LIMITS.questions) truncated = true
+  const questions = items.slice(0, QUESTION_LIMITS.questions).map((item): RelayQuestionItem => {
+    const header = item.header ? cut(item.header, QUESTION_LIMITS.text).text : undefined
+    const prompt = cut(item.prompt, QUESTION_LIMITS.prompt)
+    if (prompt.cut) truncated = true
+    return {
+      prompt: prompt.text,
+      ...(header ? { header } : {}),
+      multiSelect: item.multiSelect === true,
+      options: item.options.slice(0, QUESTION_LIMITS.options).map((option) => {
+        const label = cut(option.label, QUESTION_LIMITS.text)
+        if (label.cut) truncated = true
+        const description = option.description ? cut(option.description, QUESTION_LIMITS.text).text : undefined
+        return { label: label.text, ...(description ? { description } : {}) }
+      }),
+    }
+  })
+  return {
+    token: question.token,
+    kind: question.kind,
+    receivedAt: question.receivedAt,
+    unsupported: question.unsupported === true || truncated,
+    questions,
+    ...(preview ? { preview } : {}),
+  }
+}
+
 /** Script runners and the sidebar's shell are terminals, not agents (as for the tray). */
 export function isAgentTerminal(id: string): boolean {
   return !id.startsWith('script-') && !id.startsWith('sidebar-')
@@ -73,6 +168,9 @@ export function isAgentTerminal(id: string): boolean {
  * required, not defaulted: a terminal started under another account (one whose session was
  * refused, then someone else signed in) must never reach this account's phones, and one whose
  * owner is unknown is left out too.
+ *
+ * `questionOf` reads an agent's pending question: `getPendingQuestion` in the app, so an
+ * expired one is dropped before it is published.
  */
 export function buildSnapshot(
   terminals: SnapshotTerminal[],
@@ -80,6 +178,7 @@ export function buildSnapshot(
   sentAt: number,
   generation: number,
   isOwned: (terminalId: string) => boolean,
+  questionOf: (terminalId: string) => TrayQuestion | undefined = () => undefined,
 ): RelaySnapshotBody {
   return {
     generation,
@@ -92,6 +191,7 @@ export function buildSnapshot(
         title: t.metadata?.title || t.name,
         state: t.state,
         usage: toRelayUsage(t.metadata?.usage),
+        question: toRelayQuestion(questionOf(t.id)),
       })),
   }
 }

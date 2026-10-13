@@ -36,6 +36,12 @@ export interface StoredRemoteDevice {
    * `revoked` and every snapshot, so the phone drops anything from an earlier pairing.
    */
   pairingId: string
+  /**
+   * The phone's command-signing key (§3, §10), X9.63, standard base64. Learnt only from the
+   * box of the `pair-request` this pairing approved. Absent for a phone paired before
+   * commands existed: it still gets every snapshot, and `re-pair` for any command.
+   */
+  signPub?: string
 }
 
 export interface RemoteIdentity {
@@ -86,6 +92,12 @@ function isDevice(value: unknown): value is StoredRemoteDevice {
   )
 }
 
+/** The fields of a device record, and only those: a `signPub` that is not a string is left out. */
+function cleanDevice(d: StoredRemoteDevice): StoredRemoteDevice {
+  const { phoneId, name, pub, pairedAt, pairingId, signPub } = d
+  return { phoneId, name, pub, pairedAt, pairingId, ...(typeof signPub === 'string' ? { signPub } : {}) }
+}
+
 /** A stored count, or 0: anything else in that field reads as "never started". */
 function cleanGeneration(value: unknown): number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
@@ -102,7 +114,7 @@ export function loadIdentity(userId: string): RemoteIdentity | null {
       return null
     }
     const stored: unknown[] = Array.isArray(parsed.devices) ? parsed.devices : []
-    const devices = stored.filter(isDevice)
+    const devices = stored.filter(isDevice).map(cleanDevice)
     // Records from before pairings were named (no `pairingId`, dev builds only: the feature is
     // unreleased) cannot be addressed under §6, and the phone drops its side of them too.
     if (devices.length < stored.length) {

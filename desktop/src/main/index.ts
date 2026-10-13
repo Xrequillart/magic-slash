@@ -53,7 +53,7 @@ import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { setupRemoteHandlers } from './ipc/remote-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { closePlanLive } from './cloud/plan-live'
-import { notifyRemoteState, notifyRemoteUsage, stopRemoteRelay } from './remote/relay'
+import { notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, stopRemoteRelay } from './remote/relay'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 import { setupReengagementNotifications } from './notifications/reengagement'
@@ -530,6 +530,29 @@ function trayUpdate(): TrayUpdate {
   }
 }
 
+/**
+ * Answer an agent's pending question: the one path the menu bar panel and the paired
+ * iPhones (remote/relay.ts) share, so a phone's answer meets the same token check and the
+ * same keystrokes as a click on the Mac.
+ *
+ * The decision itself lives in `answerPendingQuestion` so it can be unit-tested; this
+ * only supplies the store and the PTY.
+ */
+async function answerQuestion(id: string, token: string, choice: TrayAnswerChoice): Promise<TrayAnswerResult> {
+  // Awaited: the answer is typed one keypress at a time, spaced, because the TUI
+  // drops all but one event out of a single burst — see answer-keys.ts.
+  const result = await answerPendingQuestion(id, token, choice, {
+    getQuestion: getPendingQuestion,
+    answerHeld,
+    write: writeToTerminal,
+    clear: clearPendingQuestion,
+  })
+  // Refresh the tray immediately: the agent's state is hook-driven and will not
+  // leave `waiting` on its own just because we typed.
+  if (result.ok) aggregator?.update()
+  return result
+}
+
 function setupTrayHandlers() {
   // One call for everything the menu bar panel paints, because it polls: agents,
   // the version in its header, and the update state that turns that version into
@@ -563,8 +586,7 @@ function setupTrayHandlers() {
    * `keysFor` returning null is the second gate: an unsupported question or an index
    * we cannot place is not approximated.
    *
-   * The decision itself lives in `answerPendingQuestion` so it can be unit-tested;
-   * this handler only supplies the store and the PTY.
+   * The paired iPhones answer through the same `answerQuestion`.
    */
   // The chat view's first read of an agent's question; changes arrive as `terminal:question`.
   ipcMain.handle('terminal:getQuestion', async (_event, { id }: { id: unknown }) =>
@@ -578,22 +600,12 @@ function setupTrayHandlers() {
     // the three fields, but it never gets the chance if unpacking a null payload has
     // already thrown — and a TypeError crossing back over IPC rejects the renderer's
     // invoke() instead of giving it the documented `{ ok: false }`.
-    if (typeof payload !== 'object' || payload === null) return { ok: false }
+    if (typeof payload !== 'object' || payload === null) return { ok: false, reason: 'invalid' }
     const { id, token, choice } = payload
-
-    // Awaited: the answer is typed one keypress at a time, spaced, because the TUI
-    // drops all but one event out of a single burst — see answer-keys.ts.
-    const result = await answerPendingQuestion(id, token, choice, {
-      getQuestion: getPendingQuestion,
-      answerHeld,
-      write: writeToTerminal,
-      clear: clearPendingQuestion,
-    })
-    // Refresh the tray immediately: the agent's state is hook-driven and will not
-    // leave `waiting` on its own just because we typed.
-    if (result.ok) aggregator?.update()
-    return result
+    return answerQuestion(id, token, choice)
   })
+  // A paired iPhone's verified `answer` command (remote/PROTOCOL.md §10).
+  setRemoteAnswerer(answerQuestion)
 
   ipcMain.handle('tray:resize', async (_event, { height }: { height: number }) => {
     resizePopover(height)
@@ -814,9 +826,12 @@ async function initializeHooksAndSessions() {
     setInterruptListener((terminalId, at) => {
       if (settleInterruptedTurn(terminalId, at)) clearPendingQuestion(terminalId)
     })
-    // The question the chat view draws over its composer.
+    // The question the chat view draws over its composer, and the one the paired phones
+    // show. The phones are told on every change: a question turning `unsupported` (the user
+    // typed) or released from its hold moves no tray fingerprint, so nothing else would.
     setPendingQuestionListener((terminalId, question) => {
       if (mainWindow) mainWindow.webContents.send('terminal:question', { id: terminalId, question: question ?? null })
+      notifyRemoteState()
     })
 
     // A question an agent is blocked on, from the capture hooks. The payload is

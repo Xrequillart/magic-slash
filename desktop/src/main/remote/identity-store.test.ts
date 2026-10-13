@@ -96,6 +96,21 @@ describe('identity store', () => {
     warn.mockRestore()
   })
 
+  it('keeps a device\'s signing key, and reads a device without one as paired all the same', () => {
+    loadOrCreateIdentity(ALICE)
+    const signing = { ...device, phoneId: 'ffffffff-ffff-4fff-8fff-ffffffffffff', signPub: 'BBBB' }
+    addDevice(ALICE, device)
+    addDevice(ALICE, signing)
+    expect(listDevices(ALICE)).toEqual([device, signing])
+    expect(listDevices(ALICE)[0]).not.toHaveProperty('signPub')
+  })
+
+  it('reads a signing key that is not a string as none, and keeps the device', () => {
+    const identity = loadOrCreateIdentity(ALICE)
+    saveIdentity(ALICE, { ...identity, devices: [{ ...device, signPub: 42 as unknown as string }] })
+    expect(listDevices(ALICE)).toEqual([device])
+  })
+
   it('reads an identity file without a generation as generation 0', () => {
     const identity = loadOrCreateIdentity(ALICE)
     const older: Partial<typeof identity> = { ...identity }
