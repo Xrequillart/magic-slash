@@ -497,7 +497,13 @@ final class RelayStore {
       type: "pair-request", from: phoneId, to: offer.macId, epoch: epoch, seq: 1, body: body, key: key
     ) else { return fail("Could not encrypt the request.") }
     envelope["phonePub"] = .string(phonePub.base64EncodedString())
-    await channel.broadcast(event: "relay", message: envelope)
+    // Over REST, not the socket just joined: the server says whether it took the request,
+    // so the code only shows once the Mac can actually receive it.
+    do {
+      try await channel.httpSend(event: "relay", message: envelope)
+    } catch {
+      return fail("Could not send the request to your Mac (\(error.localizedDescription)). Scan its code again.")
+    }
     guard generation == pairingGeneration else { return }
 
     let code = RelayCrypto.pairingCode(token: offer.token, macPublic: offer.pub, phonePublic: phonePub)
