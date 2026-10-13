@@ -237,12 +237,12 @@ private struct PairingButton: View {
         HStack(spacing: 6) {
           Image(systemName: "laptopcomputer")
             .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(theme.icon)
+            .foregroundStyle(theme.ink)
           LiveDot(color: anyOnline ? theme.green : theme.red, pulses: anyOnline)
         }
       } else {
         Image(systemName: "qrcode")
-          .foregroundStyle(theme.icon)
+          .foregroundStyle(theme.ink)
       }
     }
     .accessibilityLabel(isPaired ? (anyOnline ? "Mac online" : "Mac offline") : "Pair a Mac")
