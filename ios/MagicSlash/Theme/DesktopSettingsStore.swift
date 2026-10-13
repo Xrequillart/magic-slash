@@ -61,9 +61,6 @@ final class DesktopSettingsStore {
     /// The value the edit replaced on the server. Once the write is confirmed, a row still
     /// carrying it is older than the write.
     var replaced: AnyJSON
-    /// Values earlier confirmed writes of this column replaced: a row carrying one is
-    /// older than the server's state and never becomes the rollback value.
-    var older: [AnyJSON] = []
     /// The server took it. Until its echo arrives, a row still carrying `replaced` is
     /// older than the write and is not applied; any other value is newer and wins.
     var confirmed = false
@@ -71,10 +68,6 @@ final class DesktopSettingsStore {
     var echoed = false
     /// A row newer than that early echo, applied once the answer has settled the edit.
     var newer: AnyJSON?
-
-    func isOlder(_ incoming: AnyJSON) -> Bool {
-      older.contains { DesktopSettingsStore.same($0, incoming) }
-    }
   }
 
   private static let themeCacheKey = "lastThemeID"
@@ -236,8 +229,7 @@ final class DesktopSettingsStore {
       id: id,
       value: value,
       fallback: earlier.map { $0.confirmed ? $0.value : $0.fallback } ?? current,
-      replaced: earlier.map { $0.confirmed ? $0.value : $0.replaced } ?? current,
-      older: earlier.map { $0.confirmed ? $0.older + [$0.replaced] : $0.older } ?? []
+      replaced: earlier.map { $0.confirmed ? $0.value : $0.replaced } ?? current
     )
     // A read already in flight predates this edit: it must not land over it.
     liveRevision += 1
@@ -280,8 +272,6 @@ final class DesktopSettingsStore {
       // A later edit is still in flight: should it fail, the server now holds this value,
       // and any row seen so far predates it.
       write.fallback = value
-      write.older.append(write.replaced)
-      write.older.removeAll { Self.same($0, value) }
       write.replaced = value
       pending[column] = write
     }
@@ -313,7 +303,7 @@ final class DesktopSettingsStore {
       if let column = EditableSetting(rawValue: key), var write = pending[column] {
         if write.confirmed {
           // The echo, or a value newer than the one the edit replaced.
-          if Self.same(incoming, write.replaced) || write.isOlder(incoming) { continue }
+          if Self.same(incoming, write.replaced) { continue }
           pending[column] = nil
           next[key] = incoming
         } else {
@@ -326,9 +316,8 @@ final class DesktopSettingsStore {
           } else if write.echoed {
             write.newer = incoming
           }
-          // Every row newer than a confirmed write is the server's latest word, so a
-          // failed write restores it.
-          if !write.isOlder(incoming) { write.fallback = incoming }
+          // Every row is the server's latest word, so a failed write restores it.
+          write.fallback = incoming
           pending[column] = write
         }
         continue
@@ -372,7 +361,7 @@ final class DesktopSettingsStore {
   }
 
   /// Equal values, counting 13 and 13.0 as one: Postgres numbers can come back either way.
-  nonisolated private static func same(_ a: AnyJSON, _ b: AnyJSON) -> Bool {
+  private static func same(_ a: AnyJSON, _ b: AnyJSON) -> Bool {
     switch (a, b) {
     case (.integer(let x), .double(let y)), (.double(let y), .integer(let x)):
       Double(x) == y
