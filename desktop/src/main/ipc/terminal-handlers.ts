@@ -30,7 +30,7 @@ import { readEmojiCompletion } from '../claude-emoji-completion'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
-import { resumableSessionId } from '../pty/resume-session'
+import { resumableSession } from '../pty/resume-session'
 import {
   saveAgent,
   archiveAgent,
@@ -537,9 +537,13 @@ export function restoreAgents() {
     }
 
     for (const agent of agents) {
-      const cwd = resolveAgentCwd(agent.repositories, os.homedir())
-      // The conversation the app was quit on, when this machine still has it.
-      const resumeId = resumableSessionId(agent.metadata?.claudeTranscriptPath, cwd)
+      // The conversation the app was quit on, when this machine still has it, in the
+      // directory it runs in: the agent's own, or the one the session started in when the
+      // agent moved to a worktree in the middle of it (see `transcriptCwd`).
+      const agentCwd = resolveAgentCwd(agent.repositories, os.homedir())
+      const resume = resumableSession(agent.metadata?.claudeTranscriptPath, agentCwd)
+      const cwd = resume?.cwd ?? agentCwd
+      const resumeId = resume?.id
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
       const terminal = launchClaude(

@@ -1120,7 +1120,7 @@ export interface TerminalMetadata {
    * new one. Persisted, unlike `usage.transcriptPath` it mirrors: written when the
    * statusLine reports a DIFFERENT file (a `/clear` does), and dropped whenever the app
    * replaces Claude Code with a fresh one — the restart button, a double Ctrl+C — so a
-   * conversation thrown away on purpose stays thrown away. See `resumableSessionId`.
+   * conversation thrown away on purpose stays thrown away. See `resumableSession`.
    */
   claudeTranscriptPath?: string
   /**

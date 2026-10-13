@@ -28,28 +28,83 @@ export function sessionIdOf(transcriptPath: string): string | null {
   return SESSION_ID.test(id) ? id : null
 }
 
-/** The first of `candidates` whose sessions are filed in the transcript's folder. */
-export function cwdForTranscript(transcriptPath: string, candidates: string[]): string | null {
+/** Claude Code's folder name for a directory: every non-alphanumeric turned into `-`. */
+function projectFolder(cwd: string): string {
+  return cwd.replace(/[^a-zA-Z0-9]/g, '-')
+}
+
+/** How much of a transcript is read to find where it started: its first lines say. */
+const HEAD_BYTES = 256 * 1024
+
+/**
+ * The directory the session was started in, read off its own lines, or null. Every
+ * conversation line carries the `cwd` Claude Code ran in; the one whose name is the file's
+ * folder is the start, whatever the shell moved to since. Still on disk, or `--resume`
+ * would have nowhere to run.
+ *
+ * What makes it necessary: an agent moved to a worktree in the middle of a session
+ * (`/magic:start` from the main checkout). Its repository is the worktree from then on,
+ * while the session it was on is filed under the checkout it started in, a directory
+ * nothing else about the agent remembers.
+ */
+export function transcriptCwd(transcriptPath: string): string | null {
   const folder = path.basename(path.dirname(transcriptPath))
-  return candidates.find((cwd) => cwd.replace(/[^a-zA-Z0-9]/g, '-') === folder) ?? null
+  let head: string
+  let fd: number | null = null
+  try {
+    fd = fs.openSync(transcriptPath, 'r')
+    const buffer = Buffer.alloc(HEAD_BYTES)
+    head = buffer.subarray(0, fs.readSync(fd, buffer, 0, HEAD_BYTES, 0)).toString('utf8')
+  } catch {
+    return null
+  } finally {
+    if (fd !== null) fs.closeSync(fd)
+  }
+  for (const line of head.split('\n')) {
+    if (!line.includes('"cwd"')) continue
+    try {
+      const cwd = (JSON.parse(line) as { cwd?: unknown }).cwd
+      if (typeof cwd === 'string' && path.isAbsolute(cwd) && projectFolder(cwd) === folder) {
+        return fs.existsSync(cwd) ? cwd : null
+      }
+    } catch {
+      // The last line of the head, cut mid-way.
+    }
+  }
+  return null
 }
 
 /**
- * The Claude Code session an agent restored at launch can pick up again, or null when it
- * must start fresh. Three reasons to say no, all of them ordinary:
+ * The directory to resume the session in: the first of `candidates` whose sessions are
+ * filed in the transcript's folder, else the one the transcript says it started in.
+ */
+export function cwdForTranscript(transcriptPath: string, candidates: string[]): string | null {
+  const folder = path.basename(path.dirname(transcriptPath))
+  return candidates.find((cwd) => projectFolder(cwd) === folder) ?? transcriptCwd(transcriptPath)
+}
+
+/**
+ * The Claude Code session an agent restored at launch can pick up again, and the directory
+ * to run it in, or null when it must start fresh. Three reasons to say no, all of them
+ * ordinary:
  *
  *   - THE FILE IS NOT HERE. Agents live in Supabase, transcripts on the machine that
  *     wrote them: an agent opened on a second Mac has nothing to resume there. A
  *     session nobody has spoken to yet has no file either, and nothing to lose.
- *   - IT BELONGS TO ANOTHER DIRECTORY. Resuming from elsewhere fails, Claude Code exits,
- *     and the crash restart lands on a fresh one anyway, by way of an error screen.
+ *   - ITS DIRECTORY IS GONE. Neither `cwd` nor the directory the transcript started in
+ *     holds it any more: resuming would fail, Claude Code exit, and the crash restart land
+ *     on a fresh one anyway, by way of an error screen.
  *   - THE NAME IS NOT A SESSION ID. See `sessionIdOf`.
+ *
+ * `cwd` comes first: the session usually started where the agent runs. When it did not
+ * (see `transcriptCwd`), the session is resumed where it started, which is where it was
+ * running when the app quit.
  */
-export function resumableSessionId(transcriptPath: string | undefined, cwd: string): string | null {
-  if (!transcriptPath) return null
+export function resumableSession(transcriptPath: string | undefined, cwd: string): { id: string; cwd: string } | null {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null
   const id = sessionIdOf(transcriptPath)
-  if (!id || !cwdForTranscript(transcriptPath, [cwd])) return null
-  return fs.existsSync(transcriptPath) ? id : null
+  const dir = id ? cwdForTranscript(transcriptPath, [cwd]) : null
+  return id && dir ? { id, cwd: dir } : null
 }
 
 /**
