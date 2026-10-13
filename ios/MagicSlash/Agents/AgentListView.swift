@@ -293,8 +293,9 @@ private struct HeaderBackdrop: View {
   }
 }
 
-/// The header's pairing control. Paired: a laptop with a dot, green while a Mac is online
-/// and red otherwise. Not paired yet: a QR code, which is where pairing starts.
+/// The header's pairing control. Paired: a laptop and, beside it, the desktop's live dot,
+/// green and pulsing while a Mac is online, red otherwise. Not paired yet: a QR code, which
+/// is where pairing starts.
 private struct PairingButton: View {
   @Environment(\.theme) private var theme
   let relay: RelayStore
@@ -311,20 +312,45 @@ private struct PairingButton: View {
   var body: some View {
     Button(action: action) {
       if isPaired {
-        Image(systemName: "laptopcomputer")
-          .foregroundStyle(theme.icon)
-          .overlay(alignment: .topTrailing) {
-            Circle()
-              .fill(anyOnline ? theme.green : theme.red)
-              .frame(width: 8, height: 8)
-              .overlay(Circle().stroke(theme.bg, lineWidth: 1.5))
-              .offset(x: 4, y: -3)
-          }
+        // The dot is part of the button's width, not hung off its corner.
+        HStack(spacing: 6) {
+          Image(systemName: "laptopcomputer")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(theme.icon)
+          LiveDot(color: anyOnline ? theme.green : theme.red, pulses: anyOnline)
+        }
       } else {
         Image(systemName: "qrcode")
           .foregroundStyle(theme.icon)
       }
     }
     .accessibilityLabel(isPaired ? (anyOnline ? "Mac online" : "Mac offline") : "Pair a Mac")
+  }
+}
+
+/// The desktop's live dot (`LivePill`, design-system/desktop/LivePill.tsx): 8 pt in the
+/// theme's colour and, while live, a copy of it rippling out, Tailwind's `animate-ping`
+/// (1 s, twice the size, fading from 75% to nothing).
+private struct LiveDot: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  let color: Color
+  let pulses: Bool
+
+  var body: some View {
+    ZStack {
+      if pulses && !reduceMotion {
+        TimelineView(.animation) { context in
+          let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1)
+          // `cubic-bezier(0, 0, 0.2, 1)`, the ping's ease-out, is close to this curve.
+          let eased = 1 - pow(1 - t, 3)
+          Circle()
+            .fill(color)
+            .scaleEffect(1 + eased)
+            .opacity(0.75 * (1 - eased))
+        }
+      }
+      Circle().fill(color)
+    }
+    .frame(width: 8, height: 8)
   }
 }
