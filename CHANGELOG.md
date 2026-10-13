@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.123.1] - 2026-10-13
+
+### Added
+
+- **Desktop**: Answer a phone's state-request with a snapshot at once
+- **Desktop**: Log the size of each conversation sent to a phone
+- **Ios**: Show the supabase sdk's realtime messages in the connection log
+
+### Fixed
+
+- **Ios**: Stop tracking presence, whose server timeout closed the relay channel, and ask for state instead
+- **Ios**: Draw the transcript in a plain stack so following its end never lands on an empty screen
+- **Ios**: Refresh the session before joining the relay and after the server drops it
+- **Ios**: Rejoin the relay outside the task the rejoin cancels, and supervise the channel
+- **Ios**: Speak realtime protocol 1.0.0 like the desktop so the relay channel holds
+
 ## [0.123.0] - 2026-10-13
 
 ### Added
@@ -4063,6 +4079,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.123.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.1
 [0.123.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.0
 [0.122.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.122.0
 [0.121.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.121.0
