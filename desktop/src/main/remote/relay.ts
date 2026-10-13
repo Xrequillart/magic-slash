@@ -7,7 +7,7 @@ import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { getAllTerminals } from '../pty/terminal-manager'
 import { getPendingQuestion } from '../questions/pending-questions'
-import { CommandGate, type AnswerCommand } from './commands'
+import { CommandGate, type CommandOutcome, type RemoteCommand } from './commands'
 import { privateKeyFromRaw, publicRawOf, deriveKey } from './crypto'
 import { openEnvelope, parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
 import {
@@ -68,6 +68,26 @@ export function setRemoteAnswerer(next: RemoteAnswerer | null): void {
   answerer = next
 }
 
+/** Types a prompt into an agent: main/index.ts's, over agent-control.ts's `runRemotePrompt`. */
+export type RemotePrompter = (id: string, text: string) => Promise<CommandOutcome>
+
+let prompter: RemotePrompter | null = null
+
+/** Wire the path a verified `prompt` command takes (§10 step 9). Pass null to clear. */
+export function setRemotePrompter(next: RemotePrompter | null): void {
+  prompter = next
+}
+
+/** Interrupts an agent's turn: main/index.ts's, over agent-control.ts's `runRemoteStop`. */
+export type RemoteStopper = (id: string) => Promise<CommandOutcome>
+
+let stopper: RemoteStopper | null = null
+
+/** Wire the path a verified `stop` command takes (§10 step 9). Pass null to clear. */
+export function setRemoteStopper(next: RemoteStopper | null): void {
+  stopper = next
+}
+
 interface LoadedIdentity {
   macId: string
   privateKey: crypto.KeyObject
@@ -86,7 +106,11 @@ let identity: LoadedIdentity | null = null
 const pairKeys = new Map<string, Buffer>()
 /** The session was refused: shown as signed out until the next `ok` starts us again. */
 let suspended = false
-/** The phones' commands seen so far (§10 step 7), for the account loaded. */
+/**
+ * The phones' commands seen so far (§10 step 7), for the account loaded. Its `bootId` is drawn
+ * once per launch of the main process and published in every snapshot (§5): a `prompt` or
+ * `stop` must quote it, so nothing signed before a restart runs after it.
+ */
 const commands = new CommandGate()
 
 let client: SupabaseClient | null = null
@@ -300,6 +324,7 @@ function publishSnapshot(): void {
     macName(),
     Date.now(),
     identity.generation,
+    commands.bootId,
     (id) => terminalOwner(id) === account,
     // Read through the TTL: a question past its 30 minutes is not published.
     getPendingQuestion,
@@ -394,17 +419,38 @@ async function handleCommand(envelope: RelayEnvelope): Promise<void> {
 }
 
 /**
- * §10 step 9, right before the answer: the phone is still paired, the relay still serves the
+ * §10 step 9, right before the action: the phone is still paired, the relay still serves the
  * account it was paired under, and the agent is one this account's snapshots carry (§5).
- * Anything else is `stale`, and nothing reaches a terminal. The answer then takes the tray's
- * own path, token check and keystrokes included.
+ * Anything else is `stale`, and nothing reaches a terminal. An answer then takes the tray's
+ * own path, token check and keystrokes included; a prompt the desktop chat's, and a stop its
+ * Stop button's (main/index.ts).
  */
-async function runCommand(command: AnswerCommand, self: LoadedIdentity, account: string, device: StoredRemoteDevice): Promise<TrayAnswerResult> {
-  const { appAgentId, token, choice } = command
-  if (!stillPaired(self, device) || userId !== account || !answerer) return { ok: false, reason: 'stale' }
+async function runCommand(command: RemoteCommand, self: LoadedIdentity, account: string, device: StoredRemoteDevice): Promise<CommandOutcome> {
+  const { appAgentId } = command
+  const run = dispatch(command)
+  if (!stillPaired(self, device) || userId !== account || !run) return { ok: false, reason: 'stale' }
   if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) return { ok: false, reason: 'stale' }
-  // A question it clears is republished by the question listener (main/index.ts).
-  return answerer(appAgentId, token, choice)
+  return run()
+}
+
+/** The runner wired for this command's action, bound to it, or null when none is. */
+function dispatch(command: RemoteCommand): (() => Promise<CommandOutcome>) | null {
+  const { appAgentId } = command
+  switch (command.action) {
+    // A question it clears is republished by the question listener (main/index.ts).
+    case 'answer': {
+      const run = answerer
+      return run && (() => run(appAgentId, command.token, command.choice))
+    }
+    case 'prompt': {
+      const run = prompter
+      return run && (() => run(appAgentId, command.text))
+    }
+    case 'stop': {
+      const run = stopper
+      return run && (() => run(appAgentId))
+    }
+  }
 }
 
 // --- channel ----------------------------------------------------------------

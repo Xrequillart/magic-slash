@@ -2,7 +2,7 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
-import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
+import { setupTerminalHandlers, cleanupTerminals, submitToTerminal, interruptTerminal } from './ipc/terminal-handlers'
 import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
 import { commandEnded, commandStarting } from './chat/command-diff'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setCommandDiffCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
@@ -11,7 +11,7 @@ import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude } from './pty/terminal-manager'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude, getTerminal } from './pty/terminal-manager'
 import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
@@ -53,7 +53,9 @@ import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { setupRemoteHandlers } from './ipc/remote-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { closePlanLive } from './cloud/plan-live'
-import { notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, stopRemoteRelay } from './remote/relay'
+import { notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, setRemotePrompter, setRemoteStopper, stopRemoteRelay } from './remote/relay'
+import { runRemotePrompt, runRemoteStop } from './remote/agent-control'
+import type { CommandOutcome } from './remote/commands'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 import { setupReengagementNotifications } from './notifications/reengagement'
@@ -553,6 +555,37 @@ async function answerQuestion(id: string, token: string, choice: TrayAnswerChoic
   return result
 }
 
+/**
+ * A paired iPhone's verified `prompt` (remote/PROTOCOL.md §10): typed through the desktop
+ * chat's own sequence, `submitToTerminal`, after the checks of `runRemotePrompt`.
+ */
+function promptFromRemote(id: string, text: string): Promise<CommandOutcome> {
+  return runRemotePrompt(id, text, {
+    state: (terminalId) => getTerminal(terminalId)?.state,
+    hasQuestion: (terminalId) => getPendingQuestion(terminalId) !== undefined,
+    submit: submitToTerminal,
+  })
+}
+
+/**
+ * A paired iPhone's verified `stop` (§10): the chat's Stop button, `interruptTerminal`. A
+ * prompt it took back goes to the chat's composer on the Mac, where the Stop button would
+ * have put it.
+ */
+async function stopFromRemote(id: string): Promise<CommandOutcome> {
+  const result = await runRemoteStop(id, {
+    state: (terminalId) => getTerminal(terminalId)?.state,
+    interrupt: interruptTerminal,
+    clearQuestion: clearPendingQuestion,
+    restoreDraft: (terminalId, text) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('terminal:restoredDraft', { id: terminalId, text })
+    },
+  })
+  // As after an answer: the state is hook-driven and does not move just because we typed.
+  if (result.ok) aggregator?.update()
+  return result
+}
+
 function setupTrayHandlers() {
   // One call for everything the menu bar panel paints, because it polls: agents,
   // the version in its header, and the update state that turns that version into
@@ -606,6 +639,9 @@ function setupTrayHandlers() {
   })
   // A paired iPhone's verified `answer` command (remote/PROTOCOL.md §10).
   setRemoteAnswerer(answerQuestion)
+  // And its `prompt` and `stop`, through the desktop chat's own paths.
+  setRemotePrompter(promptFromRemote)
+  setRemoteStopper(stopFromRemote)
 
   ipcMain.handle('tray:resize', async (_event, { height }: { height: number }) => {
     resizePopover(height)

@@ -1,4 +1,5 @@
 import type { ChatCommand } from '@ds/desktop'
+import { INTERACTIVE_COMMANDS, opensInTerminal } from '../../prompt-submit'
 
 /**
  * What the chat's `/` menu offers: Claude Code's own commands, then every skill and
@@ -10,33 +11,13 @@ import type { ChatCommand } from '@ds/desktop'
  * TUI: it is sent like any other, and the pane then shows the terminal, where the
  * dialog is. A command missing from this list still works when typed in full; it only
  * goes unsuggested.
+ *
+ * Which of them are `interactive` is src/prompt-submit.ts's list, shared with the main
+ * process: a paired iPhone may not send those (remote/PROTOCOL.md §10).
  */
-
 const BUILT_INS: { name: string; interactive?: boolean }[] = [
-  { name: 'clear' },
-  { name: 'compact' },
-  { name: 'context' },
-  { name: 'cost' },
-  { name: 'init' },
-  { name: 'review' },
-  { name: 'security-review' },
-  { name: 'release-notes' },
-  { name: 'mcp', interactive: true },
-  { name: 'model', interactive: true },
-  { name: 'agents', interactive: true },
-  { name: 'config', interactive: true },
-  { name: 'permissions', interactive: true },
-  { name: 'hooks', interactive: true },
-  { name: 'memory', interactive: true },
-  { name: 'resume', interactive: true },
-  { name: 'rewind', interactive: true },
-  { name: 'status', interactive: true },
-  { name: 'usage', interactive: true },
-  { name: 'plugin', interactive: true },
-  { name: 'doctor', interactive: true },
-  { name: 'login', interactive: true },
-  { name: 'logout', interactive: true },
-  { name: 'help', interactive: true },
+  ...['clear', 'compact', 'context', 'cost', 'init', 'review', 'security-review', 'release-notes'].map((name) => ({ name })),
+  ...INTERACTIVE_COMMANDS.map((name) => ({ name, interactive: true })),
 ]
 
 export function builtInCommands(describe: (name: string) => string): ChatCommand[] {
@@ -44,10 +25,7 @@ export function builtInCommands(describe: (name: string) => string): ChatCommand
 }
 
 /** Whether the text sent runs a command whose answer only the terminal can show. */
-export function opensInTerminal(text: string): boolean {
-  const name = /^\/(\S+)/.exec(text.trim())?.[1]
-  return Boolean(name && BUILT_INS.some((c) => c.name === name && c.interactive))
-}
+export { opensInTerminal }
 
 interface ListingRow { name: string; description?: string; text?: string; userInvocable?: false }
 

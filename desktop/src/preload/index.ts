@@ -282,6 +282,12 @@ const terminalApi = {
   write: (id: string, data: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:write', { id, data }),
 
+  // A chat message, submitted: `data` (already formatted, see prompt-submit.ts), then the
+  // Return that sends it, paced by the main process. The one sequence a paired iPhone's
+  // prompt goes through too. Resolves with whether the text reached a pty.
+  submit: (id: string, data: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:submit', { id, data }),
+
   resize: (id: string, cols: number, rows: number) =>
     ipcRenderer.invoke('terminal:resize', { id, cols, rows }),
 
@@ -365,6 +371,13 @@ const terminalApi = {
   // Escape from the chat: answers the prompt Claude Code took back, if it took one.
   interrupt: (id: string): Promise<string | null> =>
     ipcRenderer.invoke('terminal:interrupt', { id }),
+
+  // A paired iPhone's Stop took a prompt back: the chat's composer gets it, as with Escape.
+  onRestoredDraft: (callback: (data: { id: string; text: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; text: string }) => callback(data)
+    ipcRenderer.on('terminal:restoredDraft', listener)
+    return () => ipcRenderer.removeListener('terminal:restoredDraft', listener)
+  },
 
   getChat: (id: string): Promise<ChatSnapshot> =>
     ipcRenderer.invoke('terminal:getChat', { id }),

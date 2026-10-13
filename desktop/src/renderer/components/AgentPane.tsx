@@ -9,7 +9,7 @@ import { useCodeAppearance } from '../hooks/useCodeAppearance'
 import { useClaudeEmojiCompletion } from '../hooks/useClaudeEmojiCompletion'
 import { resolveDisplayMode } from '../utils/displayMode'
 import { formatPaths } from '../utils/formatDroppedPaths'
-import { promptBytes, submitDelay } from '../utils/chatPrompt'
+import { promptBytes } from '../utils/chatPrompt'
 import { showToast } from './Toast'
 
 /**
@@ -50,15 +50,13 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const [restored, setRestored] = useState<string | null>(null)
 
   const send = useCallback((text: string, attachments: string[]) => {
-    // The text as the TUI takes it (see chatPrompt.ts), and the carriage return after it
-    // is the Enter that sends. The attachments go after the text as paths, the way a file
-    // dropped on the terminal arrives, which is what makes Claude Code read them (and
-    // attach an image).
+    // The text as the TUI takes it (see prompt-submit.ts), and the main process follows it
+    // with the Enter that sends (`terminal:submit`, the sequence a paired iPhone's prompt
+    // takes too). The attachments go after the text as paths, the way a file dropped on the
+    // terminal arrives, which is what makes Claude Code read them (and attach an image).
     const id = terminal.id
     const message = [promptBytes(text), formatPaths(attachments)].filter(Boolean).join(' ')
-    void window.electronAPI.terminal.write(id, message).then(() => {
-      setTimeout(() => void window.electronAPI.terminal.write(id, '\r'), submitDelay(message))
-    })
+    void window.electronAPI.terminal.submit(id, message)
     // `/mcp`, `/model`…: the answer is a dialog of the TUI, so that is what is shown.
     if (opensInTerminal(text)) setDisplayMode(id, 'terminal')
   }, [terminal.id, setDisplayMode])
@@ -69,6 +67,15 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
     window.electronAPI.terminal.interrupt(terminal.id)
       .then((text) => { if (text) setRestored(text) })
       .catch(() => {})
+  }, [terminal.id])
+
+  // A paired iPhone's Stop took the prompt back (main/index.ts): the composer gets it, as
+  // with the Stop button here.
+  useEffect(() => {
+    const off = window.electronAPI.terminal.onRestoredDraft(({ id, text }) => {
+      if (id === terminal.id && text) setRestored(text)
+    })
+    return () => { off() }
   }, [terminal.id])
 
   // The menu bar panel's own path: the same token check, the same paced keystrokes.

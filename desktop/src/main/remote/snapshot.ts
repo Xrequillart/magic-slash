@@ -62,6 +62,8 @@ export interface RelayAgent {
 export interface RelaySnapshotBody {
   /** The relay start this snapshot belongs to (§6): what the phone orders by. */
   generation: number
+  /** This launch of the Mac's main process (§5): what a `prompt` or `stop` quotes (§10). */
+  bootId: string
   /** Mac clock, epoch ms. Shown, never compared (§6). */
   sentAt: number
   macName: string
@@ -182,11 +184,13 @@ export function buildSnapshot(
   macName: string,
   sentAt: number,
   generation: number,
+  bootId: string,
   isOwned: (terminalId: string) => boolean,
   questionOf: (terminalId: string) => TrayQuestion | undefined = () => undefined,
 ): RelaySnapshotBody {
   return {
     generation,
+    bootId,
     sentAt,
     macName,
     agents: terminals
