@@ -58,7 +58,10 @@ final class DesktopSettingsStore {
     /// the edit, then the column of any row seen while the write was in flight (the
     /// server's word), or an earlier edit of it once confirmed.
     var fallback: AnyJSON
-    /// The server took it. Until its echo arrives, a row still carrying `fallback` is
+    /// The value the edit replaced on the server. Once the write is confirmed, a row still
+    /// carrying it is older than the write.
+    var replaced: AnyJSON
+    /// The server took it. Until its echo arrives, a row still carrying `replaced` is
     /// older than the write and is not applied; any other value is newer and wins.
     var confirmed = false
     /// Its own echo came back before the server answered: the answer settles it at once.
@@ -225,7 +228,8 @@ final class DesktopSettingsStore {
     pending[column] = PendingWrite(
       id: id,
       value: value,
-      fallback: earlier.map { $0.confirmed ? $0.value : $0.fallback } ?? current
+      fallback: earlier.map { $0.confirmed ? $0.value : $0.fallback } ?? current,
+      replaced: earlier.map { $0.confirmed ? $0.value : $0.replaced } ?? current
     )
     // A read already in flight predates this edit: it must not land over it.
     liveRevision += 1
@@ -268,6 +272,7 @@ final class DesktopSettingsStore {
       // A later edit is still in flight: should it fail, the server now holds this value,
       // and any row seen so far predates it.
       write.fallback = value
+      write.replaced = value
       pending[column] = write
     }
   }
@@ -298,7 +303,7 @@ final class DesktopSettingsStore {
       if let column = EditableSetting(rawValue: key), var write = pending[column] {
         if write.confirmed {
           // The echo, or a value newer than the one the edit replaced.
-          if Self.same(incoming, write.fallback) { continue }
+          if Self.same(incoming, write.replaced) { continue }
           pending[column] = nil
           next[key] = incoming
         } else {
@@ -310,9 +315,9 @@ final class DesktopSettingsStore {
             write.newer = nil
           } else if write.echoed {
             write.newer = incoming
-          } else {
-            write.fallback = incoming
           }
+          // Every row is the server's latest word, so a failed write restores it.
+          write.fallback = incoming
           pending[column] = write
         }
         continue

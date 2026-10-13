@@ -612,6 +612,14 @@ export class CloudStore implements Store {
     return write
   }
 
+  /**
+   * The save queued now. Read through a call: inside writeUserSettings, TypeScript still
+   * narrows the field to the null it was reset to before the await.
+   */
+  private queuedSettingsChanges() {
+    return this.pendingSettingsChanges
+  }
+
   private async writeUserSettings(): Promise<void> {
     const ctx = await this.userContext()
     if (!ctx) return
@@ -630,7 +638,7 @@ export class CloudStore implements Store {
       settingsWriteFailed(changes)
       // A save queued meanwhile was compared with this write as if it had landed, so it
       // lacks these columns: carry them into it, under anything it changed since.
-      const queued = this.pendingSettingsChanges
+      const queued = this.queuedSettingsChanges()
       if (queued && queued.generation === generation) {
         this.pendingSettingsChanges = { generation, changes: { ...changes, ...queued.changes } }
       }
