@@ -27,7 +27,7 @@ const RETIRED = new Set(['code_theme'])
 
 const HINT =
   'Classify the column in SETTINGS_ACCESS (desktop/src/main/store/user-settings-access.ts), ' +
-  'map it in user-settings-mapper.ts, run `npm run ios:settings`, and add it to EVERY_FIELD ' +
+  'map it in user-settings-mapper.ts, and add it to EVERY_FIELD ' +
   'in webapp/lib/settingsCatalog.test.ts.'
 
 /** Split on the commas that are not inside parentheses. */

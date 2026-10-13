@@ -5,8 +5,7 @@ struct AgentListView: View {
 
   let store: AgentStore
   let relay: RelayStore
-  /// The desktop settings: the sidebar order the list follows live, and the settings
-  /// screen behind the account menu.
+  /// The desktop settings: the sidebar order the list follows live.
   let settings: DesktopSettingsStore
   let onSignOut: () -> Void
 
@@ -62,7 +61,9 @@ struct AgentListView: View {
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .account:
-        SettingsView(settings: settings, profile: profile) {
+        SettingsView(relay: relay, profile: profile) {
+          self.sheet = .pair
+        } onSignOut: {
           self.sheet = nil
           onSignOut()
         }

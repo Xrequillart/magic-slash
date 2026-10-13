@@ -1,10 +1,9 @@
 import type { UserSettingsRow } from './user-settings-mapper'
 
 // ---------------------------------------------------------------------------
-// Who may write each column of public.user_settings from the iPhone.
+// Who may write each column of public.user_settings from another device.
 //
-// The iPhone edits the desktop's settings one column at a time, and only the
-// `editable` ones. A column is `sensitive` when changing it from afar would:
+// A column is `sensitive` when changing it from afar would:
 //
 //  - make the Mac run something (launch mode, quick launch, auto-launched skills,
 //    the workflow's chaining, the model and kind of agent it starts);
@@ -12,10 +11,9 @@ import type { UserSettingsRow } from './user-settings-mapper'
 //    shortcut, logging, plan sync);
 //  - or describe this Mac's own state (split view, the repositories a board points at).
 //
-// Sensitive columns are shown on the phone, read-only. RLS does not tell the two
-// clients apart, so this list is the guarantee: the Swift side is generated from it
-// (ios/settings, `npm run ios:settings`) and the phone's upsert only accepts an
-// `EditableSetting`.
+// The iPhone no longer writes any of them (it has settings of its own), but the
+// classification stays the rule for any client that edits the row from afar, and its
+// keys are the column list user-settings-mapper.ts reads and writes.
 //
 // The Record is total, so a column added to UserSettingsRow does not compile until
 // it is classified here; user-settings-access.test.ts makes a column added by a
@@ -24,7 +22,7 @@ import type { UserSettingsRow } from './user-settings-mapper'
 
 export type SettingAccess = 'editable' | 'sensitive'
 
-/** THE classification. Ordered like UserSettingsRow; the generated Swift keeps this order. */
+/** THE classification. Ordered like UserSettingsRow. */
 export const SETTINGS_ACCESS: Record<keyof UserSettingsRow, SettingAccess> = {
   usage_card_enabled: 'editable',
   usage_card_minimized: 'editable',
@@ -85,8 +83,8 @@ export const SETTINGS_ACCESS: Record<keyof UserSettingsRow, SettingAccess> = {
 const columnsWith = (access: SettingAccess): (keyof UserSettingsRow)[] =>
   (Object.keys(SETTINGS_ACCESS) as (keyof UserSettingsRow)[]).filter((column) => SETTINGS_ACCESS[column] === access)
 
-/** The columns the iPhone may write. */
+/** The columns another device may write. */
 export const EDITABLE_SETTING_COLUMNS: readonly (keyof UserSettingsRow)[] = columnsWith('editable')
 
-/** The columns the iPhone shows read-only. */
+/** The columns that only change on the Mac itself. */
 export const SENSITIVE_SETTING_COLUMNS: readonly (keyof UserSettingsRow)[] = columnsWith('sensitive')

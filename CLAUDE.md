@@ -68,7 +68,6 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 # iOS
 npm run ios:theme        # Regenerate the Swift theme tokens from desktop/src/themes.ts
-npm run ios:settings     # Regenerate SettingsAccess.generated.swift from user-settings-access.ts
 npm run ios:relay-check  # Replay the relay crypto vectors against RelayCrypto.swift (macOS)
 ```
 

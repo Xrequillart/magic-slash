@@ -33,7 +33,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ios:theme": "vitest run ios/theme -u",
-    "ios:settings": "vitest run ios/settings -u",
     "ios:relay-check": "swiftc ios/MagicSlash/Remote/RelayCrypto.swift ios/relay/main.swift -o \"${TMPDIR:-/tmp}/relay-check\" && \"${TMPDIR:-/tmp}/relay-check\"",
     "ds:install": "npm --prefix design-system install",
     "supabase:config:push": "bash scripts/supabase-config-push.sh",

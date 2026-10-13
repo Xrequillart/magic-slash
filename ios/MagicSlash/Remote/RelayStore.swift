@@ -296,6 +296,7 @@ final class RelayStore {
   /// `start()` asks for Face ID again. A pairing still in progress is cancelled with its key:
   /// an approval that lands later must not put a key back in memory without Face ID.
   func lock() {
+    log("keys locked (background)")
     lockGeneration += 1
     pairKeys = [:]
     cancelPendingPairing()
@@ -341,11 +342,14 @@ final class RelayStore {
       }
       pairKeys = derived
       keyState = macs.isEmpty ? .idle : .unlocked
+      log("keys unlocked")
       if rejoin, !wasUnlocked { await refreshSubscription() }
     } catch {
       switch error {
       case .invalidated: invalidate()
-      case .locked(let message): keyState = .locked(message)
+      case .locked(let message):
+        keyState = .locked(message)
+        log("unlock refused: \(message)")
       case .unavailable(let message): keyState = .unavailable(message)
       }
     }
@@ -829,6 +833,32 @@ final class RelayStore {
 
   // MARK: - Realtime
 
+  /// Whether a reconnect asked for by hand is under way.
+  private(set) var reconnecting = false
+
+  /// What the link went through, newest last: joins, drops, presence, snapshots that came
+  /// late or could not be read. Shown in Settings → Paired Macs → Connection log, to be
+  /// copied when the link misbehaves. States and names only, never a key or a payload.
+  private(set) var events: [String] = []
+
+  func log(_ event: String) {
+    events.append("\(Date().formatted(date: .omitted, time: .standard))  \(event)")
+    if events.count > 300 { events.removeFirst(events.count - 300) }
+  }
+
+  /// The user's "Reconnect": Face ID if the keys are locked, then a fresh join of the
+  /// channel, which makes every Mac send a new snapshot.
+  func reconnect() async {
+    guard !reconnecting, !stopped else { return }
+    reconnecting = true
+    defer { reconnecting = false }
+    log("reconnect by hand")
+    if keyState != .unlocked, !macs.isEmpty {
+      await unlock(rejoin: false)
+    }
+    await refreshSubscription()
+  }
+
   private var wantsChannel: Bool { !macs.isEmpty || pairing != nil }
 
   private func refreshSubscription() async {
@@ -867,6 +897,7 @@ final class RelayStore {
       Task { [weak self] in
         var joined = false
         for await status in statuses {
+          self?.log("channel \(status)")
           if status == .subscribed { joined = true; continue }
           guard joined, status == .unsubscribed else { continue }
           try? await Task.sleep(for: .seconds(2))
@@ -885,9 +916,11 @@ final class RelayStore {
       },
     ]
     self.channel = channel
+    log("join the relay")
     do {
       try await channel.subscribeWithError()
     } catch {
+      log("join failed: \(error.localizedDescription)")
       return
     }
     guard !stopped, attempt == subscriptionCount else { return }
@@ -913,6 +946,8 @@ final class RelayStore {
   }
 
   private func applyPresence(joins: [String: PresenceV2], leaves: [String: PresenceV2]) {
+    for key in leaves.keys where key.hasPrefix("mac:") { log("presence leave \(macLabel(key))") }
+    for key in joins.keys where key.hasPrefix("mac:") { log("presence join \(macLabel(key))") }
     for (key, value) in leaves {
       presence[key]?.remove(value.ref)
       if presence[key]?.isEmpty == true { presence[key] = nil }
@@ -922,6 +957,31 @@ final class RelayStore {
     }
   }
 
+  @ObservationIgnored private var lastOnline: [String: Bool] = [:]
+
+  /// Each Mac going offline or back, with why: no presence on the channel, or no snapshot
+  /// for too long.
+  private func logOnlineChanges() {
+    for mac in macs {
+      let online = isOnline(mac.macId)
+      guard lastOnline[mac.macId] != online else { continue }
+      lastOnline[mac.macId] = online
+      if online {
+        log("\(mac.name) online")
+      } else {
+        let present = !(presence["mac:\(mac.macId)"]?.isEmpty ?? true)
+        let age = snapshots[mac.macId]?.receivedAt.map { Int(now.timeIntervalSince($0)) }
+        log("\(mac.name) offline: \(present ? "present" : "no presence"), last snapshot \(age.map { "\($0) s ago" } ?? "never")")
+      }
+    }
+  }
+
+  /// A presence key's Mac by name when it is paired, by the start of its id otherwise.
+  private func macLabel(_ key: String) -> String {
+    let id = String(key.dropFirst(4))
+    return macs.first(where: { $0.macId == id })?.name ?? String(id.prefix(8))
+  }
+
   private func startTicker() {
     ticker?.cancel()
     ticker = Task { [weak self] in
@@ -929,6 +989,7 @@ final class RelayStore {
         try? await Task.sleep(for: .seconds(5))
         guard !Task.isCancelled, let self else { return }
         self.now = Date()
+        self.logOnlineChanges()
       }
     }
   }
@@ -1008,6 +1069,9 @@ final class RelayStore {
   }
 
   private func receiveState(_ envelope: Envelope) {
+    if pairKeys[envelope.from] == nil, macs.contains(where: { $0.macId == envelope.from }) {
+      log("snapshot from \(macLabel("mac:\(envelope.from)")) dropped: keys locked")
+    }
     guard let key = pairKeys[envelope.from],
           let plain = envelope.open(with: key),
           let snapshot = try? JSONDecoder().decode(RelaySnapshot.self, from: plain),
@@ -1024,6 +1088,9 @@ final class RelayStore {
       return
     }
     now = Date()
+    if let last = snapshots[envelope.from]?.receivedAt, now.timeIntervalSince(last) > 45 {
+      log("snapshot from \(mac.name) after \(Int(now.timeIntervalSince(last))) s")
+    }
     snapshots[envelope.from] = AcceptedSnapshot(
       generation: generation, epoch: envelope.epoch, seq: envelope.seq, snapshot: snapshot, receivedAt: now
     )

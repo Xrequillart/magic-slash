@@ -182,7 +182,7 @@ struct PairingView: View {
   }
 }
 
-/// The paired Macs, each with its presence, and "Forget" (this iPhone only).
+/// The paired Macs in a sheet of its own, from the header's laptop button.
 struct PairedMacsView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dismiss) private var dismiss
@@ -190,81 +190,178 @@ struct PairedMacsView: View {
   let relay: RelayStore
   let onPair: () -> Void
 
+  var body: some View {
+    NavigationStack {
+      PairedMacsList(relay: relay, onPair: onPair)
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("Done") {
+              Haptics.tap()
+              dismiss()
+            }
+            .foregroundStyle(theme.accent)
+          }
+        }
+    }
+  }
+}
+
+/// The paired Macs, each with its presence and "Forget" (this iPhone only), the relay's
+/// "Reconnect", and pairing another Mac. Shown by the header's sheet and pushed from the
+/// settings.
+struct PairedMacsList: View {
+  @Environment(\.theme) private var theme
+
+  let relay: RelayStore
+  let onPair: () -> Void
+
   @State private var forgetting: RelayStore.MacStatus?
 
   var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          let statuses = relay.statuses()
-          if statuses.isEmpty {
-            EmptyLine(text: "No Mac paired yet")
-              .listRowBackground(theme.surface)
-          }
-          ForEach(statuses) { status in
-            HStack(spacing: 10) {
-              Circle()
-                .fill(status.isOnline ? theme.green : theme.textSecondary.opacity(0.5))
-                .frame(width: 8, height: 8)
-              VStack(alignment: .leading, spacing: 2) {
-                Text(status.name)
-                  .font(.cera(.body, .semibold))
-                  .foregroundStyle(theme.ink)
-                Text("Paired \(status.mac.pairedAt.formatted(date: .abbreviated, time: .omitted)), \(status.isOnline ? "online" : "offline")")
-                  .font(.cera(.caption))
-                  .foregroundStyle(theme.textSecondary)
-              }
-              Spacer(minLength: 4)
-              Button("Forget", role: .destructive) {
-                Haptics.tap()
-                forgetting = status
-              }
-                .font(.cera(.subheadline, .semibold))
-                .foregroundStyle(theme.red)
-                .buttonStyle(.borderless)
-            }
+    List {
+      Section {
+        let statuses = relay.statuses()
+        if statuses.isEmpty {
+          EmptyLine(text: "No Mac paired yet")
             .listRowBackground(theme.surface)
+        }
+        ForEach(statuses) { status in
+          HStack(spacing: 10) {
+            Circle()
+              .fill(status.isOnline ? theme.green : theme.textSecondary.opacity(0.5))
+              .frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 2) {
+              Text(status.name)
+                .font(.cera(.body, .semibold))
+                .foregroundStyle(theme.ink)
+              Text("Paired \(status.mac.pairedAt.formatted(date: .abbreviated, time: .omitted)), \(status.isOnline ? "online" : "offline")")
+                .font(.cera(.caption))
+                .foregroundStyle(theme.textSecondary)
+            }
+            Spacer(minLength: 4)
+            Button("Forget", role: .destructive) {
+              Haptics.tap()
+              forgetting = status
+            }
+            .font(.cera(.subheadline, .semibold))
+            .foregroundStyle(theme.red)
+            .buttonStyle(.borderless)
           }
+          .listRowBackground(theme.surface)
+        }
+      } footer: {
+        Text("Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
+          .foregroundStyle(theme.textSecondary)
+      }
+
+      Section {
+        if !relay.macs.isEmpty {
+          ReconnectButton(relay: relay)
+            .listRowBackground(theme.surface)
+        }
+        Button("Pair a Mac", systemImage: "qrcode.viewfinder") {
+          Haptics.tap()
+          onPair()
+        }
+        .foregroundStyle(theme.accent)
+        .listRowBackground(theme.surface)
+      }
+
+      if !relay.macs.isEmpty {
+        Section {
+          NavigationLink {
+            ConnectionLogView(relay: relay)
+          } label: {
+            Label("Connection log", systemImage: "list.bullet.rectangle")
+              .foregroundStyle(theme.ink)
+          }
+          .listRowBackground(theme.surface)
         } footer: {
-          Text("Forgetting a Mac only removes it from this iPhone. To stop the Mac sending to it, revoke this iPhone in the Mac's settings too.")
+          Text("What the link to your Macs went through. Copy it when the connection drops.")
             .foregroundStyle(theme.textSecondary)
         }
+      }
+    }
+    .font(.cera(.body))
+    .scrollContentBackground(.hidden)
+    .background(theme.bg.ignoresSafeArea())
+    .navigationTitle("Paired Macs")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(theme.bg, for: .navigationBar)
+    .confirmationDialog(
+      "Forget \(forgetting?.name ?? "this Mac")?",
+      isPresented: Binding(get: { forgetting != nil }, set: { if !$0 { forgetting = nil } }),
+      titleVisibility: .visible,
+      presenting: forgetting
+    ) { status in
+      Button("Forget", role: .destructive) {
+        Haptics.destructive()
+        relay.forget(status.mac.macId)
+      }
+    } message: { _ in
+      Text("Its agents' live state stops showing here. Pair again to see it.")
+    }
+  }
+}
 
-        Section {
-          Button("Pair a Mac", systemImage: "qrcode.viewfinder") {
-            Haptics.tap()
-            onPair()
-          }
-            .foregroundStyle(theme.accent)
-            .listRowBackground(theme.surface)
+/// Joins the relay again by hand, when a Mac shows offline while it is on: a spinner while
+/// it runs, Face ID first if the keys are locked.
+struct ReconnectButton: View {
+  @Environment(\.theme) private var theme
+  let relay: RelayStore
+
+  var body: some View {
+    Button {
+      Haptics.tap()
+      Task { await relay.reconnect() }
+    } label: {
+      HStack(spacing: 10) {
+        Label("Reconnect", systemImage: "arrow.clockwise")
+        if relay.reconnecting {
+          Spacer(minLength: 8)
+          ProgressView().controlSize(.small).tint(theme.textSecondary)
         }
       }
-      .scrollContentBackground(.hidden)
-      .background(theme.bg.ignoresSafeArea())
-      .navigationTitle("Paired Macs")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbarBackground(theme.bg, for: .navigationBar)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            Haptics.tap()
-            dismiss()
-          }
-            .foregroundStyle(theme.accent)
-        }
+    }
+    .foregroundStyle(theme.accent)
+    .disabled(relay.reconnecting)
+  }
+}
+
+/// The relay's recent events, newest first, with a button to copy them all.
+struct ConnectionLogView: View {
+  @Environment(\.theme) private var theme
+  let relay: RelayStore
+  @State private var copied = false
+
+  var body: some View {
+    List {
+      if relay.events.isEmpty {
+        EmptyLine(text: "Nothing yet")
+          .listRowBackground(theme.surface)
       }
-      .confirmationDialog(
-        "Forget \(forgetting?.name ?? "this Mac")?",
-        isPresented: Binding(get: { forgetting != nil }, set: { if !$0 { forgetting = nil } }),
-        titleVisibility: .visible,
-        presenting: forgetting
-      ) { status in
-        Button("Forget", role: .destructive) {
-          Haptics.destructive()
-          relay.forget(status.mac.macId)
+      ForEach(Array(relay.events.reversed().enumerated()), id: \.offset) { _, event in
+        Text(event)
+          .font(.system(.caption, design: .monospaced))
+          .foregroundStyle(theme.ink)
+          .textSelection(.enabled)
+          .listRowBackground(theme.surface)
+      }
+    }
+    .scrollContentBackground(.hidden)
+    .background(theme.bg.ignoresSafeArea())
+    .navigationTitle("Connection log")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(theme.bg, for: .navigationBar)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc") {
+          Haptics.tap()
+          UIPasteboard.general.string = (["Magic Slash \(AppPreferences.version)"] + relay.events).joined(separator: "\n")
+          copied = true
         }
-      } message: { _ in
-        Text("Its agents' live state stops showing here. Pair again to see it.")
+        .tint(theme.ink)
+        .disabled(relay.events.isEmpty)
       }
     }
   }

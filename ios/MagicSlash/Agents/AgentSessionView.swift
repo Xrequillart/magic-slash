@@ -216,7 +216,12 @@ struct AgentSessionView: View {
             systemImage: "wifi.slash",
             title: "\(runtime.macName) is offline",
             message: "The conversation shows here once the Mac is back."
-          )
+          ) {
+            ReconnectButton(relay: relay)
+              .font(.cera(.body, .semibold))
+              .buttonStyle(.bordered)
+              .padding(.top, 6)
+          }
         }
       } else {
         ChatPlaceholder(

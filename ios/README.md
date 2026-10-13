@@ -86,27 +86,12 @@ npm run ios:theme
 
 ## Settings
 
-**Settings** in the account menu shows the desktop's settings (`user_settings`, one row
-per user) and edits the non-sensitive ones: theme, language, code display, notifications,
-chat view, sidebar, agents, integrations. A change shows at once on the iPhone and reaches
-the desktop live over Realtime. The settings that decide what an agent may do on the Mac
-(launch mode, default model and agent type, workflows, quick launch, open at login…) are
-listed under **Managed on your Mac** as plain text, with no control.
-
-- **Which column is which** is decided once, on the desktop
-  (`desktop/src/main/store/user-settings-access.ts`), and generated into
-  `Settings/SettingsAccess.generated.swift` (`EditableSetting`, `SensitiveSetting`, the
-  allowed values). Never edit that file by hand: after a classification change, run
-  `npm run ios:settings` from the repo root (`npm test` fails until you do).
-- **One writer.** `Settings/SettingsWriter.swift` is the only code that writes to
-  `user_settings`: a partial upsert of the user id and one `EditableSetting` column, so a
-  sensitive column cannot even be named. The RLS would let the user write the whole row:
-  `ios/settings/settingsWrites.test.ts` (run by `npm test`) scans the Swift sources and
-  fails on any other writer.
-- **Edits in flight.** Until the server confirms an edit, the column is pending: rows
-  read or received meanwhile update every other column, not that one. A failed write
-  restores that column only, to the last value the server sent, or to the value before
-  the edit.
+**Settings** in the account menu holds the iPhone's own settings, kept on the device
+(`App/AppPreferences.swift`): haptic feedback on the buttons, the paired Macs with a
+**Reconnect** for the relay, and the app's version. The desktop's settings are changed on
+the desktop: the iPhone only follows three of them, read live from `user_settings`
+(`Theme/DesktopSettingsStore.swift`): the theme, the sidebar's sort, and which tool calls
+the chat draws.
 
 ## Live state from a Mac
 
