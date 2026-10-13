@@ -139,25 +139,27 @@ private struct AgentRow: View {
   let runtime: AgentRuntime?
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(agent.title)
-        .font(.body.weight(.semibold))
-        .foregroundStyle(theme.ink)
-        .lineLimit(2)
+    HStack(spacing: 10) {
+      VStack(alignment: .leading, spacing: 6) {
+        Text(agent.title)
+          .font(.body.weight(.semibold))
+          .foregroundStyle(theme.ink)
+          .lineLimit(2)
 
-      HStack(spacing: 6) {
-        TypeBadge(type: agent.type)
-        StatusPill(status: agent.status)
-        if let runtime {
-          RuntimePill(runtime: runtime)
+        HStack(spacing: 6) {
+          TypeBadge(type: agent.type)
+          StatusPill(status: agent.status)
+          if let runtime {
+            RuntimePill(runtime: runtime)
+          }
         }
-        Spacer(minLength: 4)
-        if let ticket = agent.ticketId {
-          Text(ticket)
-            .font(.caption.monospaced())
-            .foregroundStyle(theme.textSecondary)
-            .lineLimit(1)
-        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      // The ticket the agent took, as the desktop draws it: the tracker's mark and the
+      // id, printed exactly as stored.
+      if let ticket = agent.ticketId {
+        DSLabel(text: ticket, tone: DSLabel.Tone(ticketId: ticket))
       }
     }
     .padding(.vertical, 4)
