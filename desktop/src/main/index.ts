@@ -40,7 +40,7 @@ import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover, hidePopover, resizePopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
-import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
+import { followRemoteSpotlightChanges, reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { initAppearance, applyZoom, onLanguageChanged, setZoomWindow, stepZoom, currentTheme, themeBackground, setThemedWindow } from './appearance'
 import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
@@ -755,6 +755,7 @@ app.whenReady().then(async () => {
 
   // Register global shortcut for Quick Launch (from config)
   reRegisterSpotlightShortcut()
+  followRemoteSpotlightChanges()
 
   // Check for app updates on startup
   checkForUpdatesOnStartup()

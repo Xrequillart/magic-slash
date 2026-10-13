@@ -21,11 +21,18 @@ import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives
 import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
   applySettingsRow,
-  configToSettingsRow,
   SETTINGS_KEYS,
   USER_SETTINGS_COLUMNS,
   type UserSettingsRow,
 } from './user-settings-mapper'
+import {
+  beginSettingsWrite,
+  rememberLoadedSettingsRow,
+  settingsChangesToSave,
+  settingsSyncGeneration,
+  settingsWriteFailed,
+  settingsWriteSucceeded,
+} from './user-settings-sync'
 
 // ---------------------------------------------------------------------------
 // DB row shapes (no generated database.types.ts exists — declared inline, in the
@@ -419,6 +426,10 @@ export class CloudStore implements Store {
    * Tail of the agent-write chain — see queueAgentWrite.
    */
   private agentWrites: Promise<unknown> = Promise.resolve()
+  /** Tail of the user_settings write chain — see saveUserSettings. */
+  private settingsWrites: Promise<void> = Promise.resolve()
+  /** The columns the latest save changed, and the account sync they belong to. */
+  private pendingSettingsChanges: { changes: Partial<UserSettingsRow>; generation: number } | null = null
   /**
    * Storage object path → the bytes last fetched for it, and when. Null means the
    * download failed, which is cached too. See loadAvatarDataUrls.
@@ -560,8 +571,14 @@ export class CloudStore implements Store {
   // Config
   // -------------------------------------------------------------------------
 
-  /** Read the caller's user_settings row, or null when they have none yet. */
-  private async fetchUserSettings(ctx: { client: SupabaseClient; uid: string }): Promise<UserSettingsRow | null> {
+  /**
+   * Read the caller's user_settings row, null when they have none yet, undefined when the
+   * read failed (the sync then holds every settings write until a row is read).
+   */
+  private async fetchUserSettings(ctx: {
+    client: SupabaseClient
+    uid: string
+  }): Promise<UserSettingsRow | null | undefined> {
     const { data, error } = await ctx.client
       .from('user_settings')
       .select(USER_SETTINGS_COLUMNS)
@@ -569,22 +586,65 @@ export class CloudStore implements Store {
       .maybeSingle()
     // maybeSingle yields an object or null; guard the shape anyway so a
     // malformed/empty response can never be applied as a row of undefineds.
-    if (error || !data || typeof data !== 'object' || Array.isArray(data)) return null
+    if (error) return undefined
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null
     return data as unknown as UserSettingsRow
   }
 
   /**
-   * Upsert the caller's settings row. Uses userContext() (not context()) on
-   * purpose: preferences belong to the USER, so they must persist even when no
-   * org is active — which is exactly the case the old org-scoped blob dropped.
+   * Upsert the columns of the caller's settings row that moved. Uses userContext() (not
+   * context()) on purpose: preferences belong to the USER, so they must persist even when
+   * no org is active — which is exactly the case the old org-scoped blob dropped.
+   *
+   * Each save computes its columns when it is CALLED, while the config it was handed and
+   * the baseline still agree: a phone event applied while the write waits moves both, and
+   * diffing the older config then would send the phone's column back with its old value.
+   * Writes run one at a time and only the latest save's columns go out, so two quick
+   * toggles make one write (see user-settings-sync.ts). Never the
+   * whole row once a baseline is known: the iPhone writes this table too, and every
+   * column the desktop did not change is one the phone may just have.
    */
-  private async saveUserSettings(config: Config): Promise<void> {
+  private saveUserSettings(config: Config): Promise<void> {
+    const changes = settingsChangesToSave(config)
+    this.pendingSettingsChanges = changes ? { changes, generation: settingsSyncGeneration() } : null
+    const write = this.settingsWrites.then(() => this.writeUserSettings())
+    this.settingsWrites = write.catch(() => undefined)
+    return write
+  }
+
+  /**
+   * The save queued now. Read through a call: inside writeUserSettings, TypeScript still
+   * narrows the field to the null it was reset to before the await.
+   */
+  private queuedSettingsChanges() {
+    return this.pendingSettingsChanges
+  }
+
+  private async writeUserSettings(): Promise<void> {
     const ctx = await this.userContext()
     if (!ctx) return
+    const pending = this.pendingSettingsChanges
+    this.pendingSettingsChanges = null
+    // Made before a sign-out: the account that made it is gone, whoever is signed in now.
+    if (!pending || pending.generation !== settingsSyncGeneration()) return
+    const { changes, generation } = pending
+    beginSettingsWrite(changes)
     const { error } = await ctx.client
       .from('user_settings')
-      .upsert({ user_id: ctx.uid, ...configToSettingsRow(config) }, { onConflict: 'user_id' })
-    if (error) throw new Error(`saveUserSettings failed: ${error.message}`)
+      .upsert({ user_id: ctx.uid, ...changes }, { onConflict: 'user_id' })
+    // A sign-out while it was out already forgot this account's baseline.
+    if (generation !== settingsSyncGeneration()) return
+    if (error) {
+      settingsWriteFailed(changes)
+      // A save queued meanwhile was compared with this write as if it had landed, so it
+      // lacks these columns: carry them into it, under anything it changed since.
+      const queued = this.queuedSettingsChanges()
+      if (queued && queued.generation === generation) {
+        this.pendingSettingsChanges = { generation, changes: { ...changes, ...queued.changes } }
+      }
+      throw new Error(`saveUserSettings failed: ${error.message}`)
+    }
+    settingsWriteSucceeded(changes)
   }
 
   async loadConfig(): Promise<Config | null> {
@@ -606,6 +666,8 @@ export class CloudStore implements Store {
         await this.fetchRepositories(user),
         await this.fetchOrgNames(user),
       )
+      // The baseline moves only if hydrateConfig keeps this load.
+      rememberLoadedSettingsRow(config, settings)
       return config
     }
 
@@ -651,6 +713,7 @@ export class CloudStore implements Store {
       await this.fetchRepositories(ctx),
       await this.fetchOrgNames(ctx),
     )
+    rememberLoadedSettingsRow(config, settings)
     return config
   }
 

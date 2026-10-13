@@ -1,6 +1,7 @@
 import type { Config, SpotlightConfig } from '../../types'
 import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
-import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
+import { SETTINGS_ACCESS } from './user-settings-access'
+import { applySettingsDefaults, isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
 // Mapping between a Config and its public.user_settings row.
@@ -81,17 +82,14 @@ export interface UserSettingsRow {
   workflow_run_actions: boolean | null
 }
 
-export const USER_SETTINGS_COLUMNS =
-  'usage_card_enabled, usage_card_minimized, agent_context_enabled, ' +
-  'agent_context_minimized, usage_logs_enabled, info_sidebar_on_create, ' +
-  'plan_sync_enabled, ' +
-  'daily_digest_enabled, notifications_enabled, notification_agent_waiting, ' +
-  'notification_agent_completed, notification_pr_review, ' +
-  'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
-  'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
-  'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, chat_sticky_prompt, chat_send_key, chat_tool_detail, chat_diffs, chat_timestamps, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_shown, sidebar_compact, agent_sort, tasks_repo, ' +
-  'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill, workflow_run_actions'
+/**
+ * Every column of the row, in the interface's order: the keys of SETTINGS_ACCESS, whose
+ * Record type already forces every column to be listed. user-settings-access.test.ts
+ * also checks them against the migrations.
+ */
+export const USER_SETTINGS_COLUMN_NAMES = Object.keys(SETTINGS_ACCESS) as readonly (keyof UserSettingsRow)[]
+
+export const USER_SETTINGS_COLUMNS = USER_SETTINGS_COLUMN_NAMES.join(', ')
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -341,4 +339,31 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.atlassian_integration_enabled)) {
     config.integrations = { github: true, atlassian: row.atlassian_integration_enabled }
   }
+}
+
+/**
+ * A row as this build holds it: applied onto an empty config, defaulted the way every
+ * installed config is, and projected back. An enum value this build does not know reads
+ * as NULL, exactly as applySettingsRow treats it, and a NULL the app fills with a default
+ * reads as that default — so two rows compare equal when the app would hold the same
+ * settings for both, which is what a baseline of "what the database holds" has to mean.
+ * A default is therefore never written back as if the user had chosen it.
+ */
+export function normalizeSettingsRow(row: UserSettingsRow): UserSettingsRow {
+  const config = { version: 'unknown', repositories: {} } as Config
+  applySettingsRow(config, row)
+  applySettingsDefaults(config)
+  return configToSettingsRow(config)
+}
+
+/** How two column values compare: lists by content, so a fresh array holding the same pages is equal. */
+export const settingValueKey = (value: unknown): string => JSON.stringify(value ?? null)
+
+/** The columns of `next` that differ from `base`, with `next`'s values. */
+export function diffSettingsRow(base: UserSettingsRow, next: UserSettingsRow): Partial<UserSettingsRow> {
+  const diff: Partial<Record<keyof UserSettingsRow, unknown>> = {}
+  for (const column of USER_SETTINGS_COLUMN_NAMES) {
+    if (settingValueKey(base[column]) !== settingValueKey(next[column])) diff[column] = next[column] ?? null
+  }
+  return diff as Partial<UserSettingsRow>
 }

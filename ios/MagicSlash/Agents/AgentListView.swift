@@ -5,12 +5,13 @@ struct AgentListView: View {
 
   let store: AgentStore
   let relay: RelayStore
-  /// The order the desktop sidebar uses, followed live.
-  let sort: AgentSortMode
+  /// The desktop settings: the sidebar order the list follows live, and the settings
+  /// screen behind the account menu.
+  let settings: DesktopSettingsStore
   let onSignOut: () -> Void
 
   private enum Sheet: String, Identifiable {
-    case account, pair, macs
+    case account, settings, pair, macs
     var id: String { rawValue }
   }
 
@@ -22,10 +23,10 @@ struct AgentListView: View {
   /// Bumped on every tap that should be felt: the header buttons and each session.
   @State private var taps = 0
 
-  init(store: AgentStore, relay: RelayStore, sort: AgentSortMode, onSignOut: @escaping () -> Void) {
+  init(store: AgentStore, relay: RelayStore, settings: DesktopSettingsStore, onSignOut: @escaping () -> Void) {
     self.store = store
     self.relay = relay
-    self.sort = sort
+    self.settings = settings
     self.onSignOut = onSignOut
     _profile = State(initialValue: ProfileStore(client: store.client))
   }
@@ -64,9 +65,13 @@ struct AgentListView: View {
       switch sheet {
       case .account:
         AccountSheet(profile: profile) {
+          self.sheet = .settings
+        } onSignOut: {
           self.sheet = nil
           onSignOut()
         }
+      case .settings:
+        SettingsView(settings: settings)
       case .pair:
         PairingView(relay: relay)
       case .macs:
@@ -74,6 +79,8 @@ struct AgentListView: View {
       }
     }
   }
+
+  private var sort: AgentSortMode { settings.agentSort }
 
   private var isPaired: Bool {
     !relay.macs.isEmpty && !relay.needsRepair

@@ -930,10 +930,12 @@ export interface TerminalUsage {
  * renders the same session from its transcript, over the same process — so the two are
  * views, not modes of the session, and switching never restarts anything.
  */
-export type AgentDisplayMode = 'terminal' | 'chat'
+export const AGENT_DISPLAY_MODES = ['terminal', 'chat'] as const
+
+export type AgentDisplayMode = (typeof AGENT_DISPLAY_MODES)[number]
 
 export function isValidDisplayMode(value: unknown): value is AgentDisplayMode {
-  return value === 'terminal' || value === 'chat'
+  return typeof value === 'string' && (AGENT_DISPLAY_MODES as readonly string[]).includes(value)
 }
 
 /**
@@ -1765,8 +1767,11 @@ export type CodeSyntaxChoice = 'auto' | CodeSyntaxFamily
 
 export const DEFAULT_CODE_SYNTAX: CodeSyntaxChoice = 'auto'
 
+/** Every value `user_settings.code_syntax` may hold: `auto`, then the families in order. */
+export const CODE_SYNTAX_CHOICES: readonly CodeSyntaxChoice[] = ['auto', ...CODE_SYNTAX_FAMILY_IDS]
+
 export function isValidCodeSyntax(value: unknown): value is CodeSyntaxChoice {
-  return value === 'auto' || (typeof value === 'string' && Object.hasOwn(CODE_SYNTAX_FAMILIES, value))
+  return typeof value === 'string' && (CODE_SYNTAX_CHOICES as readonly string[]).includes(value)
 }
 
 /**

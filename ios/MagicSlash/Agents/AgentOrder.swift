@@ -2,7 +2,7 @@ import Foundation
 
 /// How the desktop sidebar sorts its agents (`user_settings.agent_sort`), which the list
 /// follows. Same values and default as `AgentSortMode` in desktop/src/types.ts.
-enum AgentSortMode: String, Sendable {
+enum AgentSortMode: String, CaseIterable, Sendable {
   case recent
   case status
   case repository

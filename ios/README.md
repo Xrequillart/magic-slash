@@ -1,9 +1,10 @@
 # Magic Slash for iPhone
 
-A read-only companion to the desktop app: sign in with your Magic Slash account and
-follow your agents (workflow status, ticket, branches, pull requests, spec) live from
-your iPhone. Paired with a Mac, it also shows each agent's live runtime state and usage.
-It never acts on an agent, and sends no command to the Mac.
+A companion to the desktop app: sign in with your Magic Slash account and follow your
+agents (workflow status, ticket, branches, pull requests, spec) live from your iPhone.
+Paired with a Mac, it also shows each agent's live runtime state and usage, and answers
+the questions an agent asks. It also edits the desktop's non-sensitive settings (see
+[Settings](#settings)).
 
 SwiftUI, iOS 17+, iPhone only. The only dependency is
 [supabase-swift](https://github.com/supabase/supabase-swift), pulled by Swift Package
@@ -23,9 +24,11 @@ ios/
 │   ├── Agents/                    #   Agent model, store (Realtime), list and detail screens
 │   ├── Plans/                     #   Spec lookup in plan_sessions
 │   ├── Remote/                    #   Mac pairing and the end-to-end encrypted relay
+│   ├── Settings/                  #   Settings screen, the one writer, the column lists (generated)
 │   ├── Supabase/                  #   Client built from the Info.plist values
-│   └── Theme/                     #   Desktop theme tokens (generated) and the theme store
+│   └── Theme/                     #   Desktop theme tokens (generated) and the desktop settings store
 ├── relay/                         # Check of RelayCrypto.swift against the Node vectors
+├── settings/                      # Generator of the settings column lists, scan of the writes
 └── theme/                         # Generator for Theme/ThemeTokens.generated.swift
 ```
 
@@ -73,13 +76,37 @@ authentication is asked for its 6-digit TOTP code before anything is shown.
 ## Theme
 
 The app wears the theme picked on the desktop (`user_settings.theme`), and follows a
-change live. The colour tokens are generated from the desktop's theme definitions, never
+change live. Picking one in Settings on the iPhone changes both. The colour tokens are generated from the desktop's theme definitions, never
 edited by hand. After a theme change on the desktop side, regenerate them from the repo
 root:
 
 ```bash
 npm run ios:theme
 ```
+
+## Settings
+
+**Settings** in the account menu shows the desktop's settings (`user_settings`, one row
+per user) and edits the non-sensitive ones: theme, language, code display, notifications,
+chat view, sidebar, agents, integrations. A change shows at once on the iPhone and reaches
+the desktop live over Realtime. The settings that decide what an agent may do on the Mac
+(launch mode, default model and agent type, workflows, quick launch, open at login…) are
+listed under **Managed on your Mac** as plain text, with no control.
+
+- **Which column is which** is decided once, on the desktop
+  (`desktop/src/main/store/user-settings-access.ts`), and generated into
+  `Settings/SettingsAccess.generated.swift` (`EditableSetting`, `SensitiveSetting`, the
+  allowed values). Never edit that file by hand: after a classification change, run
+  `npm run ios:settings` from the repo root (`npm test` fails until you do).
+- **One writer.** `Settings/SettingsWriter.swift` is the only code that writes to
+  `user_settings`: a partial upsert of the user id and one `EditableSetting` column, so a
+  sensitive column cannot even be named. The RLS would let the user write the whole row:
+  `ios/settings/settingsWrites.test.ts` (run by `npm test`) scans the Swift sources and
+  fails on any other writer.
+- **Edits in flight.** Until the server confirms an edit, the column is pending: rows
+  read or received meanwhile update every other column, not that one. A failed write
+  restores that column only, to the last value the server sent, or to the value before
+  the edit.
 
 ## Live state from a Mac
 

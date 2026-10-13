@@ -1,4 +1,4 @@
-import { AGENT_TYPES, type RepositoryConfig, type SpotlightConfig, type SpotlightShortcut, type LaunchMode, type AgentType } from '../../types'
+import { AGENT_TYPES, type Config, type RepositoryConfig, type SpotlightConfig, type SpotlightShortcut, type LaunchMode, type AgentType } from '../../types'
 
 export const VALID_SPOTLIGHT_SHORTCUTS: readonly SpotlightShortcut[] = [
   'Control+Space',
@@ -22,6 +22,24 @@ export function isValidSpotlightConfig(obj: unknown): obj is SpotlightConfig {
 }
 
 export const DEFAULT_SPOTLIGHT: SpotlightConfig = { enabled: true, shortcut: 'Control+Space' }
+
+/**
+ * The settings withDefaults() fills in on every config it installs. Its own function
+ * because the user_settings baseline (main/store/user-settings-sync.ts) has to agree
+ * with the config on them: a default the app filled in is not a change the user made,
+ * and must not be written over a column the phone may just have set.
+ */
+export function applySettingsDefaults(config: Config): void {
+  if (config.splitEnabled === undefined) config.splitEnabled = false
+  if (config.splitActive === undefined) config.splitActive = false
+  if (!config.integrations) config.integrations = { github: true, atlassian: true }
+  if (!isValidSpotlightConfig(config.spotlight)) {
+    config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
+    if (!isValidSpotlightConfig(config.spotlight)) {
+      config.spotlight = { ...DEFAULT_SPOTLIGHT }
+    }
+  }
+}
 
 const VALID_LAUNCH_MODES: readonly LaunchMode[] = [
   'plan',
