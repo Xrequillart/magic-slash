@@ -32,9 +32,10 @@ enum Backend {
         // Opt in to the next major's behaviour now: the stored session is emitted as is,
         // and AuthModel checks its expiry itself.
         auth: .init(emitLocalSessionAsInitialSession: true),
+        // The SDK's own word on the socket, in the connection log.
+        global: .init(logger: RealtimeLogTap()),
         // Realtime's protocol 1.0.0, as the desktop speaks it. Under 2.0.0 (the SDK's default)
-        // the relay channel was closed by the server seconds after each join, and the
-        // phone's presence never reached the Mac.
+        // the phone's presence never reached the Mac.
         realtime: RealtimeClientOptions(vsn: .v1)
       )
     )

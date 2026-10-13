@@ -836,14 +836,11 @@ final class RelayStore {
   /// Whether a reconnect asked for by hand is under way.
   private(set) var reconnecting = false
 
-  /// What the link went through, newest last: joins, drops, presence, snapshots that came
-  /// late or could not be read. Shown in Settings → Paired Macs → Connection log, to be
-  /// copied when the link misbehaves. States and names only, never a key or a payload.
-  private(set) var events: [String] = []
+  /// The connection log's lines (`RelayLog`), the SDK's among them.
+  var events: [String] { RelayLog.shared.events }
 
   func log(_ event: String) {
-    events.append("\(Date().formatted(date: .omitted, time: .standard))  \(event)")
-    if events.count > 300 { events.removeFirst(events.count - 300) }
+    RelayLog.shared.add(event)
   }
 
   /// The user's "Reconnect": Face ID if the keys are locked, then a fresh join of the
