@@ -97,14 +97,24 @@ access on sends them, end-to-end encrypted, over a private Supabase Realtime cha
 - **Keys and Face ID.** The iPhone's key is a Secure Enclave P-256 key that needs Face ID
   and dies if a new face is enrolled (the app then asks to pair again). One Face ID prompt
   per return to the foreground unlocks it; the derived keys stay in memory only and are
-  dropped in the background. The phone id, the wrapped key and the paired Macs are in the
+  dropped in the background. The phone id, the wrapped keys and the paired Macs are in the
   Keychain, this device only.
+- **Answering a question.** When an agent waits on a question or a permission, its detail
+  screen shows it with its options (Allow and Deny for a permission). An answer is a
+  command signed by a second Secure Enclave key, a P-256 signing key made at the first
+  pairing that finds it missing and kept across later ones. Every answer asks for Face ID
+  on its own, whatever the session already unlocked. The Mac checks the signature, the
+  pairing, the time and the question before typing anything, and says how it went: an
+  answer to a question already handled on the Mac, or expired, is refused and the screen
+  says so. A question the Mac cannot answer remotely shows "answer this one on the Mac".
+  An iPhone paired before this existed has no signing key on its Macs: it still follows
+  them, but has to be paired again to answer.
 - **Offline Mac.** A Mac is online while its presence is on the channel and its last
   snapshot is under 75 s old. Otherwise the list says so, and the last snapshot (cached on
   the device) is shown dimmed as the last known state.
-- **Simulator.** It has no Secure Enclave and no camera: DEBUG Simulator builds use a
-  software key instead, and offer a field to paste the QR's text. Neither exists in any
-  other build.
+- **Simulator.** It has no Secure Enclave and no camera: DEBUG Simulator builds use
+  software keys instead (so no Face ID per answer either), and offer a field to paste the
+  QR's text. Neither exists in any other build.
 
 After touching `Remote/RelayCrypto.swift` or the desktop's `crypto.ts`, replay the shared
 test vectors from the repo root (macOS):

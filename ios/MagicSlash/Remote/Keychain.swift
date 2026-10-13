@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-/// Generic-password items for the relay: the phone's id and key, and the paired Macs.
+/// Generic-password items for the relay: the phone's id and keys, and the paired Macs.
 ///
 /// Every item is `WhenUnlockedThisDeviceOnly`: it never leaves this iPhone, not even in an
 /// encrypted backup, and is unreadable while the device is locked.

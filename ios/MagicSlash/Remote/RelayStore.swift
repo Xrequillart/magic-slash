@@ -9,11 +9,64 @@ struct AgentRuntime: Equatable, Sendable {
   /// `TerminalState`: idle, working, waiting, completed or error.
   let state: String
   let usage: RemoteUsage?
+  /// The pending question, nil when there is none (PROTOCOL.md §5).
+  let question: RemoteQuestion?
+  /// The Mac that reported it: the one an answer goes to.
+  let macId: String
   let macName: String
   /// When the phone accepted that snapshot (its own clock; the Mac's for an old cache).
   let updatedAt: Date
   /// False when the Mac is offline: this is the last known state, not the current one.
   let isCurrent: Bool
+}
+
+/// An answer to a pending question, as a `command` carries it in `choice` (PROTOCOL.md §10).
+enum AnswerChoice: Equatable, Sendable, Encodable {
+  /// One option, or Allow (index 0) for a permission.
+  case option(Int)
+  /// The options picked in a multi-select question.
+  case options([Int])
+  /// One label per question, for a question asked several at once.
+  case answers([String])
+  /// Deny a permission.
+  case deny
+
+  private enum CodingKeys: String, CodingKey {
+    case kind, index, indexes, answers
+  }
+
+  func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    switch self {
+    case .option(let index):
+      try container.encode("option", forKey: .kind)
+      try container.encode(index, forKey: .index)
+    case .options(let indexes):
+      try container.encode("options", forKey: .kind)
+      try container.encode(indexes, forKey: .indexes)
+    case .answers(let answers):
+      try container.encode("answers", forKey: .kind)
+      try container.encode(answers, forKey: .answers)
+    case .deny:
+      try container.encode("deny", forKey: .kind)
+    }
+  }
+}
+
+/// Where the phone's answer to one question stands, for the card that sent it.
+struct AnswerStatus: Equatable, Sendable {
+  enum Phase: Equatable, Sendable {
+    /// Face ID, then waiting for the Mac's `command-result`.
+    case sending
+    /// The Mac took it: the agent resumes.
+    case done
+    /// Not answered: the message says why, and whether trying again can help.
+    case failed(String)
+  }
+
+  /// The question token it answers: a newer question starts with no status.
+  let token: String
+  let phase: Phase
 }
 
 /// The QR a Mac shows while pairing (PROTOCOL.md §7, step 1), checked field by field.
@@ -108,6 +161,8 @@ final class RelayStore {
   static let freshness: TimeInterval = 75
   /// How long the phone waits for the Mac's answer once its request is out.
   static let pairingTimeout: Duration = .seconds(180)
+  /// How long the phone waits for a `command-result` before calling the Mac unreachable.
+  static let commandTimeout: Duration = .seconds(15)
 
   private(set) var macs: [PairedMac] = []
   private(set) var snapshots: [String: AcceptedSnapshot] = [:]
@@ -118,6 +173,8 @@ final class RelayStore {
   private(set) var pairing: Pairing?
   /// Ticks every few seconds, so `isOnline` turns false on its own when the Mac goes quiet.
   private(set) var now = Date()
+  /// The last answer sent per agent (`appAgentId`), until the next one.
+  private(set) var answers: [String: AnswerStatus] = [:]
   /// Presence refs per key: one Mac may briefly hold two connections while its relay restarts.
   private var presence: [String: Set<String>] = [:]
 
@@ -140,6 +197,20 @@ final class RelayStore {
   /// Bumped by `lock()`, so an unlock that was waiting on Face ID when the app left the
   /// foreground does not put keys back in memory.
   @ObservationIgnored private var lockGeneration = 0
+  /// This phone's own sending session for commands (§4): one epoch per store, and a seq that
+  /// only grows within it, across Macs.
+  @ObservationIgnored private let commandEpoch = UUID().uuidString.lowercased()
+  @ObservationIgnored private var commandSeq = 0
+  /// Commands sent and not answered yet, by `commandId`. Only these may get a `command-result`.
+  @ObservationIgnored private var pendingCommands: [String: PendingCommand] = [:]
+
+  private struct PendingCommand {
+    let macId: String
+    let pairingId: String
+    let appAgentId: String
+    let token: String
+    let timeout: Task<Void, Never>
+  }
 
   /// Every removal of a relay channel, chained across stores. The topic is fixed and
   /// `client.channel` hands back whatever channel is still registered under it, so a new one
@@ -188,6 +259,7 @@ final class RelayStore {
     ticker = nil
     pairKeys = [:]
     endPairing()
+    abandonPendingCommands()
     await unsubscribe()
   }
 
@@ -198,6 +270,8 @@ final class RelayStore {
     lockGeneration += 1
     pairKeys = [:]
     cancelPendingPairing()
+    // A `command-result` can no longer be opened without the keys.
+    abandonPendingCommands()
     DeviceKeys.shared.lock()
     if keyState == .unlocked || keyState == .unlocking { keyState = .idle }
     ticker?.cancel()
@@ -278,6 +352,8 @@ final class RelayStore {
       best = AgentRuntime(
         state: agent.state,
         usage: agent.usage,
+        question: agent.question,
+        macId: mac.macId,
         macName: mac.name,
         updatedAt: updatedAt,
         isCurrent: isOnline(mac.macId)
@@ -321,9 +397,13 @@ final class RelayStore {
     let keys = DeviceKeys.shared
     let key: SymmetricKey
     let phonePub: Data
+    let signPub: Data
     do {
       try await keys.unlock(reason: "Link this iPhone to \(offer.name).", createIfMissing: true)
       phonePub = try keys.publicKey()
+      // Made once, then kept across pairings: the other Macs already hold its public half.
+      try keys.ensureSigningKey()
+      signPub = try keys.signPub()
       let shared = try keys.sharedSecret(with: offer.pub)
       key = RelayCrypto.deriveKey(shared: shared, macId: offer.macId, phoneId: keys.phoneId)
     } catch {
@@ -352,22 +432,15 @@ final class RelayStore {
     let phoneId = keys.phoneId
     let epoch = UUID().uuidString.lowercased()
     pairingEpoch = epoch
-    let body: [String: String] = ["token": offer.tokenText, "name": UIDevice.current.name]
-    let aad = RelayCrypto.aad(type: "pair-request", from: phoneId, to: offer.macId, epoch: epoch, seq: 1)
-    guard let plain = try? JSONEncoder().encode(body),
-          let box = try? RelayCrypto.seal(plain, key: key, aad: aad)
-    else { return fail("Could not encrypt the request.") }
-
-    let envelope: JSONObject = [
-      "v": .integer(1),
-      "type": .string("pair-request"),
-      "from": .string(phoneId),
-      "to": .string(offer.macId),
-      "epoch": .string(epoch),
-      "seq": .integer(1),
-      "box": .string(box.base64EncodedString()),
-      "phonePub": .string(phonePub.base64EncodedString()),
+    let body: [String: String] = [
+      "token": offer.tokenText,
+      "name": UIDevice.current.name,
+      "signPub": signPub.base64EncodedString(),
     ]
+    guard var envelope = Self.sealedEnvelope(
+      type: "pair-request", from: phoneId, to: offer.macId, epoch: epoch, seq: 1, body: body, key: key
+    ) else { return fail("Could not encrypt the request.") }
+    envelope["phonePub"] = .string(phonePub.base64EncodedString())
     await channel.broadcast(event: "relay", message: envelope)
     guard generation == pairingGeneration else { return }
 
@@ -411,6 +484,145 @@ final class RelayStore {
     default:
       break
     }
+  }
+
+  // MARK: - Commands
+
+  /// The status of the last answer sent to the question `token` of an agent, nil when none.
+  func answerStatus(for appAgentId: String, token: String) -> AnswerStatus? {
+    guard let status = answers[appAgentId], status.token == token else { return nil }
+    return status
+  }
+
+  /// Answers an agent's pending question (PROTOCOL.md §10): Face ID signs the payload, the
+  /// pair key seals it, and the Mac's `command-result` lands in `answers`.
+  func answer(macId: String, appAgentId: String, token: String, choice: AnswerChoice) async {
+    if case .sending = answers[appAgentId]?.phase { return }
+    func fail(_ message: String) {
+      answers[appAgentId] = AnswerStatus(token: token, phase: .failed(message))
+    }
+
+    guard let mac = macs.first(where: { $0.macId == macId }), let pairingId = mac.pairingId else {
+      return fail("This Mac is no longer paired.")
+    }
+    guard pairKeys[macId] != nil else {
+      return fail("Unlock the link to your Mac with Face ID first.")
+    }
+    guard isOnline(macId) else {
+      return fail("\(mac.name) is offline. Answer when it is back, or on the Mac.")
+    }
+    let keys = DeviceKeys.shared
+    // Paired before commands existed: no Mac holds a key to check this phone's signature.
+    guard keys.hasSigningKey else { return fail(Self.repairMessage) }
+
+    answers[appAgentId] = AnswerStatus(token: token, phase: .sending)
+    let generation = lockGeneration
+    let phoneId = keys.phoneId
+    let commandId = UUID().uuidString.lowercased()
+    let command = CommandPayload(
+      v: 1,
+      action: "answer",
+      macId: macId,
+      phoneId: phoneId,
+      pairingId: pairingId,
+      commandId: commandId,
+      issuedAt: Int64((Date().timeIntervalSince1970 * 1000).rounded()),
+      appAgentId: appAgentId,
+      token: token,
+      choice: choice
+    )
+    // Serialized once: the signature covers these exact bytes, and the Mac checks them as
+    // they arrive, with no canonical form on either side.
+    guard let payloadData = try? JSONEncoder().encode(command),
+          let payload = String(data: payloadData, encoding: .utf8)
+    else { return fail("Could not prepare the answer.") }
+
+    let signature: Data
+    do {
+      signature = try await keys.sign(Data(payload.utf8), reason: "Answer \(mac.name)'s agent.")
+    } catch {
+      guard generation == lockGeneration, !stopped else { return fail(Self.notSentMessage) }
+      switch error {
+      case .locked(let message), .unavailable(let message):
+        return fail(message)
+      case .invalidated:
+        // The key died with a new Face ID enrolment: so did every pairing.
+        invalidate()
+        return fail("Face ID changed since this iPhone was paired. Pair your Mac again to answer.")
+      }
+    }
+    // Locked while Face ID was up: the keys are gone, and nothing was sent.
+    guard generation == lockGeneration, !stopped else { return fail(Self.notSentMessage) }
+    guard let key = pairKeys[macId], let channel, channel.status == .subscribed else {
+      return fail("Could not reach the relay. Check your connection and try again.")
+    }
+
+    commandSeq += 1
+    let seq = commandSeq
+    let body = ["payload": payload, "sig": signature.base64EncodedString()]
+    guard let envelope = Self.sealedEnvelope(
+      type: "command", from: phoneId, to: macId, epoch: commandEpoch, seq: seq, body: body, key: key
+    ) else { return fail("Could not encrypt the answer.") }
+    // Registered before the broadcast, so a reply that is quicker than the await still finds it.
+    let timeout = Task { [weak self] in
+      try? await Task.sleep(for: Self.commandTimeout)
+      guard !Task.isCancelled, let self,
+            let pending = self.pendingCommands.removeValue(forKey: commandId)
+      else { return }
+      self.answers[pending.appAgentId] = AnswerStatus(
+        token: pending.token,
+        phase: .failed("\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again.")
+      )
+    }
+    pendingCommands[commandId] = PendingCommand(
+      macId: macId, pairingId: pairingId, appAgentId: appAgentId, token: token, timeout: timeout
+    )
+    await channel.broadcast(event: "relay", message: envelope)
+  }
+
+  /// What a `command` box signs (§10). Field order is the encoder's: the bytes are signed as
+  /// sent, never rebuilt.
+  private struct CommandPayload: Encodable {
+    let v: Int
+    let action: String
+    let macId: String
+    let phoneId: String
+    let pairingId: String
+    let commandId: String
+    let issuedAt: Int64
+    let appAgentId: String
+    let token: String
+    let choice: AnswerChoice
+  }
+
+  static let repairMessage = "Pair this iPhone with the Mac again to answer from it."
+  private static let notSentMessage = "Not sent: Magic Slash left the screen. Try again."
+
+  /// A refusal's `reason` (§10), as the card shows it.
+  private static func message(for reason: String?) -> String {
+    switch reason {
+    case "stale": "Already answered on the Mac, or expired."
+    case "unsupported": "Answer this one on the Mac."
+    case "busy", "write-failed": "Your Mac could not take the answer. Try again, or check the Mac."
+    case "re-pair": repairMessage
+    // A signature, identifier or clock mismatch: the clock is the one a user can fix.
+    case "rejected": "Your Mac refused the answer. Check that the iPhone and the Mac show the same time, or pair again."
+    case "invalid": "Your Mac does not accept this answer. Answer it on the Mac."
+    default: "Your Mac refused the answer."
+    }
+  }
+
+  /// Commands still waiting when the keys go: their result can no longer be read. The answer
+  /// may well have reached the Mac, so the card says to look there.
+  private func abandonPendingCommands() {
+    for pending in pendingCommands.values {
+      pending.timeout.cancel()
+      answers[pending.appAgentId] = AnswerStatus(
+        token: pending.token,
+        phase: .failed("Magic Slash left the screen before your Mac confirmed. Check the Mac.")
+      )
+    }
+    pendingCommands = [:]
   }
 
   // MARK: - Realtime
@@ -504,6 +716,29 @@ final class RelayStore {
     }
   }
 
+  // MARK: - Sending
+
+  /// An envelope (§4) whose box seals `body` under `key`, bound to its own header: the mirror
+  /// of `Envelope.open(with:)`. Nil when the body does not encode or seal.
+  private static func sealedEnvelope(
+    type: String, from: String, to: String, epoch: String, seq: Int,
+    body: some Encodable, key: SymmetricKey
+  ) -> JSONObject? {
+    let aad = RelayCrypto.aad(type: type, from: from, to: to, epoch: epoch, seq: seq)
+    guard let plain = try? JSONEncoder().encode(body),
+          let box = try? RelayCrypto.seal(plain, key: key, aad: aad)
+    else { return nil }
+    return [
+      "v": .integer(1),
+      "type": .string(type),
+      "from": .string(from),
+      "to": .string(to),
+      "epoch": .string(epoch),
+      "seq": .integer(seq),
+      "box": .string(box.base64EncodedString()),
+    ]
+  }
+
   // MARK: - Receiving
 
   private struct Envelope {
@@ -549,6 +784,7 @@ final class RelayStore {
     case "revoked": receiveRevoked(envelope)
     case "pair-accepted": receivePairAccepted(envelope)
     case "pair-rejected": receivePairRejected(envelope)
+    case "command-result": receiveCommandResult(envelope)
     default: break
     }
   }
@@ -580,6 +816,27 @@ final class RelayStore {
       setMacs(renamed)
     }
     SnapshotCache.save(snapshots, userId: userId)
+  }
+
+  /// Not part of §6's ordering: only a `commandId` still pending counts, and only once.
+  private func receiveCommandResult(_ envelope: Envelope) {
+    guard let key = pairKeys[envelope.from],
+          let plain = envelope.open(with: key),
+          let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
+          let commandId = body["commandId"] as? String,
+          let pending = pendingCommands[commandId],
+          // From the Mac it went to, for the pairing it was sent under, which is still the
+          // saved one: a result recorded from an older pairing opens with the same key (§6).
+          pending.macId == envelope.from,
+          let pairingId = body["pairingId"] as? String,
+          pairingId == pending.pairingId,
+          macs.first(where: { $0.macId == envelope.from })?.pairingId == pairingId,
+          let ok = body["ok"] as? Bool
+    else { return }
+    pendingCommands[commandId] = nil
+    pending.timeout.cancel()
+    let phase: AnswerStatus.Phase = ok ? .done : .failed(Self.message(for: body["reason"] as? String))
+    answers[pending.appAgentId] = AnswerStatus(token: pending.token, phase: phase)
   }
 
   private func receiveRevoked(_ envelope: Envelope) {

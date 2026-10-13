@@ -75,6 +75,8 @@ struct RemoteAgent: Codable, Hashable, Sendable {
   /// `TerminalState`. Kept as a string: a state this build does not know still shows.
   let state: String
   let usage: RemoteUsage?
+  /// The pending question, or nil. One the phone cannot read is nil too: the agent still shows.
+  let question: RemoteQuestion?
 
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -82,6 +84,80 @@ struct RemoteAgent: Codable, Hashable, Sendable {
     state = try container.decode(String.self, forKey: .state)
     title = try? container.decodeIfPresent(String.self, forKey: .title)
     usage = try? container.decodeIfPresent(RemoteUsage.self, forKey: .usage)
+    question = (try? container.decodeIfPresent(RemoteQuestion.self, forKey: .question)) ?? nil
+  }
+}
+
+/// An agent's pending question (PROTOCOL.md §5): an AskUserQuestion, or a permission whose
+/// single question has no options.
+struct RemoteQuestion: Codable, Hashable, Sendable {
+  struct Item: Codable, Hashable, Sendable {
+    let prompt: String
+    let header: String?
+    let multiSelect: Bool
+    let options: [Option]
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      prompt = try container.decode(String.self, forKey: .prompt)
+      header = ((try? container.decodeIfPresent(String.self, forKey: .header)) ?? nil)?.nonEmpty
+      multiSelect = ((try? container.decodeIfPresent(Bool.self, forKey: .multiSelect)) ?? nil) ?? false
+      // Strict: answers are indexes into this list, so a dropped option would shift them.
+      options = try container.decodeIfPresent([Option].self, forKey: .options) ?? []
+    }
+  }
+
+  struct Option: Codable, Hashable, Sendable {
+    let label: String
+    let description: String?
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      label = try container.decode(String.self, forKey: .label)
+      description = ((try? container.decodeIfPresent(String.self, forKey: .description)) ?? nil)?.nonEmpty
+    }
+  }
+
+  /// What a `command` quotes (§10). A new question has a new one.
+  let token: String
+  /// `ask` or `permission`. Kept as a string: a kind this build does not know shows as one to
+  /// answer on the Mac.
+  let kind: String
+  /// Epoch milliseconds, on the Mac's clock: for display only.
+  let receivedAt: Double?
+  /// The Mac cannot answer it from a remote choice: shown, with no choice offered.
+  let unsupported: Bool
+  let questions: [Item]
+  /// A permission's terminal tail: the command it asks about. Nil on an ask.
+  let preview: String?
+
+  var isPermission: Bool { kind == "permission" }
+
+  /// Whether the phone may offer choices for it at all: an `ask` needs options to pick, and a
+  /// kind this build does not know is left to the Mac.
+  var isAnswerable: Bool {
+    guard !unsupported, !questions.isEmpty else { return false }
+    switch kind {
+    case "permission": return questions.count == 1
+    case "ask": return questions.allSatisfy { !$0.options.isEmpty }
+    default: return false
+    }
+  }
+
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    token = try container.decode(String.self, forKey: .token)
+    kind = try container.decode(String.self, forKey: .kind)
+    receivedAt = (try? container.decodeIfPresent(Double.self, forKey: .receivedAt)) ?? nil
+    unsupported = ((try? container.decodeIfPresent(Bool.self, forKey: .unsupported)) ?? nil) ?? false
+    preview = ((try? container.decodeIfPresent(String.self, forKey: .preview)) ?? nil)?.nonEmpty
+    let lossy = (try? container.decodeIfPresent([Lossy<Item>].self, forKey: .questions)) ?? []
+    let items = lossy.compactMap(\.value)
+    // An item dropped while decoding would shift the answers to the others.
+    guard !items.isEmpty, items.count == lossy.count else {
+      throw DecodingError.dataCorruptedError(forKey: .questions, in: container, debugDescription: "unreadable questions")
+    }
+    questions = items
   }
 }
 
