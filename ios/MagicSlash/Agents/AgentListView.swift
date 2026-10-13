@@ -10,7 +10,7 @@ struct AgentListView: View {
   let onSignOut: () -> Void
 
   private enum Sheet: String, Identifiable {
-    case pair, macs
+    case account, pair, macs
     var id: String { rawValue }
   }
 
@@ -18,23 +18,55 @@ struct AgentListView: View {
   /// The sessions opened, as a path: rows push onto it themselves, which keeps the list
   /// free of the disclosure chevron a `NavigationLink` row draws.
   @State private var path: [String] = []
-  @State private var showsDrawer = false
-  /// How far a drag is pulling the open list back over the drawer.
-  @GestureState private var drag: CGFloat = 0
-  /// Bumped on every tap that should be felt: the menu button and each session.
+  @State private var profile: ProfileStore
+  /// Bumped on every tap that should be felt: the header buttons and each session.
   @State private var taps = 0
 
-  private static let slide = Animation.snappy(duration: 0.3)
+  init(store: AgentStore, relay: RelayStore, sort: AgentSortMode, onSignOut: @escaping () -> Void) {
+    self.store = store
+    self.relay = relay
+    self.sort = sort
+    self.onSignOut = onSignOut
+    _profile = State(initialValue: ProfileStore(client: store.client))
+  }
 
   var body: some View {
-    // Read outside the full-screen layers below, which no longer see the safe area.
-    GeometryReader { screen in
-      let insets = screen.safeAreaInsets
-      layers(insets: insets)
+    // The system bar, as on a session's page: no backdrop of our own.
+    NavigationStack(path: $path) {
+      content
+        .background(theme.bg.ignoresSafeArea())
+        .navigationTitle("Sessions")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .topBarLeading) {
+            Button {
+              taps += 1
+              sheet = .account
+            } label: {
+              ProfileAvatar(profile: profile, size: 30)
+            }
+            .accessibilityLabel("Account")
+          }
+          ToolbarItem(placement: .topBarTrailing) {
+            PairingButton(relay: relay) {
+              taps += 1
+              sheet = isPaired ? .macs : .pair
+            }
+          }
+        }
+        .navigationDestination(for: String.self) { id in
+          AgentSessionView(store: store, relay: relay, agentId: id)
+        }
     }
+    .task { await profile.load() }
     .sensoryFeedback(.impact(weight: .light), trigger: taps)
     .sheet(item: $sheet) { sheet in
       switch sheet {
+      case .account:
+        AccountSheet(profile: profile) {
+          self.sheet = nil
+          onSignOut()
+        }
       case .pair:
         PairingView(relay: relay)
       case .macs:
@@ -43,106 +75,8 @@ struct AgentListView: View {
     }
   }
 
-  private func layers(insets: EdgeInsets) -> some View {
-    GeometryReader { proxy in
-      let width = min(proxy.size.width * 0.82, 340)
-      ZStack(alignment: .topLeading) {
-        // Underneath, and still: the list slides aside to show it.
-        AccountDrawer(
-          client: store.client,
-          onSignOut: {
-            withAnimation(Self.slide) { showsDrawer = false }
-            onSignOut()
-          }
-        )
-        .padding(.top, insets.top)
-        .padding(.bottom, insets.bottom)
-        .frame(width: width)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(theme.bgSecondary)
-
-        sessions
-          // The list's own ground, full screen: it travels with the list, so nothing
-          // of the drawer shows at the edges while it is closed.
-          .background(theme.bg)
-          .overlay {
-            // While open, a tap anywhere on the list closes the drawer instead of
-            // opening a session.
-            if showsDrawer {
-              Color.black.opacity(0.18)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { setDrawer(false) }
-                .transition(.opacity)
-                .accessibilityLabel("Close")
-                .accessibilityAddTraits(.isButton)
-            }
-          }
-          .clipShape(RoundedRectangle(cornerRadius: showsDrawer ? 24 : 0, style: .continuous))
-          .shadow(color: .black.opacity(showsDrawer ? 0.25 : 0), radius: 20, x: -4)
-          .offset(x: showsDrawer ? max(0, width + min(0, drag)) : 0)
-          .simultaneousGesture(
-            DragGesture(minimumDistance: 12)
-              .updating($drag) { value, state, _ in
-                if showsDrawer { state = value.translation.width }
-              }
-              .onEnded { value in
-                if showsDrawer, value.translation.width < -width / 3 { setDrawer(false) }
-              }
-          )
-      }
-    }
-    // Both layers span the whole screen, status bar and home indicator included. Their
-    // content still keeps to the safe area: only the frames are stretched.
-    .ignoresSafeArea()
-  }
-
-  private var sessions: some View {
-    NavigationStack(path: $path) {
-      content
-        .background(theme.bg.ignoresSafeArea())
-        // The bar's own backdrop is hidden for ours: a system material is a neutral grey
-        // whatever the theme, where this one is the theme's ground, blurred.
-        .overlay(alignment: .top) { HeaderBackdrop() }
-        .navigationTitle("Sessions")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            PairingButton(relay: relay) {
-              taps += 1
-              open(isPaired ? .macs : .pair)
-            }
-          }
-          ToolbarItem(placement: .topBarLeading) {
-            Button {
-              setDrawer(!showsDrawer)
-            } label: {
-              Image(systemName: "line.3.horizontal")
-                .foregroundStyle(theme.icon)
-            }
-            .accessibilityLabel("Account")
-          }
-        }
-        .navigationDestination(for: String.self) { id in
-          AgentSessionView(store: store, relay: relay, agentId: id)
-        }
-    }
-  }
-
-  private func setDrawer(_ open: Bool) {
-    taps += 1
-    withAnimation(Self.slide) { showsDrawer = open }
-  }
-
   private var isPaired: Bool {
     !relay.macs.isEmpty && !relay.needsRepair
-  }
-
-  /// Closes the drawer, then opens the sheet it asked for.
-  private func open(_ next: Sheet) {
-    withAnimation(Self.slide) { showsDrawer = false }
-    sheet = next
   }
 
   @ViewBuilder
@@ -266,30 +200,6 @@ private struct AgentRow: View {
       }
     }
     .contentShape(Rectangle())
-  }
-}
-
-/// The header's ground: the theme's background, translucent over a blur, so the list
-/// scrolls under it in the theme's colour rather than a system grey. It covers the status
-/// bar and the navigation bar, which is the content's top safe area.
-private struct HeaderBackdrop: View {
-  @Environment(\.theme) private var theme
-
-  var body: some View {
-    GeometryReader { proxy in
-      let height = proxy.safeAreaInsets.top
-      ZStack(alignment: .bottom) {
-        Rectangle().fill(.ultraThinMaterial)
-        theme.bg.opacity(0.72)
-        Rectangle().fill(theme.lineSubtle.opacity(0.6)).frame(height: 0.5)
-      }
-      .environment(\.colorScheme, theme.isDark ? .dark : .light)
-      .frame(height: height)
-      .offset(y: -height)
-    }
-    .frame(height: 0)
-    .allowsHitTesting(false)
-    .accessibilityHidden(true)
   }
 }
 
