@@ -902,7 +902,9 @@ final class RelayStore {
           guard joined, status == .unsubscribed else { continue }
           try? await Task.sleep(for: .seconds(2))
           guard !Task.isCancelled, let self, !self.stopped, attempt == self.subscriptionCount else { return }
-          await self.refreshSubscription()
+          // In a task of its own: the rejoin cancels this one (`unsubscribe` cancels `tasks`),
+          // and a join awaited from here would be cancelled with it.
+          Task { await self.refreshSubscription() }
           return
         }
       },
@@ -917,9 +919,13 @@ final class RelayStore {
     ]
     self.channel = channel
     log("join the relay")
+    joining = true
+    lastJoinAttempt = Date()
     do {
       try await channel.subscribeWithError()
+      joining = false
     } catch {
+      joining = false
       log("join failed: \(error.localizedDescription)")
       return
     }
@@ -982,6 +988,21 @@ final class RelayStore {
     return macs.first(where: { $0.macId == id })?.name ?? String(id.prefix(8))
   }
 
+  /// A join in flight, and when the last one started: the supervisor leaves both alone.
+  @ObservationIgnored private var joining = false
+  @ObservationIgnored private var lastJoinAttempt = Date.distantPast
+
+  /// Every tick while the app is open: a channel that should be joined and is not (a join
+  /// that failed or timed out, a socket that came back without it) is joined again. A join
+  /// that fails is otherwise never retried, and the phone stays off the relay until the app
+  /// goes to the background and back.
+  private func superviseChannel() {
+    guard wantsChannel, !stopped, !joining, Date().timeIntervalSince(lastJoinAttempt) > 8 else { return }
+    if let channel, channel.status == .subscribed { return }
+    log("channel not joined (\(channel.map { "\($0.status)" } ?? "none")), joining again")
+    Task { await subscribe() }
+  }
+
   private func startTicker() {
     ticker?.cancel()
     ticker = Task { [weak self] in
@@ -990,6 +1011,7 @@ final class RelayStore {
         guard !Task.isCancelled, let self else { return }
         self.now = Date()
         self.logOnlineChanges()
+        self.superviseChannel()
       }
     }
   }
