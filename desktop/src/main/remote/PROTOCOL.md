@@ -130,9 +130,10 @@ can do is cancel a pairing on screen, which is accepted.
 }
 ```
 
-- `bootId` is drawn at random once per launch of the Mac app and stays the same across relay
-  restarts within it. A `prompt` or a `stop` quotes it (§10); the phone keeps the latest it
-  read for that Mac, and orders nothing by it.
+- `bootId` is drawn at random at each launch of the Mac app, and again whenever the Mac forgets
+  the `commandId`s it remembered (the relay paused on a refused session, or another account
+  signed in). A relay that only restarts keeps it. A `prompt` or a `stop` quotes it (§10); the
+  phone keeps the latest it read for that Mac, and orders nothing by it.
 - `state` is `TerminalState`: `idle`, `working`, `waiting`, `completed` or `error`.
 - `usage` is `null` until Claude Code's status line has reported once. Any of its fields may be
   `null`. `*ResetsAt` are epoch **seconds**, as Claude Code reports them.
@@ -342,15 +343,18 @@ A `prompt` and a `stop` carry the same common fields (`v` to `appAgentId`), no `
 
    The state is read, then the terminal written. An agent that moves in between (its turn
    ends, a question arrives) still gets the bytes: that race is accepted, and the desktop
-   chat has the same one.
+   chat has the same one. Step 9 itself (paired, same account, an agent of it) is asked again
+   at the moment the text is typed, since a submission already in flight on that terminal can
+   hold it back: a phone revoked meanwhile gets nothing typed.
 
 The question token does most of the freshness work for an `answer`: the Mac draws a new random
 one for every question, keeps it in memory only and accepts it once. That is why a restart,
 which forgets the `commandId` cache, opens no replay: no token from before it still matches.
 `issuedAt` bounds what is left, a capture replayed while the same question is still pending.
 
-A `prompt` or a `stop` has no token, so `bootId` does that work: a restart draws a new one,
-and a command captured before it no longer quotes the Mac's. This closes the replay after a
+A `prompt` or a `stop` has no token, so `bootId` does that work: a restart draws a new one, as
+does anything else that empties the `commandId` cache, and a command captured before it no
+longer quotes the Mac's. This closes the replay after a
 restart without trusting the phone's clock: a phone whose clock runs minutes ahead would
 otherwise sign a command that, replayed right after a restart, still falls within step 6's
 window while the `commandId` that would have refused it is forgotten. Within one launch, the
@@ -373,7 +377,7 @@ only on an `ok` prompt that was sent while the agent was `working`.
 | `busy` | another answer to it is being typed right now | the agent waits on a question: answer it first | |
 | `write-failed` | the terminal did not take the keystrokes; the question is still pending | the terminal did not take the text | the terminal did not take Escape; nothing stopped, the question is still pending |
 | `invalid` | an action or a choice the Mac does not accept | no text, an empty one or one over 10 000 characters, or no `bootId` | no `bootId` |
-| `rejected` | signature, identifiers or clock | the same, or a `bootId` from an earlier launch | the same |
+| `rejected` | signature, identifiers or clock | the same, or a `bootId` the Mac has since replaced | the same |
 | `re-pair` | this phone was paired before commands existed: pair it again | the same | the same |
 
 The phone accepts a `command-result` only from the Mac it sent the command to, carrying that

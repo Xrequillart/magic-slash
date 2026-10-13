@@ -155,19 +155,28 @@ export interface CommandInput {
   device: StoredRemoteDevice
 }
 
+function drawBootId(): string {
+  return crypto.randomUUID().toLowerCase()
+}
+
 export class CommandGate {
   private readonly now: () => number
   /**
-   * This launch of the Mac (§5, §10): published in every snapshot, quoted by every `prompt`
-   * and `stop`. A command signed before a restart names the previous one, and is refused.
+   * This launch of the Mac's command history (§5, §10): published in every snapshot, quoted by
+   * every `prompt` and `stop`. Drawn again whenever the remembered `commandId`s are forgotten
+   * (`clear`), so a command signed before a restart, or before the relay paused, is refused.
    */
-  readonly bootId: string
+  private current: string
   /** By `phoneId|commandId`: a command id only means something within the phone that drew it. */
   private readonly seen = new Map<string, Remembered>()
 
-  constructor(now: () => number = () => Date.now(), bootId: string = crypto.randomUUID().toLowerCase()) {
+  constructor(now: () => number = () => Date.now(), bootId: string = drawBootId()) {
     this.now = now
-    this.bootId = bootId
+    this.current = bootId
+  }
+
+  get bootId(): string {
+    return this.current
   }
 
   /** How many command ids are remembered right now (tests). */
@@ -248,8 +257,8 @@ export class CommandGate {
     // 8. The closed action set, each with its own fields.
     const command = parseCommand(payload)
     if (!command) return reply({ ok: false, reason: 'invalid' })
-    // A `prompt` or `stop` signed before this Mac restarted: the `commandId`s it remembered
-    // went with that launch, so the launch itself is what refuses the replay (§10).
+    // A `prompt` or `stop` signed before this Mac restarted, or before its command memory was
+    // cleared: the `commandId`s it remembered are gone, so the `bootId` refuses the replay (§10).
     if (command.action !== 'answer' && payload.bootId !== this.bootId) return reply({ ok: false, reason: 'rejected' })
 
     try {
@@ -283,5 +292,7 @@ export class CommandGate {
   /** Forget every id: a new account, or the relay torn down. */
   clear(): void {
     this.seen.clear()
+    // The memory that refused a replayed `commandId` is gone: so is the id that vouched for it.
+    this.current = drawBootId()
   }
 }

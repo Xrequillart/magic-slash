@@ -244,6 +244,16 @@ describe('a prompt and a stop', () => {
     expect(a.bootId).not.toBe(b.bootId)
   })
 
+  it('draws a new boot id when it forgets the commands it saw, so none of them replays', async () => {
+    const signed = box(prompt())
+    expect((await handle(signed))?.ok).toBe(true)
+    gate.clear()
+    expect(gate.bootId).not.toBe(BOOT_ID)
+    expect(gate.bootId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(await handle(signed)).toMatchObject({ ok: false, reason: 'rejected' })
+    expect(run).toHaveBeenCalledTimes(1)
+  })
+
   it('types a replayed prompt once, and answers the replay with the first result', async () => {
     run.mockResolvedValueOnce({ ok: true, queued: true })
     const signed = box(prompt())

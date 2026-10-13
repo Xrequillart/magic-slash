@@ -35,7 +35,7 @@ describe('runRemotePrompt', () => {
   it('submits the text as the chat formats it, to an idle agent', async () => {
     const edges = promptEdges()
     expect(await runRemotePrompt('claude-1', 'one\ntwo', edges)).toEqual({ ok: true })
-    expect(edges.submit).toHaveBeenCalledWith('claude-1', '\x1b[200~one\ntwo\x1b[201~')
+    expect(edges.submit).toHaveBeenCalledWith('claude-1', '\x1b[200~one\ntwo\x1b[201~', expect.any(Function))
   })
 
   it('submits to a working agent and says it was queued', async () => {
@@ -73,6 +73,13 @@ describe('runRemotePrompt', () => {
     expect(await runRemotePrompt('claude-1', 'next', promptEdges())).toEqual({ ok: false, reason: 'stale' })
     state = 'idle'
     expect(await runRemotePrompt('claude-1', 'next', promptEdges({ submit: async () => false }))).toEqual({ ok: false, reason: 'write-failed' })
+  })
+})
+
+describe('runRemotePrompt, once its turn to be typed comes', () => {
+  it('is stale when step 9 no longer holds, and writes nothing', async () => {
+    const edges = promptEdges({ submit: vi.fn(async (_id: string, _bytes: string, wanted: () => boolean) => wanted()) })
+    expect(await runRemotePrompt('claude-1', 'hello', edges, () => false)).toEqual({ ok: false, reason: 'stale' })
   })
 })
 

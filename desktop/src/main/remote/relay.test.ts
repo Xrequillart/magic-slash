@@ -210,15 +210,16 @@ beforeEach(async () => {
   restored = []
   takenBack = null
   const stateOf = (id: string) => (h.terminals as { id: string; state: TerminalState }[]).find((t) => t.id === id)?.state
-  prompter = vi.fn<RemotePrompter>((id, text) =>
+  prompter = vi.fn<RemotePrompter>((id, text, stillWanted) =>
     runRemotePrompt(id, text, {
       state: stateOf,
       hasQuestion: (terminal) => getPendingQuestion(terminal) !== undefined,
-      submit: async (terminal, bytes) => {
+      submit: async (terminal, bytes, wanted) => {
+        if (!wanted()) return false
         submitted.push([terminal, bytes])
         return true
       },
-    }))
+    }, stillWanted))
   stopper = vi.fn<RemoteStopper>((id) =>
     runRemoteStop(id, {
       state: stateOf,
@@ -822,7 +823,7 @@ describe('commands from a paired phone', () => {
   it('submits a prompt to an idle agent, formatted as the desktop chat does, and tells the phone', async () => {
     h.terminals = [{ id: 'claude-1', name: 'Agent 1', state: 'idle' }]
     await send(command(phone, { action: 'prompt', text: 'first line\nsecond line' }))
-    expect(prompter).toHaveBeenCalledWith('claude-1', 'first line\nsecond line')
+    expect(prompter).toHaveBeenCalledWith('claude-1', 'first line\nsecond line', expect.any(Function))
     expect(submitted).toEqual([['claude-1', '\x1b[200~first line\nsecond line\x1b[201~']])
     expect(results(phone)).toEqual([{ pairingId: phone.pairingId, commandId: expect.any(String), ok: true }])
   })

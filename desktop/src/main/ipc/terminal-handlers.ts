@@ -80,12 +80,16 @@ const submissions = new Map<string, Promise<void>>()
  *
  * Resolves with whether the text reached a pty: false is a dead session, and no Return is
  * written then. Submissions to one terminal run in turn, each text with its own Return.
+ *
+ * `stillWanted`, when given, is asked again as the submission starts, after any wait in line:
+ * a paired phone revoked while its prompt queued gets nothing typed (false, nothing written).
  */
-export function submitToTerminal(id: string, bytes: string): Promise<boolean> {
+export function submitToTerminal(id: string, bytes: string, stillWanted?: () => boolean): Promise<boolean> {
   // One submission at a time per terminal: a second text typed during the first one's delay
   // would land before its Return, and Claude would read the two as one prompt.
   const previous = submissions.get(id)
-  const run = previous ? previous.then(() => submitNow(id, bytes)) : submitNow(id, bytes)
+  const start = () => (stillWanted && !stillWanted() ? Promise.resolve(false) : submitNow(id, bytes))
+  const run = previous ? previous.then(start) : start()
   const settled = run.then(() => undefined, () => undefined)
   submissions.set(id, settled)
   void settled.then(() => {

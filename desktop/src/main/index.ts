@@ -559,12 +559,12 @@ async function answerQuestion(id: string, token: string, choice: TrayAnswerChoic
  * A paired iPhone's verified `prompt` (remote/PROTOCOL.md §10): typed through the desktop
  * chat's own sequence, `submitToTerminal`, after the checks of `runRemotePrompt`.
  */
-function promptFromRemote(id: string, text: string): Promise<CommandOutcome> {
+function promptFromRemote(id: string, text: string, stillWanted: () => boolean): Promise<CommandOutcome> {
   return runRemotePrompt(id, text, {
     state: (terminalId) => getTerminal(terminalId)?.state,
     hasQuestion: (terminalId) => getPendingQuestion(terminalId) !== undefined,
     submit: submitToTerminal,
-  })
+  }, stillWanted)
 }
 
 /**

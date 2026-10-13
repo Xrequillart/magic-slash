@@ -19,22 +19,29 @@ export interface PromptEdges {
   state: (id: string) => TerminalState | undefined
   /** Whether a question or a permission is waiting on an answer. */
   hasQuestion: (id: string) => boolean
-  /** The chat's own sequence: the bytes, then the Return. False when no pty took them. */
-  submit: (id: string, bytes: string) => Promise<boolean>
+  /**
+   * The chat's own sequence: the bytes, then the Return. False when no pty took them, or when
+   * `stillWanted` no longer holds once the submission's turn comes.
+   */
+  submit: (id: string, bytes: string, stillWanted: () => boolean) => Promise<boolean>
 }
 
 /**
  * Types the prompt as the desktop chat would. Refused `unsupported` for what the phone may not
  * send (a `!` line, a command that opens a TUI dialog), `busy` while the agent waits on an
  * answer (the bytes would land in the dialog), and `stale` for an agent that is gone. Sent
- * while the agent works, it is queued by Claude Code, and the phone is told so.
+ * while the agent works, it is queued by Claude Code, and the phone is told so. `stillWanted`
+ * is relay.ts's step 9, asked again when the text is about to be typed: a submission already in
+ * flight on that terminal can hold it back, and the phone may be revoked meanwhile (`stale`).
  */
-export async function runRemotePrompt(id: string, text: string, edges: PromptEdges): Promise<CommandOutcome> {
+export async function runRemotePrompt(id: string, text: string, edges: PromptEdges, stillWanted: () => boolean = () => true): Promise<CommandOutcome> {
   if (remotePromptRefusal(text)) return { ok: false, reason: 'unsupported' }
   const state = edges.state(id)
   if (state === undefined) return { ok: false, reason: 'stale' }
   if (state === 'waiting' || edges.hasQuestion(id)) return { ok: false, reason: 'busy' }
-  if (!(await edges.submit(id, promptBytes(text)))) return { ok: false, reason: 'write-failed' }
+  if (!(await edges.submit(id, promptBytes(text), stillWanted))) {
+    return { ok: false, reason: stillWanted() ? 'write-failed' : 'stale' }
+  }
   return state === 'working' ? { ok: true, queued: true } : { ok: true }
 }
 

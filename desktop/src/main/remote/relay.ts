@@ -69,7 +69,8 @@ export function setRemoteAnswerer(next: RemoteAnswerer | null): void {
 }
 
 /** Types a prompt into an agent: main/index.ts's, over agent-control.ts's `runRemotePrompt`. */
-export type RemotePrompter = (id: string, text: string) => Promise<CommandOutcome>
+/** `stillWanted`: step 9 again, for the moment the text is typed (see `runCommand`). */
+export type RemotePrompter = (id: string, text: string, stillWanted: () => boolean) => Promise<CommandOutcome>
 
 let prompter: RemotePrompter | null = null
 
@@ -108,8 +109,9 @@ const pairKeys = new Map<string, Buffer>()
 let suspended = false
 /**
  * The phones' commands seen so far (§10 step 7), for the account loaded. Its `bootId` is drawn
- * once per launch of the main process and published in every snapshot (§5): a `prompt` or
- * `stop` must quote it, so nothing signed before a restart runs after it.
+ * at launch, and again each time `forgetAccount` clears the gate, and is published in every
+ * snapshot (§5): a `prompt` or `stop` must quote it, so nothing signed before a restart, or
+ * before the memory that would have refused its replay was cleared, runs after it.
  */
 const commands = new CommandGate()
 
@@ -427,14 +429,17 @@ async function handleCommand(envelope: RelayEnvelope): Promise<void> {
  */
 async function runCommand(command: RemoteCommand, self: LoadedIdentity, account: string, device: StoredRemoteDevice): Promise<CommandOutcome> {
   const { appAgentId } = command
-  const run = dispatch(command)
-  if (!stillPaired(self, device) || userId !== account || !run) return { ok: false, reason: 'stale' }
-  if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) return { ok: false, reason: 'stale' }
+  // Asked again by a prompt as it is typed: it may wait behind another submission (§10).
+  const stillWanted = () =>
+    stillPaired(self, device) !== null && userId === account
+    && isAgentTerminal(appAgentId) && terminalOwner(appAgentId) === account
+  const run = dispatch(command, stillWanted)
+  if (!run || !stillWanted()) return { ok: false, reason: 'stale' }
   return run()
 }
 
 /** The runner wired for this command's action, bound to it, or null when none is. */
-function dispatch(command: RemoteCommand): (() => Promise<CommandOutcome>) | null {
+function dispatch(command: RemoteCommand, stillWanted: () => boolean): (() => Promise<CommandOutcome>) | null {
   const { appAgentId } = command
   switch (command.action) {
     // A question it clears is republished by the question listener (main/index.ts).
@@ -444,7 +449,7 @@ function dispatch(command: RemoteCommand): (() => Promise<CommandOutcome>) | nul
     }
     case 'prompt': {
       const run = prompter
-      return run && (() => run(appAgentId, command.text))
+      return run && (() => run(appAgentId, command.text, stillWanted))
     }
     case 'stop': {
       const run = stopper

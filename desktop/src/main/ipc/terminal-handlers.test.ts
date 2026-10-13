@@ -488,6 +488,16 @@ describe('submitting a prompt (submitToTerminal, terminal:submit)', () => {
     ])
   })
 
+  it('asks again, once its turn comes, whether a queued text is still wanted', async () => {
+    let wanted = true
+    const first = submitToTerminal('claude-1', 'from the desktop')
+    const second = submitToTerminal('claude-1', 'from a phone', () => wanted)
+    wanted = false
+    await vi.runAllTimersAsync()
+    await expect(Promise.all([first, second])).resolves.toEqual([true, false])
+    expect(term.writeToTerminal.mock.calls).toEqual([['claude-1', 'from the desktop'], ['claude-1', '\r']])
+  })
+
   it('marks the session as talked to', async () => {
     const done = submitToTerminal('claude-1', 'hello')
     await vi.runAllTimersAsync()
