@@ -168,6 +168,16 @@ describe('toRelayQuestion', () => {
     expect(published.unsupported).toBe(false)
   })
 
+  it('offers a terminal multi-select only the options a digit can reach, and a held one all ten', () => {
+    const options = Array.from({ length: 12 }, (_, i) => ({ label: `Option ${i}` }))
+    const terminal = toRelayQuestion({ ...ASK, questions: [{ prompt: 'Pick', multiSelect: true, options }] })!
+    expect(terminal.questions[0].options).toHaveLength(9)
+    const held = toRelayQuestion({ ...ASK, held: true, questions: [{ prompt: 'Pick', multiSelect: true, options }] })!
+    expect(held.questions[0].options).toHaveLength(10)
+    const single = toRelayQuestion({ ...ASK, questions: [{ prompt: 'Pick', options }] })!
+    expect(single.questions[0].options).toHaveLength(10)
+  })
+
   it('marks unsupported a question cut where an answer would read it', () => {
     const many = Array.from({ length: 6 }, (_, i) => ({ prompt: `Q${i}`, options: [{ label: 'A' }] }))
     const cutCount = toRelayQuestion({ ...ASK, held: true, questions: many })!

@@ -1,4 +1,5 @@
 import type { TerminalMetadata, TerminalState, TrayQuestion, TrayQuestionItem } from '../../types'
+import { MAX_DIGIT_OPTIONS } from '../questions/answer-keys'
 
 /**
  * The state snapshot (PROTOCOL.md §5) and the schedule it is sent on.
@@ -122,7 +123,8 @@ function tail(text: string, max: number): string {
  * the fourth, a prompt shortened, or a label shortened, which a held question takes back as
  * the answer's text) marks the question `unsupported`: the phone then sends the user to the
  * Mac rather than answer something it was not fully shown. Options beyond the tenth are
- * simply not offered. A permission's preview keeps its end, where the command is.
+ * simply not offered, and beyond the ninth for a multi-select typed into a terminal: it is
+ * answered by single digits, so a tenth would have no key to reach it. A permission's preview keeps its end, where the command is.
  */
 export function toRelayQuestion(question: TrayQuestion | undefined): RelayQuestion | null {
   if (!question) return null
@@ -133,6 +135,9 @@ export function toRelayQuestion(question: TrayQuestion | undefined): RelayQuesti
     : question.questions ?? [{ prompt: question.prompt, options: question.options, multiSelect: question.multiSelect }]
   if (items.length > QUESTION_LIMITS.questions) truncated = true
   const questions = items.slice(0, QUESTION_LIMITS.questions).map((item): RelayQuestionItem => {
+    const maxOptions = item.multiSelect === true && !question.held
+      ? Math.min(QUESTION_LIMITS.options, MAX_DIGIT_OPTIONS)
+      : QUESTION_LIMITS.options
     const header = item.header ? cut(item.header, QUESTION_LIMITS.text).text : undefined
     const prompt = cut(item.prompt, QUESTION_LIMITS.prompt)
     if (prompt.cut) truncated = true
@@ -140,7 +145,7 @@ export function toRelayQuestion(question: TrayQuestion | undefined): RelayQuesti
       prompt: prompt.text,
       ...(header ? { header } : {}),
       multiSelect: item.multiSelect === true,
-      options: item.options.slice(0, QUESTION_LIMITS.options).map((option) => {
+      options: item.options.slice(0, maxOptions).map((option) => {
         const label = cut(option.label, QUESTION_LIMITS.text)
         if (label.cut) truncated = true
         const description = option.description ? cut(option.description, QUESTION_LIMITS.text).text : undefined

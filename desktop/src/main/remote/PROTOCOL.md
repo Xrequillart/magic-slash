@@ -149,7 +149,8 @@ can do is cancel a pairing on screen, which is accepted.
     at 300 characters. A prompt and a label are never cut, since the user answers what they
     read: a question with more than 4 questions, a prompt over 2000 characters or a label
     over 300 is sent `unsupported` instead. Options past the 10th are
-    left out, and only those can no longer be picked from the phone.
+    left out, past the 9th for a multi-select asked in terminal mode (it is answered by
+    single digits), and only those can no longer be picked from the phone.
 - `appAgentId` is the desktop terminal id, which is also `agents.app_agent_id`. The phone joins
   on it.
 - The snapshot is complete: the phone replaces everything it knows about that Mac with it.

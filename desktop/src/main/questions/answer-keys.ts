@@ -100,7 +100,7 @@ const digit = (index: number): string => String(index + 1)
  * a guard rather than a limit anyone meets: the store keeps every option, and an
  * index past this one has no keystroke that would reach it.
  */
-const MAX_DIGIT_OPTIONS = 9
+export const MAX_DIGIT_OPTIONS = 9
 /**
  * Escape — cancels the prompt. Deliberately position-independent: a refusal must
  * not depend on counting rows we cannot see, which is the whole point of using it.
