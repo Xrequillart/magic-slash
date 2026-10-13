@@ -286,6 +286,22 @@ describe('remote mode off', () => {
     expect(h.blockers.size).toBe(0)
   })
 
+  it('a live channel that drops and stays down is left, so the next check joins again', async () => {
+    await setRemoteEnabled(true)
+    await goLive(h.channels[0])
+    vi.useFakeTimers()
+    try {
+      ;(h.channels[0].subscribe.mock.calls[0][0] as (s: string) => void)('CLOSED')
+      expect(getRemoteState().status).toBe('reconnecting')
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(h.client.removeChannel).toHaveBeenCalledWith(h.channels[0])
+      await resumeRemoteRelay()
+      expect(h.client.channel).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('switching it off leaves the channel and lets the power blocker go', async () => {
     await setRemoteEnabled(true)
     expect(h.blockers.size).toBe(1)

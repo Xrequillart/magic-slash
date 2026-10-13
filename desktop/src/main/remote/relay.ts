@@ -542,7 +542,7 @@ function armSubscribeWatchdog(ch: RealtimeChannel): void {
     subscribeWatchdog = null
     void withLock(async () => {
       if (channel !== ch || live) return
-      console.warn('[remote] relay channel never went live — leaving it so the next connectivity check retries it')
+      console.warn('[remote] relay channel not live after its deadline, leaving it so the next connectivity check rejoins')
       await teardown()
       emitState()
     })
@@ -611,6 +611,10 @@ function join(c: SupabaseClient, uid: string, macId: string): void {
       const current = ++joinCount
       if (status !== 'SUBSCRIBED') {
         setLive(false)
+        // A channel that was live and dropped (sleep, a network change, a server close) is
+        // rejoined by realtime-js only sometimes: given the same deadline as a first join,
+        // after which it is left so the next connectivity check joins a fresh one.
+        if (!subscribeWatchdog) armSubscribeWatchdog(ch)
         return
       }
       // On EVERY join: realtime-js does not track again after a rejoin by itself.
