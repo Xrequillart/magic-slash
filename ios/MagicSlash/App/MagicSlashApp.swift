@@ -78,6 +78,8 @@ private struct RootView: View {
         case .active where wentToBackground:
           wentToBackground = false
           Task {
+            // A fresh socket first: every store below rejoins its channels on it.
+            await RelayStore.restartSocket(auth.client)
             async let agentsResumed: Void? = agents?.start()
             async let relayResumed: Void? = relay?.start()
             async let themeResumed: Void = theme.resume()

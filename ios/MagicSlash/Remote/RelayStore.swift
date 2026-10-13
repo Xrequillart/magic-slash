@@ -1017,6 +1017,20 @@ final class RelayStore {
   /// pauses its own refresh whenever the app leaves the foreground (Face ID included), so
   /// the stored token can be past its expiry when the relay joins: refreshed when it has
   /// under a minute left, or always when the server just dropped the channel.
+  /// Back from the background, the socket the SDK holds is not to be trusted: one suspended
+  /// with the screen locked can still read as connected while nothing goes through it (the
+  /// SDK only notices after two missed heartbeats, about a minute), or be part way through a
+  /// reconnect whose backoff grew while the network was down (up to 30 s a step). Either
+  /// way every join waits on it. Dropped here, so the joins that follow open a fresh one.
+  static func restartSocket(_ client: SupabaseClient) async {
+    let realtime = client.realtimeV2
+    RelayLog.shared.add("socket \(realtime.status) on return, starting a fresh one")
+    realtime.disconnect(reason: "foreground")
+    // `disconnect` closes the old socket on a task of its own: let it land before a join
+    // asks for a connection, or the join could be handed the socket being closed.
+    try? await Task.sleep(for: .milliseconds(200))
+  }
+
   func authorizeSocket(forceRefresh: Bool) async {
     var session = try? await client.auth.session
     let remaining = session.map { $0.expiresAt - Date().timeIntervalSince1970 } ?? 0
