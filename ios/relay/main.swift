@@ -61,4 +61,19 @@ let token = Data(base64URLEncoded: v["token"] as! String)!
 check(token.count == 32, "token decodes to 32 bytes")
 check(RelayCrypto.pairingCode(token: token, macPublic: macPub.x963Representation, phonePublic: phonePub.x963Representation) == v["pairingCode"] as? String,
   "pairing code matches")
+let signPriv = try! P256.Signing.PrivateKey(rawRepresentation: hex(v["signPrivate"] as! String))
+let signPub = hex(v["signPublic"] as! String)
+check(signPriv.publicKey.x963Representation == signPub, "signing public key matches its private key")
+let signedPayload = Data((v["signedPayload"] as! String).utf8)
+let nodeSignature = Data(base64Encoded: v["signature"] as! String)!
+check(RelayCrypto.verify(signature: nodeSignature, message: signedPayload, publicKey: signPub), "Node signature verifies in Swift")
+var tamperedPayload = signedPayload
+tamperedPayload[10] ^= 1
+check(!RelayCrypto.verify(signature: nodeSignature, message: tamperedPayload, publicKey: signPub), "a tampered payload is refused")
+let swiftSignature = try! signPriv.signature(for: signedPayload).rawRepresentation
+check(swiftSignature.count == 64, "Swift signature is raw r||s, 64 bytes")
+check(RelayCrypto.verify(signature: swiftSignature, message: signedPayload, publicKey: signPub), "Swift signature verifies")
+let pinned = Data(base64Encoded: v["signatureCryptoKit"] as! String)!
+check(RelayCrypto.verify(signature: pinned, message: signedPayload, publicKey: signPub),
+  "the pinned CryptoKit signature verifies (crypto.test.ts checks it in Node)")
 print("relay vectors: all good")
