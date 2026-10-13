@@ -35,6 +35,8 @@ struct Agent: Identifiable, Hashable, Sendable {
   /// When the desktop created the agent, in milliseconds (`__app.tsCreate`): the key the
   /// sidebar orders by. Absent on agents from older desktop builds.
   let createdAt: Double?
+  /// When the session was created: the desktop's own stamp, else the row's.
+  let createdDate: Date?
   let isArchived: Bool
 
   init?(row: JSONObject) {
@@ -75,6 +77,8 @@ struct Agent: Identifiable, Hashable, Sendable {
     planNumber = metadata["planNumber"]?.number.map { Int($0) }
     updatedAt = row["updated_at"]?.stringValue.flatMap(PostgresDate.parse)
     createdAt = metadata["__app"]?.objectValue?["tsCreate"]?.number
+    createdDate = createdAt.map { Date(timeIntervalSince1970: $0 / 1000) }
+      ?? row["created_at"]?.stringValue.flatMap(PostgresDate.parse)
     isArchived = !(row["archived_at"]?.isNil ?? true)
   }
 

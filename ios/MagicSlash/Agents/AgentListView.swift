@@ -196,8 +196,8 @@ private struct AgentRow: View {
             .font(.cera(.body))
             .foregroundStyle(theme.ink)
             .lineLimit(1)
-          if let updated = agent.updatedAt {
-            Text(updated.formatted(.relative(presentation: .named)))
+          if let created = agent.createdDate {
+            Text(Self.created(created))
               .font(.cera(.subheadline))
               .foregroundStyle(theme.textSecondary)
               .lineLimit(1)
@@ -211,6 +211,22 @@ private struct AgentRow: View {
       }
     }
     .contentShape(Rectangle())
+  }
+}
+
+extension AgentRow {
+  /// When the session was created: "Today, 14:32", "Yesterday, 09:05", "12 Oct, 14:32",
+  /// with the year once it is not this one.
+  static func created(_ date: Date) -> String {
+    let calendar = Calendar.current
+    let time = date.formatted(date: .omitted, time: .shortened)
+    if calendar.isDateInToday(date) { return String(localized: "Today, \(time)") }
+    if calendar.isDateInYesterday(date) { return String(localized: "Yesterday, \(time)") }
+    let sameYear = calendar.isDate(date, equalTo: .now, toGranularity: .year)
+    let day = sameYear
+      ? date.formatted(.dateTime.day().month(.abbreviated))
+      : date.formatted(.dateTime.day().month(.abbreviated).year())
+    return "\(day), \(time)"
   }
 }
 
