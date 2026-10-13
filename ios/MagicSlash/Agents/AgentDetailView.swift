@@ -72,7 +72,7 @@ private struct AgentDetailContent: View {
   private var identity: some View {
     SectionCard(title: "Agent") {
       Text(agent.title)
-        .font(.title3.weight(.semibold))
+        .font(.cera(.title3, .semibold))
         .foregroundStyle(theme.ink)
       HStack(spacing: 6) {
         TypeBadge(type: agent.type)
@@ -80,7 +80,7 @@ private struct AgentDetailContent: View {
       }
       if let description = agent.description {
         Text(description)
-          .font(.subheadline)
+          .font(.cera(.subheadline))
           .foregroundStyle(theme.textSecondary)
           .textSelection(.enabled)
       } else {
@@ -133,7 +133,7 @@ private struct AgentDetailContent: View {
           if index > 0 { Divider().overlay(theme.lineSubtle) }
           VStack(alignment: .leading, spacing: 6) {
             Text(Self.repoName(path))
-              .font(.body.weight(.semibold))
+              .font(.cera(.body, .semibold))
               .foregroundStyle(theme.ink)
             LabeledLine(label: "Branch", value: agent.branchName, monospaced: true)
             LabeledLine(label: "Base branch", value: agent.baseBranch, monospaced: true)
@@ -171,7 +171,7 @@ private struct AgentDetailContent: View {
         HStack(spacing: 8) {
           ProgressView().tint(theme.textSecondary)
           Text("Loading spec…")
-            .font(.subheadline)
+            .font(.cera(.subheadline))
             .foregroundStyle(theme.textSecondary)
         }
       case .none:
@@ -214,7 +214,7 @@ private struct AgentDetailContent: View {
             .foregroundStyle(theme.textSecondary)
         }
         Text(plan.title ?? "Untitled plan")
-          .font(.body.weight(.semibold))
+          .font(.cera(.body, .semibold))
           .foregroundStyle(theme.ink)
       }
       if let status = plan.status {
@@ -241,7 +241,7 @@ private struct PullRequestBlock: View {
     VStack(alignment: .leading, spacing: 10) {
       if showsRepo {
         Text(repoName)
-          .font(.subheadline.weight(.semibold))
+          .font(.cera(.subheadline, .semibold))
           .foregroundStyle(theme.ink)
       }
 
@@ -271,7 +271,7 @@ private struct PullRequestBlock: View {
           openURL(url)
         } label: {
           Label(Self.shortLink(url), systemImage: "arrow.up.right.square")
-            .font(.subheadline.weight(.medium))
+            .font(.cera(.subheadline, .medium))
         }
         .foregroundStyle(theme.accent)
       }
@@ -282,9 +282,9 @@ private struct PullRequestBlock: View {
   private var mergeableHint: some View {
     switch meta.prMergeable {
     case .some(true):
-      Text("Mergeable").font(.caption).foregroundStyle(theme.textSecondary)
+      Text("Mergeable").font(.cera(.caption)).foregroundStyle(theme.textSecondary)
     case .some(false):
-      Text("Conflicts").font(.caption.weight(.semibold)).foregroundStyle(theme.red)
+      Text("Conflicts").font(.cera(.caption, .semibold)).foregroundStyle(theme.red)
     case .none:
       EmptyView()
     }
@@ -304,9 +304,9 @@ private struct PullRequestBlock: View {
           HStack(spacing: 8) {
             Image(systemName: Self.icon(check.state))
               .foregroundStyle(checkColor(check.state))
-              .font(.caption)
+              .font(.cera(.caption))
             Text(check.name)
-              .font(.caption)
+              .font(.cera(.caption))
               .foregroundStyle(theme.ink)
               .lineLimit(1)
           }
@@ -320,7 +320,7 @@ private struct PullRequestBlock: View {
   private func countLabel(_ count: Int, _ label: String, _ color: Color) -> some View {
     HStack(spacing: 3) {
       Text("\(count)").font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(color)
-      Text(label).font(.caption).foregroundStyle(theme.textSecondary)
+      Text(label).font(.cera(.caption)).foregroundStyle(theme.textSecondary)
     }
   }
 
@@ -397,7 +397,7 @@ private struct SpecText: View {
 
   var body: some View {
     Text(rendered)
-      .font(.callout)
+      .font(.cera(.callout))
       .foregroundStyle(theme.ink)
       .textSelection(.enabled)
       .frame(maxWidth: .infinity, alignment: .leading)

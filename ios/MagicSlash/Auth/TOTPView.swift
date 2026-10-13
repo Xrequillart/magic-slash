@@ -17,10 +17,10 @@ struct TOTPView: View {
       VStack(alignment: .leading, spacing: 24) {
         VStack(alignment: .leading, spacing: 6) {
           Text("Two-factor code")
-            .font(.title.weight(.bold))
+            .font(.cera(.title, .bold))
             .foregroundStyle(theme.ink)
           Text("Enter the 6-digit code from your authenticator app.")
-            .font(.subheadline)
+            .font(.cera(.subheadline))
             .foregroundStyle(theme.textSecondary)
         }
 
@@ -38,7 +38,7 @@ struct TOTPView: View {
 
         if let error = auth.errorMessage {
           Text(error)
-            .font(.footnote)
+            .font(.cera(.footnote))
             .foregroundStyle(theme.red)
         }
 
@@ -55,7 +55,7 @@ struct TOTPView: View {
         Button("Use another account") {
           Task { await auth.signOut() }
         }
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .frame(maxWidth: .infinity)
       }

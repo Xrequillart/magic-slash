@@ -98,7 +98,7 @@ struct AgentSessionView: View {
             RuntimePill(runtime: runtime)
             Spacer(minLength: 4)
             Text(runtime.isCurrent ? "Current" : "Last known state")
-              .font(.caption.weight(.semibold))
+              .font(.cera(.caption, .semibold))
               .foregroundStyle(runtime.isCurrent ? theme.green : theme.textSecondary)
           }
         } else {
@@ -115,11 +115,11 @@ struct AgentSessionView: View {
     case .locked(let message):
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text(message)
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.textSecondary)
           .frame(maxWidth: .infinity, alignment: .leading)
         Button("Unlock") { Task { await relay.unlock() } }
-          .font(.footnote.weight(.semibold))
+          .font(.cera(.footnote, .semibold))
           .foregroundStyle(theme.accent)
       }
     case .unavailable(let message):
@@ -146,7 +146,7 @@ struct AgentSessionView: View {
         sheet = .pair
       } label: {
         Label("Pair a Mac", systemImage: "qrcode.viewfinder")
-          .font(.body.weight(.semibold))
+          .font(.cera(.body, .semibold))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 6)
       }
@@ -171,11 +171,11 @@ private struct StatusHeader: View {
         .font(.system(size: 44))
         .foregroundStyle(tint)
       Text(title)
-        .font(.title3.weight(.semibold))
+        .font(.cera(.title3, .semibold))
         .foregroundStyle(theme.ink)
         .multilineTextAlignment(.center)
       Text(message)
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .multilineTextAlignment(.center)
     }

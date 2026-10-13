@@ -8,6 +8,10 @@ struct MagicSlashApp: App {
   @State private var ready = false
   @State private var showsSplash = true
 
+  init() {
+    Cera.applyToNavigationBars()
+  }
+
   var body: some Scene {
     WindowGroup {
       Group {
@@ -23,6 +27,8 @@ struct MagicSlashApp: App {
         }
       }
       .themed(theme.tokens)
+      // Any text that does not pick a style of its own is still Cera Pro.
+      .font(.cera(.body))
       .overlay {
         if showsSplash {
           SplashView(ready: ready) { showsSplash = false }

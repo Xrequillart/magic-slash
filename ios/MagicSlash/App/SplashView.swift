@@ -69,7 +69,7 @@ struct SplashView: View {
     VStack(spacing: 12) {
       Spinner()
       Text("Loading…")
-        .font(.system(size: 13))
+        .font(.cera(size: 13))
         .foregroundStyle(Color(red: 0x8a / 255, green: 0x8a / 255, blue: 0x93 / 255))
     }
   }

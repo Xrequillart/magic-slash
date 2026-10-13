@@ -10,7 +10,7 @@ struct Pill: View {
 
   var body: some View {
     Text(text)
-      .font(.caption.weight(.semibold))
+      .font(.cera(.caption, .semibold))
       .lineLimit(1)
       .foregroundStyle(color)
       .padding(.horizontal, 8)
@@ -51,7 +51,7 @@ struct SectionCard<Content: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       Text(title.uppercased())
-        .font(.caption.weight(.semibold))
+        .font(.cera(.caption, .semibold))
         .tracking(0.6)
         .foregroundStyle(theme.textSecondary)
       VStack(alignment: .leading, spacing: 10) {
@@ -72,7 +72,7 @@ struct EmptyLine: View {
 
   var body: some View {
     Text(text)
-      .font(.subheadline)
+      .font(.cera(.subheadline))
       .foregroundStyle(theme.textSecondary)
       .italic()
   }
@@ -87,7 +87,7 @@ struct LabeledLine: View {
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 12) {
       Text(label)
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .frame(width: 96, alignment: .leading)
       if let value {
@@ -118,10 +118,10 @@ struct MessageScreen: View {
         .font(.system(size: 36))
         .foregroundStyle(theme.iconMuted)
       Text(title)
-        .font(.headline)
+        .font(.cera(.headline))
         .foregroundStyle(theme.ink)
       Text(message)
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .multilineTextAlignment(.center)
     }
@@ -163,7 +163,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.semibold))
+      .font(.cera(.body, .semibold))
       .foregroundStyle(theme.onBrand)
       .frame(maxWidth: .infinity)
       .padding(.vertical, 13)

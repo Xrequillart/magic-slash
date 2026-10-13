@@ -37,10 +37,10 @@ struct RuntimePill: View {
     HStack(spacing: 4) {
       if !runtime.isCurrent {
         Image(systemName: "clock.arrow.circlepath")
-          .font(.caption2.weight(.semibold))
+          .font(.cera(.caption2, .semibold))
       }
       Text(RuntimeStyle.label(runtime.state))
-        .font(.caption.weight(.semibold))
+        .font(.cera(.caption, .semibold))
         .lineLimit(1)
     }
     .foregroundStyle(color)
@@ -75,20 +75,20 @@ struct MacLine: View {
       VStack(alignment: .leading, spacing: 2) {
         HStack(spacing: 6) {
           Image(systemName: "laptopcomputer")
-            .font(.footnote)
+            .font(.cera(.footnote))
             .foregroundStyle(theme.iconMuted)
           Text(status.name)
-            .font(.subheadline.weight(.semibold))
+            .font(.cera(.subheadline, .semibold))
             .foregroundStyle(theme.ink)
             .lineLimit(1)
           Spacer(minLength: 4)
           Text(status.isOnline ? "Online" : "Offline")
-            .font(.footnote.weight(.semibold))
+            .font(.cera(.footnote, .semibold))
             .foregroundStyle(status.isOnline ? theme.green : theme.textSecondary)
         }
         if !status.isOnline {
           Text(offlineDetail)
-            .font(.caption)
+            .font(.cera(.caption))
             .foregroundStyle(theme.textSecondary)
         }
       }
@@ -116,7 +116,7 @@ struct LiveSection: View {
           RuntimePill(runtime: runtime)
           Spacer(minLength: 4)
           Text(runtime.isCurrent ? "Current" : "Last known state")
-            .font(.caption.weight(.semibold))
+            .font(.cera(.caption, .semibold))
             .foregroundStyle(runtime.isCurrent ? theme.green : theme.textSecondary)
         }
         LabeledLine(label: "Mac", value: runtime.macName)

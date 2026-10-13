@@ -71,7 +71,7 @@ struct PairingView: View {
   private var scanner: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text("On your Mac, open Magic Slash settings, then Remote access. Turn it on, click Pair, and scan the code it shows.")
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
 
       CameraScanner { handle($0) }
@@ -81,14 +81,14 @@ struct PairingView: View {
 
       if let scanError {
         Label(scanError, systemImage: "exclamationmark.triangle")
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.red)
       }
 
       #if DEBUG && targetEnvironment(simulator)
         VStack(alignment: .leading, spacing: 8) {
           Text("Simulator: paste the QR's text")
-            .font(.caption.weight(.semibold))
+            .font(.cera(.caption, .semibold))
             .foregroundStyle(theme.textSecondary)
           TextField("{\"v\":1,\"macId\":…}", text: $pasted, axis: .vertical)
             .font(.caption.monospaced())
@@ -122,7 +122,7 @@ struct PairingView: View {
     VStack(spacing: 18) {
       Spacer(minLength: 12)
       Text("Approve on your Mac")
-        .font(.title3.weight(.semibold))
+        .font(.cera(.title3, .semibold))
         .foregroundStyle(theme.ink)
       Text(code)
         .font(.system(size: 56, weight: .bold, design: .monospaced))
@@ -134,13 +134,13 @@ struct PairingView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(theme.lineSubtle))
         .accessibilityLabel("Code \(code.map(String.init).joined(separator: " "))")
       Text("Check that \(macName) shows the same code, then approve the pairing there.")
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .multilineTextAlignment(.center)
       HStack(spacing: 8) {
         ProgressView().tint(theme.textSecondary)
         Text("Waiting for your Mac…")
-          .font(.footnote)
+          .font(.cera(.footnote))
           .foregroundStyle(theme.textSecondary)
       }
       Spacer(minLength: 12)
@@ -152,7 +152,7 @@ struct PairingView: View {
     VStack(spacing: 12) {
       ProgressView().tint(theme.textSecondary)
       Text(text)
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -164,11 +164,11 @@ struct PairingView: View {
         .font(.system(size: 44))
         .foregroundStyle(color)
       Text(title)
-        .font(.headline)
+        .font(.cera(.headline))
         .foregroundStyle(theme.ink)
         .multilineTextAlignment(.center)
       Text(message)
-        .font(.subheadline)
+        .font(.cera(.subheadline))
         .foregroundStyle(theme.textSecondary)
         .multilineTextAlignment(.center)
     }
@@ -203,15 +203,15 @@ struct PairedMacsView: View {
                 .frame(width: 8, height: 8)
               VStack(alignment: .leading, spacing: 2) {
                 Text(status.name)
-                  .font(.body.weight(.semibold))
+                  .font(.cera(.body, .semibold))
                   .foregroundStyle(theme.ink)
                 Text("Paired \(status.mac.pairedAt.formatted(date: .abbreviated, time: .omitted)), \(status.isOnline ? "online" : "offline")")
-                  .font(.caption)
+                  .font(.cera(.caption))
                   .foregroundStyle(theme.textSecondary)
               }
               Spacer(minLength: 4)
               Button("Forget", role: .destructive) { forgetting = status }
-                .font(.subheadline.weight(.semibold))
+                .font(.cera(.subheadline, .semibold))
                 .foregroundStyle(theme.red)
                 .buttonStyle(.borderless)
             }

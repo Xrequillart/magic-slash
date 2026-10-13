@@ -24,7 +24,7 @@ struct DSLabel: View {
     HStack(spacing: 6) {
       mark
       Text(text)
-        .font(.system(size: 12, weight: .medium))
+        .font(.cera(size: 12, .medium))
         .foregroundStyle(theme.ink)
         .lineLimit(1)
     }

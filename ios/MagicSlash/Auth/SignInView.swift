@@ -19,10 +19,10 @@ struct SignInView: View {
       VStack(alignment: .leading, spacing: 24) {
         VStack(alignment: .leading, spacing: 6) {
           Text("Magic Slash")
-            .font(.largeTitle.weight(.bold))
+            .font(.cera(.largeTitle, .bold))
             .foregroundStyle(theme.ink)
           Text("Sign in with the account you use on the desktop app.")
-            .font(.subheadline)
+            .font(.cera(.subheadline))
             .foregroundStyle(theme.textSecondary)
         }
 
@@ -47,7 +47,7 @@ struct SignInView: View {
 
         if let error = auth.errorMessage {
           Text(error)
-            .font(.footnote)
+            .font(.cera(.footnote))
             .foregroundStyle(theme.red)
         }
 

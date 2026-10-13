@@ -149,7 +149,7 @@ struct CameraScanner: View {
 
   private func notice(_ text: String) -> some View {
     Text(text)
-      .font(.subheadline)
+      .font(.cera(.subheadline))
       .foregroundStyle(theme.textSecondary)
       .multilineTextAlignment(.center)
       .padding(24)
