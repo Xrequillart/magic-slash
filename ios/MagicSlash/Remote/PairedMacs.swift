@@ -53,6 +53,9 @@ struct RelaySnapshot: Codable, Hashable, Sendable {
   /// Epoch milliseconds, on the Mac's clock: for display only, never compared (§6).
   let sentAt: Double
   let macName: String?
+  /// Random per launch of the Mac's app: a `prompt` or `stop` quotes it, so one signed before
+  /// a restart is refused after it (§10). Nil from a desktop that predates them.
+  let bootId: String?
   let agents: [RemoteAgent]
 
   var sentDate: Date { Date(timeIntervalSince1970: sentAt / 1000) }
@@ -63,6 +66,7 @@ struct RelaySnapshot: Codable, Hashable, Sendable {
     generation = (try? container.decodeIfPresent(Int.self, forKey: .generation)) ?? nil
     sentAt = try container.decode(Double.self, forKey: .sentAt)
     macName = try? container.decodeIfPresent(String.self, forKey: .macName)
+    bootId = ((try? container.decodeIfPresent(String.self, forKey: .bootId)) ?? nil)?.nonEmpty
     // One unreadable agent is dropped, never the whole snapshot.
     let lossy = (try? container.decodeIfPresent([Lossy<RemoteAgent>].self, forKey: .agents)) ?? []
     agents = lossy.compactMap(\.value)

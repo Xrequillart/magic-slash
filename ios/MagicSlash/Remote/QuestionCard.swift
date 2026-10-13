@@ -121,7 +121,7 @@ struct QuestionCard: View {
         .foregroundStyle(theme.textSecondary)
     }
     if let status {
-      StatusLine(phase: status.phase)
+      StatusLine(phase: Self.line(for: status.phase))
     }
   }
 
@@ -176,6 +176,15 @@ struct QuestionCard: View {
     Task { await relay.answer(macId: macId, appAgentId: appAgentId, token: token, choice: choice) }
   }
 
+  /// Where the last answer stands: on its way, taken, or refused and why.
+  private static func line(for phase: AnswerStatus.Phase) -> StatusLine.Phase {
+    switch phase {
+    case .sending: .progress("Sending the answer…")
+    case .done: .success("Answer sent. The agent resumes on the Mac.")
+    case .failed(let message): .failure(message)
+    }
+  }
+
   private static func mark(selected: Bool, multiple: Bool) -> String {
     if multiple { return selected ? "checkmark.square.fill" : "square" }
     return selected ? "largecircle.fill.circle" : "circle"
@@ -227,57 +236,5 @@ private struct OptionButtonStyle: ButtonStyle {
       )
       .opacity(configuration.isPressed ? 0.7 : isEnabled ? 1 : 0.5)
       .contentShape(RoundedRectangle(cornerRadius: 10))
-  }
-}
-
-/// The quiet twin of `PrimaryButtonStyle`, for Deny.
-private struct SecondaryButtonStyle: ButtonStyle {
-  @Environment(\.theme) private var theme
-  @Environment(\.isEnabled) private var isEnabled
-
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(.cera(.body, .semibold))
-      .foregroundStyle(theme.ink)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 13)
-      .background(
-        RoundedRectangle(cornerRadius: 10)
-          .fill(configuration.isPressed ? theme.surfaceStrong : theme.surface)
-      )
-      .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(theme.lineStrong))
-      .opacity(isEnabled ? 1 : 0.5)
-  }
-}
-
-/// Where the last answer stands: on its way, taken, or refused and why.
-private struct StatusLine: View {
-  @Environment(\.theme) private var theme
-  let phase: AnswerStatus.Phase
-
-  var body: some View {
-    switch phase {
-    case .sending:
-      HStack(spacing: 8) {
-        ProgressView().controlSize(.small).tint(theme.textSecondary)
-        Text("Sending the answer…")
-          .font(.cera(.footnote))
-          .foregroundStyle(theme.textSecondary)
-      }
-    case .done:
-      Label("Answer sent. The agent resumes on the Mac.", systemImage: "checkmark.circle.fill")
-        .font(.cera(.footnote, .semibold))
-        .foregroundStyle(theme.green)
-    case .failed(let message):
-      HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Image(systemName: "exclamationmark.triangle.fill")
-          .font(.cera(.footnote))
-          .foregroundStyle(theme.yellow)
-        Text(message)
-          .font(.cera(.footnote))
-          .foregroundStyle(theme.ink)
-          .frame(maxWidth: .infinity, alignment: .leading)
-      }
-    }
   }
 }
