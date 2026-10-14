@@ -1,48 +1,93 @@
 import SwiftUI
 import UIKit
 
-// The desktop's agent info column (design-system/desktop/SidebarAgentCoderInfo.tsx), card
-// for card, read only: the iPhone shows what the desktop edits. Geometry and grounds follow
-// the design system's classes, noted beside each value.
+// The agent info sheet: what the desktop's info column holds (SidebarAgentCoderInfo.tsx),
+// read only, laid out for the phone. Glass cards over a soft wash of the theme's colours,
+// type at the phone's sizes, and touch targets a thumb can hit.
 
 // MARK: Shell
 
-extension ThemeTokens {
-  /// `RAISED_PLATE` (design-system/desktop/plate.ts): the tertiary ground mixed toward ink
-  /// by the theme's plate lift. The ground of every card in the column.
-  var raisedPlate: Color {
-    let base = UIColor(bgTertiary)
-    let toward = UIColor(ink)
-    var (r1, g1, b1, a1): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
-    var (r2, g2, b2, a2): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
-    base.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
-    toward.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
-    let t = CGFloat(plateLift)
-    return Color(.sRGB, red: r1 + (r2 - r1) * t, green: g1 + (g2 - g1) * t, blue: b1 + (b2 - b1) * t)
+/// The sheet's ground: the theme's background, lit by blurred patches of its accent and two
+/// of its hues, so the glass cards over it have something to bend.
+struct InfoBackdrop: View {
+  @Environment(\.theme) private var theme
+
+  var body: some View {
+    theme.bg
+      .overlay {
+        GeometryReader { geo in
+          let width = geo.size.width
+          ZStack {
+            Circle()
+              .fill(theme.accent.opacity(0.32))
+              .frame(width: width * 0.9)
+              .blur(radius: 90)
+              .position(x: width * 0.1, y: 40)
+            Circle()
+              .fill(theme.purple.opacity(0.22))
+              .frame(width: width * 0.8)
+              .blur(radius: 100)
+              .position(x: width * 0.95, y: geo.size.height * 0.45)
+            Circle()
+              .fill(theme.cyan.opacity(0.16))
+              .frame(width: width * 0.8)
+              .blur(radius: 100)
+              .position(x: width * 0.15, y: geo.size.height * 0.9)
+          }
+        }
+      }
+      .ignoresSafeArea()
   }
 }
 
-/// `Card ground="raised"`: 12 pt radius, no border, no shadow.
+/// A card of the sheet: Liquid Glass tinted with the theme's raised surface, 24 pt corners.
 struct InfoCard<Content: View>: View {
   @Environment(\.theme) private var theme
-  var padding: CGFloat = 16
-  var spacing: CGFloat = 8
+  var spacing: CGFloat = 14
   @ViewBuilder let content: Content
 
   var body: some View {
     VStack(alignment: .leading, spacing: spacing) {
       content
     }
-    .padding(padding)
+    .padding(18)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(theme.raisedPlate, in: RoundedRectangle(cornerRadius: 12))
+    .liquidGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous), tint: theme.bgTertiary.opacity(0.35), interactive: false)
+  }
+}
+
+/// A card's heading: a small mark and an upper-case caption, as iOS titles its groups.
+struct InfoHeading<Trailing: View>: View {
+  @Environment(\.theme) private var theme
+  let title: LocalizedStringKey
+  let systemImage: String
+  @ViewBuilder var trailing: Trailing
+
+  var body: some View {
+    HStack(spacing: 8) {
+      Image(systemName: systemImage)
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(theme.icon)
+      Text(title)
+        .textCase(.uppercase)
+        .font(.cera(.caption, .semibold))
+        .tracking(0.6)
+        .foregroundStyle(theme.textSecondary)
+      Spacer(minLength: 8)
+      trailing
+    }
+  }
+}
+
+extension InfoHeading where Trailing == EmptyView {
+  init(title: LocalizedStringKey, systemImage: String) {
+    self.init(title: title, systemImage: systemImage) { EmptyView() }
   }
 }
 
 // MARK: Chips
 
-/// The design system's `Label` (Label.tsx) at `sm`: 24 pt tall, 8 pt sides, 6 pt gap,
-/// 8 pt radius, 12 pt text, 14 pt mark.
+/// A capsule chip: a mark and a short text, 28 pt tall.
 struct InfoLabel: View {
   @Environment(\.theme) private var theme
 
@@ -56,21 +101,21 @@ struct InfoLabel: View {
 
   let text: Text
   var mark: Mark = .none
-  /// Paints the mark and tints the ground at 12%, as a repository's colour does.
+  /// Paints the mark and tints the ground, as a repository's colour does.
   var color: Color?
 
   var body: some View {
     HStack(spacing: 6) {
       markView
       text
-        .font(.cera(size: 12, .medium))
+        .font(.cera(.footnote, .medium))
         .foregroundStyle(theme.ink)
         .lineLimit(1)
         .monospacedDigit()
     }
-    .padding(.horizontal, 8)
-    .frame(height: 24)
-    .background(ground, in: RoundedRectangle(cornerRadius: 8))
+    .padding(.horizontal, 10)
+    .frame(height: 28)
+    .background(ground, in: Capsule())
   }
 
   @ViewBuilder
@@ -80,24 +125,24 @@ struct InfoLabel: View {
       EmptyView()
     case .symbol(let name):
       Image(systemName: name)
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(color ?? theme.iconMuted)
-        .frame(width: 14, height: 14)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(color ?? theme.icon)
+        .frame(width: 16, height: 16)
     case .github:
-      Image(.github).resizable().scaledToFit().frame(width: 14, height: 14).foregroundStyle(theme.ink)
+      Image(.github).resizable().scaledToFit().frame(width: 15, height: 15).foregroundStyle(theme.ink)
     case .jira:
-      Image(.jira).resizable().scaledToFit().frame(width: 14, height: 14)
+      Image(.jira).resizable().scaledToFit().frame(width: 15, height: 15)
     case .claudeCode:
-      ClaudeCodeMark().frame(width: 14, height: 14)
+      ClaudeCodeMark().frame(width: 16, height: 16)
     }
   }
 
   private var ground: Color {
-    if let color { return color.opacity(0.12) }
+    if let color { return color.opacity(0.16) }
     switch mark {
-    case .jira: return Color(red: 38 / 255, green: 132 / 255, blue: 1).opacity(0.14)
-    case .claudeCode: return ClaudeCodeMascot.coral.opacity(0.14)
-    default: return theme.ink.opacity(0.05)
+    case .jira: return Color(red: 38 / 255, green: 132 / 255, blue: 1).opacity(0.16)
+    case .claudeCode: return ClaudeCodeMascot.coral.opacity(0.16)
+    default: return theme.ink.opacity(0.07)
     }
   }
 }
@@ -112,44 +157,43 @@ extension InfoLabel.Mark {
   }
 }
 
-/// `Status` at `sm` (Status.tsx): a 24 pt capsule, 10 pt sides, 12 pt text.
+/// The agent's status in its tone: a 28 pt capsule with a dot.
 struct StatusChip: View {
   @Environment(\.theme) private var theme
   let status: String
 
   var body: some View {
     let style = StatusStyle.style(for: status)
-    let color = style.tone.color(in: theme)
-    let neutral = status.isEmpty
-    Text(style.label)
-      .font(.cera(size: 12, .medium))
-      .lineLimit(1)
-      .foregroundStyle(neutral ? theme.textSecondary : color)
-      .padding(.horizontal, 10)
-      .frame(height: 24)
-      .background(
-        Capsule().fill(neutral ? theme.surfaceStrong : color.opacity(style.strength == .soft ? 0.1 : 0.2))
-      )
+    let color = status.isEmpty ? theme.textSecondary : style.tone.color(in: theme)
+    HStack(spacing: 6) {
+      Circle().fill(color).frame(width: 6, height: 6)
+      Text(style.label)
+        .font(.cera(.footnote, .semibold))
+        .lineLimit(1)
+    }
+    .foregroundStyle(color)
+    .padding(.horizontal, 10)
+    .frame(height: 28)
+    .background(Capsule().fill(color.opacity(status.isEmpty ? 0.1 : 0.16)))
   }
 }
 
-/// `ProgressBar` (ProgressBar.tsx): a capsule track and fill, green, orange past the
-/// warning threshold, red past the danger one.
+/// A capsule gauge: green, orange past the warning threshold, red past the danger one.
 struct InfoProgressBar: View {
   @Environment(\.theme) private var theme
   let value: Double
-  var height: CGFloat = 6
-  var track: Color?
+  var height: CGFloat = 8
   let warning: Double
   let danger: Double
 
   var body: some View {
     GeometryReader { geo in
+      let tone = Self.tone(value, warning: warning, danger: danger, theme: theme)
       ZStack(alignment: .leading) {
-        Capsule().fill(track ?? theme.surface)
+        Capsule().fill(theme.ink.opacity(0.08))
         Capsule()
-          .fill(Self.tone(value, warning: warning, danger: danger, theme: theme))
-          .frame(width: geo.size.width * min(max(value, 0), 100) / 100)
+          .fill(LinearGradient(colors: [tone.opacity(0.7), tone], startPoint: .leading, endPoint: .trailing))
+          .frame(width: max(geo.size.width * min(max(value, 0), 100) / 100, value > 0 ? height : 0))
       }
     }
     .frame(height: height)
@@ -163,7 +207,7 @@ struct InfoProgressBar: View {
 
 // MARK: Context
 
-/// `ContextAgentCard`: Claude Code and its model, the context gauge, then the cost.
+/// Claude Code and its model, how much of the context is used, then the cost so far.
 struct ContextInfoCard: View {
   @Environment(\.theme) private var theme
   let usage: RemoteUsage?
@@ -173,42 +217,41 @@ struct ContextInfoCard: View {
 
   var body: some View {
     let percent = usage?.contextPercent ?? 0
+    let tone = InfoProgressBar.tone(percent, warning: Self.warning, danger: Self.danger, theme: theme)
     InfoCard {
-      HStack(spacing: 6) {
+      HStack(spacing: 8) {
         InfoLabel(text: Text(verbatim: "Claude Code"), mark: .claudeCode)
         if let model = usage?.model {
           InfoLabel(text: Text(verbatim: model), mark: .symbol("cpu"))
         }
+        Spacer(minLength: 0)
       }
-      VStack(spacing: 6) {
-        HStack {
-          HStack(spacing: 6) {
-            Image(systemName: "gauge.with.dots.needle.33percent")
-              .font(.system(size: 12))
-              .foregroundStyle(theme.icon)
-              .frame(width: 14, height: 14)
-            Text("Context")
-              .font(.cera(size: 12, .medium))
-              .foregroundStyle(theme.textSecondary)
-          }
-          Spacer()
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(alignment: .firstTextBaseline) {
           Text(verbatim: "\(Int(percent.rounded()))%")
-            .font(.cera(size: 12, .medium))
+            .font(.cera(size: 34, .bold))
             .monospacedDigit()
-            .foregroundStyle(InfoProgressBar.tone(percent, warning: Self.warning, danger: Self.danger, theme: theme))
+            .foregroundStyle(tone)
+            .contentTransition(.numericText())
+          Text("of the context used")
+            .font(.cera(.subheadline))
+            .foregroundStyle(theme.textSecondary)
+          Spacer(minLength: 8)
+          if let cost = usage?.costUsd {
+            Text(cost.formatted(.currency(code: "USD")))
+              .font(.cera(.subheadline, .semibold))
+              .monospacedDigit()
+              .foregroundStyle(theme.ink)
+          }
         }
-        InfoProgressBar(value: percent, track: theme.surfaceSunken, warning: Self.warning, danger: Self.danger)
-      }
-      .padding(8)
-      if let cost = usage?.costUsd {
-        InfoLabel(text: Text(cost.formatted(.currency(code: "USD"))), mark: .symbol("dollarsign"))
+        InfoProgressBar(value: percent, warning: Self.warning, danger: Self.danger)
       }
     }
   }
 }
 
-/// `UsageClaudeCodeCard` (the desktop's sidebar foot): the five-hour session and the
-/// seven-day window, each a bar with its reset.
+/// Claude Code's plan limits: the five-hour session and the seven-day window, each a gauge
+/// with its reset.
 struct LimitsInfoCard: View {
   @Environment(\.theme) private var theme
   let usage: RemoteUsage
@@ -217,32 +260,28 @@ struct LimitsInfoCard: View {
   private static let danger = 85.0
 
   var body: some View {
-    InfoCard(padding: 12) {
-      InfoLabel(text: Text(verbatim: "Claude Code"), mark: .claudeCode)
-        .padding(.bottom, 2)
-      VStack(spacing: 8) {
-        bar(label: "Session", percent: usage.fiveHourPercent, resetsAt: usage.fiveHourResetsAt)
-        bar(label: "Weekly", percent: usage.sevenDayPercent, resetsAt: usage.sevenDayResetsAt)
-      }
+    InfoCard(spacing: 16) {
+      InfoHeading(title: "Limits", systemImage: "hourglass")
+      bar(label: "Session", percent: usage.fiveHourPercent, resetsAt: usage.fiveHourResetsAt)
+      bar(label: "Weekly", percent: usage.sevenDayPercent, resetsAt: usage.sevenDayResetsAt)
     }
   }
 
   private func bar(label: LocalizedStringKey, percent: Double?, resetsAt: Double?) -> some View {
     let value = percent ?? 0
-    return VStack(spacing: 4) {
-      HStack(spacing: 6) {
+    return VStack(spacing: 8) {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
         Text(label)
-          .font(.cera(size: 12, .medium))
-          .foregroundStyle(theme.textSecondary)
-          .opacity(0.6)
-        Spacer()
-        if let resetsAt {
-          Text(Self.reset(Date(timeIntervalSince1970: resetsAt)))
-            .font(.cera(size: 11, .medium))
-            .foregroundStyle(theme.textSecondary.opacity(0.35))
+          .font(.cera(.subheadline, .medium))
+          .foregroundStyle(theme.ink)
+        if let resetsAt, case let reset = Self.reset(Date(timeIntervalSince1970: resetsAt)), !reset.isEmpty {
+          Text(verbatim: "· \(reset)")
+            .font(.cera(.footnote))
+            .foregroundStyle(theme.textSecondary)
         }
+        Spacer()
         Text(verbatim: "\(Int(value.rounded()))%")
-          .font(.cera(size: 12, .semibold))
+          .font(.cera(.subheadline, .semibold))
           .monospacedDigit()
           .foregroundStyle(InfoProgressBar.tone(value, warning: Self.warning, danger: Self.danger, theme: theme))
       }
@@ -265,13 +304,13 @@ struct LimitsInfoCard: View {
 
 // MARK: Title
 
-/// `TitleAgentCard`: the ticket and the status, then the title and the description.
+/// The ticket and the status, then the title and the description.
 struct TitleInfoCard: View {
   @Environment(\.theme) private var theme
   let agent: Agent
 
   var body: some View {
-    InfoCard(spacing: 0) {
+    InfoCard(spacing: 12) {
       HStack(spacing: 8) {
         if let ticket = agent.ticketId {
           InfoLabel(text: Text(verbatim: ticket), mark: InfoLabel.Mark(ticketTone: DSLabel.Tone(ticketId: ticket)))
@@ -281,44 +320,40 @@ struct TitleInfoCard: View {
         Spacer(minLength: 8)
         StatusChip(status: agent.status)
       }
-      .padding(.bottom, 12)
 
-      Text(verbatim: agent.title)
-        .font(.cera(size: 14, .semibold))
-        .foregroundStyle(theme.ink)
-        .lineSpacing(1)
-        .padding(.horizontal, 8)
-        .textSelection(.enabled)
-
-      Group {
-        if let description = agent.description, !description.isEmpty {
-          Text(verbatim: description)
-            .foregroundStyle(theme.ink.opacity(0.7))
-            .textSelection(.enabled)
-        } else {
-          Text("No description")
-            .italic()
-            .foregroundStyle(theme.textSecondary.opacity(0.4))
+      VStack(alignment: .leading, spacing: 6) {
+        Text(verbatim: agent.title)
+          .font(.cera(.title3, .bold))
+          .foregroundStyle(theme.ink)
+          .textSelection(.enabled)
+        Group {
+          if let description = agent.description, !description.isEmpty {
+            Text(verbatim: description)
+              .foregroundStyle(theme.textSecondary)
+              .textSelection(.enabled)
+          } else {
+            Text("No description")
+              .italic()
+              .foregroundStyle(theme.textSecondary.opacity(0.6))
+          }
         }
+        .font(.cera(.subheadline))
+        .lineSpacing(3)
       }
-      .font(.cera(size: 12, .medium))
-      .lineSpacing(7.5)
-      .padding(.horizontal, 8)
-      .padding(.top, 4)
     }
   }
 }
 
 // MARK: Repository
 
-/// `RepositoryCard`: the repository, its branch against its base, and its pull request.
+/// A repository: its name in its colour, its branch against its base, and its pull request.
 struct RepositoryInfoCard: View {
   @Environment(\.theme) private var theme
   let path: String
   let index: Int
   let agent: Agent
 
-  /// `PROJECT_COLORS` (design-system/desktop/palette.ts), by position.
+  /// `PROJECT_COLORS` (design-system/desktop/palette.ts), by position, as on the desktop.
   private static let palette: [Color] = {
     let hexes: [Int] = [0x3B82F6, 0x10B981, 0xF59E0B, 0xEF4444, 0x8B5CF6, 0xEC4899, 0x06B6D4, 0xF97316, 0x6366F1]
     return hexes.map { hex -> Color in
@@ -330,12 +365,24 @@ struct RepositoryInfoCard: View {
   }()
 
   var body: some View {
+    let color = Self.palette[index % Self.palette.count]
     InfoCard {
-      InfoLabel(
-        text: Text(verbatim: Self.repoName(path)),
-        mark: .symbol("folder"),
-        color: Self.palette[index % Self.palette.count]
-      )
+      HStack(spacing: 12) {
+        Image(systemName: "folder.fill")
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundStyle(color)
+          .frame(width: 34, height: 34)
+          .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        VStack(alignment: .leading, spacing: 1) {
+          Text(verbatim: Self.repoName(path))
+            .font(.cera(.headline))
+            .foregroundStyle(theme.ink)
+            .lineLimit(1)
+          Text("Repository")
+            .font(.cera(.caption))
+            .foregroundStyle(theme.textSecondary)
+        }
+      }
       if let branch = agent.branchName {
         BranchRow(branch: branch, base: agent.baseBranch)
       }
@@ -351,8 +398,7 @@ struct RepositoryInfoCard: View {
   }
 }
 
-/// `BranchCard`: the base branch, an arrow, and the working branch in green with its copy
-/// button.
+/// The working branch in green with its copy button, and the base it started from.
 private struct BranchRow: View {
   @Environment(\.theme) private var theme
   let branch: String
@@ -360,68 +406,57 @@ private struct BranchRow: View {
   @State private var copied = false
 
   var body: some View {
-    HStack(spacing: 6) {
-      if let base, base != branch {
-        chip(base, color: theme.textSecondary)
-        Image(systemName: "arrow.right")
-          .font(.system(size: 10, weight: .semibold))
-          .foregroundStyle(theme.iconMuted)
-      }
-      HStack(spacing: 6) {
-        chipContent(branch, color: theme.green)
-        Spacer(minLength: 4)
-        Button {
-          Haptics.tap()
-          UIPasteboard.general.string = branch
-          copied = true
-          Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            copied = false
-          }
-        } label: {
-          Image(systemName: copied ? "checkmark" : "doc.on.doc")
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(copied ? theme.green : theme.icon)
-            .frame(width: 20, height: 20)
-            .contentShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Copy branch name")
-      }
-      .padding(.leading, 8)
-      .padding(.trailing, 4)
-      .padding(.vertical, 4)
-      .background(theme.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
-      .frame(maxWidth: .infinity)
-    }
-  }
-
-  private func chip(_ name: String, color: Color) -> some View {
-    chipContent(name, color: color)
-      .padding(.horizontal, 8)
-      // As tall as the working branch's chip beside it, whose copy button sets it.
-      .frame(height: 28)
-      .background(theme.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
-  }
-
-  private func chipContent(_ name: String, color: Color) -> some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 10) {
       Image(systemName: "arrow.triangle.branch")
-        .font(.system(size: 12, weight: .medium))
-        .frame(width: 14, height: 14)
-      Text(verbatim: name)
-        .font(.cera(size: 12, .medium))
-        .lineLimit(1)
-        .truncationMode(.middle)
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(theme.green)
+        .frame(width: 20)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(verbatim: branch)
+          .font(.cera(.subheadline, .medium))
+          .foregroundStyle(theme.ink)
+          .lineLimit(1)
+          .truncationMode(.middle)
+        if let base, base != branch {
+          Text("from \(base)")
+            .font(.cera(.caption))
+            .foregroundStyle(theme.textSecondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+        }
+      }
+      Spacer(minLength: 4)
+      Button {
+        Haptics.tap()
+        UIPasteboard.general.string = branch
+        copied = true
+        Task {
+          try? await Task.sleep(for: .seconds(1.5))
+          copied = false
+        }
+      } label: {
+        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(copied ? theme.green : theme.icon)
+          .frame(width: 36, height: 36)
+          .background(theme.ink.opacity(0.07), in: Circle())
+          .contentShape(Circle())
+          .contentTransition(.symbolEffect(.replace))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Copy branch name")
     }
-    .foregroundStyle(color)
+    .padding(.leading, 12)
+    .padding(.trailing, 6)
+    .padding(.vertical, 6)
+    .background(theme.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 }
 
 // MARK: Pull request
 
-/// `PullRequestCard`: an inset block at the foot of the repository card. A header that
-/// opens the PR, then one band per fact: comments, checks, mergeable, merged.
+/// The pull request, inset in its repository's card: a header that opens it, then one row
+/// per fact: comments, checks, mergeable, merged.
 private struct PullRequestInfo: View {
   @Environment(\.theme) private var theme
   @Environment(\.openURL) private var openURL
@@ -441,8 +476,8 @@ private struct PullRequestInfo: View {
       header
       bands
     }
-    .background(theme.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
-    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .background(theme.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 
   // MARK: Header
@@ -453,27 +488,33 @@ private struct PullRequestInfo: View {
       Haptics.tap()
       openURL(url)
     } label: {
-      HStack(spacing: 8) {
+      HStack(spacing: 10) {
         Image(systemName: stateIcon)
-          .font(.system(size: 14, weight: .medium))
+          .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(stateColor)
-          .frame(width: 16)
-        VStack(alignment: .leading, spacing: 0) {
+          .frame(width: 20)
+        VStack(alignment: .leading, spacing: 2) {
           (prNumber.map { Text(verbatim: "PR #\($0)") } ?? Text("Pull request"))
-            .font(.cera(size: 12, .medium))
-            .foregroundStyle(theme.ink.opacity(0.9))
+            .font(.cera(.subheadline, .semibold))
+            .foregroundStyle(theme.ink)
             .lineLimit(1)
           if let slug {
             Text(verbatim: slug)
-              .font(.cera(size: 10, .medium))
-              .foregroundStyle(theme.textSecondary.opacity(0.5))
+              .font(.cera(.caption))
+              .foregroundStyle(theme.textSecondary)
               .lineLimit(1)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         badge
+        if meta.prUrl != nil {
+          Image(systemName: "arrow.up.right")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(theme.iconMuted)
+        }
       }
-      .padding(8)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 12)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -499,11 +540,11 @@ private struct PullRequestInfo: View {
       }
     }()
     return Text(verbatim: label)
-      .font(.cera(size: 10, .semibold))
+      .font(.cera(.caption, .semibold))
       .foregroundStyle(color ?? theme.textSecondary)
-      .padding(.horizontal, 8)
-      .frame(height: 20)
-      .background((color?.opacity(0.1) ?? theme.surfaceStrong), in: RoundedRectangle(cornerRadius: 8))
+      .padding(.horizontal, 10)
+      .frame(height: 24)
+      .background((color?.opacity(0.16) ?? theme.ink.opacity(0.08)), in: Capsule())
       .fixedSize()
   }
 
@@ -551,18 +592,18 @@ private struct PullRequestInfo: View {
           isOpen: meta.prReviewers.isEmpty ? nil : $commentsOpen
         ) {
           Text("\(comments) comments")
-            .font(.cera(size: 10, .medium))
+            .font(.cera(.footnote))
             .monospacedDigit()
-            .foregroundStyle(theme.textSecondary.opacity(0.6))
+            .foregroundStyle(theme.textSecondary)
         } content: {
-          HStack(alignment: .top, spacing: 6) {
+          HStack(alignment: .top, spacing: 8) {
             Image(systemName: "person.2")
-              .font(.system(size: 10))
+              .font(.system(size: 12))
               .foregroundStyle(theme.icon)
-              .padding(.top, 1)
+              .frame(width: 20)
             Text(verbatim: meta.prReviewers.joined(separator: ", "))
-              .font(.cera(size: 10, .medium))
-              .foregroundStyle(theme.textSecondary.opacity(0.7))
+              .font(.cera(.footnote))
+              .foregroundStyle(theme.textSecondary)
           }
         }
       }
@@ -596,21 +637,21 @@ private struct PullRequestInfo: View {
           HStack(spacing: 6) {
             ChecksRing(summary: summary)
             Text("\(summary.passed)/\(summary.total) passed")
-              .font(.cera(size: 10, .medium))
+              .font(.cera(.footnote))
               .monospacedDigit()
-              .foregroundStyle(theme.textSecondary.opacity(0.6))
+              .foregroundStyle(theme.textSecondary)
           }
         } content: {
-          VStack(alignment: .leading, spacing: 4) {
+          VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(meta.prCheckList.enumerated()), id: \.offset) { _, check in
-              HStack(spacing: 6) {
+              HStack(spacing: 8) {
                 Image(systemName: Self.checkIcon(check.state))
-                  .font(.system(size: 10, weight: .medium))
+                  .font(.system(size: 12, weight: .medium))
                   .foregroundStyle(checkColor(check.state))
-                  .frame(width: 12)
+                  .frame(width: 20)
                 Text(verbatim: check.name)
-                  .font(.cera(size: 10, .medium))
-                  .foregroundStyle(theme.textSecondary.opacity(0.7))
+                  .font(.cera(.footnote))
+                  .foregroundStyle(theme.textSecondary)
                   .lineLimit(1)
               }
             }
@@ -638,10 +679,10 @@ private struct PullRequestInfo: View {
     }
   }
 
-  /// Each band under a 1 pt `line-subtle` rule.
+  /// Each row under a hairline, inset past the icons as iOS lists draw theirs.
   private func band<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
     VStack(spacing: 0) {
-      Rectangle().fill(theme.lineSubtle).frame(height: 1)
+      Rectangle().fill(theme.lineSubtle).frame(height: 1).padding(.leading, 42)
       content()
     }
   }
@@ -665,8 +706,8 @@ private struct PullRequestInfo: View {
   }
 }
 
-/// `CollapsibleLine`: a 36 pt row, its mark in the band's tone, its label, a detail on the
-/// right, and a chevron when it folds open.
+/// A 44 pt row: its mark in the row's tone, its label, a detail on the right, and a chevron
+/// when it folds open.
 private struct Band<Detail: View, Content: View>: View {
   @Environment(\.theme) private var theme
   let systemImage: String
@@ -682,27 +723,27 @@ private struct Band<Detail: View, Content: View>: View {
       Button {
         guard let isOpen else { return }
         Haptics.tap()
-        withAnimation(.easeOut(duration: 0.2)) { isOpen.wrappedValue.toggle() }
+        withAnimation(.snappy(duration: 0.25)) { isOpen.wrappedValue.toggle() }
       } label: {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
           Image(systemName: systemImage)
-            .font(.system(size: 12, weight: .medium))
+            .font(.system(size: 14, weight: .medium))
             .foregroundStyle(tone)
-            .frame(width: 16)
+            .frame(width: 20)
           Text(label)
-            .font(.cera(size: 12, .medium))
-            .foregroundStyle(muted ? theme.textSecondary.opacity(0.7) : tone)
+            .font(.cera(.subheadline, .medium))
+            .foregroundStyle(muted ? theme.ink : tone)
             .lineLimit(1)
           Spacer(minLength: 4)
           detail
           if let isOpen {
-            Image(systemName: "chevron.down")
-              .font(.system(size: 10, weight: .semibold))
-              .foregroundStyle(theme.icon)
-              .rotationEffect(.degrees(isOpen.wrappedValue ? 0 : -90))
+            Image(systemName: "chevron.right")
+              .font(.system(size: 11, weight: .bold))
+              .foregroundStyle(theme.iconMuted)
+              .rotationEffect(.degrees(isOpen.wrappedValue ? 90 : 0))
           }
         }
-        .frame(height: 36)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
@@ -710,17 +751,15 @@ private struct Band<Detail: View, Content: View>: View {
 
       if isOpen?.wrappedValue == true {
         content
-          .padding(.bottom, 10)
-          .transition(.opacity)
+          .padding(.bottom, 12)
+          .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
     .padding(.horizontal, 12)
-    .background(isOpen?.wrappedValue == true ? theme.surface : .clear)
   }
 }
 
-/// The checks' ring: passed, skipped, running and failed arcs, in that order, on a
-/// `line-subtle` track.
+/// The checks' ring: passed, skipped, running and failed arcs, in that order.
 private struct ChecksRing: View {
   @Environment(\.theme) private var theme
   let summary: RepositoryMetadata.Checks
@@ -734,23 +773,22 @@ private struct ChecksRing: View {
       (Double(summary.failed), theme.red),
     ]
     ZStack {
-      Circle().stroke(theme.lineSubtle, lineWidth: 2.6)
+      Circle().stroke(theme.ink.opacity(0.1), lineWidth: 3)
       ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
         let start = parts.prefix(index).reduce(0) { $0 + $1.0 } / total
         Circle()
           .trim(from: start, to: start + part.0 / total)
-          .stroke(part.1, lineWidth: 2.6)
+          .stroke(part.1, lineWidth: 3)
       }
     }
     .rotationEffect(.degrees(-90))
-    .frame(width: 12, height: 12)
+    .frame(width: 14, height: 14)
   }
 }
 
 // MARK: Spec
 
-/// `SpecCard` (planner agents): the plan and its status over the title, then the spec
-/// itself under a rule.
+/// The plan behind a planner agent: its number and status over its title, then the spec.
 struct SpecInfoCard<Body: View>: View {
   @Environment(\.theme) private var theme
   let planNumber: Int?
@@ -759,35 +797,29 @@ struct SpecInfoCard<Body: View>: View {
   @ViewBuilder let content: Body
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack(spacing: 8) {
-          if let planNumber {
-            InfoLabel(text: Text(verbatim: "Plan #\(planNumber)"))
-          } else {
-            InfoLabel(text: Text("No plan"), mark: .symbol("book.closed"))
-          }
-          Spacer(minLength: 8)
-          if let status {
-            Text(verbatim: status)
-              .font(.cera(size: 12, .medium))
-              .foregroundStyle(theme.cyan)
-              .padding(.horizontal, 10)
-              .frame(height: 24)
-              .background(Capsule().fill(theme.cyan.opacity(0.1)))
-          }
+    InfoCard(spacing: 14) {
+      HStack(spacing: 8) {
+        if let planNumber {
+          InfoLabel(text: Text(verbatim: "Plan #\(planNumber)"), mark: .symbol("book.closed"))
+        } else {
+          InfoLabel(text: Text("No plan"), mark: .symbol("book.closed"))
         }
-        Text(verbatim: title ?? String(localized: "Untitled plan"))
-          .font(.cera(size: 14, .semibold))
-          .foregroundStyle(theme.ink)
-          .padding(.horizontal, 8)
+        Spacer(minLength: 8)
+        if let status {
+          Text(verbatim: status)
+            .font(.cera(.footnote, .semibold))
+            .foregroundStyle(theme.cyan)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(Capsule().fill(theme.cyan.opacity(0.16)))
+        }
       }
-      .padding(16)
-      Rectangle().fill(theme.line).frame(height: 1)
+      Text(verbatim: title ?? String(localized: "Untitled plan"))
+        .font(.cera(.title3, .bold))
+        .foregroundStyle(theme.ink)
+      Rectangle().fill(theme.lineSubtle).frame(height: 1)
       content
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .background(theme.raisedPlate, in: RoundedRectangle(cornerRadius: 12))
   }
 }

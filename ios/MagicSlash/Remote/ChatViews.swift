@@ -328,10 +328,12 @@ struct ChatEmptyState: View {
 
 extension View {
   /// Liquid Glass on iOS 26, like the system bar's buttons; a thin material before it.
+  /// `interactive` makes it answer the touch, which a control wants and a card does not.
   @ViewBuilder
-  func liquidGlass<S: Shape>(in shape: S, tint: Color? = nil) -> some View {
+  func liquidGlass<S: Shape>(in shape: S, tint: Color? = nil, interactive: Bool = true) -> some View {
     if #available(iOS 26, *) {
-      glassEffect(tint.map { Glass.regular.tint($0).interactive() } ?? Glass.regular.interactive(), in: shape)
+      let glass = tint.map { Glass.regular.tint($0) } ?? Glass.regular
+      glassEffect(glass.interactive(interactive), in: shape)
     } else {
       background(shape.fill(.ultraThinMaterial))
         .background(shape.fill(tint?.opacity(0.85) ?? .clear))

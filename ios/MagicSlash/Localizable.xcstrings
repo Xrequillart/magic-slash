@@ -447,16 +447,6 @@
         }
       }
     },
-    "Context" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contexte"
-          }
-        }
-      }
-    },
     "Copied" : {
       "localizations" : {
         "fr" : {
@@ -893,6 +883,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clair"
+          }
+        }
+      }
+    },
+    "Limits" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limites"
           }
         }
       }
@@ -1404,6 +1404,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se reconnecter"
+          }
+        }
+      }
+    },
+    "Repository" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dépôt"
           }
         }
       }
@@ -2169,6 +2179,16 @@
         }
       }
     },
+    "from %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "depuis %@"
+          }
+        }
+      }
+    },
     "in progress" : {
       "localizations" : {
         "fr" : {
@@ -2195,6 +2215,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "aucun état"
+          }
+        }
+      }
+    },
+    "of the context used" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "du contexte utilisé"
           }
         }
       }

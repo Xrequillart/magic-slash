@@ -22,7 +22,7 @@ struct AgentDetailView: View {
         )
       }
     }
-    .background(theme.bg.ignoresSafeArea())
+    .background { InfoBackdrop() }
     .navigationBarTitleDisplayMode(.inline)
   }
 }
@@ -46,8 +46,7 @@ private struct AgentDetailContent: View {
 
   var body: some View {
     ScrollView {
-      // The desktop's column: `px-2 pb-2 space-y-4`, its repositories `space-y-3`.
-      VStack(alignment: .leading, spacing: 16) {
+      VStack(alignment: .leading, spacing: 14) {
         let runtime = relay.runtime(for: agent.appAgentId)
         ContextInfoCard(usage: runtime?.usage)
         if let runtime, let question = runtime.question, let appAgentId = agent.appAgentId {
@@ -57,7 +56,7 @@ private struct AgentDetailContent: View {
         TitleInfoCard(agent: agent)
         let paths = agent.allRepositoryPaths
         if !paths.isEmpty {
-          VStack(spacing: 12) {
+          VStack(spacing: 14) {
             ForEach(Array(paths.enumerated()), id: \.element) { index, path in
               RepositoryInfoCard(path: path, index: index, agent: agent)
             }
@@ -70,9 +69,9 @@ private struct AgentDetailContent: View {
           LimitsInfoCard(usage: usage)
         }
       }
-      .padding(.horizontal, 12)
-      .padding(.top, 4)
-      .padding(.bottom, 16)
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .padding(.bottom, 24)
     }
     .navigationTitle(agent.title)
     // Re-watched when the link to the plan changes, not on every status tick.
@@ -95,7 +94,7 @@ private struct AgentDetailContent: View {
         HStack(spacing: 8) {
           ProgressView().tint(theme.textSecondary)
           Text("Loading spec…")
-            .font(.cera(size: 12, .medium))
+            .font(.cera(.subheadline))
             .foregroundStyle(theme.textSecondary)
         }
       }
@@ -123,8 +122,8 @@ private struct AgentDetailContent: View {
 
   private func specEmpty(_ text: LocalizedStringKey) -> some View {
     Text(text)
-      .font(.cera(size: 12, .medium))
-      .foregroundStyle(theme.textSecondary.opacity(0.6))
+      .font(.cera(.subheadline))
+      .foregroundStyle(theme.textSecondary)
   }
 
   @ViewBuilder
