@@ -349,13 +349,46 @@ struct ChatEmptyState: View {
 extension View {
   /// Liquid Glass on iOS 26, like the system bar's buttons; a thin material before it.
   /// `interactive` makes it answer the touch, which a control wants and a card does not.
-  @ViewBuilder
   func liquidGlass<S: Shape>(in shape: S, tint: Color? = nil, interactive: Bool = true) -> some View {
+    modifier(LiquidGlass(shape: shape, tint: tint, interactive: interactive))
+  }
+}
+
+/// Glass reads on a dark page, which it lightens, and fades on a light one: white glass over
+/// white, and a large pane of it even turns a murky grey as it adapts to what it holds. On a
+/// light theme a control keeps its glass and gains an edge and a lift (a hairline, a soft
+/// shadow over an opaque ground); a card, which does not answer the touch, drops the glass
+/// for that solid ground alone.
+private struct LiquidGlass<S: Shape>: ViewModifier {
+  @Environment(\.theme) private var theme
+  let shape: S
+  let tint: Color?
+  let interactive: Bool
+
+  func body(content: Content) -> some View {
+    if theme.isDark {
+      glass(content)
+    } else {
+      Group {
+        if interactive {
+          glass(content)
+        } else {
+          content.background(shape.fill(tint ?? .clear))
+        }
+      }
+      .background(shape.fill(theme.bg).shadow(color: .black.opacity(0.1), radius: 10, y: 3))
+      .overlay(shape.stroke(theme.line, lineWidth: 1).allowsHitTesting(false))
+    }
+  }
+
+  @ViewBuilder
+  private func glass(_ content: Content) -> some View {
     if #available(iOS 26, *) {
       let glass = tint.map { Glass.regular.tint($0) } ?? Glass.regular
-      glassEffect(glass.interactive(interactive), in: shape)
+      content.glassEffect(glass.interactive(interactive), in: shape)
     } else {
-      background(shape.fill(.ultraThinMaterial))
+      content
+        .background(shape.fill(.ultraThinMaterial))
         .background(shape.fill(tint?.opacity(0.85) ?? .clear))
     }
   }
