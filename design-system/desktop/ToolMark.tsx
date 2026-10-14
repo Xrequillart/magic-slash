@@ -1,35 +1,38 @@
 import { BotMessageSquare, FilePen, FileText, FolderSearch, Globe, ListTodo, MessageCircleQuestionMark, Sparkles, SquareTerminal, TextSearch, Wrench } from './icons'
-import { Figma, Github, Jira, Notion, Slack } from './brand'
+import { Figma, Github, Jira, JIRA_CHIP_GROUND, Notion, Slack } from './brand'
+import { MarkTile } from './MarkTile'
 import type { IconComponent } from './types'
 
 /**
- * A TOOL CALL'S MARK, from the tool's name alone: the service's own logo for an MCP tool
- * of one (Jira, by the Atlassian server's tools that are not Confluence's; Notion, Slack,
- * GitHub, Figma), a glyph of what it does for Claude Code's own tools (the terminal for
- * Bash, a file for Read), the wrench for everything else.
+ * A TOOL CALL'S MARK, from the tool's name alone, on a disc of its product's colour, the
+ * way `Label` colours a chip by whose it is: Jira's blue ground for a Jira tool, white
+ * under the marks drawn for white (Slack, Notion, Figma), and a light grey with the glyph
+ * in black for GitHub and for Claude Code's own tools (the terminal for Bash, a file for
+ * Read), the wrench for anything else.
  *
- * MCP tools arrive named `mcp__<server>__<tool>`, so the server is read off the name. A
- * logo is 14px and keeps its colours; a glyph is 12px in the icon tone, so the two read
- * as the same size beside each other. GitHub's mark is one colour, `currentColor`: it
- * takes the ink.
+ * MCP tools arrive named `mcp__<server>__<tool>`, so the server is read off the name.
+ *
+ * FIXED, NOT THEMED: white and light grey on every theme, the glyph in the fixed ink, so
+ * a run of marks reads the same on the darkest ground as on the lightest. Jira's ground
+ * is its chip's own 14% tint (`JIRA_CHIP_GROUND`), translucent: `ToolMarkStack` sets the
+ * disc on the thread's ground, so it is a blue OF that ground and nothing shows through.
  */
 
 export interface ToolMarkProps {
   /** The tool's name as the transcript gives it: `Bash`, `mcp__atlassian__getJiraIssue`. */
   name: string
-  /**
-   * What it is drawn on. `ground` (the default) sits on the theme's ground, the glyph in
-   * the icon tone. `paper` sits on the fixed white of `ToolMarkStack`'s discs, the glyph
-   * and GitHub's mark in the fixed ink, so they read on white whatever the theme.
-   */
-  tone?: ToolMarkTone
 }
 
-export type ToolMarkTone = 'ground' | 'paper'
+/** The fixed paper and ink of `release-paper` / `release-ink`, and a grey between them. */
+const PAPER = '#FFFFFF'
+const GREY = '#E4E4E7'
+const INK = 'rgb(10 10 11)'
 
-const LOGO = 'w-3.5 h-3.5 flex-shrink-0'
-const GLYPH = 'w-3 h-3 flex-shrink-0'
-const INK: Record<ToolMarkTone, string> = { ground: 'text-icon', paper: 'text-release-ink' }
+interface Plate {
+  glyph: IconComponent
+  tint: string
+  ink?: string
+}
 
 const BUILT_IN_MARKS: Record<string, IconComponent> = {
   Bash: SquareTerminal,
@@ -52,18 +55,18 @@ const BUILT_IN_MARKS: Record<string, IconComponent> = {
   Skill: Sparkles,
 }
 
-function toolMark(name: string, tone: ToolMarkTone): { Icon: IconComponent; className: string } {
+export function toolPlate(name: string): Plate {
   const [, server = '', tool = ''] = name.match(/^mcp__(.+?)__(.+)$/) ?? []
-  if (/atlassian|jira/i.test(server) && !/confluence/i.test(tool)) return { Icon: Jira, className: LOGO }
-  if (/notion/i.test(server)) return { Icon: Notion, className: LOGO }
-  if (/slack/i.test(server)) return { Icon: Slack, className: LOGO }
-  if (/github/i.test(server)) return { Icon: Github, className: `${LOGO} ${tone === 'paper' ? INK.paper : 'text-ink'}` }
-  if (/figma/i.test(server)) return { Icon: Figma, className: LOGO }
+  if (/atlassian|jira/i.test(server) && !/confluence/i.test(tool)) return { glyph: Jira, tint: JIRA_CHIP_GROUND }
+  if (/notion/i.test(server)) return { glyph: Notion, tint: PAPER }
+  if (/slack/i.test(server)) return { glyph: Slack, tint: PAPER }
+  if (/figma/i.test(server)) return { glyph: Figma, tint: PAPER }
+  if (/github/i.test(server)) return { glyph: Github, tint: GREY, ink: INK }
   const builtIn = server ? undefined : BUILT_IN_MARKS[name]
-  return { Icon: builtIn ?? Wrench, className: `${GLYPH} ${INK[tone]}` }
+  return { glyph: builtIn ?? Wrench, tint: GREY, ink: INK }
 }
 
-export function ToolMark({ name, tone = 'ground' }: ToolMarkProps) {
-  const { Icon, className } = toolMark(name, tone)
-  return <Icon className={className} />
+export function ToolMark({ name }: ToolMarkProps) {
+  const { glyph, tint, ink } = toolPlate(name)
+  return <MarkTile glyph={glyph} size="sm" shape="round" tint={tint} ink={ink} />
 }
