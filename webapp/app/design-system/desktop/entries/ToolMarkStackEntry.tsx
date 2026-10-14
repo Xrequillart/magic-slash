@@ -37,8 +37,8 @@ export function ToolMarkStackEntry({ theme, onOpen }: { theme: DesktopTheme; onO
       </EntryHeader>
 
       <EntrySection
-        title="White discs, cut out of the thread"
-        note="Each mark sits on a white disc in the fixed ink, the same on every theme. Its ring is the thread’s ground, so the disc on top cuts the one under it instead of drawing over it."
+        title="Discs cut out of the thread"
+        note="Each call is a ToolMark, on its product’s colour. Its ring is the thread’s ground, so the disc on top cuts the one under it instead of drawing over it."
       >
         <Stage theme={theme} className="flex flex-wrap items-center gap-8">
           <Specimen label="one call">
