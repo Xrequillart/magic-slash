@@ -310,7 +310,7 @@ struct TitleInfoCard: View {
   let agent: Agent
 
   var body: some View {
-    InfoCard(spacing: 12) {
+    InfoCard(spacing: 18) {
       HStack(spacing: 8) {
         if let ticket = agent.ticketId {
           InfoLabel(text: Text(verbatim: ticket), mark: InfoLabel.Mark(ticketTone: DSLabel.Tone(ticketId: ticket)))
@@ -321,9 +321,9 @@ struct TitleInfoCard: View {
         StatusChip(status: agent.status)
       }
 
-      VStack(alignment: .leading, spacing: 6) {
+      VStack(alignment: .leading, spacing: 10) {
         Text(verbatim: agent.title)
-          .font(.cera(.title3, .bold))
+          .font(.cera(.headline))
           .foregroundStyle(theme.ink)
           .textSelection(.enabled)
         Group {
