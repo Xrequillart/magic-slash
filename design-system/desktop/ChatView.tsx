@@ -1,10 +1,12 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { ArrowUp, BotMessageSquare, ChevronRight, CircleAlert, Check, FilePen, FileText, FolderSearch, Globe, History, Image as ImageIcon, Info, ListOrdered, ListTodo, MessageCircleQuestionMark, Paperclip, Sparkles, SquareTerminal, TextSearch, Wrench, X } from './icons'
+import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, History, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
+import { ToolMark } from './ToolMark'
+import { ToolMarkStack } from './ToolMarkStack'
 import { RAISED_PLATE } from './plate'
-import { CLAUDE_CORAL, ClaudeCode, Figma, Github, Jira, Notion, Slack } from './brand'
+import { CLAUDE_CORAL, ClaudeCode } from './brand'
 import { ClaudeCodeMascot } from './ClaudeCodeMascot'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
@@ -260,65 +262,6 @@ const FADE_UNDER_PX = 12
 
 /** The same fade at the pane's top edge. The pinned prompt reminder sits just below it. */
 const FADE_TOP_PX = 24
-
-/**
- * A tool's mark: the service's own logo for an MCP tool of one (Jira, by the Atlassian
- * server's tools that are not Confluence's; Notion, Slack, GitHub, Figma), a glyph of
- * what it does for Claude Code's own tools (the terminal for Bash, a file for Read), the
- * wrench for everything else. MCP tools arrive named `mcp__<server>__<tool>`, so the
- * server is read off the name. GitHub's mark is one colour, `currentColor`: it takes the ink.
- */
-const LOGO = 'w-3.5 h-3.5 flex-shrink-0'
-const GLYPH = 'w-3 h-3 flex-shrink-0 text-icon'
-
-const BUILT_IN_MARKS: Record<string, IconComponent> = {
-  Bash: SquareTerminal,
-  BashOutput: SquareTerminal,
-  KillShell: SquareTerminal,
-  Read: FileText,
-  Edit: FilePen,
-  MultiEdit: FilePen,
-  Write: FilePen,
-  NotebookEdit: FilePen,
-  Grep: TextSearch,
-  Glob: FolderSearch,
-  WebFetch: Globe,
-  WebSearch: Globe,
-  Task: BotMessageSquare,
-  Agent: BotMessageSquare,
-  AskUserQuestion: MessageCircleQuestionMark,
-  TodoWrite: ListTodo,
-  Skill: Sparkles,
-}
-
-function toolMark(name: string): { Icon: IconComponent; className: string } {
-  const [, server = '', tool = ''] = name.match(/^mcp__(.+?)__(.+)$/) ?? []
-  if (/atlassian|jira/i.test(server) && !/confluence/i.test(tool)) return { Icon: Jira, className: LOGO }
-  if (/notion/i.test(server)) return { Icon: Notion, className: LOGO }
-  if (/slack/i.test(server)) return { Icon: Slack, className: LOGO }
-  if (/github/i.test(server)) return { Icon: Github, className: `${LOGO} text-ink` }
-  if (/figma/i.test(server)) return { Icon: Figma, className: LOGO }
-  const builtIn = server ? undefined : BUILT_IN_MARKS[name]
-  return { Icon: builtIn ?? Wrench, className: GLYPH }
-}
-
-function ToolMark({ name }: { name: string }) {
-  const { Icon, className } = toolMark(name)
-  return <Icon className={className} />
-}
-
-/** How many marks a run of tool calls strings together: its last ones, oldest first. */
-const CHAIN_MARKS = 5
-
-/** A run's marks side by side, one per call, so the line reads as what the run did. */
-function ToolMarkChain({ names }: { names: string[] }) {
-  const shown = names.slice(-CHAIN_MARKS)
-  return (
-    <span className="flex flex-shrink-0 items-center gap-1" aria-hidden>
-      {shown.map((name, i) => <ToolMark key={names.length - shown.length + i} name={name} />)}
-    </span>
-  )
-}
 
 /** The background button's mark: the wave that says an agent is at work, not a glyph. */
 const WaveMark: IconComponent = ({ className }) => <Loader variant="wave" size="sm" tone="accent" className={className} />
@@ -1244,7 +1187,7 @@ function ToolGroup({ tools, label }: { tools: ChatToolEntry[]; label: string }) 
         ) : (
           <Check className="w-3.5 h-3.5 flex-shrink-0 text-green" />
         )}
-        <ToolMarkChain names={tools.map((t) => t.name)} />
+        <ToolMarkStack names={tools.map((t) => t.name)} />
         <span className="flex-shrink-0 font-medium text-ink">{label.replace('{count}', String(tools.length))}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-text-secondary/70" title={names}>{names}</span>
         <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-icon transition-transform ${open ? 'rotate-90' : ''}`} />
