@@ -292,7 +292,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.124.1;
+				MARKETING_VERSION = 0.124.2;
 				PRODUCT_BUNDLE_IDENTIFIER = io.poppins.magicslash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -328,7 +328,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.124.1;
+				MARKETING_VERSION = 0.124.2;
 				PRODUCT_BUNDLE_IDENTIFIER = io.poppins.magicslash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
