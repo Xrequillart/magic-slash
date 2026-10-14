@@ -180,6 +180,15 @@ struct PromptField: View {
       }
   }
 
+  /// How far to move the field down so its first line's capitals sit in the middle of the
+  /// box, as a button centres its title: the field's line is centred, leading included
+  /// (which the field puts under the text), so Cera's capitals ride high in it. From the
+  /// font's own metrics, so it holds at every text size.
+  static var capCentring: CGFloat {
+    let font = Cera.uiFont(.body, weight: .regular, size: Cera.size(for: .body))
+    return (font.lineHeight + font.leading) / 2 - (font.ascender - font.capHeight / 2)
+  }
+
   /// The text field lays Cera's lines out with the font's own leading, which a `Text` leaves
   /// out: the copy adds it back, or its second line would ride up over the field's.
   private static var fieldLeading: CGFloat {

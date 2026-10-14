@@ -56,8 +56,8 @@ struct PromptComposer: View {
           .padding(.horizontal, 16)
           .padding(.vertical, 10)
           // Cera sits high on its line: the field's own box is centred, then nudged so
-          // the placeholder's x-height is, not its ascender.
-          .offset(y: 1.5)
+          // its capitals are.
+          .offset(y: PromptField.capCentring)
           .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
           .liquidGlass(in: RoundedRectangle(cornerRadius: height / 2), tint: fieldTint)
 
