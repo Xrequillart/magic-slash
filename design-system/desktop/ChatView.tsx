@@ -1,10 +1,10 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, History, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
+import { ArrowUp, Bot, ChevronRight, CircleAlert, Check, FilePen, FileText, FolderSearch, Globe, History, Image as ImageIcon, Info, ListOrdered, ListTodo, Paperclip, Sparkles, SquareTerminal, TextSearch, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
 import { RAISED_PLATE } from './plate'
-import { CLAUDE_CORAL, ClaudeCode, Github, Jira, Notion, Slack } from './brand'
+import { CLAUDE_CORAL, ClaudeCode, Figma, Github, Jira, Notion, Slack } from './brand'
 import { ClaudeCodeMascot } from './ClaudeCodeMascot'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
@@ -261,14 +261,34 @@ const FADE_UNDER_PX = 12
 /** The same fade at the pane's top edge. The pinned prompt reminder sits just below it. */
 const FADE_TOP_PX = 24
 
-/** The background button's mark: the wave that says an agent is at work, not a glyph. */
 /**
  * A tool's mark: the service's own logo for an MCP tool of one (Jira, by the Atlassian
- * server's tools that are not Confluence's; Notion, Slack, GitHub), the wrench for
- * everything else. MCP tools arrive named `mcp__<server>__<tool>`, so the server is read
- * off the name. GitHub's mark is one colour, `currentColor`: it takes the ink.
+ * server's tools that are not Confluence's; Notion, Slack, GitHub, Figma), a glyph of
+ * what it does for Claude Code's own tools (the terminal for Bash, a file for Read), the
+ * wrench for everything else. MCP tools arrive named `mcp__<server>__<tool>`, so the
+ * server is read off the name. GitHub's mark is one colour, `currentColor`: it takes the ink.
  */
 const LOGO = 'w-3.5 h-3.5 flex-shrink-0'
+const GLYPH = 'w-3 h-3 flex-shrink-0 text-icon'
+
+const BUILT_IN_MARKS: Record<string, IconComponent> = {
+  Bash: SquareTerminal,
+  BashOutput: SquareTerminal,
+  KillShell: SquareTerminal,
+  Read: FileText,
+  Edit: FilePen,
+  MultiEdit: FilePen,
+  Write: FilePen,
+  NotebookEdit: FilePen,
+  Grep: TextSearch,
+  Glob: FolderSearch,
+  WebFetch: Globe,
+  WebSearch: Globe,
+  Task: Bot,
+  Agent: Bot,
+  TodoWrite: ListTodo,
+  Skill: Sparkles,
+}
 
 function toolMark(name: string): { Icon: IconComponent; className: string } {
   const [, server = '', tool = ''] = name.match(/^mcp__(.+?)__(.+)$/) ?? []
@@ -276,16 +296,30 @@ function toolMark(name: string): { Icon: IconComponent; className: string } {
   if (/notion/i.test(server)) return { Icon: Notion, className: LOGO }
   if (/slack/i.test(server)) return { Icon: Slack, className: LOGO }
   if (/github/i.test(server)) return { Icon: Github, className: `${LOGO} text-ink` }
-  return { Icon: Wrench, className: 'w-3 h-3 flex-shrink-0 text-icon' }
+  if (/figma/i.test(server)) return { Icon: Figma, className: LOGO }
+  const builtIn = server ? undefined : BUILT_IN_MARKS[name]
+  return { Icon: builtIn ?? Wrench, className: GLYPH }
 }
 
-function ToolMark({ names }: { names: string[] }) {
-  const marks = names.map(toolMark)
-  // A group shows a logo only when every tool in it wears the same one.
-  const { Icon, className } = marks.every((m) => m.Icon === marks[0]?.Icon) && marks[0] ? marks[0] : toolMark('')
+function ToolMark({ name }: { name: string }) {
+  const { Icon, className } = toolMark(name)
   return <Icon className={className} />
 }
 
+/** How many marks a run of tool calls strings together: its last ones, oldest first. */
+const CHAIN_MARKS = 5
+
+/** A run's marks side by side, one per call, so the line reads as what the run did. */
+function ToolMarkChain({ names }: { names: string[] }) {
+  const shown = names.slice(-CHAIN_MARKS)
+  return (
+    <span className="flex flex-shrink-0 items-center gap-1" aria-hidden>
+      {shown.map((name, i) => <ToolMark key={names.length - shown.length + i} name={name} />)}
+    </span>
+  )
+}
+
+/** The background button's mark: the wave that says an agent is at work, not a glyph. */
 const WaveMark: IconComponent = ({ className }) => <Loader variant="wave" size="sm" tone="accent" className={className} />
 
 const IMAGE_FILE = /\.(png|jpe?g|gif|webp|heic|bmp|tiff?)$/i
@@ -1209,7 +1243,7 @@ function ToolGroup({ tools, label }: { tools: ChatToolEntry[]; label: string }) 
         ) : (
           <Check className="w-3.5 h-3.5 flex-shrink-0 text-green" />
         )}
-        <ToolMark names={tools.map((t) => t.name)} />
+        <ToolMarkChain names={tools.map((t) => t.name)} />
         <span className="flex-shrink-0 font-medium text-ink">{label.replace('{count}', String(tools.length))}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-text-secondary/70" title={names}>{names}</span>
         <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-icon transition-transform ${open ? 'rotate-90' : ''}`} />
@@ -1246,7 +1280,7 @@ function ToolLine({ entry }: { entry: Extract<ChatViewEntry, { kind: 'tool' }> }
         ) : (
           <Check className="w-3.5 h-3.5 flex-shrink-0 text-green" />
         )}
-        <ToolMark names={[entry.name]} />
+        <ToolMark name={entry.name} />
         <span className="flex-shrink-0 font-medium text-ink">{entry.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-text-secondary/70" title={entry.summary}>{entry.summary}</span>
         {canOpen && <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-icon transition-transform ${open ? 'rotate-90' : ''}`} />}
