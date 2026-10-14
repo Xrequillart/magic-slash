@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.124.0] - 2026-10-14
+
+### Added
+
+- **Desktop**: Mark agent and question tool calls with their own icons
+- **Desktop**: Chain the marks of a tool run's last five calls
+- **Ios**: Show sessions as a large title that folds into the bar
+- **Ios**: Tap haptic on leaving the composer
+
+### Changed
+
+- **Ios**: Drop the rules between sessions in the list
+- **Ios**: Size the paired mac note's icon like the mac's own
+- **Ios**: Give the app magic slash's version and bump it at each release
+
+### Fixed
+
+- **Ios**: Give glass controls an edge and cards a solid ground on light themes
+- **Ios**: Type the prompt in a uikit text view so the caret follows the text
+- **Ios**: Keep the composer full size when there is no conversation to read up
+- **Ios**: Keep the prompt visible once its slash is deleted
+- **Ios**: Hang the slash menu above the composer instead of over it
+- **Ios**: Float the slash menu over the composer so the field stops jumping
+- **Ios**: Centre the composer's placeholder on its capitals
+
 ## [0.123.3] - 2026-10-14
 
 ### Added
@@ -4118,6 +4143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.124.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.0
 [0.123.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.3
 [0.123.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.2
 [0.123.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.1
