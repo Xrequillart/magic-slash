@@ -197,6 +197,26 @@
         }
       }
     },
+    "Agent finished" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent terminé"
+          }
+        }
+      }
+    },
+    "Agent waiting" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent en attente"
+          }
+        }
+      }
+    },
     "Agents unavailable" : {
       "localizations" : {
         "fr" : {
@@ -1237,6 +1257,36 @@
         }
       }
     },
+    "Notifications" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivées"
+          }
+        }
+      }
+    },
+    "On" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activées"
+          }
+        }
+      }
+    },
     "On your Mac, open Magic Slash settings, then Remote access. Turn it on, click Pair, and scan the code it shows." : {
       "localizations" : {
         "fr" : {
@@ -1304,6 +1354,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appairer un Mac"
+          }
+        }
+      }
+    },
+    "Pair a Mac to be notified when its agents need you." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairez un Mac pour être prévenu quand ses agents ont besoin de vous."
           }
         }
       }
@@ -1749,6 +1809,16 @@
         }
       }
     },
+    "The choices appear once this iPhone is registered with your Macs." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les choix apparaissent une fois cet iPhone enregistré auprès de vos Macs."
+          }
+        }
+      }
+    },
     "The code expired before your Mac received the request. Scan the fresh one." : {
       "localizations" : {
         "fr" : {
@@ -1945,6 +2015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aujourd’hui, %@"
+          }
+        }
+      }
+    },
+    "Turn on" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activer"
           }
         }
       }
@@ -2355,6 +2435,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "planification"
+          }
+        }
+      }
+    },
+    "push.fallback.body" : {
+      "comment" : "Notification text iOS shows when the notification extension cannot open the Mac's message. APNs names it by this key (loc-key).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An agent needs your attention"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un agent a besoin de vous"
+          }
+        }
+      }
+    },
+    "push.fallback.title" : {
+      "comment" : "Notification title iOS shows when the notification extension cannot open the Mac's message. APNs names it by this key (title-loc-key).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magic Slash"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magic Slash"
           }
         }
       }

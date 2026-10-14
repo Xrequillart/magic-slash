@@ -3,6 +3,8 @@ import SwiftUI
 
 @main
 struct MagicSlashApp: App {
+  /// The APNs token and the notification taps (PROTOCOL.md §14).
+  @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
   @State private var theme = DesktopSettingsStore()
   /// Whether the app knows what to show: the splash leaves once it does.
   @State private var ready = false
@@ -17,7 +19,7 @@ struct MagicSlashApp: App {
       ThemeRoot(desktop: theme.themeID) {
         Group {
           if let client = Backend.client {
-            RootView(client: client, theme: theme, ready: $ready)
+            RootView(client: client, theme: theme, router: appDelegate.router, ready: $ready)
           } else {
             MessageScreen(
               systemImage: "gearshape.2",
@@ -46,6 +48,8 @@ private struct RootView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let theme: DesktopSettingsStore
+  /// A tapped notification's agent, for the list to open.
+  let router: NotificationRouter
   /// Set once the screen shows more than a loader, which lets the splash go.
   @Binding var ready: Bool
   @State private var auth: AuthModel
@@ -54,8 +58,9 @@ private struct RootView: View {
   @State private var relay: RelayStore?
   @State private var wentToBackground = false
 
-  init(client: SupabaseClient, theme: DesktopSettingsStore, ready: Binding<Bool>) {
+  init(client: SupabaseClient, theme: DesktopSettingsStore, router: NotificationRouter, ready: Binding<Bool>) {
     self.theme = theme
+    self.router = router
     _ready = ready
     _auth = State(initialValue: AuthModel(client: client))
   }
@@ -68,6 +73,10 @@ private struct RootView: View {
       }
       .onChange(of: auth.state) { _, state in
         apply(state)
+      }
+      // Not at first launch: only once there is a Mac to hear from, so the prompt makes sense.
+      .onChange(of: wantsNotifications, initial: true) { _, wants in
+        if wants { Task { await PushAuthorization.requestAndRegister() } }
       }
       .onChange(of: scenePhase) { _, phase in
         switch phase {
@@ -89,6 +98,12 @@ private struct RootView: View {
           break
         }
       }
+  }
+
+  /// Signed in, with at least one Mac paired under this account.
+  private var wantsNotifications: Bool {
+    guard case .signedIn(let userId) = auth.state, let relay, relay.ownerId == userId else { return false }
+    return !relay.macs.isEmpty
   }
 
   /// True once the session is restored and, when signed in, the first agent read is
@@ -117,8 +132,12 @@ private struct RootView: View {
       // The owner check covers the frame between a sign-in and `apply`: another account's
       // list is never drawn under this one.
       if let agents, let relay, agents.ownerId == userId, relay.ownerId == userId {
-        AgentListView(store: agents, relay: relay, settings: theme) {
-          Task { await auth.signOut() }
+        AgentListView(store: agents, relay: relay, settings: theme, router: router) {
+          Task {
+            // The rows go while the session can still delete them (PROTOCOL.md §14).
+            await relay.signOut()
+            await auth.signOut()
+          }
         }
       } else {
         LoadingScreen()
@@ -155,8 +174,12 @@ private struct RootView: View {
     case .signedOut:
       let previousRelay = relay
       relay = nil
-      // Keys out of memory now, not once the channel has gone.
+      // Keys out of memory now, not once the channel has gone. The push keys too, whoever
+      // signed out: a sign-out from elsewhere left no session to delete the rows with, and
+      // without the keys the extension shows only the generic alert.
       previousRelay?.lock()
+      previousRelay?.forgetPushKeys()
+      router.clear()
       Task { await previousRelay?.stop() }
       guard let previous = agents else { return }
       agents = nil

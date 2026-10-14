@@ -7,6 +7,8 @@ struct AgentListView: View {
   let relay: RelayStore
   /// The desktop settings: the sidebar order the list follows live.
   let settings: DesktopSettingsStore
+  /// A tapped notification's agent, opened here once the list can find it.
+  let router: NotificationRouter
   let onSignOut: () -> Void
 
   private enum Sheet: String, Identifiable {
@@ -21,10 +23,14 @@ struct AgentListView: View {
   @State private var profile: ProfileStore
   /// Bumped on every tap that should be felt: the header buttons and each session.
 
-  init(store: AgentStore, relay: RelayStore, settings: DesktopSettingsStore, onSignOut: @escaping () -> Void) {
+  init(
+    store: AgentStore, relay: RelayStore, settings: DesktopSettingsStore, router: NotificationRouter,
+    onSignOut: @escaping () -> Void
+  ) {
     self.store = store
     self.relay = relay
     self.settings = settings
+    self.router = router
     self.onSignOut = onSignOut
     _profile = State(initialValue: ProfileStore(client: store.client))
   }
@@ -63,6 +69,10 @@ struct AgentListView: View {
       if new < old { Haptics.tap() }
     }
     .task { await profile.load() }
+    // Whichever comes last, the tap or the first read of the agents, opens the session.
+    .onChange(of: RouteTrigger(request: router.pending, loaded: store.loadState != .loading), initial: true) {
+      openTappedAgent()
+    }
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .account:
@@ -81,6 +91,25 @@ struct AgentListView: View {
   }
 
   private var sort: AgentSortMode { settings.agentSort }
+
+  private struct RouteTrigger: Equatable {
+    let request: NotificationRouter.Request?
+    let loaded: Bool
+  }
+
+  /// A tapped notification (PROTOCOL.md §14): its `appAgentId` names the desktop's terminal,
+  /// mapped here to the session's row. Only from a Mac paired with this account, so a tap
+  /// meant for another account opens nothing. An agent the list does not have (archived since)
+  /// leaves the list as it is.
+  private func openTappedAgent() {
+    guard let request = router.pending, store.loadState != .loading else { return }
+    router.clear()
+    guard relay.macs.contains(where: { $0.macId == request.macId }),
+          let agent = store.agents.first(where: { $0.appAgentId == request.appAgentId })
+    else { return }
+    sheet = nil
+    path = [agent.id]
+  }
 
   private var isPaired: Bool {
     !relay.macs.isEmpty && !relay.needsRepair

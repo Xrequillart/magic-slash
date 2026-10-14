@@ -17,16 +17,18 @@ ios/
 ├── Config/
 │   ├── Base.xcconfig              # Build settings shared by Debug and Release
 │   └── Secrets.example.xcconfig   # Template for the git-ignored Secrets.xcconfig
-├── MagicSlash.xcodeproj           # Hand-written project, one app target
+├── MagicSlash.xcodeproj           # Hand-written project: the app and its notification extension
 ├── MagicSlash/                    # Sources (synchronized folder: new files need no project edit)
 │   ├── App/                       #   Entry point, routing, shared components
 │   ├── Auth/                      #   Email + password sign-in, TOTP second factor
 │   ├── Agents/                    #   Agent model, store (Realtime), list and detail screens
+│   ├── Notifications/             #   Push keys, push_devices rows, routing a tapped notification
 │   ├── Plans/                     #   Spec lookup in plan_sessions
 │   ├── Remote/                    #   Mac pairing and the end-to-end encrypted relay
 │   ├── Settings/                  #   Settings screen, the one writer, the column lists (generated)
 │   ├── Supabase/                  #   Client built from the Info.plist values
 │   └── Theme/                     #   Desktop theme tokens (generated) and the desktop settings store
+├── MagicSlashNotificationService/ # Extension that decrypts a push (shares RelayCrypto, Keychain, PushKeys)
 ├── relay/                         # Check of RelayCrypto.swift against the Node vectors
 ├── settings/                      # Generator of the settings column lists, scan of the writes
 └── theme/                         # Generator for Theme/ThemeTokens.generated.swift
@@ -128,12 +130,33 @@ access on sends them, end-to-end encrypted, over a private Supabase Realtime cha
   software keys instead (so no Face ID per answer either), and offer a field to paste the
   QR's text. Neither exists in any other build.
 
+- **Notifications.** With the app closed, an agent that waits or finishes reaches the
+  iPhone as a push (PROTOCOL.md §14). After each unlock the iPhone hands every paired Mac a
+  push key of its own (one per pairing, in a Keychain group shared with the extension, no
+  Face ID), and keeps one `push_devices` row per Mac with its APNs token. The Mac seals the
+  text with that key, the server relays the opaque box to APNs, and
+  `MagicSlashNotificationService` opens it on the phone; anything that does not check out
+  shows a generic "An agent needs your attention". Settings > Notifications holds the two
+  toggles, stored in those rows only. Forget, revocation and sign-out delete the key and the
+  row.
+
 After touching `Remote/RelayCrypto.swift` or the desktop's `crypto.ts`, replay the shared
 test vectors from the repo root (macOS):
 
 ```bash
 npm run ios:relay-check
 ```
+
+### Push setup (Apple Developer, once)
+
+Nothing is sent until this exists; the app builds and runs without it.
+
+1. App IDs `io.poppins.magicslash` (Push Notifications capability) and
+   `io.poppins.magicslash.NotificationService`, both with the keychain group
+   `io.poppins.magicslash.shared` (`MagicSlash.entitlements`,
+   `MagicSlashNotificationService.entitlements`). Automatic signing creates the profiles.
+2. An APNs auth key (`.p8`) for the team, whose values go to the web server's `APNS_*`
+   variables (see `webapp/README.md`).
 
 ## TestFlight (internal testers)
 
@@ -149,8 +172,9 @@ the app's team and numbers the builds itself.
 
 1. Make sure `DEVELOPMENT_TEAM` is set in `Secrets.xcconfig` and that the bundle id
    `io.poppins.magicslash` exists in App Store Connect, with an app record.
-2. Bump `CURRENT_PROJECT_VERSION` (build number) in the target's build settings for every
-   upload, and `MARKETING_VERSION` for a new version.
+2. Bump `CURRENT_PROJECT_VERSION` (build number) in the project's build settings for every
+   upload, and `MARKETING_VERSION` for a new version. Both are set on the project, not the
+   targets, so the app and its extension never disagree (App Store Connect refuses that).
 3. In Xcode, select the **Any iOS Device (arm64)** destination, then
    **Product > Archive**.
 4. In the Organizer, select the archive and click **Distribute App > App Store Connect >

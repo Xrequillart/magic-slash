@@ -1,4 +1,4 @@
-// Base build settings for the MagicSlash target (Debug and Release).
+// Base build settings for the MagicSlash app and its notification extension (Debug and Release).
 //
 // The three values below are empty on purpose: a fresh clone builds, and the app
 // shows a "not configured" screen instead of crashing. Real values live in

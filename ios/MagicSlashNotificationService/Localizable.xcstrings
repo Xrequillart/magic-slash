@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "push.fallback.body" : {
+      "comment" : "Notification text shown when the Mac's message cannot be opened. Same key and text as the app's catalog, which iOS uses when the extension does not run.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An agent needs your attention"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un agent a besoin de vous"
+          }
+        }
+      }
+    },
+    "push.fallback.title" : {
+      "comment" : "Notification title shown when the Mac's message cannot be opened. Same key and text as the app's catalog, which iOS uses when the extension does not run.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magic Slash"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Magic Slash"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
