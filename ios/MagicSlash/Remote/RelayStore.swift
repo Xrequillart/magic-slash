@@ -235,6 +235,11 @@ final class RelayStore {
   @ObservationIgnored private var commandSeq = 0
   /// Commands sent and not answered yet, by `commandId`. Only these may get a `command-result`.
   @ObservationIgnored private var pendingCommands: [String: PendingCommand] = [:]
+  /// This phone's `push_devices` rows, which follow `macs` (PROTOCOL.md §14).
+  @ObservationIgnored let push: PushRegistration
+  /// The Macs still owed a `push-key` since the last unlock or pairing (§14): sent with the
+  /// next `state-request`, once the channel is joined and the pair key is in memory.
+  @ObservationIgnored private var pushKeysOwed: Set<String> = []
   /// Commands that timed out, by `commandId`, with when: a result that arrives late still
   /// settles them, and the "did not answer" turns into what really happened.
   @ObservationIgnored private var lateCommands: [String: (pending: PendingCommand, at: Date)] = [:]
@@ -258,6 +263,7 @@ final class RelayStore {
     ownerId = userId
     self.userId = userId.uuidString.lowercased()
     needsRepair = UserDefaults.standard.bool(forKey: Self.needsRepairKey(self.userId))
+    push = PushRegistration(client: client, userId: userId)
   }
 
   // MARK: - Lifecycle
@@ -275,6 +281,8 @@ final class RelayStore {
       setNeedsRepair(true)
     }
     macs = known
+    // The token may have changed since the last launch, or a row may have been lost.
+    push.sync(known)
     // Only what was cached for the current pairing of each Mac.
     let pairings = Dictionary(known.map { ($0.macId, $0.pairingId) }, uniquingKeysWith: { _, last in last })
     snapshots = SnapshotCache.load(userId: userId).filter { entry in
@@ -308,6 +316,7 @@ final class RelayStore {
     log("keys locked (background)")
     lockGeneration += 1
     pairKeys = [:]
+    pushKeysOwed = []
     cancelPendingPairing()
     // A `command-result` can no longer be opened without the keys.
     abandonPendingCommands()
@@ -350,6 +359,9 @@ final class RelayStore {
         derived[mac.macId] = RelayCrypto.deriveKey(shared: shared, macId: mac.macId, phoneId: phoneId)
       }
       pairKeys = derived
+      // Every unlock hands each Mac its push key again: idempotent, and it makes good a
+      // `push-key` an earlier unlock lost (§14).
+      pushKeysOwed = Set(macs.map(\.macId))
       keyState = macs.isEmpty ? .idle : .unlocked
       log("keys unlocked")
       // Keys that just opened read the next snapshot: ask for one now.
@@ -988,12 +1000,16 @@ final class RelayStore {
   }
 
   /// Asks every paired Mac for a snapshot now (§12), rather than waiting for its heartbeat.
-  /// A Mac whose key is not unlocked yet is skipped: its snapshot could not be read.
+  /// A Mac whose key is not unlocked yet is skipped: its snapshot could not be read. A Mac
+  /// still owed its push key gets it first.
   func requestState() async {
     guard !stopped, let channel, channel.status == .subscribed else { return }
     let phoneId = DeviceKeys.shared.phoneId
     for mac in macs {
       guard let key = pairKeys[mac.macId], let pairingId = mac.pairingId else { continue }
+      if pushKeysOwed.remove(mac.macId) != nil {
+        await sendPushKey(to: mac, pairingId: pairingId, key: key, channel: channel)
+      }
       commandSeq += 1
       guard let envelope = Self.sealedEnvelope(
         type: "state-request", from: phoneId, to: mac.macId, epoch: commandEpoch, seq: commandSeq,
@@ -1001,6 +1017,39 @@ final class RelayStore {
       ) else { continue }
       await channel.broadcast(event: "relay", message: envelope)
     }
+  }
+
+  private struct PushKeyBody: Encodable {
+    let pairingId: String
+    let pushKey: String
+  }
+
+  /// §14: the push key of this pairing, drawn on first use, sealed with the pair key like any
+  /// phone → Mac message. No acknowledgement: the next unlock sends it again.
+  private func sendPushKey(to mac: PairedMac, pairingId: String, key: SymmetricKey, channel: RealtimeChannelV2) async {
+    guard let pushKey = PushKeys.ensure(macId: mac.macId, phoneId: mac.phoneId, pairingId: pairingId) else {
+      return log("push key not stored for \(mac.name)")
+    }
+    commandSeq += 1
+    let body = PushKeyBody(pairingId: pairingId, pushKey: pushKey.key.base64EncodedString())
+    guard let envelope = Self.sealedEnvelope(
+      type: "push-key", from: DeviceKeys.shared.phoneId, to: mac.macId, epoch: commandEpoch, seq: commandSeq,
+      body: body, key: key
+    ) else { return }
+    await channel.broadcast(event: "relay", message: envelope)
+  }
+
+  /// Before signing out, while the session can still delete them: this phone's rows, then the
+  /// push keys. The pairings themselves stay, as they always have across a sign-out.
+  func signOut() async {
+    await push.removeAll()
+    forgetPushKeys()
+  }
+
+  /// The push keys of every paired Mac, locally: on any sign-out, including one that happened
+  /// elsewhere and left no session to delete the rows with. The next unlock draws new ones.
+  func forgetPushKeys() {
+    for mac in macs { PushKeys.delete(macId: mac.macId) }
   }
 
   /// Detaches synchronously, then removes the channel, after any removal still in flight.
@@ -1343,6 +1392,8 @@ final class RelayStore {
     snapshots[mac.macId] = nil
     SnapshotCache.save(snapshots, userId: userId)
     pairKeys[mac.macId] = key
+    // A new pairing, a new push key (§14): the rejoin below hands it over.
+    pushKeysOwed.insert(mac.macId)
     keyState = .unlocked
     setNeedsRepair(false)
     // The request is answered: nothing else may answer it again.
@@ -1367,9 +1418,16 @@ final class RelayStore {
 
   // MARK: - Persistence
 
+  /// Every change to the paired Macs goes through here, and so do their push keys and rows: a
+  /// Mac that leaves the list (forget, revocation, a dead identity, invalidation) loses both.
   private func setMacs(_ next: [PairedMac]) {
+    let kept = Set(next.map(\.macId))
+    let removed = macs.filter { !kept.contains($0.macId) }
     macs = next
     PairedMacs.save(next, userId: userId)
+    for mac in removed { PushKeys.delete(macId: mac.macId) }
+    if !removed.isEmpty { push.remove(removed) }
+    push.sync(next)
   }
 
   /// The key no longer opens: every pairing it held is dead. A fresh identity replaces it,

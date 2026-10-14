@@ -42,6 +42,13 @@ export interface StoredRemoteDevice {
    * commands existed: it still gets every snapshot, and `re-pair` for any command.
    */
   signPub?: string
+  /**
+   * The pairing's push key (§14), 32 bytes, standard base64: what this Mac seals a
+   * notification's box with. Sent by the phone in `push-key` after each unlock, so absent
+   * until the first one arrives (and for a phone too old to send it): that phone then gets
+   * no notification from here.
+   */
+  pushKey?: string
 }
 
 export interface RemoteIdentity {
@@ -92,10 +99,18 @@ function isDevice(value: unknown): value is StoredRemoteDevice {
   )
 }
 
-/** The fields of a device record, and only those: a `signPub` that is not a string is left out. */
+/** The fields of a device record, and only those: a `signPub` or `pushKey` that is not a string is left out. */
 function cleanDevice(d: StoredRemoteDevice): StoredRemoteDevice {
-  const { phoneId, name, pub, pairedAt, pairingId, signPub } = d
-  return { phoneId, name, pub, pairedAt, pairingId, ...(typeof signPub === 'string' ? { signPub } : {}) }
+  const { phoneId, name, pub, pairedAt, pairingId, signPub, pushKey } = d
+  return {
+    phoneId,
+    name,
+    pub,
+    pairedAt,
+    pairingId,
+    ...(typeof signPub === 'string' ? { signPub } : {}),
+    ...(typeof pushKey === 'string' ? { pushKey } : {}),
+  }
 }
 
 /** A stored count, or 0: anything else in that field reads as "never started". */
@@ -184,6 +199,25 @@ export function removeDevice(userId: string, phoneId: string): RemoteIdentity | 
   const identity = loadIdentity(userId)
   if (!identity) return null
   const next: RemoteIdentity = { ...identity, devices: identity.devices.filter((d) => d.phoneId !== phoneId) }
+  saveIdentity(userId, next)
+  return next
+}
+
+/**
+ * Store a pairing's push key (§14). Only on the device record of THAT pairing: a `push-key`
+ * that reaches the disk after the phone was paired again (or revoked) must not land on the
+ * new record. Returns the identity as now stored, or null when nothing was written: no
+ * identity, no such pairing, or the same key already there (the phone resends it after every
+ * unlock). THROWS when it cannot be stored.
+ */
+export function setDevicePushKey(userId: string, phoneId: string, pairingId: string, pushKey: string): RemoteIdentity | null {
+  const identity = loadIdentity(userId)
+  const current = identity?.devices.find((d) => d.phoneId === phoneId)
+  if (!identity || !current || current.pairingId !== pairingId || current.pushKey === pushKey) return null
+  const next: RemoteIdentity = {
+    ...identity,
+    devices: identity.devices.map((d) => (d === current ? { ...d, pushKey } : d)),
+  }
   saveIdentity(userId, next)
   return next
 }

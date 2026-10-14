@@ -88,6 +88,7 @@ Change this file, `crypto.ts`, `RelayCrypto.swift` and `relay-vectors.json` toge
 | `chat-request` | phone → Mac | `{ "pairingId": "<uuid>", "appAgentId": "claude-…" }` (§11) | |
 | `chat` | Mac → phone | the conversation's tail (§11) | |
 | `state-request` | phone → Mac | `{ "pairingId": "<uuid>" }` (§12) | |
+| `push-key` | phone → Mac | `{ "pairingId": "<uuid>", "pushKey": "<b64>" }` (§14) | |
 
 `signPub` travels inside the box, so it is as authenticated as the pairing itself: the Mac
 learns a phone's signing key only from a `pair-request` that the code on both screens
@@ -236,8 +237,12 @@ The Mac sends `revoked`, carrying the device's `pairingId`, then deletes the dev
 that device again, so a revoked phone receives nothing it can read, even with a valid
 Supabase session. On a `revoked` whose `pairingId` matches its pairing, the phone forgets the Mac.
 
+Revoking also drops the device's push key and its `push_devices` row (§14): a revoked phone
+gets no notification either, not even the generic one.
+
 "Forget this Mac" on the phone is local only in v1: the Mac keeps sealing for it until it is
-revoked there too.
+revoked there too. The phone still deletes its push key and its `push_devices` row for that
+Mac, so the server stops relaying to it at once.
 
 ## 9. Remote mode
 
@@ -481,3 +486,93 @@ chat's `/` menu does. Skills are files on the Mac: the phone learns them from it
 - The phone accepts it only from a paired Mac, naming that Mac's saved `pairingId`. It keeps
   it in memory per Mac, replaced whole by the next one. A lost one is asked for again with the
   next renewal. A Mac that does not know the flag ignores it: the phone then suggests nothing.
+
+## 14. Push notifications (Mac → server → phone)
+
+A phone learns that an agent waits or finished while its app is closed, through an APNs
+notification that a Notification Service Extension (NSE) decrypts on the phone. The relay is
+not involved past the key exchange: the Mac posts to the web server, which forwards to APNs.
+
+### Push key
+
+- 32 random bytes the phone draws, **one per pairing**: a new pairing with the same Mac draws
+  a new one.
+- It is not the pair key. The NSE runs without the user, so it cannot ask for Face ID; the
+  Secure Enclave keys (§3) stay out of its reach and the push key only ever protects
+  notifications. Commands are still signed with Face ID.
+- On the phone it lives in a Keychain access group shared by the app and the NSE, with
+  `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` and no biometric access control,
+  account `push-key.<macId>`. The item holds the key together with the `phoneId` and the
+  `pairingId` it was drawn for, which the NSE needs for the AAD. Only push keys go in that
+  group: the pairing items stay where they were.
+- **`push-key`** (phone → Mac): `{ "pairingId", "pushKey": "<b64>" }`, sealed with the pair
+  key, with the phone's own `epoch` and a growing `seq` (shared with commands and the other
+  requests). The phone sends it to each paired Mac after every unlock of the app, whether or
+  not the Mac already has it: it is idempotent and has no acknowledgement, so a lost one is
+  made good by the next unlock.
+- The Mac drops it unless it comes from a paired phone, opens, names that phone's current
+  `pairingId` and moves forward in `seq`, as for every phone → Mac message. It then stores
+  `pushKey` with the device, replacing any earlier one. A Mac that does not know the type drops
+  it: that phone gets no notification from it.
+
+### Box
+
+```
+aad = utf8("push-v1|" + macId + "|" + phoneId + "|" + pairingId + "|" + kind)   // ids lower-case
+box = AES-256-GCM(pushKey, aad, plaintext)                                       // nonce(12)‖ct‖tag(16)
+```
+
+```json
+{ "kind": "waiting", "appAgentId": "claude-1760000000000", "title": "PROJ-12: refunds", "body": "Which database?", "sentAt": 1760000000000 }
+```
+
+- `kind` is `waiting` or `completed`. The AAD binds the box to that kind and to that pairing:
+  the server, which chooses the device and the kind, can neither hand a box to another phone
+  nor present one kind as the other.
+- `title` and `body` are rendered by the Mac, as its own notifications are; a `waiting` body is
+  the pending question, cut at about 180 characters, when the Mac knows it.
+- `sentAt` is the Mac's clock, in epoch milliseconds.
+
+### Server
+
+- The Mac sends `POST https://app.magic-slash.io/api/push` with
+  `Authorization: Bearer <Supabase access token>` and `{ "phoneId", "macId", "kind", "box" }`,
+  `box` in standard base64. It retries once, with a refreshed token, on a 401.
+- `push_devices` holds **one row per (user, phone, Mac)** pair: `apns_token`, `environment`,
+  `notify_waiting`, `notify_completed`, readable and writable by its owner only (RLS). The phone
+  inserts it on pairing and on unlock, and deletes it on forget, sign-out or when its keys are
+  invalidated; the Mac deletes its own row on revocation. The route refuses a pair with no row
+  and drops a kind the phone turned off.
+- It sends APNs:
+  ```json
+  {
+    "aps": {
+      "alert": { "title-loc-key": "<key>", "loc-key": "<key>" },
+      "mutable-content": 1, "sound": "default", "thread-id": "<phoneId>"
+    },
+    "ms": { "macId": "<uuid>", "box": "<b64>" }
+  }
+  ```
+  The `alert` holds localization keys only, no text: it is what iOS shows when the NSE does not
+  replace it.
+- **What the server learns:** the account, the (phone, Mac) pair, the kind and the time of
+  each notification. Never its text, nor which agent it is about.
+
+### Notification Service Extension
+
+The NSE reads `ms.macId`, loads `push-key.<macId>` and opens `ms.box` with the AAD rebuilt
+from the `phoneId` and `pairingId` stored with the key, trying `waiting` then `completed`: the
+kind is not in the payload, and the one the box opens under is the kind, which must match the
+box's own `kind`. It shows the box's `title` and `body`
+and puts `appAgentId` in `userInfo`, which a tap uses to open that agent. It falls back to the
+generic alert when:
+
+- there is no push key for that Mac;
+- the box does not open (AEAD failure, or a box for another kind or pairing);
+- `sentAt` is more than **15 minutes** old on the phone's clock, or not newer than the last
+  `sentAt` it accepted from that Mac (kept in the shared group). This is the one place the
+  phone compares the Mac's clock (§6): a notification is shown once, never ordered.
+
+The generic fallback is a **degraded case** (a key not yet received, a lost update, a skewed
+clock), never how a revoked phone is handled: revocation and forget remove both the
+`push_devices` row and the key, so nothing reaches that phone at all.

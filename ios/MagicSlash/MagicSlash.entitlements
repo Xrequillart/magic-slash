@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  aps-environment: Xcode signs a distribution build (TestFlight, App Store) with `production`
+  whatever this says; development builds get the APNs sandbox.
+
+  keychain-access-groups: the app's own group comes FIRST on purpose. The first entry is where an
+  item without an explicit group lands, and it is the application identifier every pairing item
+  was stored under before this list existed: they stay where they are. The `.shared` group holds
+  the push keys only, which the notification extension reads (Remote/Keychain.swift).
+-->
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)io.magic-slash.ios</string>
+		<string>$(AppIdentifierPrefix)io.magic-slash.ios.shared</string>
+	</array>
+</dict>
+</plist>

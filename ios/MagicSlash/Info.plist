@@ -9,6 +9,8 @@
 		<string>CeraPro-Bold.otf</string>
 		<string>CeraPro-Black.otf</string>
 	</array>
+	<key>KeychainSharedGroup</key>
+	<string>$(AppIdentifierPrefix)io.magic-slash.ios.shared</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>SupabaseAnonKey</key>

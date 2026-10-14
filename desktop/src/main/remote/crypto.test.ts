@@ -5,12 +5,15 @@ import {
   deriveKey,
   generateKeyPair,
   open,
+  openPush,
   pairingCode,
   privateKeyFromRaw,
   privateRawOf,
   publicKeyFromRaw,
   publicRawOf,
+  pushAad,
   seal,
+  sealPush,
   sign,
   verifySignature,
 } from './crypto'
@@ -56,6 +59,15 @@ describe('relay vectors', () => {
     const payload = Buffer.from(vectors.signedPayload, 'utf8')
     expect(verifySignature(hex(vectors.signPublic), payload, Buffer.from(vectors.signatureCryptoKit, 'base64'))).toBe(true)
   })
+
+  it('builds the push aad and reproduces the push box, whatever the uuid case', () => {
+    const kind = vectors.kind as 'waiting' | 'completed'
+    const aad = pushAad({ macId: vectors.macId.toUpperCase(), phoneId: vectors.phoneId, pairingId: vectors.pairingId, kind })
+    expect(aad.toString('utf8')).toBe(vectors.pushAad)
+    const box = sealPush(hex(vectors.pushKey), Buffer.from(vectors.pushPlaintext, 'utf8'), aad, hex(vectors.pushNonce))
+    expect(box.toString('base64')).toBe(vectors.pushBox)
+    expect(openPush(hex(vectors.pushKey), box, aad)?.toString('utf8')).toBe(vectors.pushPlaintext)
+  })
 })
 
 describe('verifySignature', () => {
@@ -100,6 +112,28 @@ describe('open', () => {
     expect(open(key, tampered, aad)).toBeNull()
     expect(open(Buffer.alloc(32), box, aad)).toBeNull()
     expect(open(key, box.subarray(0, 20), aad)).toBeNull()
+  })
+})
+
+describe('openPush', () => {
+  const key = hex(vectors.pushKey)
+  const box = Buffer.from(vectors.pushBox, 'base64')
+  const parts = { macId: vectors.macId, phoneId: vectors.phoneId, pairingId: vectors.pairingId, kind: 'waiting' as const }
+
+  it('refuses a box moved to another kind, pairing or phone', () => {
+    expect(openPush(key, box, pushAad({ ...parts, kind: 'completed' }))).toBeNull()
+    expect(openPush(key, box, pushAad({ ...parts, pairingId: vectors.header.epoch }))).toBeNull()
+    expect(openPush(key, box, pushAad({ ...parts, phoneId: vectors.macId }))).toBeNull()
+  })
+
+  it('refuses the pair key, a tampered box and a key of the wrong size', () => {
+    const aad = pushAad(parts)
+    expect(openPush(hex(vectors.key), box, aad)).toBeNull()
+    const tampered = Buffer.from(box)
+    tampered[20] ^= 1
+    expect(openPush(key, tampered, aad)).toBeNull()
+    expect(openPush(key.subarray(0, 16), box, aad)).toBeNull()
+    expect(() => sealPush(key.subarray(0, 16), Buffer.from('x'), aad)).toThrow()
   })
 })
 

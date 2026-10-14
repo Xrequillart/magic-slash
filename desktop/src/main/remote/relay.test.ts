@@ -28,6 +28,8 @@ const h = vi.hoisted(() => ({
   terminals: [] as unknown[],
   keychain: true,
   chats: new Map<string, unknown>(),
+  /** The `push_devices` deletes the client was asked for, as [[column, value], …]. */
+  pushDeletes: [] as [string, string][][],
 }))
 
 vi.mock('electron', () => ({
@@ -118,6 +120,24 @@ function makeClient() {
       return channel
     }),
     removeChannel: vi.fn().mockResolvedValue('ok'),
+    // PostgREST's builder, for the one call the relay makes: delete().eq().eq().
+    from: vi.fn((table: string) => ({
+      delete: () => {
+        const filters: [string, string][] = []
+        const builder = {
+          eq: (column: string, value: string) => {
+            filters.push([column, value])
+            if (filters.length === 2) {
+              expect(table).toBe('push_devices')
+              h.pushDeletes.push(filters)
+              return Promise.resolve({ error: null })
+            }
+            return builder
+          },
+        }
+        return builder
+      },
+    })),
     realtime: { setAuth: vi.fn() },
     auth: { onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
   }
@@ -198,6 +218,7 @@ beforeEach(async () => {
   h.userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   h.keychain = true
   h.chats.clear()
+  h.pushDeletes = []
   h.terminals = [
     { id: 'claude-1', name: 'Agent 1', state: 'working', metadata: { title: 'PROJ-12: refunds' } },
     { id: 'script-dev', name: 'dev', state: 'working', metadata: {} },
@@ -398,6 +419,26 @@ describe('remote mode on', () => {
     // And after a restart, from the file.
     await __resetRemoteRelayForTests()
     expect(getRemoteState().devices.map((d) => d.phoneId)).toEqual([kept.id])
+  })
+
+  it('a revoked phone\'s push row is deleted, and a failure there does not stop the revocation', async () => {
+    const { macId, phones } = seedPairedPhones()
+    const [first, second] = phones
+    await revokeRemoteDevice(first.id)
+    await tick()
+    expect(h.pushDeletes).toEqual([[['phone_id', first.id], ['mac_id', macId]]])
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      h.client.from.mockImplementation(() => {
+        throw new Error('offline')
+      })
+      const state = await revokeRemoteDevice(second.id)
+      expect(state.devices).toEqual([])
+      await tick()
+    } finally {
+      error.mockRestore()
+    }
+    expect(listDevices(h.userId!)).toEqual([])
   })
 
   it('pairs through the channel, ignoring envelopes addressed to another Mac', async () => {
@@ -1076,6 +1117,31 @@ describe('the conversation, read from a paired phone (§11)', () => {
     } finally {
       setRemoteCommandLister(null)
     }
+  })
+
+  it('stores a push key from a paired phone, and drops a replay, another pairing\'s or a malformed one', async () => {
+    const pushKey = (box: Record<string, unknown>, at: number, from = phone): RelayEnvelope =>
+      sealEnvelope({ type: 'push-key', from: from.id, to: macId, epoch: 'phone-epoch', seq: at }, phoneKey(from, macId, macPub), box)
+    const keyOf = (p: PairedPhone) => listDevices(h.userId!).find((d) => d.phoneId === p.id)?.pushKey
+    const first = crypto.randomBytes(32).toString('base64')
+    const second = crypto.randomBytes(32).toString('base64')
+
+    await send(pushKey({ pairingId: phone.pairingId, pushKey: 'c2hvcnQ=' }, 1))
+    await send(pushKey({ pairingId: crypto.randomUUID(), pushKey: first }, 2))
+    expect(keyOf(phone)).toBeUndefined()
+    await send(pushKey({ pairingId: phone.pairingId, pushKey: first }, 3))
+    expect(keyOf(phone)).toBe(first)
+    expect(keyOf(other)).toBeUndefined()
+    // A replay of an older seq changes nothing; a newer key replaces the old one.
+    await send(pushKey({ pairingId: phone.pairingId, pushKey: second }, 3))
+    expect(keyOf(phone)).toBe(first)
+    await send(pushKey({ pairingId: phone.pairingId, pushKey: second }, 4))
+    expect(keyOf(phone)).toBe(second)
+    // No answer of any kind goes back.
+    expect(sentOn(h.channels[0]).filter((e) => e.to === phone.id && e.type !== 'state')).toEqual([])
+    // The key goes with the device.
+    await revokeRemoteDevice(phone.id)
+    expect(keyOf(phone)).toBeUndefined()
   })
 
   it('a revoked phone is sent nothing more', async () => {

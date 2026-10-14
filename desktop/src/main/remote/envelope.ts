@@ -16,6 +16,7 @@ const RELAY_MESSAGE_TYPES = [
   'chat',
   'state-request',
   'commands',
+  'push-key',
 ] as const
 
 export type RelayMessageType = (typeof RELAY_MESSAGE_TYPES)[number]

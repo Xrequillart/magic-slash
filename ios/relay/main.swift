@@ -76,4 +76,17 @@ check(RelayCrypto.verify(signature: swiftSignature, message: signedPayload, publ
 let pinned = Data(base64Encoded: v["signatureCryptoKit"] as! String)!
 check(RelayCrypto.verify(signature: pinned, message: signedPayload, publicKey: signPub),
   "the pinned CryptoKit signature verifies (crypto.test.ts checks it in Node)")
+
+let pushKey = SymmetricKey(data: hex(v["pushKey"] as! String))
+let pushAAD = RelayCrypto.pushAAD(macId: macId.uppercased(), phoneId: phoneId, pairingId: v["pairingId"] as! String, kind: v["kind"] as! String)
+check(String(data: pushAAD, encoding: .utf8) == v["pushAad"] as? String, "push aad matches, whatever the uuid case")
+let pushBox = Data(base64Encoded: v["pushBox"] as! String)!
+check(RelayCrypto.openPush(pushBox, pushKey: pushKey, aad: pushAAD).flatMap { String(data: $0, encoding: .utf8) } == v["pushPlaintext"] as? String,
+  "Node push box opens in Swift")
+check(RelayCrypto.openPush(pushBox, pushKey: pushKey, aad: RelayCrypto.pushAAD(macId: macId, phoneId: phoneId, pairingId: v["pairingId"] as! String, kind: "completed")) == nil,
+  "a push box moved to another kind is refused")
+check(RelayCrypto.openPush(pushBox, pushKey: fromPhone, aad: pushAAD) == nil, "the pair key does not open a push box")
+let pushResealed = try! RelayCrypto.sealPush(Data((v["pushPlaintext"] as! String).utf8), pushKey: pushKey, aad: pushAAD,
+                                             nonce: try! AES.GCM.Nonce(data: hex(v["pushNonce"] as! String)))
+check(pushResealed == pushBox, "Swift sealPush reproduces the Node push box")
 print("relay vectors: all good")

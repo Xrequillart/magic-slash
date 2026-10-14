@@ -36,6 +36,27 @@ enum RelayCrypto {
     return try? AES.GCM.open(box, using: key, authenticating: aad)
   }
 
+  /// `push-v1|macId|phoneId|pairingId|kind` in UTF-8, ids lower-cased: binds a push box to
+  /// one pairing and one kind (`waiting` or `completed`), so the server that relays it can
+  /// neither hand it to another phone nor change what it announces.
+  static func pushAAD(macId: String, phoneId: String, pairingId: String, kind: String) -> Data {
+    Data("push-v1|\(macId.lowercased())|\(phoneId.lowercased())|\(pairingId.lowercased())|\(kind)".utf8)
+  }
+
+  /// A push box: `seal`'s layout under the pairing's 32-byte push key, which the phone draws
+  /// and the notification extension reads without biometry. The app never seals one; this is
+  /// here so the check script proves the layout matches Node's.
+  static func sealPush(_ plaintext: Data, pushKey: SymmetricKey, aad: Data, nonce: AES.GCM.Nonce = AES.GCM.Nonce()) throws -> Data {
+    guard pushKey.bitCount == 256 else { throw CryptoKitError.incorrectKeySize }
+    return try seal(plaintext, key: pushKey, aad: aad, nonce: nonce)
+  }
+
+  /// Nil on any failure, like `open`; a key that is not 32 bytes is one.
+  static func openPush(_ combined: Data, pushKey: SymmetricKey, aad: Data) -> Data? {
+    guard pushKey.bitCount == 256 else { return nil }
+    return open(combined, key: pushKey, aad: aad)
+  }
+
   /// Whether `signature` (CryptoKit's `rawRepresentation`, `r‖s`, 64 bytes) is an ECDSA
   /// P-256 / SHA-256 signature of `message` by `publicKey` (X9.63). The phone never needs to
   /// verify a command; this is here so the check script proves Node accepts what CryptoKit

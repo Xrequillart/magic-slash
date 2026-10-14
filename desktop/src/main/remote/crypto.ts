@@ -117,6 +117,49 @@ export function open(key: Buffer, combined: Buffer, aad: Buffer): Buffer | null 
   }
 }
 
+export type PushKind = 'waiting' | 'completed'
+
+/** What a push box holds (`PROTOCOL.md` §14): the text the notification shows, already rendered by the Mac. */
+export interface PushPayload {
+  kind: PushKind
+  appAgentId: string
+  title: string
+  body: string
+  /** Ms epoch; the extension drops a box older than 15 min or not newer than the last one seen. */
+  sentAt: number
+}
+
+export interface PushAadParts {
+  macId: string
+  phoneId: string
+  pairingId: string
+  kind: PushKind
+}
+
+/**
+ * `push-v1|macId|phoneId|pairingId|kind` in UTF-8, ids lower-cased like the HKDF salt. It
+ * binds a push box to one pairing and one kind: the server, which picks the device and the
+ * kind, cannot replay a box to another phone nor pass a "completed" off as a "waiting".
+ */
+export function pushAad(p: PushAadParts): Buffer {
+  return Buffer.from(`push-v1|${p.macId.toLowerCase()}|${p.phoneId.toLowerCase()}|${p.pairingId.toLowerCase()}|${p.kind}`, 'utf8')
+}
+
+/**
+ * A push box: the same AES-256-GCM layout as `seal`, under the pairing's push key (32 random
+ * bytes the phone chose, not the relay key), so the extension can open it without biometry.
+ */
+export function sealPush(pushKey: Buffer, plaintext: Buffer, aad: Buffer, nonce?: Buffer): Buffer {
+  if (pushKey.length !== 32) throw new Error('relay: a push key is 32 bytes')
+  return seal(pushKey, plaintext, aad, nonce)
+}
+
+/** Null on any failure, like `open`; a key of the wrong size is one. */
+export function openPush(pushKey: Buffer, combined: Buffer, aad: Buffer): Buffer | null {
+  if (pushKey.length !== 32) return null
+  return open(pushKey, combined, aad)
+}
+
 const SIGNATURE_BYTES = 64
 
 /**

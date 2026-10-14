@@ -28,7 +28,8 @@ import {
 } from '../pty/terminal-manager'
 import { readEmojiCompletion } from '../claude-emoji-completion'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
-import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
+import { agentNotification, subjectOf } from '../notifications/agent-message'
+import { clearRemotePushCooldown, sendRemotePush } from '../remote/push'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import { resumableSession } from '../pty/resume-session'
 import {
@@ -379,19 +380,6 @@ export function createBaseCallbacks(id: string, windowGetter: () => BrowserWindo
   }
 }
 
-/**
- * What a notification needs to name this agent. `name` is the creation name and the
- * last resort — see agent-message.ts for why it cannot stand on its own.
- */
-function subjectOf(terminal: ReturnType<typeof getTerminal>, name: string): AgentSubjectInput {
-  return {
-    ticketId: terminal?.metadata?.ticketId,
-    title: terminal?.metadata?.title,
-    name,
-    repositories: terminal?.repositories,
-  }
-}
-
 function createTerminalCallbacks(id: string, name: string) {
   const base = createBaseCallbacks(id, getMainWindow)
   return {
@@ -403,9 +391,15 @@ function createTerminalCallbacks(id: string, name: string) {
       const t = getTerminal(id)
       const displayName = t?.metadata?.title || name
 
+      // Answered: the next question is a new one, and must ring the phone even within 30 s.
+      if (previousState === 'waiting' && state !== 'waiting') clearRemotePushCooldown(id, 'waiting')
+
       if (state === 'waiting' && previousState !== 'waiting') {
         const waiting = agentNotification(translate, 'waiting', subjectOf(t, name))
         maybeShowNotification(id, waiting.title, waiting.body, 'agentWaiting')
+        // The paired phones, whatever the window's focus and the desktop's own settings:
+        // the person is away from this screen, which is the whole point (push.ts).
+        void sendRemotePush(id, 'waiting')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,
@@ -435,6 +429,7 @@ function createTerminalCallbacks(id: string, name: string) {
       if (state === 'completed' && previousState !== 'completed') {
         const finished = agentNotification(translate, 'completed', subjectOf(t, name))
         maybeShowNotification(id, finished.title, finished.body, 'agentCompleted')
+        void sendRemotePush(id, 'completed')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,

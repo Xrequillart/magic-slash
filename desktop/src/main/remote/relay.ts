@@ -20,6 +20,7 @@ import {
   loadOrCreateIdentity,
   removeDevice,
   saveGeneration,
+  setDevicePushKey,
   type RemoteIdentity,
   type StoredRemoteDevice,
 } from './identity-store'
@@ -133,6 +134,16 @@ const chatLeases = new ChatLeases()
 const chatRequestSeen = new Map<string, { epoch: string; seq: number }>()
 /** The same, for `state-request` (§12). */
 const stateRequestSeen = new Map<string, { epoch: string; seq: number }>()
+/** The same, for `push-key` (§14). */
+const pushKeySeen = new Map<string, { epoch: string; seq: number }>()
+
+/** Anti-replay for a phone → Mac message: true (and recorded) only when its seq moves forward. */
+function acceptSeq(seen: Map<string, { epoch: string; seq: number }>, phoneId: string, envelope: RelayEnvelope): boolean {
+  const last = seen.get(phoneId)
+  if (last && last.epoch === envelope.epoch && envelope.seq <= last.seq) return false
+  seen.set(phoneId, { epoch: envelope.epoch, seq: envelope.seq })
+  return true
+}
 
 let client: SupabaseClient | null = null
 let channel: RealtimeChannel | null = null
@@ -283,6 +294,7 @@ function forgetAccount(): void {
   chatLeases.clear()
   chatRequestSeen.clear()
   stateRequestSeen.clear()
+  pushKeySeen.clear()
   heldResults.length = 0
 }
 
@@ -449,6 +461,7 @@ function handleIncoming(payload: unknown): void {
   else if (envelope.type === 'command') void handleCommand(envelope)
   else if (envelope.type === 'chat-request') handleChatRequest(envelope)
   else if (envelope.type === 'state-request') handleStateRequest(envelope)
+  else if (envelope.type === 'push-key') handlePushKey(envelope)
 }
 
 /**
@@ -474,11 +487,46 @@ function handleStateRequest(envelope: RelayEnvelope): void {
   if (!device || !key) return
   const box = openEnvelope(envelope, key)
   if (!box || typeof box !== 'object' || (box as { pairingId?: unknown }).pairingId !== device.pairingId) return
-  const seen = stateRequestSeen.get(device.phoneId)
-  if (seen && seen.epoch === envelope.epoch && envelope.seq <= seen.seq) return
-  stateRequestSeen.set(device.phoneId, { epoch: envelope.epoch, seq: envelope.seq })
+  if (!acceptSeq(stateRequestSeen, device.phoneId, envelope)) return
   logRelayEvent(`state-request from phone:${device.phoneId}`)
   scheduler?.notifyPresenceJoin()
+}
+
+/** 32 bytes in standard base64, padded: the only form a push key travels in (§14). */
+const PUSH_KEY_RE = /^[A-Za-z0-9+/]{43}=$/
+
+/**
+ * A phone hands this Mac its push key for the pairing (§14), after every unlock of its app.
+ * The same checks as any phone → Mac message: a paired phone, a box that opens with its key,
+ * its current `pairingId`, and a seq that moves forward. The key is then stored with the
+ * device, replacing an earlier one; the same key again writes nothing. No answer either way.
+ */
+function handlePushKey(envelope: RelayEnvelope): void {
+  const self = identity
+  const account = userId
+  if (!self || !account) return
+  const device = self.devices.find((d) => d.phoneId === envelope.from)
+  const key = device && pairKey(device)
+  if (!device || !key) return
+  const box = openEnvelope(envelope, key)
+  if (!box || typeof box !== 'object') return
+  const { pairingId, pushKey } = box as Record<string, unknown>
+  if (pairingId !== device.pairingId || typeof pushKey !== 'string' || !PUSH_KEY_RE.test(pushKey)) return
+  if (!acceptSeq(pushKeySeen, device.phoneId, envelope)) return
+  if (device.pushKey === pushKey) return
+  try {
+    setDevicePushKey(account, device.phoneId, device.pairingId, pushKey)
+  } catch (error) {
+    // The phone sends it again at its next unlock; until then it gets no notification.
+    console.error('[remote] failed to store a push key:', error instanceof Error ? error.name : 'unknown error')
+    return
+  }
+  // Onto the record in memory only if it is still that pairing's: revoked or paired again
+  // meanwhile, the key belongs to nothing here.
+  if (identity === self) {
+    self.devices = self.devices.map((d) => (d.phoneId === device.phoneId && d.pairingId === device.pairingId ? { ...d, pushKey } : d))
+  }
+  logRelayEvent(`push-key from phone:${device.phoneId}`)
 }
 
 /**
@@ -500,9 +548,7 @@ function handleChatRequest(envelope: RelayEnvelope): void {
   if (!box || typeof box !== 'object') return
   const { pairingId, appAgentId, commands: wantsCommands } = box as Record<string, unknown>
   if (pairingId !== device.pairingId || typeof appAgentId !== 'string') return
-  const seen = chatRequestSeen.get(device.phoneId)
-  if (seen && seen.epoch === envelope.epoch && envelope.seq <= seen.seq) return
-  chatRequestSeen.set(device.phoneId, { epoch: envelope.epoch, seq: envelope.seq })
+  if (!acceptSeq(chatRequestSeen, device.phoneId, envelope)) return
   if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) {
     chatLeases.forget(device.phoneId)
     return
@@ -981,6 +1027,10 @@ export function revokeRemoteDevice(phoneId: string): Promise<RemoteState> {
       self.devices = self.devices.filter((d) => d.phoneId !== phoneId)
       pairKeys.delete(phoneId)
       chatLeases.forget(phoneId)
+      pushKeySeen.delete(phoneId)
+      // Not awaited: the server's row is the phone's to clean up too, and revoking must
+      // not wait on (or fail with) the network.
+      void forgetPushDevice(phoneId, self.macId)
       try {
         removeDevice(uid, phoneId)
       } finally {
@@ -989,6 +1039,22 @@ export function revokeRemoteDevice(phoneId: string): Promise<RemoteState> {
     }
     return getRemoteState()
   })
+}
+
+/**
+ * Delete this pair's `push_devices` row (§8, §14), so the server stops relaying to that phone
+ * at once. Best effort: a failure is logged and the revocation stands all the same, since the
+ * push key goes with the device and nothing sealed from here would open anyway.
+ */
+async function forgetPushDevice(phoneId: string, macId: string): Promise<void> {
+  try {
+    const c = await getAuthedClient()
+    if (!c) return
+    const { error } = await c.from('push_devices').delete().eq('phone_id', phoneId).eq('mac_id', macId)
+    if (error) console.error('[remote] failed to delete the push row of a revoked phone:', error.code ?? 'unknown error')
+  } catch (error) {
+    console.error('[remote] failed to delete the push row of a revoked phone:', error instanceof Error ? error.name : 'unknown error')
+  }
 }
 
 /** Test seam: forget every module-level value, as at a cold launch. */

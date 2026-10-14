@@ -1,13 +1,17 @@
 import SwiftUI
+import UserNotifications
 
 /// The account menu, laid out as a settings screen: the user's card on top, then the
 /// iPhone's own settings, its link to the Macs, the app's version, and signing out.
 ///
 /// Only the iPhone's settings live here (`AppPreferences`). The desktop's are changed on the
-/// desktop; the iPhone follows the three it needs (`DesktopSettingsStore`).
+/// desktop; the iPhone follows the three it needs (`DesktopSettingsStore`). The notification
+/// toggles are the exception: they live in this phone's `push_devices` rows, which the server
+/// reads before sending, and nowhere else.
 struct SettingsView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.scenePhase) private var scenePhase
 
   let relay: RelayStore
   let profile: ProfileStore
@@ -18,6 +22,10 @@ struct SettingsView: View {
   @AppStorage(AppPreferences.themeKey) private var themeChoice = "desktop"
   @State private var path: [Page] = []
   @State private var confirmingSignOut = false
+  /// iOS's answer to the permission prompt, nil until read.
+  @State private var notificationStatus: UNAuthorizationStatus?
+  /// The two toggles as this phone's rows hold them, nil while unread or when there is no row.
+  @State private var notify: PushRegistration.Preferences?
 
   enum Page: Hashable {
     case macs
@@ -61,6 +69,8 @@ struct SettingsView: View {
         } header: {
           header("App")
         }
+
+        notificationsSection
 
         Section {
           Button {
@@ -119,6 +129,11 @@ struct SettingsView: View {
         case .theme: ThemePicker(choiceRaw: $themeChoice)
         }
       }
+      .task { await loadNotifications() }
+      // Back from the Settings app, where the permission may have changed.
+      .onChange(of: scenePhase) { _, phase in
+        if phase == .active { Task { await loadNotifications() } }
+      }
       .confirmationDialog("Sign out of Magic Slash?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
         Button("Sign out", role: .destructive) {
           Haptics.destructive()
@@ -127,6 +142,94 @@ struct SettingsView: View {
       }
     }
     .presentationBackground(theme.bg)
+  }
+
+  // MARK: - Notifications
+
+  private var notificationsSection: some View {
+    Section {
+      Button {
+        Haptics.tap()
+        if notificationStatus == .notDetermined {
+          Task {
+            await PushAuthorization.requestAndRegister()
+            await loadNotifications()
+          }
+        } else if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+          UIApplication.shared.open(url)
+        }
+      } label: {
+        NavigationRow(title: "Notifications", systemImage: "bell", value: notificationSummary, external: notificationStatus != .notDetermined)
+      }
+      .buttonStyle(.plain)
+      .listRowBackground(theme.surface)
+
+      if notify != nil {
+        Toggle(isOn: notifyBinding(waiting: true)) {
+          RowLabel(title: "Agent waiting", systemImage: "hourglass")
+        }
+        .tint(theme.accent)
+        .listRowBackground(theme.surface)
+
+        Toggle(isOn: notifyBinding(waiting: false)) {
+          RowLabel(title: "Agent finished", systemImage: "checkmark.circle")
+        }
+        .tint(theme.accent)
+        .listRowBackground(theme.surface)
+      }
+    } header: {
+      header("Notifications")
+    } footer: {
+      if notify == nil {
+        // Two `Text`s, not one over a ternary: a `String` would skip the translation.
+        (relay.macs.isEmpty
+          ? Text("Pair a Mac to be notified when its agents need you.")
+          : Text("The choices appear once this iPhone is registered with your Macs."))
+          .font(.cera(.footnote))
+          .foregroundStyle(theme.textSecondary)
+      }
+    }
+  }
+
+  /// What iOS allows, as the row shows it.
+  private var notificationSummary: Text {
+    switch notificationStatus {
+    case .authorized, .provisional, .ephemeral: Text("On")
+    case .denied: Text("Off")
+    case .notDetermined: Text("Turn on")
+    default: Text(verbatim: "")
+    }
+  }
+
+  /// One toggle, written to every row of this phone. Shown at once, put back if the write fails.
+  private func notifyBinding(waiting: Bool) -> Binding<Bool> {
+    Binding {
+      guard let notify else { return true }
+      return waiting ? notify.waiting : notify.completed
+    } set: { value in
+      guard let previous = notify else { return }
+      var next = previous
+      if waiting { next.waiting = value } else { next.completed = value }
+      notify = next
+      Task {
+        do {
+          try await relay.push.setPreferences(next)
+        } catch {
+          relay.log("notification setting not saved: \(error.localizedDescription)")
+          if notify == next { notify = previous }
+        }
+      }
+    }
+  }
+
+  private func loadNotifications() async {
+    notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    do {
+      notify = try await relay.push.preferences()
+    } catch {
+      // Kept as shown: a failed read is no reason to hide the toggles already there.
+      relay.log("notification settings not read: \(error.localizedDescription)")
+    }
   }
 
   /// How many Macs, and how many of them are online.

@@ -15,7 +15,8 @@ grow into the web dashboard (settings, stats).
 ```bash
 cd webapp
 cp .env.local.example .env.local   # fill NEXT_PUBLIC_SUPABASE_ANON_KEY
-                                   # (and the ATLASSIAN_* pair to work on /api/atlassian/*)
+                                   # (and the ATLASSIAN_* pair to work on /api/atlassian/*,
+                                   #  the APNS_* four to work on /api/push)
 npm install
 npm run dev                        # http://localhost:3000
 ```
@@ -28,11 +29,22 @@ npm run dev                        # http://localhost:3000
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Publishable/anon key — RLS-protected, browser-safe |
 | `ATLASSIAN_CLIENT_ID` | Atlassian OAuth 2.0 (3LO) app id, from the [developer console](https://developer.atlassian.com/console). Public value, but kept server-side alongside the secret |
 | `ATLASSIAN_CLIENT_SECRET` | Its client secret. **Server-only — never `NEXT_PUBLIC_*`**, which would inline it into the browser bundle |
+| `APNS_KEY_P8` | APNs auth key (`.p8`) from Apple Developer → Keys. **Server-only.** The PEM as is, with its newlines escaped as `\n`, or its bare base64 body |
+| `APNS_KEY_ID` | That key's 10-character Key ID |
+| `APNS_TEAM_ID` | The Apple Developer Team ID |
+| `APNS_TOPIC` | The iOS app's bundle id, `io.magic-slash.ios` |
 
 `/api/atlassian/token` hard-requires the two Atlassian variables: without both it
 answers `500 { "error": "server_not_configured" }` and the desktop app can never
 complete a connection. They live here rather than in the desktop app because an
 Electron binary on a laptop cannot hold a secret — see `lib/atlassianState.ts`.
+
+`/api/push` hard-requires the four `APNS_*` variables the same way (`500
+server_not_configured`). It relays the iPhone companion's notifications: the Mac
+posts a box sealed end to end, the route checks the caller's `push_devices` row
+under RLS with the caller's own JWT (no service role) and forwards the box to
+APNs. The contract is at the top of `app/api/push/route.ts`, the pure part in
+`lib/apns.ts`.
 
 ## Routes
 
@@ -104,4 +116,6 @@ Electron binary on a laptop cannot hold a secret — see `lib/atlassianState.ts`
   required; the two `ATLASSIAN_*` ones are required only for the desktop app's
   Atlassian account connection, and `/api/atlassian/token` answers
   `500 server_not_configured` until both are set
+- The four `APNS_*` ones are required only for the iPhone companion's push
+  notifications; `/api/push` answers `500 server_not_configured` until all four are set
 - Domain: `app.magic-slash.io`
