@@ -20,7 +20,7 @@ struct PromptComposer: View {
   var compact = false
 
   @State private var text = ""
-  @FocusState private var focused: Bool
+  @State private var focused = false
   /// Set by a send, which leaves the field after its own haptic.
   @State private var quietBlur = false
 
@@ -47,9 +47,7 @@ struct PromptComposer: View {
       }
 
       HStack(alignment: .bottom, spacing: 8) {
-        PromptField(text: $text, known: Set(commands.map(\.name)))
-          .focused($focused)
-          .disabled(sending)
+        PromptField(text: $text, focused: $focused, known: Set(commands.map(\.name)), editable: !sending)
           .padding(.horizontal, 16)
           .padding(.vertical, 10)
           // Cera sits high on its line: the field's own box is centred, then nudged so

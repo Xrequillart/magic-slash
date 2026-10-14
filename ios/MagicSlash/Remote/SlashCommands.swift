@@ -146,39 +146,28 @@ struct SlashCommandMenu: View {
 
 /// The prompt's text field, with every known command written in it painted blue.
 ///
-/// A SwiftUI text field takes one colour, so the field always draws its text clear and the
-/// same text is laid over it, coloured. Always, not only while a command is written: a field
-/// switched from clear back to a colour keeps the characters typed meanwhile clear, and the
-/// prompt went invisible once its slash was deleted. Past six lines the field scrolls to
-/// keep the caret in view, at the end as one types: the copy shows its last lines then.
+/// A UIKit text view rather than a SwiftUI field: a SwiftUI field takes one colour, and
+/// laying a coloured copy over a clear field never lines up exactly (the two engines break
+/// lines differently, and the caret landed mid-word). Here the one text carries its colours.
+/// It grows with its text up to six lines, then scrolls.
 struct PromptField: View {
   @Environment(\.theme) private var theme
   @Binding var text: String
+  @Binding var focused: Bool
   let known: Set<String>
-
-  @State private var fieldHeight: CGFloat = 0
-  @State private var copyHeight: CGFloat = 0
+  var editable = true
 
   var body: some View {
-    TextField(text: $text, prompt: Text("Message Claude").foregroundStyle(theme.textSecondary), axis: .vertical) {
-      Text("Message Claude")
-    }
-    .font(.cera(.body))
-    .foregroundStyle(Color.clear)
-    .tint(theme.accent)
-    .lineLimit(1...6)
-    .onGeometryChange(for: CGFloat.self, of: \.size.height) { fieldHeight = $0 }
-    .overlay(alignment: .topLeading) {
-      Text(colored(SlashCommands.commandRanges(in: text, known: known)))
-        .font(.cera(.body))
-        .lineSpacing(Self.fieldLeading)
-        .fixedSize(horizontal: false, vertical: true)
-        .onGeometryChange(for: CGFloat.self, of: \.size.height) { copyHeight = $0 }
-        .frame(height: fieldHeight, alignment: copyHeight > fieldHeight + 1 ? .bottomLeading : .topLeading)
-        .clipped()
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
+    PromptTextView(text: $text, focused: $focused, known: known, editable: editable, ink: UIColor(theme.ink), command: UIColor(theme.blue), caret: UIColor(theme.accent))
+      .overlay(alignment: .topLeading) {
+        if text.isEmpty {
+          Text("Message Claude")
+            .font(.cera(.body))
+            .foregroundStyle(theme.textSecondary)
+            .lineLimit(1)
+            .allowsHitTesting(false)
+        }
+      }
   }
 
   /// How far to move the field down so its first line's capitals sit in the middle of the
@@ -189,22 +178,110 @@ struct PromptField: View {
     let font = Cera.uiFont(.body, weight: .regular, size: Cera.size(for: .body))
     return (font.lineHeight + font.leading) / 2 - (font.ascender - font.capHeight / 2)
   }
+}
 
-  /// The text field lays Cera's lines out with the font's own leading, which a `Text` leaves
-  /// out: the copy adds it back, or its second line would ride up over the field's.
-  private static var fieldLeading: CGFloat {
-    Cera.uiFont(.body, weight: .regular, size: Cera.size(for: .body)).leading
+/// The text view behind `PromptField`.
+private struct PromptTextView: UIViewRepresentable {
+  @Binding var text: String
+  @Binding var focused: Bool
+  let known: Set<String>
+  let editable: Bool
+  let ink: UIColor
+  let command: UIColor
+  let caret: UIColor
+
+  static let maxLines = 6
+
+  static var font: UIFont {
+    Cera.uiFont(.body, weight: .regular, size: Cera.size(for: .body))
   }
 
-  private func colored(_ ranges: [Range<String.Index>]) -> AttributedString {
-    var string = AttributedString(text)
-    string.foregroundColor = theme.ink
-    for range in ranges {
-      guard let lower = AttributedString.Index(range.lowerBound, within: string),
-            let upper = AttributedString.Index(range.upperBound, within: string)
-      else { continue }
-      string[lower..<upper].foregroundColor = theme.blue
+  func makeUIView(context: Context) -> UITextView {
+    let view = UITextView()
+    view.delegate = context.coordinator
+    view.backgroundColor = .clear
+    view.textContainerInset = .zero
+    view.textContainer.lineFragmentPadding = 0
+    view.adjustsFontForContentSizeCategory = true
+    view.isScrollEnabled = false
+    view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    return view
+  }
+
+  func updateUIView(_ view: UITextView, context: Context) {
+    context.coordinator.parent = self
+    view.tintColor = caret
+    view.isEditable = editable
+    view.typingAttributes = [.font: Self.font, .foregroundColor: ink]
+    if view.text != text {
+      // Changed from outside (a command picked, a prompt sent): the caret goes to the end,
+      // after what was written for the user.
+      view.text = text
+      view.selectedRange = NSRange(location: (text as NSString).length, length: 0)
     }
-    return string
+    paint(view)
+    // Focus follows the binding, a turn later: becoming first responder mid-update warns.
+    if focused != view.isFirstResponder {
+      DispatchQueue.main.async {
+        if focused, !view.isFirstResponder { view.becomeFirstResponder() }
+        else if !focused, view.isFirstResponder { view.resignFirstResponder() }
+      }
+    }
+  }
+
+  func sizeThatFits(_ proposal: ProposedViewSize, uiView view: UITextView, context: Context) -> CGSize? {
+    let width = proposal.width ?? 300
+    let fits = view.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+    let cap = Self.height(lines: Self.maxLines, width: width)
+    let scrolls = fits > cap + 0.5
+    if view.isScrollEnabled != scrolls {
+      DispatchQueue.main.async { view.isScrollEnabled = scrolls }
+    }
+    return CGSize(width: width, height: min(fits, cap))
+  }
+
+  /// How tall `lines` lines of the font are, laid out as the view lays them.
+  private static func height(lines: Int, width: CGFloat) -> CGFloat {
+    let probe = UITextView()
+    probe.textContainerInset = .zero
+    probe.textContainer.lineFragmentPadding = 0
+    probe.font = font
+    probe.text = Array(repeating: "M", count: lines).joined(separator: "\n")
+    return probe.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+  }
+
+  /// Ink everywhere, blue on the known commands. Left alone while the keyboard composes
+  /// (a dictation, a Japanese input): restyling would cut the composition short.
+  private func paint(_ view: UITextView) {
+    guard view.markedTextRange == nil else { return }
+    let storage = view.textStorage
+    let whole = NSRange(location: 0, length: storage.length)
+    storage.beginEditing()
+    storage.addAttributes([.font: Self.font, .foregroundColor: ink], range: whole)
+    for range in SlashCommands.commandRanges(in: view.text, known: known) {
+      storage.addAttribute(.foregroundColor, value: command, range: NSRange(range, in: view.text))
+    }
+    storage.endEditing()
+  }
+
+  func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+  final class Coordinator: NSObject, UITextViewDelegate {
+    var parent: PromptTextView
+
+    init(parent: PromptTextView) { self.parent = parent }
+
+    func textViewDidChange(_ view: UITextView) {
+      parent.text = view.text
+      parent.paint(view)
+    }
+
+    func textViewDidBeginEditing(_ view: UITextView) {
+      if !parent.focused { parent.focused = true }
+    }
+
+    func textViewDidEndEditing(_ view: UITextView) {
+      if parent.focused { parent.focused = false }
+    }
   }
 }
