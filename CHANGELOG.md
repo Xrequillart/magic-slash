@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.124.1] - 2026-10-14
+
+### Added
+
+- **Desktop**: Overlap a tool run's marks on white discs, as ds components
+
+### Changed
+
+- **Desktop**: Show tool marks and their stack on the design system page
+
 ## [0.124.0] - 2026-10-14
 
 ### Added
@@ -4143,6 +4153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.124.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.1
 [0.124.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.0
 [0.123.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.3
 [0.123.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.2
