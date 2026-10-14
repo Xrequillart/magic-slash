@@ -337,6 +337,16 @@
         }
       }
     },
+    "Claude is working…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude travaille…"
+          }
+        }
+      }
+    },
     "Close" : {
       "localizations" : {
         "fr" : {

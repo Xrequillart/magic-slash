@@ -107,6 +107,10 @@ struct AgentSessionView: View {
             QuestionCard(relay: relay, runtime: runtime, question: question, appAgentId: appAgentId)
               .id(question.token)
           }
+          if chat != nil, runtime?.state == "working", runtime?.question == nil {
+            WorkingLine()
+              .transition(.opacity)
+          }
           Color.clear.frame(height: 1).id(Self.bottom)
             .background {
               GeometryReader { marker in

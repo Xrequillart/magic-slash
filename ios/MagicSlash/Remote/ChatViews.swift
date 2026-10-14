@@ -234,6 +234,26 @@ private struct ToolLine: View {
   }
 }
 
+/// "Claude is working…" under the thread while a turn runs, as the desktop chat shows it: the
+/// wave in a tool line's mark column, at its height.
+struct WorkingLine: View {
+  @Environment(\.theme) private var theme
+
+  var body: some View {
+    HStack(spacing: 8) {
+      WaveLoader(size: 14)
+        .foregroundStyle(theme.accent)
+      Text("Claude is working…")
+        .font(.cera(.footnote))
+        .foregroundStyle(theme.textSecondary.opacity(0.7))
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+  }
+}
+
 /// A run of tool calls on one line (`toolDetail: grouped`): how many, which tools, and how
 /// the run is going. A tap opens it on its own lines.
 private struct ToolGroup: View {
