@@ -303,7 +303,10 @@ describe('remote mode off', () => {
     try {
       ;(h.channels[0].subscribe.mock.calls[0][0] as (s: string) => void)('CLOSED')
       expect(getRemoteState().status).toBe('reconnecting')
-      await vi.advanceTimersByTimeAsync(15_000)
+      // Not the first join's 15 s: realtime-js never recovers a dropped channel itself.
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(h.client.removeChannel).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1_000)
       expect(h.client.removeChannel).toHaveBeenCalledWith(h.channels[0])
       await resumeRemoteRelay()
       expect(h.client.channel).toHaveBeenCalledTimes(2)
@@ -706,6 +709,28 @@ describe('commands from a paired phone', () => {
     const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as OpenedSnapshot
     expect(snapshot.agents[0].question).toMatchObject({ token: question.token, kind: 'ask', unsupported: false })
     expect(snapshot.agents[0].question?.questions).toHaveLength(1)
+  })
+
+  it('a result that finishes while the relay is down reaches the phone on the next join', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    vi.useFakeTimers()
+    try {
+      ;(h.channels[0].subscribe.mock.calls[0][0] as (s: string) => void)('CHANNEL_ERROR')
+      broadcast(h.channels[0], command(phone, { token: question.token, choice: { kind: 'option', index: 1 } }))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(typed).toEqual([['claude-1', '\x1b[B'], ['claude-1', '\r']])
+      expect(results(phone)).toEqual([])
+      await vi.advanceTimersByTimeAsync(3_000)
+      await resumeRemoteRelay()
+      ;(h.channels[1].subscribe.mock.calls[0][0] as (s: string) => void)('SUBSCRIBED')
+      await vi.advanceTimersByTimeAsync(0)
+      const replies = sentOn(h.channels[1])
+        .filter((e) => e.type === 'command-result' && e.to === phone.id)
+        .map((e) => openEnvelope(e, phoneKey(phone, macId, macPub)))
+      expect(replies).toEqual([{ pairingId: phone.pairingId, commandId: expect.any(String), ok: true }])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('types the chosen option into the agent\'s terminal and tells the phone it landed', async () => {
