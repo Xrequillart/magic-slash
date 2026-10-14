@@ -9,6 +9,7 @@ import { getAllTerminals } from '../pty/terminal-manager'
 import { getPendingQuestion } from '../questions/pending-questions'
 import { getChatSnapshot } from '../chat/transcript-watcher'
 import { ChatLeases, toRelayChat } from './chat'
+import { toRelayCommands, type ListingRow } from './command-list'
 import { CommandGate, type CommandOutcome, type RemoteCommand } from './commands'
 import { privateKeyFromRaw, publicRawOf, deriveKey } from './crypto'
 import { openEnvelope, parseEnvelope, sealEnvelope, type RelayEnvelope, type RelayMessageType } from './envelope'
@@ -90,6 +91,16 @@ let stopper: RemoteStopper | null = null
 /** Wire the path a verified `stop` command takes (§10 step 9). Pass null to clear. */
 export function setRemoteStopper(next: RemoteStopper | null): void {
   stopper = next
+}
+
+/** Lists the skills and commands on disk: main/index.ts's, over skills-listing.ts. */
+export type RemoteCommandLister = () => readonly ListingRow[]
+
+let commandLister: RemoteCommandLister | null = null
+
+/** Wire where the `/` commands a phone suggests come from (§13). Pass null to clear. */
+export function setRemoteCommandLister(next: RemoteCommandLister | null): void {
+  commandLister = next
 }
 
 interface LoadedIdentity {
@@ -472,7 +483,7 @@ function handleChatRequest(envelope: RelayEnvelope): void {
   if (!key) return
   const box = openEnvelope(envelope, key)
   if (!box || typeof box !== 'object') return
-  const { pairingId, appAgentId } = box as Record<string, unknown>
+  const { pairingId, appAgentId, commands: wantsCommands } = box as Record<string, unknown>
   if (pairingId !== device.pairingId || typeof appAgentId !== 'string') return
   const seen = chatRequestSeen.get(device.phoneId)
   if (seen && seen.epoch === envelope.epoch && envelope.seq <= seen.seq) return
@@ -483,6 +494,22 @@ function handleChatRequest(envelope: RelayEnvelope): void {
   }
   chatLeases.renew(device.phoneId, appAgentId, Date.now())
   sendChat(device, appAgentId)
+  if (wantsCommands === true) sendCommands(device)
+}
+
+/**
+ * The `/` commands the phone suggests (§13), to the phone that asked for them alone. A listing
+ * that throws sends nothing: the phone asks again with its next request.
+ */
+function sendCommands(device: StoredRemoteDevice): void {
+  let listing: readonly ListingRow[]
+  try {
+    listing = commandLister?.() ?? []
+  } catch (error) {
+    console.error('[remote] failed to list the commands:', error)
+    return
+  }
+  void sendSealed('commands', device, { pairingId: device.pairingId, commands: toRelayCommands(listing) })
 }
 
 /** The same pairing of the same phone, still in the identity loaded: not revoked meanwhile. */

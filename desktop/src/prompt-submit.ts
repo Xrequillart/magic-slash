@@ -89,6 +89,14 @@ export function submitDelay(message: string): number {
 }
 
 /**
+ * Claude Code's built-in commands that answer in the conversation, as any prompt does. They
+ * live inside the Claude Code binary and have no file to read, so they are listed here: the
+ * chat's `/` menu offers them (chatCommands.ts), and so does a paired iPhone's
+ * (remote/command-list.ts).
+ */
+export const PLAIN_COMMANDS: readonly string[] = ['clear', 'compact', 'context', 'cost', 'init', 'review', 'security-review', 'release-notes']
+
+/**
  * Claude Code's built-in commands whose answer is a dialog of the TUI, not a reply in the
  * conversation. The chat sends them like any other and then shows the terminal, where the
  * dialog is (chatCommands.ts); a phone may not send them at all, since nobody at the Mac

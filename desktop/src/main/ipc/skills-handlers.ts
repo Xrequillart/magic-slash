@@ -6,12 +6,25 @@ import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import AdmZip from 'adm-zip'
 import { t } from '../i18n'
-import { collectListingEntries } from '../skills-listing'
+import { collectListingEntries, type ListingResult } from '../skills-listing'
 import { copySkillToRepo, hasSkillIn, relativePathOf, skillInRepo, stringFieldsOf } from '../skill-copy'
 import { gitRunner, skillShareStatus, type SkillShareResult } from '../skill-share-status'
 
 /** A skill directory name, as `skills:import` creates one. */
 const SKILL_NAME = /^[a-z0-9-]+$/
+
+/**
+ * Everything Claude Code puts in its skill listing, over every configured repository. Read by
+ * the Skills page and the chat's `/` menu (`skills:listingEntries`), and by a paired iPhone's
+ * (remote/command-list.ts).
+ */
+export function listingEntries(): ListingResult {
+  const repos = Object.entries(readConfig().repositories || {}).map(([name, repo]) => ({
+    name,
+    path: expandPath(repo.path),
+  }))
+  return collectListingEntries({ home: os.homedir(), repos, builtIn: BUILT_IN_SKILLS, env: process.env })
+}
 
 const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
@@ -380,13 +393,7 @@ export function setupSkillsHandlers() {
 
   // Everything Claude Code puts in its skill listing, for the budget gauge. Wider than
   // skills:list + skills:listRepoSkills on purpose: plugins count too (see skills-listing.ts).
-  ipcMain.handle('skills:listingEntries', async () => {
-    const repos = Object.entries(readConfig().repositories || {}).map(([name, repo]) => ({
-      name,
-      path: expandPath(repo.path),
-    }))
-    return collectListingEntries({ home: os.homedir(), repos, builtIn: BUILT_IN_SKILLS, env: process.env })
-  })
+  ipcMain.handle('skills:listingEntries', async () => listingEntries())
 
   // Get a specific repo skill's full content
   ipcMain.handle('skills:getRepoSkill', async (_event, { filePath }: { filePath: string }) => {

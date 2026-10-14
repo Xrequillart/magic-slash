@@ -396,7 +396,8 @@ The phone reads an agent's conversation as the desktop chat shows it: the entrie
 (`remote/chat.ts`). It is pulled, never pushed unasked, and only while the session's screen
 is open on the phone.
 
-1. **`chat-request`** (phone → Mac): `{ "pairingId", "appAgentId" }`, sealed with the pair key,
+1. **`chat-request`** (phone → Mac): `{ "pairingId", "appAgentId" }`, and `"commands": true`
+   when the phone also wants the `/` commands it suggests (§13), sealed with the pair key,
    with the phone's own `epoch` and a `seq` that grows across every envelope it sends (commands
    included). It is not a command: it changes nothing on the Mac and is only ever answered to its
    sender, so it carries no signature and asks for no Face ID. The Mac drops it unless it comes
@@ -444,3 +445,30 @@ server closed the phone's channel each time, seconds after the join.
   `pairingId`, and moves forward in `seq`. Otherwise it sends a snapshot to every paired phone,
   debounced by 1 s like a presence join. It changes nothing else, so it needs no signature.
 - A Mac that does not know the type drops it: the phone then gets the next heartbeat.
+
+## 13. Commands (Mac → phone)
+
+The phone suggests the `/` commands its user can send while they type a prompt, as the desktop
+chat's `/` menu does. Skills are files on the Mac: the phone learns them from it.
+
+- The phone asks with `"commands": true` in a `chat-request` (§11) when it holds no list for
+  that Mac, or one older than 5 minutes. The Mac accepts that request as any other and then
+  also answers **`commands`**, sealed for that phone alone:
+  ```json
+  {
+    "pairingId": "<uuid>",
+    "commands": [
+      { "name": "compact", "source": "builtin" },
+      { "name": "magic:start", "description": "Start a task from a ticket", "source": "skill" }
+    ]
+  }
+  ```
+- The list is the desktop chat's: Claude Code's built-ins that answer in the conversation,
+  then every skill and command on disk that can be typed. The built-ins that open a dialog of
+  the TUI are left out, and a skill named like one: §10 refuses them from a phone. A built-in
+  has no `description`: the phone words its own, in its language.
+- Bounded (`remote/command-list.ts`): 300 commands at most within about 48 kB of JSON, a
+  `description` on one line, cut at 160 code points.
+- The phone accepts it only from a paired Mac, naming that Mac's saved `pairingId`. It keeps
+  it in memory per Mac, replaced whole by the next one. A lost one is asked for again with the
+  next renewal. A Mac that does not know the flag ignores it: the phone then suggests nothing.

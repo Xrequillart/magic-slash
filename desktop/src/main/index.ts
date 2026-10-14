@@ -15,7 +15,7 @@ import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, u
 import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
-import { setupSkillsHandlers } from './ipc/skills-handlers'
+import { listingEntries, setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
 import { setupSetupHandlers } from './ipc/setup-handlers'
 import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
@@ -53,7 +53,7 @@ import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { setupRemoteHandlers } from './ipc/remote-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { closePlanLive } from './cloud/plan-live'
-import { notifyRemoteChat, notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, setRemotePrompter, setRemoteStopper, stopRemoteRelay } from './remote/relay'
+import { notifyRemoteChat, notifyRemoteState, notifyRemoteUsage, setRemoteAnswerer, setRemoteCommandLister, setRemotePrompter, setRemoteStopper, stopRemoteRelay } from './remote/relay'
 import { runRemotePrompt, runRemoteStop } from './remote/agent-control'
 import type { CommandOutcome } from './remote/commands'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
@@ -642,6 +642,8 @@ function setupTrayHandlers() {
   // And its `prompt` and `stop`, through the desktop chat's own paths.
   setRemotePrompter(promptFromRemote)
   setRemoteStopper(stopFromRemote)
+  // And the `/` commands it suggests, the chat menu's own listing (§13).
+  setRemoteCommandLister(() => listingEntries().entries)
 
   ipcMain.handle('tray:resize', async (_event, { height }: { height: number }) => {
     resizePopover(height)

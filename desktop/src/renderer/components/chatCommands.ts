@@ -1,5 +1,5 @@
 import type { ChatCommand } from '@ds/desktop'
-import { INTERACTIVE_COMMANDS, opensInTerminal } from '../../prompt-submit'
+import { INTERACTIVE_COMMANDS, PLAIN_COMMANDS, opensInTerminal } from '../../prompt-submit'
 
 /**
  * What the chat's `/` menu offers: Claude Code's own commands, then every skill and
@@ -16,7 +16,7 @@ import { INTERACTIVE_COMMANDS, opensInTerminal } from '../../prompt-submit'
  * process: a paired iPhone may not send those (remote/PROTOCOL.md §10).
  */
 const BUILT_INS: { name: string; interactive?: boolean }[] = [
-  ...['clear', 'compact', 'context', 'cost', 'init', 'review', 'security-review', 'release-notes'].map((name) => ({ name })),
+  ...PLAIN_COMMANDS.map((name) => ({ name })),
   ...INTERACTIVE_COMMANDS.map((name) => ({ name, interactive: true })),
 ]
 

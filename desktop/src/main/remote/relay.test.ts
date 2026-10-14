@@ -79,6 +79,7 @@ import {
   resumeRemoteRelay,
   revokeRemoteDevice,
   setRemoteAnswerer,
+  setRemoteCommandLister,
   setRemoteEmitters,
   setRemoteEnabled,
   setRemotePrompter,
@@ -1023,6 +1024,24 @@ describe('the conversation, read from a paired phone (§11)', () => {
     await send(chatRequest(phone, { appAgentId: 'script-dev' }))
     await send(chatRequest(phone, { appAgentId: 'claude-404' }))
     expect(chats(phone)).toHaveLength(1)
+  })
+
+  it('sends the commands to the phone that asks for them, and only when it asks', async () => {
+    setRemoteCommandLister(() => [{ name: 'magic:start', description: 'Start a ticket' }])
+    try {
+      const commands = (to: PairedPhone) => sentOn(h.channels[0])
+        .filter((e) => e.type === 'commands' && e.to === to.id)
+        .map((e) => openEnvelope(e, phoneKey(to, macId, macPub)) as { pairingId: string; commands: { name: string }[] })
+      await send(chatRequest(phone))
+      expect(commands(phone)).toEqual([])
+      await send(chatRequest(phone, { commands: true }))
+      const [sent] = commands(phone)
+      expect(sent.pairingId).toBe(phone.pairingId)
+      expect(sent.commands.map((c) => c.name)).toContain('magic:start')
+      expect(commands(other)).toEqual([])
+    } finally {
+      setRemoteCommandLister(null)
+    }
   })
 
   it('a revoked phone is sent nothing more', async () => {
