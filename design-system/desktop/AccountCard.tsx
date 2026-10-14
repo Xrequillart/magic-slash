@@ -1,10 +1,9 @@
-import { AVATAR_SIZES } from './avatarSizes'
 import { Avatar } from './Avatar'
 import { Banner } from './Banner'
 import type { CardAlert } from './cardAlert'
 import { Button } from './Button'
 import { FieldTable, type FieldTableAction, type FieldTableRow } from './FieldTable'
-import { Icon } from './Icon'
+import { MarkTile } from './MarkTile'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -208,27 +207,11 @@ export function AccountCard({
               has a drawn face of its own now, which is the thing this card is about. */}
           {avatar && <Avatar src={avatar.src} alt={avatar.alt} size="lg" fallback="portrait" />}
 
-          {/* The service's front. The box and the glyph come from `AVATAR_SIZES.lg` —
-              the face's own rung — so the two never disagree about how tall this band
-              is; see `AccountCardMark`. `role="img"` with a name, because on a card
-              that says "Not connected" the logo is the only thing naming the service,
-              which makes it content rather than decoration. */}
-          {mark && (
-            <span
-              role="img"
-              aria-label={mark.title}
-              title={mark.title}
-              className={`${AVATAR_SIZES.lg.box} flex shrink-0 items-center justify-center rounded-xl ${
-                mark.tint ? '' : 'bg-surface-strong'
-              }`.trim()}
-              style={mark.tint ? { backgroundColor: mark.tint } : undefined}
-            >
-              {/* `tone="inherit"`: a mark that paints itself keeps its own brand colours,
-                  and one drawn in `currentColor` takes the card's ink. Either way the
-                  design system has nothing to say about it. */}
-              <Icon glyph={mark.glyph} size={AVATAR_SIZES.lg.glyph} tone="inherit" />
-            </span>
-          )}
+          {/* The service's front, on `MarkTile`'s `lg` rung — the face's own — so the two
+              never disagree about how tall this band is; see `AccountCardMark`. Named,
+              because on a card that says "Not connected" the logo is the only thing
+              naming the service, which makes it content rather than decoration. */}
+          {mark && <MarkTile glyph={mark.glyph} size="lg" tint={mark.tint} title={mark.title} />}
 
           <div className="flex min-w-0 flex-col">
             <Text size="sm" weight="medium" className="truncate" title={name}>
