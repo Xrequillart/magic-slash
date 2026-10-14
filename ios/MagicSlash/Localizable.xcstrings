@@ -1418,12 +1418,32 @@
         }
       }
     },
+    "Review a pull request" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relire une pull request"
+          }
+        }
+      }
+    },
     "Review pending" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revue en attente"
+          }
+        }
+      }
+    },
+    "Review the pending changes for security" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relire la sécurité des changements en cours"
           }
         }
       }
@@ -1548,12 +1568,42 @@
         }
       }
     },
+    "Show Claude Code's release notes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir les notes de version de Claude Code"
+          }
+        }
+      }
+    },
     "Show password" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher le mot de passe"
+          }
+        }
+      }
+    },
+    "Show what fills the context" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir ce qui remplit le contexte"
+          }
+        }
+      }
+    },
+    "Show what this session cost" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir ce qu'a coûté cette session"
           }
         }
       }
@@ -1619,6 +1669,16 @@
         }
       }
     },
+    "Start a new conversation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer une nouvelle conversation"
+          }
+        }
+      }
+    },
     "Stop" : {
       "localizations" : {
         "fr" : {
@@ -1645,6 +1705,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêt de l'agent…"
+          }
+        }
+      }
+    },
+    "Summarise the conversation to free up context" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Résumer la conversation pour libérer du contexte"
           }
         }
       }
@@ -2015,6 +2085,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Au travail"
+          }
+        }
+      }
+    },
+    "Write a CLAUDE.md for the repository" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écrire un CLAUDE.md pour le dépôt"
           }
         }
       }

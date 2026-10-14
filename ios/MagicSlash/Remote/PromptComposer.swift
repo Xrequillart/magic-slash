@@ -33,7 +33,13 @@ struct PromptComposer: View {
     let compact = compact && !focused
     let height: CGFloat = 48
     let margin = ScreenCorners.margin(height: height)
+    let menu = focused ? suggestions : []
     VStack(alignment: .leading, spacing: 8) {
+      if !menu.isEmpty {
+        SlashCommandMenu(commands: menu, pick: complete)
+          .liquidGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), tint: fieldTint, interactive: false)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+      }
       if hasNotice(length: length, status: status) {
         notices(length: length, status: status)
           .padding(.horizontal, 14)
@@ -44,11 +50,7 @@ struct PromptComposer: View {
       }
 
       HStack(alignment: .bottom, spacing: 8) {
-        TextField("Message Claude", text: $text, axis: .vertical)
-          .font(.cera(.body))
-          .foregroundStyle(theme.ink)
-          .tint(theme.accent)
-          .lineLimit(1...6)
+        PromptField(text: $text, known: Set(commands.map(\.name)))
           .focused($focused)
           .disabled(sending)
           .padding(.horizontal, 16)
@@ -87,6 +89,7 @@ struct PromptComposer: View {
       }
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
+    .animation(.snappy(duration: 0.2), value: menu.isEmpty)
     .padding(.horizontal, margin)
     // As far from the bottom edge as from the sides, below the home indicator's inset, so
     // the round ends sit on the screen's own corners. Above the keyboard, just clear of it.
@@ -98,6 +101,26 @@ struct PromptComposer: View {
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }
     }
+  }
+
+  /// The Mac's `/` commands (§13), none until it has sent them.
+  private var commands: [RemoteCommand] {
+    relay.commands(for: appAgentId)
+  }
+
+  /// The commands matching the `/` word being typed, while there is one. Gone once the word
+  /// names a single command in full: it is written, nothing is left to pick.
+  private var suggestions: [RemoteCommand] {
+    guard let token = SlashCommands.token(in: text) else { return [] }
+    let found = SlashCommands.matches(commands, query: token.query)
+    if found.count == 1, found[0].name == token.query { return [] }
+    return found
+  }
+
+  /// Writes the command picked in place of the `/` word, with the space that ends it.
+  private func complete(_ command: RemoteCommand) {
+    guard let token = SlashCommands.token(in: text) else { return }
+    text.replaceSubrange(token.range, with: "/\(command.name) ")
   }
 
   /// The glass takes the theme's raised surface, so the field reads as part of the theme

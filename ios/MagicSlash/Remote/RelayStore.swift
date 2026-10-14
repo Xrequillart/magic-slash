@@ -202,6 +202,8 @@ final class RelayStore {
   private(set) var agentCommands: [String: AgentCommandStatus] = [:]
   /// The conversation each agent's Mac last sent (§11), by `appAgentId`. Memory only.
   private(set) var chats: [String: AgentChat] = [:]
+  /// The `/` commands each Mac last sent (§13), by `macId`. Memory only.
+  private(set) var commandLists: [String: RemoteCommandList] = [:]
   /// Presence refs per key: one Mac may briefly hold two connections while its relay restarts.
   private var presence: [String: Set<String>] = [:]
 
@@ -287,6 +289,7 @@ final class RelayStore {
     ticker = nil
     pairKeys = [:]
     chats = [:]
+    commandLists = [:]
     endPairing()
     abandonPendingCommands()
     await unsubscribe()
@@ -402,6 +405,7 @@ final class RelayStore {
     pairKeys[macId] = nil
     snapshots[macId] = nil
     chats = chats.filter { $0.value.macId != macId }
+    commandLists[macId] = nil
     SnapshotCache.save(snapshots, userId: userId)
     if macs.isEmpty { keyState = .idle }
     Task { await refreshSubscription() }
@@ -412,6 +416,22 @@ final class RelayStore {
   /// How often the session's screen renews its lease on the conversation (§11): well inside
   /// the Mac's 45 s, so one lost request costs nothing.
   static let chatRenewal: Duration = .seconds(15)
+
+  /// How old a Mac's `/` commands may get before the next request asks for them again (§13).
+  static let commandListAge: TimeInterval = 5 * 60
+
+  /// The `/` commands to suggest for an agent: its Mac's, or every paired Mac's while none
+  /// reports the agent yet.
+  func commands(for appAgentId: String) -> [RemoteCommand] {
+    if let macId = runtime(for: appAgentId)?.macId { return commandLists[macId]?.commands ?? [] }
+    return commandLists.values.first?.commands ?? []
+  }
+
+  private struct ChatRequest: Encodable {
+    let pairingId: String
+    let appAgentId: String
+    let commands: Bool?
+  }
 
   /// Asks for an agent's conversation, and to be sent every change of it for the next 45 s
   /// (§11). To the Mac that reports the agent, or to every paired Mac when none does yet: the
@@ -425,7 +445,9 @@ final class RelayStore {
             let pairingId = macs.first(where: { $0.macId == macId })?.pairingId
       else { continue }
       commandSeq += 1
-      let body = ["pairingId": pairingId, "appAgentId": appAgentId]
+      // The `/` commands ride along until a fresh list is in (§13).
+      let stale = commandLists[macId].map { Date().timeIntervalSince($0.receivedAt) > Self.commandListAge } ?? true
+      let body = ChatRequest(pairingId: pairingId, appAgentId: appAgentId, commands: stale ? true : nil)
       guard let envelope = Self.sealedEnvelope(
         type: "chat-request", from: phoneId, to: macId, epoch: commandEpoch, seq: commandSeq, body: body, key: key
       ) else { continue }
@@ -1144,6 +1166,7 @@ final class RelayStore {
     case "pair-rejected": receivePairRejected(envelope)
     case "command-result": receiveCommandResult(envelope)
     case "chat": receiveChat(envelope)
+    case "commands": receiveCommands(envelope)
     default: break
     }
   }
@@ -1203,6 +1226,18 @@ final class RelayStore {
       macId: envelope.from, generation: generation, epoch: envelope.epoch, seq: envelope.seq,
       entries: chat.entries, queue: chat.queue, hasEarlier: chat.hasEarlier
     )
+  }
+
+  /// The `/` commands a Mac suggests (§13): from a paired Mac, for its saved pairing, replacing
+  /// whatever it sent before. Not ordered: one list is as good as the next.
+  private func receiveCommands(_ envelope: Envelope) {
+    guard let key = pairKeys[envelope.from],
+          let plain = envelope.open(with: key),
+          let list = try? JSONDecoder().decode(RemoteCommandList.self, from: plain),
+          let pairingId = macs.first(where: { $0.macId == envelope.from })?.pairingId,
+          list.pairingId == pairingId
+    else { return }
+    commandLists[envelope.from] = list
   }
 
   /// Not part of §6's ordering: only a `commandId` still pending counts, and only once.
@@ -1321,6 +1356,7 @@ final class RelayStore {
     setMacs([])
     snapshots = [:]
     chats = [:]
+    commandLists = [:]
     SnapshotCache.save([:], userId: userId)
     keyState = .idle
     if hadMacs { setNeedsRepair(true) }
