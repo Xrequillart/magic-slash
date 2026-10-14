@@ -11,12 +11,12 @@
         }
       }
     },
-    "%@ did not answer: it may be unreachable. Check the Mac, then try again." : {
+    "%@ has not confirmed yet. It may have gone through: check the Mac before sending it again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ n'a pas répondu : il est peut-être injoignable. Vérifiez le Mac, puis réessayez."
+            "value" : "%@ n'a pas encore confirmé. C'est peut-être bien parti : vérifiez le Mac avant de renvoyer."
           }
         }
       }

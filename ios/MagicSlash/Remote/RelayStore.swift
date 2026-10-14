@@ -186,6 +186,9 @@ final class RelayStore {
   static let pairingTimeout: Duration = .seconds(180)
   /// How long the phone waits for a `command-result` before calling the Mac unreachable.
   static let commandTimeout: Duration = .seconds(15)
+  /// How long a command past its timeout may still be confirmed: the Mac holds a result it
+  /// could not send while its channel was down (a minute), and sends it on its next join.
+  static let lateResultWindow: TimeInterval = 75
 
   private(set) var macs: [PairedMac] = []
   private(set) var snapshots: [String: AcceptedSnapshot] = [:]
@@ -232,6 +235,9 @@ final class RelayStore {
   @ObservationIgnored private var commandSeq = 0
   /// Commands sent and not answered yet, by `commandId`. Only these may get a `command-result`.
   @ObservationIgnored private var pendingCommands: [String: PendingCommand] = [:]
+  /// Commands that timed out, by `commandId`, with when: a result that arrives late still
+  /// settles them, and the "did not answer" turns into what really happened.
+  @ObservationIgnored private var lateCommands: [String: (pending: PendingCommand, at: Date)] = [:]
 
   private struct PendingCommand {
     let macId: String
@@ -743,7 +749,9 @@ final class RelayStore {
       guard !Task.isCancelled, let self,
             let pending = self.pendingCommands.removeValue(forKey: commandId)
       else { return }
-      self.settle(pending, .failed(String(localized: "\(mac.name) did not answer: it may be unreachable. Check the Mac, then try again.")))
+      self.lateCommands = self.lateCommands.filter { Date().timeIntervalSince($0.value.at) < Self.lateResultWindow }
+      self.lateCommands[commandId] = (pending, Date())
+      self.settle(pending, .failed(String(localized: "\(mac.name) has not confirmed yet. It may have gone through: check the Mac before sending it again.")))
     }
     pendingCommands[commandId] = PendingCommand(
       macId: macId, pairingId: pairingId, appAgentId: appAgentId, kind: command.kind, target: target,
@@ -844,6 +852,7 @@ final class RelayStore {
       settle(pending, .failed(String(localized: "Magic Slash left the screen before your Mac confirmed. Check the Mac.")))
     }
     pendingCommands = [:]
+    lateCommands = [:]
   }
 
   /// Writes a command's outcome into its target's status.
@@ -962,7 +971,20 @@ final class RelayStore {
     guard !stopped, attempt == subscriptionCount else { return }
     // No presence of our own (§12): Realtime's `track` timed out for the phone's key and the
     // server closed the channel each time. The Macs are asked for a snapshot instead.
+    let joinedAt = Date()
     await requestState()
+    // A request sent the instant the join lands can be lost, and the Mac's heartbeat is up
+    // to 30 s away: asked again, before the online check reads the Mac as gone.
+    tasks.append(Task { [weak self] in
+      try? await Task.sleep(for: .seconds(2))
+      guard !Task.isCancelled, let self, !self.stopped, attempt == self.subscriptionCount else { return }
+      let waiting = self.macs.filter { mac in
+        self.pairKeys[mac.macId] != nil && (self.snapshots[mac.macId]?.receivedAt ?? .distantPast) < joinedAt
+      }
+      guard !waiting.isEmpty else { return }
+      self.log("no snapshot 2 s after joining, asking again")
+      await self.requestState()
+    })
   }
 
   /// Asks every paired Mac for a snapshot now (§12), rather than waiting for its heartbeat.
@@ -1246,7 +1268,9 @@ final class RelayStore {
           let plain = envelope.open(with: key),
           let body = (try? JSONSerialization.jsonObject(with: plain)) as? [String: Any],
           let commandId = body["commandId"] as? String,
-          let pending = pendingCommands[commandId],
+          let pending = pendingCommands[commandId] ?? lateCommands[commandId].flatMap({
+            Date().timeIntervalSince($0.at) < Self.lateResultWindow ? $0.pending : nil
+          }),
           // From the Mac it went to, for the pairing it was sent under, which is still the
           // saved one: a result recorded from an older pairing opens with the same key (§6).
           pending.macId == envelope.from,
@@ -1255,6 +1279,7 @@ final class RelayStore {
           macs.first(where: { $0.macId == envelope.from })?.pairingId == pairingId,
           let ok = body["ok"] as? Bool
     else { return }
+    if lateCommands.removeValue(forKey: commandId) != nil { log("command-result \(commandId.prefix(8)) after its timeout") }
     pendingCommands[commandId] = nil
     pending.timeout.cancel()
     guard ok else {
