@@ -96,7 +96,7 @@ Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du RE
 "version": "X.Y.Z"
 ```
 
-## Etape 4 : Mettre a jour les skills et l'interface desktop
+## Etape 4 : Mettre a jour les skills, l'interface desktop et l'app iPhone
 
 ### 4.1 : Fichiers SKILL.md (10 fichiers)
 
@@ -156,6 +156,29 @@ Un test verifie cette egalite (`webapp/lib/desktopRelease.test.ts` compare le co
 `desktop/package.json`), donc un oubli fait echouer la CI au push suivant plutot que
 d'induire un operateur en erreur pendant un cycle de release. La verification de
 l'etape 6.1 l'attrape avant, en local.
+
+### 4.3 : ios/MagicSlash.xcodeproj/project.pbxproj
+
+La version de l'application iPhone suit celle de Magic Slash : c'est le `MARKETING_VERSION`
+du projet Xcode (le « Version » affiche par TestFlight et l'App Store). Il apparait **deux
+fois**, une par configuration (Debug et Release), et les deux doivent changer :
+
+```regex
+MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+;
+```
+
+Remplace chaque occurrence par :
+
+```text
+MARKETING_VERSION = X.Y.Z;
+```
+
+Passe par un script `python3` qui `assert` qu'il a remplace exactement 2 occurrences : plus
+ou moins veut dire qu'une configuration a ete ajoutee ou renommee, et il faut regarder avant
+de continuer.
+
+**Ne touche pas a `CURRENT_PROJECT_VERSION`** (le numero de build) : Xcode Cloud le fixe a
+chaque build, et TestFlight refuse deux builds du meme numero pour une meme version.
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
@@ -288,6 +311,13 @@ else
   echo "  ERREUR  webapp/lib/desktopRelease.ts - version X.Y.Z NON trouvee"
   ERRORS=$((ERRORS+1))
 fi && \
+if [ "$(grep -c "MARKETING_VERSION = X.Y.Z;" ios/MagicSlash.xcodeproj/project.pbxproj)" = "$(grep -c "MARKETING_VERSION = " ios/MagicSlash.xcodeproj/project.pbxproj)" ] \
+   && grep -q "MARKETING_VERSION = X.Y.Z;" ios/MagicSlash.xcodeproj/project.pbxproj; then
+  echo "  OK  ios/MagicSlash.xcodeproj/project.pbxproj"
+else
+  echo "  ERREUR  ios/MagicSlash.xcodeproj/project.pbxproj - MARKETING_VERSION X.Y.Z NON trouvee partout"
+  ERRORS=$((ERRORS+1))
+fi && \
 echo "=== $ERRORS erreur(s) detectee(s) ==="
 ```
 
@@ -314,6 +344,7 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-action/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
   webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
+  ios/MagicSlash.xcodeproj/project.pbxproj      MARKETING_VERSION -> X.Y.Z (x2)
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
@@ -356,7 +387,7 @@ git add package.json desktop/package.json README.md \
   skills/magic-continue/SKILL.md \
   skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md \
   skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md skills/magic-action/SKILL.md \
-  webapp/lib/desktopRelease.ts CHANGELOG.md
+  webapp/lib/desktopRelease.ts ios/MagicSlash.xcodeproj/project.pbxproj CHANGELOG.md
 ```
 
 Puis execute le commit :
