@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.125.0] - 2026-10-14
+
+### Added
+
+- **Ios**: Put the keyboard away on a tap outside the sign-in fields
+- **Ios**: Mark tool calls with their product's coloured disc in the chat
+- **Ios**: Show an agent waiting or finished as a push, even with the app closed
+- **Desktop**: Put each tool call's mark on its product's colour
+- **Desktop**: Push waiting and finished agents to the paired phones
+- **Desktop**: Relay encrypted push notifications to apns from the webapp
+- **Desktop**: Store each paired phone's apns token per mac, owner-only
+- **Desktop**: Add the encrypted push box to the relay protocol
+
+### Changed
+
+- **Ios**: Move the app to the io.magic-slash.ios bundle id
+- **Desktop**: Wait for the relay to go live before reading its first snapshot
+- **Desktop**: Show mark tile and the coloured tool marks on the design system page
+- **Desktop**: Draw the service tiles through one mark tile component
+
+### Fixed
+
+- **Ios**: Settle a command confirmed late and ask a silent mac for its state again
+- **Desktop**: Rejoin a dropped relay in seconds and hold command results until it is back
+- **Pr**: Address review feedback for #355
+
 ## [0.124.2] - 2026-10-14
 
 ### Added
@@ -4159,6 +4185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.125.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.0
 [0.124.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.2
 [0.124.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.1
 [0.124.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.124.0
