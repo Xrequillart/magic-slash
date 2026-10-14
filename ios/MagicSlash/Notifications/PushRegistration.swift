@@ -135,8 +135,9 @@ final class PushRegistration {
     let phoneIds = Set([DeviceKeys.shared.phoneId] + macs.map { $0.phoneId.lowercased() })
     macs = []
     let client = client
-    // After every earlier write, so none of them recreates a row once these are gone.
-    await enqueue {
+    // After every earlier write, so none of them recreates a row once these are gone. Its
+    // error is always nil: each failure is logged above, and none stops the sign-out.
+    _ = await enqueue {
       for phoneId in phoneIds {
         do {
           try await client.from("push_devices").delete(returning: .minimal).eq("phone_id", value: phoneId).execute()
