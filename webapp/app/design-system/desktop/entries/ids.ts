@@ -131,6 +131,8 @@ export type EntryId =
   | 'workflowskillpicker'
   | 'workflowproblems'
   | 'workfloweditor'
+  | 'toolmark'
+  | 'toolmarkstack'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -257,6 +259,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   workflowskillpicker: 'WorkflowSkillPicker',
   workflowproblems: 'WorkflowProblems',
   workfloweditor: 'WorkflowEditor',
+  toolmark: 'ToolMark',
+  toolmarkstack: 'ToolMarkStack',
 }
 
 /**
@@ -449,6 +453,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'settingscard', 'text'],
   workflowskillpicker: ['menu'],
   workflowproblems: ['icon', 'text'],
+  // Lucide glyphs and the brand logos, drawn bare: no `Icon` in between.
+  toolmark: [],
+  toolmarkstack: ['toolmark'],
   workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner', 'timelineline', 'emptystate'],
 }
 
@@ -583,6 +590,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   avatar: 'A face, or the default portrait when there is none',
   avatarpicker: 'Thirty drawn faces, six to a line',
   avatarstack: 'Who else is here, as overlapping faces',
+  toolmark: 'What a tool call was, as its logo or a glyph',
+  toolmarkstack: 'What a run of tool calls did, as overlapping marks',
   label: 'Names a thing, on a tinted plate',
   status: 'Reports a state, and changes it',
   switch: 'On or off, and it takes at once',
