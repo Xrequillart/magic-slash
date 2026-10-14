@@ -148,6 +148,22 @@ struct AgentSessionView: View {
         if let runtime, let appAgentId = agent.appAgentId {
           // Drawn back while the reader is up the thread, full size again at the end.
           PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId, compact: !atBottom)
+            // The thread fades into the page's own ground under the composer, from a little
+            // above it to the screen's edge, so the field reads over whatever scrolls past.
+            .background(alignment: .bottom) {
+              LinearGradient(
+                stops: [
+                  .init(color: theme.bg.opacity(0), location: 0),
+                  .init(color: theme.bg.opacity(0.85), location: 0.45),
+                  .init(color: theme.bg, location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+              )
+              .padding(.top, -48)
+              .ignoresSafeArea(edges: .bottom)
+              .allowsHitTesting(false)
+            }
         }
       }
     }
