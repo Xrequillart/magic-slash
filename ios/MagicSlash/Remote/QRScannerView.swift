@@ -31,7 +31,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
   var onCode: ((String) -> Void)?
 
   private let box = SessionBox()
-  private let queue = DispatchQueue(label: "io.poppins.magicslash.scanner")
+  private let queue = DispatchQueue(label: "io.magic-slash.ios.scanner")
   private var preview: AVCaptureVideoPreviewLayer?
   private var lastCode: String?
   private var configured = false

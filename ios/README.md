@@ -148,7 +148,7 @@ the app's team and numbers the builds itself.
 ### By hand
 
 1. Make sure `DEVELOPMENT_TEAM` is set in `Secrets.xcconfig` and that the bundle id
-   `io.poppins.magicslash` exists in App Store Connect, with an app record.
+   `io.magic-slash.ios` exists in App Store Connect, with an app record.
 2. Bump `CURRENT_PROJECT_VERSION` (build number) in the target's build settings for every
    upload, and `MARKETING_VERSION` for a new version.
 3. In Xcode, select the **Any iOS Device (arm64)** destination, then

@@ -6,7 +6,7 @@ import Security
 /// Every item is `WhenUnlockedThisDeviceOnly`: it never leaves this iPhone, not even in an
 /// encrypted backup, and is unreadable while the device is locked.
 enum Keychain {
-  private static let service = "io.poppins.magicslash.relay"
+  private static let service = "io.magic-slash.ios.relay"
 
   /// The query that names one item: its class, this service, and the account.
   private static func item(_ account: String) -> [CFString: Any] {
