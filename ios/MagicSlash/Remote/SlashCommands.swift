@@ -146,9 +146,11 @@ struct SlashCommandMenu: View {
 
 /// The prompt's text field, with every known command written in it painted blue.
 ///
-/// A SwiftUI text field takes one colour, so the field draws its text clear and the same text
-/// is laid over it, coloured. Only while it lines up: once the field scrolls (past six lines)
-/// the copy would show its top over the field's bottom, so the field shows its own text again.
+/// A SwiftUI text field takes one colour, so the field always draws its text clear and the
+/// same text is laid over it, coloured. Always, not only while a command is written: a field
+/// switched from clear back to a colour keeps the characters typed meanwhile clear, and the
+/// prompt went invisible once its slash was deleted. Past six lines the field scrolls to
+/// keep the caret in view, at the end as one types: the copy shows its last lines then.
 struct PromptField: View {
   @Environment(\.theme) private var theme
   @Binding var text: String
@@ -158,26 +160,25 @@ struct PromptField: View {
   @State private var copyHeight: CGFloat = 0
 
   var body: some View {
-    let ranges = SlashCommands.commandRanges(in: text, known: known)
-    let painted = !ranges.isEmpty && copyHeight <= fieldHeight + 1
-    TextField("Message Claude", text: $text, axis: .vertical)
-      .font(.cera(.body))
-      .foregroundStyle(painted ? Color.clear : theme.ink)
-      .tint(theme.accent)
-      .lineLimit(1...6)
-      .onGeometryChange(for: CGFloat.self, of: \.size.height) { fieldHeight = $0 }
-      .overlay(alignment: .topLeading) {
-        if !ranges.isEmpty {
-          Text(colored(ranges))
-            .font(.cera(.body))
-            .lineSpacing(Self.fieldLeading)
-            .fixedSize(horizontal: false, vertical: true)
-            .onGeometryChange(for: CGFloat.self, of: \.size.height) { copyHeight = $0 }
-            .opacity(painted ? 1 : 0)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-      }
+    TextField(text: $text, prompt: Text("Message Claude").foregroundStyle(theme.textSecondary), axis: .vertical) {
+      Text("Message Claude")
+    }
+    .font(.cera(.body))
+    .foregroundStyle(Color.clear)
+    .tint(theme.accent)
+    .lineLimit(1...6)
+    .onGeometryChange(for: CGFloat.self, of: \.size.height) { fieldHeight = $0 }
+    .overlay(alignment: .topLeading) {
+      Text(colored(SlashCommands.commandRanges(in: text, known: known)))
+        .font(.cera(.body))
+        .lineSpacing(Self.fieldLeading)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { copyHeight = $0 }
+        .frame(height: fieldHeight, alignment: copyHeight > fieldHeight + 1 ? .bottomLeading : .topLeading)
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
   }
 
   /// How far to move the field down so its first line's capitals sit in the middle of the
