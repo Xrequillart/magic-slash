@@ -394,6 +394,12 @@ The phone accepts a `command-result` only from the Mac it sent the command to, c
 Mac's saved `pairingId` and a `commandId` it is waiting on; it ignores any other. It is not part
 of §6's `(generation, epoch, seq)` ordering, which is for `state` alone.
 
+A result that is ready while the Mac's channel is down is not lost: the command already ran.
+The Mac holds it, for 60 s at most, and sends it once the channel is live again, unless the
+phone was revoked meanwhile. The phone waits 15 s, then tells its user the Mac has not
+confirmed yet, and keeps the `commandId` for 75 s more: a result that arrives in that window
+still settles the command, and replaces the warning with what really happened.
+
 ## 11. Conversation (phone ↔ Mac)
 
 The phone reads an agent's conversation as the desktop chat shows it: the entries
@@ -450,6 +456,9 @@ server closed the phone's channel each time, seconds after the join.
   `pairingId`, and moves forward in `seq`. Otherwise it sends a snapshot to every paired phone,
   debounced by 1 s like a presence join. It changes nothing else, so it needs no signature.
 - A Mac that does not know the type drops it: the phone then gets the next heartbeat.
+- A request sent the instant the join lands can be lost. A phone that has no newer snapshot
+  from a Mac 2 s after its join asks once more, before its §6 freshness check reads the Mac
+  as gone.
 
 ## 13. Commands (Mac → phone)
 

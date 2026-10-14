@@ -173,11 +173,20 @@ function sentOn(channel: FakeChannel): RelayEnvelope[] {
   })
 }
 
-/** Join the channel the relay asked for and acknowledge its presence. */
+/**
+ * Join the channel the relay asked for and acknowledge its presence. Waits for the relay to
+ * call itself live and for the first snapshot it then sends: one fixed tick was enough
+ * locally and not on a loaded CI runner, where the snapshot came after the test read it.
+ */
 async function goLive(channel: FakeChannel): Promise<void> {
   const status = channel.subscribe.mock.calls[0][0] as (s: string) => void
   status('SUBSCRIBED')
+  await vi.waitFor(() => expect(getRemoteState().status).toBe('live'), { timeout: 2_000, interval: 5 })
   await tick()
+  // With phones paired, live means a snapshot goes out: waited for, briefly, since a relay
+  // with none paired sends nothing and the test goes on regardless.
+  await vi.waitFor(() => expect(sentOn(channel).some((e) => e.type === 'state')).toBe(true), { timeout: 200, interval: 5 })
+    .catch(() => undefined)
 }
 
 function broadcast(channel: FakeChannel, payload: unknown): void {
@@ -315,7 +324,10 @@ describe('remote mode off', () => {
     try {
       ;(h.channels[0].subscribe.mock.calls[0][0] as (s: string) => void)('CLOSED')
       expect(getRemoteState().status).toBe('reconnecting')
-      await vi.advanceTimersByTimeAsync(15_000)
+      // Not the first join's 15 s: realtime-js never recovers a dropped channel itself.
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(h.client.removeChannel).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1_000)
       expect(h.client.removeChannel).toHaveBeenCalledWith(h.channels[0])
       await resumeRemoteRelay()
       expect(h.client.channel).toHaveBeenCalledTimes(2)
@@ -738,6 +750,28 @@ describe('commands from a paired phone', () => {
     const snapshot = openEnvelope(envelope, phoneKey(phone, macId, macPub)) as OpenedSnapshot
     expect(snapshot.agents[0].question).toMatchObject({ token: question.token, kind: 'ask', unsupported: false })
     expect(snapshot.agents[0].question?.questions).toHaveLength(1)
+  })
+
+  it('a result that finishes while the relay is down reaches the phone on the next join', async () => {
+    const question = setFromAskQuestion('claude-1', ask(ONE))!
+    vi.useFakeTimers()
+    try {
+      ;(h.channels[0].subscribe.mock.calls[0][0] as (s: string) => void)('CHANNEL_ERROR')
+      broadcast(h.channels[0], command(phone, { token: question.token, choice: { kind: 'option', index: 1 } }))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(typed).toEqual([['claude-1', '\x1b[B'], ['claude-1', '\r']])
+      expect(results(phone)).toEqual([])
+      await vi.advanceTimersByTimeAsync(3_000)
+      await resumeRemoteRelay()
+      ;(h.channels[1].subscribe.mock.calls[0][0] as (s: string) => void)('SUBSCRIBED')
+      await vi.advanceTimersByTimeAsync(0)
+      const replies = sentOn(h.channels[1])
+        .filter((e) => e.type === 'command-result' && e.to === phone.id)
+        .map((e) => openEnvelope(e, phoneKey(phone, macId, macPub)))
+      expect(replies).toEqual([{ pairingId: phone.pairingId, commandId: expect.any(String), ok: true }])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('types the chosen option into the agent\'s terminal and tells the phone it landed', async () => {

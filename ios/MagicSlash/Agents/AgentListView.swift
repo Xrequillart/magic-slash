@@ -204,13 +204,8 @@ struct AgentListView: View {
       }
       .buttonStyle(.plain)
       .listRowBackground(theme.bg)
-      // A trail between sessions, barely there: the spacing does most of the separating.
-      // Between them only, none above the first or under the last.
-      .listRowSeparator(.visible)
-      .listRowSeparator(row.id == agents.first?.id ? .hidden : .visible, edges: .top)
-      .listRowSeparator(row.id == agents.last?.id ? .hidden : .visible, edges: .bottom)
-      .listRowSeparatorTint(theme.lineSubtle.opacity(0.5))
-      .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+      // No rules between sessions: the spacing alone separates them.
+      .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 18, trailing: 16))
     }
   }

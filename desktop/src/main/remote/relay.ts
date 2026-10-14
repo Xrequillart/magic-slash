@@ -159,6 +159,20 @@ let blockerId: number | null = null
 let lastStateKey = ''
 
 const SUBSCRIBE_DEADLINE_MS = 15_000
+/**
+ * A channel that WAS live and dropped gets this long, not the first join's deadline.
+ * realtime-js answers a server drop with CLOSED then TIMED_OUT and never recovers it on its
+ * own (relay-events.log: 15 to 20 s gone every time, then a fresh join live in under one),
+ * so waiting is only time the phones read this Mac as offline.
+ */
+const DROP_DEADLINE_MS = 3_000
+/**
+ * A `command-result` finished while the channel was down waits for the next join, this long
+ * at most: the command already ran, and a phone left without its answer tells its user the
+ * Mac is unreachable. Past it the phone has long given up on it.
+ */
+const RESULT_HOLD_MS = 60_000
+const heldResults: { device: StoredRemoteDevice; self: LoadedIdentity; body: unknown; at: number }[] = []
 let subscribeWatchdog: ReturnType<typeof setTimeout> | null = null
 const UNTRACK_TIMEOUT_MS = 1_000
 const TRACK_RETRY_MS = 3_000
@@ -281,6 +295,7 @@ function forgetAccount(): void {
   chatRequestSeen.clear()
   stateRequestSeen.clear()
   pushKeySeen.clear()
+  heldResults.length = 0
 }
 
 /**
@@ -587,7 +602,24 @@ async function handleCommand(envelope: RelayEnvelope): Promise<void> {
   )
   if (!result) return
   const current = stillPaired(self, device)
-  if (current) await sendSealed('command-result', current, result)
+  if (!current) return
+  if (!live) {
+    logRelayEvent(`command-result for phone:${current.phoneId} held until live`)
+    heldResults.push({ device: current, self, body: result, at: Date.now() })
+    return
+  }
+  await sendSealed('command-result', current, result)
+}
+
+/** On a (re)join: the results that finished while the channel was down, still wanted. */
+function flushHeldResults(): void {
+  const now = Date.now()
+  for (const held of heldResults.splice(0)) {
+    const current = stillPaired(held.self, held.device)
+    if (!current || now - held.at > RESULT_HOLD_MS) continue
+    logRelayEvent(`command-result for phone:${current.phoneId} sent after ${Math.round((now - held.at) / 1000)} s`)
+    void sendSealed('command-result', current, held.body)
+  }
 }
 
 /**
@@ -637,7 +669,7 @@ function clearSubscribeWatchdog(): void {
   }
 }
 
-function armSubscribeWatchdog(ch: RealtimeChannel): void {
+function armSubscribeWatchdog(ch: RealtimeChannel, deadline = SUBSCRIBE_DEADLINE_MS): void {
   clearSubscribeWatchdog()
   subscribeWatchdog = setTimeout(() => {
     subscribeWatchdog = null
@@ -648,7 +680,7 @@ function armSubscribeWatchdog(ch: RealtimeChannel): void {
       await teardown()
       emitState()
     })
-  }, SUBSCRIBE_DEADLINE_MS)
+  }, deadline)
   subscribeWatchdog.unref?.()
 }
 
@@ -662,6 +694,7 @@ function setLive(next: boolean): void {
     // replayed, so the scheduler starts with a complete snapshot.
     scheduler ??= new SnapshotScheduler(publishSnapshot)
     scheduler.start()
+    flushHeldResults()
   } else {
     scheduler?.stop()
   }
@@ -720,11 +753,13 @@ function join(c: SupabaseClient, uid: string, macId: string): void {
       logRelayEvent(`channel ${status}${error?.message ? ` (${error.message})` : ''}`)
       const current = ++joinCount
       if (status !== 'SUBSCRIBED') {
+        const dropped = live
         setLive(false)
         // A channel that was live and dropped (sleep, a network change, a server close) is
-        // rejoined by realtime-js only sometimes: given the same deadline as a first join,
-        // after which it is left so the next connectivity check joins a fresh one.
-        if (!subscribeWatchdog) armSubscribeWatchdog(ch)
+        // not rejoined by realtime-js: left after a short deadline, so the next connectivity
+        // check joins a fresh one. A first join keeps the long one.
+        if (dropped) armSubscribeWatchdog(ch, DROP_DEADLINE_MS)
+        else if (!subscribeWatchdog) armSubscribeWatchdog(ch)
         return
       }
       // On EVERY join: realtime-js does not track again after a rejoin by itself.

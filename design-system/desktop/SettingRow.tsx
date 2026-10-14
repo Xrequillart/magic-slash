@@ -1,7 +1,7 @@
 import { Button, type ButtonProps } from './Button'
 import { ButtonIcon, type ButtonIconProps } from './ButtonIcon'
 import { Icon } from './Icon'
-import { AVATAR_SIZES } from './avatarSizes'
+import { MarkTile } from './MarkTile'
 import { ChipInput, type ChipInputProps } from './ChipInput'
 import { ColorSwatches, type ColorSwatchesProps } from './ColorSwatches'
 import { Input, type InputProps } from './Input'
@@ -275,21 +275,12 @@ export function SettingRow({
         {/* `min-w-0` so a long help line wraps instead of pushing the control off the
             card — a row may carry more than one of them. */}
         <div className="flex min-w-0 items-stretch gap-3">
-          {/* `AVATAR_SIZES.lg`, the rung `AccountCard` draws a service tile at: the Slack row
+          {/* `MarkTile`'s `lg`, the rung `AccountCard` draws a service tile at: the Slack row
               under the Jira card on Connections wears the same tile, so the two logos are
               one size. FIXED AND NOT STRETCHED: a square that stretches to its row feeds its
               own width back into the text's wrapping, and the loop only stops when the tile
               is as wide as the card. */}
-          {mark && (
-            <span
-              role="img"
-              aria-label={mark.title}
-              title={mark.title}
-              className={`${AVATAR_SIZES.lg.box} flex shrink-0 items-center justify-center self-center rounded-xl bg-surface-strong text-ink`}
-            >
-              <Icon glyph={mark.glyph} size={AVATAR_SIZES.lg.glyph} tone="inherit" />
-            </span>
-          )}
+          {mark && <MarkTile glyph={mark.glyph} size="lg" title={mark.title} className="self-center" />}
           <div className="min-w-0 self-center">
             {/* The mark rides ON the name's line rather than in a gutter of its own: a
                 settings card has no gutter, and one carved out for the four rows that have

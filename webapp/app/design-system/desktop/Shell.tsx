@@ -10,6 +10,9 @@ import { AgentEntry } from './entries/AgentEntry'
 import { AvatarEntry } from './entries/AvatarEntry'
 import { AvatarPickerEntry } from './entries/AvatarPickerEntry'
 import { AvatarStackEntry } from './entries/AvatarStackEntry'
+import { MarkTileEntry } from './entries/MarkTileEntry'
+import { ToolMarkEntry } from './entries/ToolMarkEntry'
+import { ToolMarkStackEntry } from './entries/ToolMarkStackEntry'
 import { AccountCardEntry } from './entries/AccountCardEntry'
 import { BranchCardEntry } from './entries/BranchCardEntry'
 import { ButtonEntry } from './entries/ButtonEntry'
@@ -205,6 +208,9 @@ const ENTRIES: Record<
   avatar: AvatarEntry,
   avatarpicker: AvatarPickerEntry,
   avatarstack: AvatarStackEntry,
+  marktile: MarkTileEntry,
+  toolmark: ToolMarkEntry,
+  toolmarkstack: ToolMarkStackEntry,
   accountcard: AccountCardEntry,
   kbd: KbdEntry,
   select: SelectEntry,

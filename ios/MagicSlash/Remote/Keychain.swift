@@ -11,10 +11,10 @@ import Security
 ///
 /// Compiled into the app and into the notification extension: Foundation and Security only.
 enum Keychain {
-  private static let service = "io.poppins.magicslash.relay"
+  private static let service = "io.magic-slash.ios.relay"
 
   /// The access group the app and the notification extension share, as both entitlements
-  /// files name it: `$(AppIdentifierPrefix)io.poppins.magicslash.shared`. The team prefix is
+  /// files name it: `$(AppIdentifierPrefix)io.magic-slash.ios.shared`. The team prefix is
   /// only known once the build is signed, so it is read back from the `KeychainSharedGroup`
   /// Info.plist key, which the build expands from the same `$(AppIdentifierPrefix)`.
   ///
@@ -23,7 +23,7 @@ enum Keychain {
   /// then fall back to the default group, readable by the app alone, which is all such a build
   /// can use anyway.
   static let sharedGroup: String? = {
-    let suffix = "io.poppins.magicslash.shared"
+    let suffix = "io.magic-slash.ios.shared"
     guard let value = Bundle.main.object(forInfoDictionaryKey: "KeychainSharedGroup") as? String,
           value.hasSuffix(suffix), value != suffix, !value.hasPrefix("$(")
     else { return nil }

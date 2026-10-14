@@ -32,7 +32,7 @@ npm run dev                        # http://localhost:3000
 | `APNS_KEY_P8` | APNs auth key (`.p8`) from Apple Developer → Keys. **Server-only.** The PEM as is, with its newlines escaped as `\n`, or its bare base64 body |
 | `APNS_KEY_ID` | That key's 10-character Key ID |
 | `APNS_TEAM_ID` | The Apple Developer Team ID |
-| `APNS_TOPIC` | The iOS app's bundle id, `io.poppins.magicslash` |
+| `APNS_TOPIC` | The iOS app's bundle id, `io.magic-slash.ios` |
 
 `/api/atlassian/token` hard-requires the two Atlassian variables: without both it
 answers `500 { "error": "server_not_configured" }` and the desktop app can never

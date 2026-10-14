@@ -131,6 +131,9 @@ export type EntryId =
   | 'workflowskillpicker'
   | 'workflowproblems'
   | 'workfloweditor'
+  | 'marktile'
+  | 'toolmark'
+  | 'toolmarkstack'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -257,6 +260,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   workflowskillpicker: 'WorkflowSkillPicker',
   workflowproblems: 'WorkflowProblems',
   workfloweditor: 'WorkflowEditor',
+  marktile: 'MarkTile',
+  toolmark: 'ToolMark',
+  toolmarkstack: 'ToolMarkStack',
 }
 
 /**
@@ -378,7 +384,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   fieldtable: ['button', 'text'],
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
-  settingrow: ['button', 'buttonicon', 'chipinput', 'colorswatches', 'icon', 'input', 'livepill', 'select', 'stepper', 'switch', 'text'],
+  settingrow: ['button', 'buttonicon', 'chipinput', 'colorswatches', 'icon', 'input', 'livepill', 'marktile', 'select', 'stepper', 'switch', 'text'],
   settingscard: ['banner', 'card', 'settingrow', 'text'],
   disclosurecard: ['card', 'icon', 'settingrow', 'text'],
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
@@ -435,7 +441,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   livepill: [],
   menubarpanel: ['agent', 'buttonicon', 'icon', 'label', 'menusidebaritem', 'text'],
   sidebarpageseditor: ['card', 'icon', 'select', 'text'],
-  accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
+  accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'marktile', 'text'],
   // The canvas draws its cards, its links and its minimap itself (nothing is a slot),
   // plus the legend's two words.
   workflowcanvas: ['workflownode', 'workflowedge', 'canvasminimap', 'button', 'buttonicon', 'menu', 'text'],
@@ -449,6 +455,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'settingscard', 'text'],
   workflowskillpicker: ['menu'],
   workflowproblems: ['icon', 'text'],
+  marktile: ['icon'],
+  toolmark: ['marktile'],
+  toolmarkstack: ['toolmark'],
   workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner', 'timelineline', 'emptystate'],
 }
 
@@ -583,6 +592,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   avatar: 'A face, or the default portrait when there is none',
   avatarpicker: 'Thirty drawn faces, six to a line',
   avatarstack: 'Who else is here, as overlapping faces',
+  marktile: 'A logo or a glyph on its own plate, square or round',
+  toolmark: 'What a tool call was, on its product’s colour',
+  toolmarkstack: 'What a run of tool calls did, as overlapping marks',
   label: 'Names a thing, on a tinted plate',
   status: 'Reports a state, and changes it',
   switch: 'On or off, and it takes at once',

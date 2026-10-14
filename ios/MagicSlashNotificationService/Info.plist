@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>KeychainSharedGroup</key>
-	<string>$(AppIdentifierPrefix)io.poppins.magicslash.shared</string>
+	<string>$(AppIdentifierPrefix)io.magic-slash.ios.shared</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

@@ -151,9 +151,9 @@ npm run ios:relay-check
 
 Nothing is sent until this exists; the app builds and runs without it.
 
-1. App IDs `io.poppins.magicslash` (Push Notifications capability) and
-   `io.poppins.magicslash.NotificationService`, both with the keychain group
-   `io.poppins.magicslash.shared` (`MagicSlash.entitlements`,
+1. App IDs `io.magic-slash.ios` (Push Notifications capability) and
+   `io.magic-slash.ios.NotificationService`, both with the keychain group
+   `io.magic-slash.ios.shared` (`MagicSlash.entitlements`,
    `MagicSlashNotificationService.entitlements`). Automatic signing creates the profiles.
 2. An APNs auth key (`.p8`) for the team, whose values go to the web server's `APNS_*`
    variables (see `webapp/README.md`).
@@ -171,7 +171,7 @@ the app's team and numbers the builds itself.
 ### By hand
 
 1. Make sure `DEVELOPMENT_TEAM` is set in `Secrets.xcconfig` and that the bundle id
-   `io.poppins.magicslash` exists in App Store Connect, with an app record.
+   `io.magic-slash.ios` exists in App Store Connect, with an app record.
 2. Bump `CURRENT_PROJECT_VERSION` (build number) in the project's build settings for every
    upload, and `MARKETING_VERSION` for a new version. Both are set on the project, not the
    targets, so the app and its extension never disagree (App Store Connect refuses that).
