@@ -202,8 +202,8 @@ private struct ToolStatusMark: View {
   }
 }
 
-/// One tool call, on one line, as `ToolLine` draws it: its status, the wrench, the tool's
-/// name, and the argument that says what it did.
+/// One tool call, on one line, as `ToolLine` draws it: its status, its mark on its
+/// product's colour, the tool's name, and the argument that says what it did.
 private struct ToolLine: View {
   @Environment(\.theme) private var theme
   let name: String
@@ -213,9 +213,7 @@ private struct ToolLine: View {
   var body: some View {
     HStack(spacing: 8) {
       ToolStatusMark(status: status)
-      Image(systemName: "wrench")
-        .font(.system(size: 10))
-        .foregroundStyle(theme.icon)
+      ToolMarkStack(names: [name])
       Text(name)
         .font(.cera(.footnote, .medium))
         .foregroundStyle(theme.ink)
@@ -254,8 +252,8 @@ struct WorkingLine: View {
   }
 }
 
-/// A run of tool calls on one line (`toolDetail: grouped`): how many, which tools, and how
-/// the run is going. A tap opens it on its own lines.
+/// A run of tool calls on one line (`toolDetail: grouped`): how the run is going, the marks
+/// of its last five calls, how many, and which tools. A tap opens it on its own lines.
 private struct ToolGroup: View {
   @Environment(\.theme) private var theme
   let tools: [ChatLine.ToolCall]
@@ -280,9 +278,7 @@ private struct ToolGroup: View {
       } label: {
         HStack(spacing: 8) {
           ToolStatusMark(status: status)
-          Image(systemName: "wrench")
-            .font(.system(size: 10))
-            .foregroundStyle(theme.icon)
+          ToolMarkStack(names: tools.map(\.name))
           Text("\(tools.count) actions")
             .font(.cera(.footnote, .medium))
             .foregroundStyle(theme.ink)
