@@ -86,6 +86,9 @@ private struct RootView: View {
           relay?.lock()
         case .active where wentToBackground:
           wentToBackground = false
+          // Permission may have been granted in iOS Settings meanwhile: register now, not at
+          // the next launch. Without a prompt, since iOS shows its own only once.
+          if wantsNotifications { Task { await PushAuthorization.requestAndRegister() } }
           Task {
             // A fresh socket first: every store below rejoins its channels on it.
             await RelayStore.restartSocket(auth.client)

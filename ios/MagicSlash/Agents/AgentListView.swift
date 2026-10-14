@@ -70,7 +70,7 @@ struct AgentListView: View {
     }
     .task { await profile.load() }
     // Whichever comes last, the tap or the first read of the agents, opens the session.
-    .onChange(of: RouteTrigger(request: router.pending, loaded: store.loadState != .loading), initial: true) {
+    .onChange(of: RouteTrigger(request: router.pending, loaded: store.loadState != .loading, agentIds: store.agents.map(\.appAgentId)), initial: true) {
       openTappedAgent()
     }
     .sheet(item: $sheet) { sheet in
@@ -95,18 +95,22 @@ struct AgentListView: View {
   private struct RouteTrigger: Equatable {
     let request: NotificationRouter.Request?
     let loaded: Bool
+    /// The agents listed: an agent started while the app was away arrives with a refresh that
+    /// leaves `loadState` at `.loaded`, so the list itself has to be watched.
+    let agentIds: [String?]
   }
 
   /// A tapped notification (PROTOCOL.md §14): its `appAgentId` names the desktop's terminal,
   /// mapped here to the session's row. Only from a Mac paired with this account, so a tap
-  /// meant for another account opens nothing. An agent the list does not have (archived since)
-  /// leaves the list as it is.
+  /// meant for another account opens nothing. An agent not listed yet is waited for, up to
+  /// `NotificationRouter.patience`: past that (archived since), the list stays as it is.
   private func openTappedAgent() {
     guard let request = router.pending, store.loadState != .loading else { return }
-    router.clear()
     guard relay.macs.contains(where: { $0.macId == request.macId }),
-          let agent = store.agents.first(where: { $0.appAgentId == request.appAgentId })
-    else { return }
+          Date.now.timeIntervalSince(request.at) < NotificationRouter.patience
+    else { return router.clear() }
+    guard let agent = store.agents.first(where: { $0.appAgentId == request.appAgentId }) else { return }
+    router.clear()
     sheet = nil
     path = [agent.id]
   }

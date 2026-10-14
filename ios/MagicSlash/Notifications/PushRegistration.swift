@@ -11,7 +11,9 @@ import Supabase
 /// sign-out.
 ///
 /// Every write is fire-and-forget from the caller's side: nothing here blocks the screen, and a
-/// failure is only logged. The next launch, unlock or token writes the rows again.
+/// failure is only logged. The next launch, unlock or token writes the rows again. The writes
+/// run one after another, in the order they were asked for: a registration still in flight can
+/// neither bring back a row a later forget deleted, nor copy back toggles changed meanwhile.
 @MainActor
 final class PushRegistration {
   /// The two toggles, the same on every row of this phone.
@@ -39,6 +41,8 @@ final class PushRegistration {
   private let userId: String
   /// The Macs the rows follow, as last handed to `sync`.
   private var macs: [PairedMac] = []
+  /// The last write asked for: each new one waits for it before touching the table.
+  private var tail: Task<Error?, Never>?
 
   init(client: SupabaseClient, userId: UUID) {
     self.client = client
@@ -62,13 +66,27 @@ final class PushRegistration {
     let environment = Self.environment
     let userId = userId
     let client = client
-    Task {
+    enqueue {
       do {
         try await Self.write(client: client, userId: userId, phoneId: phoneId, macs: macs, token: token, environment: environment)
       } catch {
-        RelayLog.shared.add("push registration failed: \(error.localizedDescription)")
+        await RelayLog.shared.add("push registration failed: \(error.localizedDescription)")
       }
+      return nil
     }
+  }
+
+  /// Runs `work` after every write asked for before it, and returns its task, whose value is
+  /// the error `work` hands back, if any.
+  @discardableResult
+  private func enqueue(_ work: @escaping @Sendable () async -> Error?) -> Task<Error?, Never> {
+    let previous = tail
+    let task = Task {
+      _ = await previous?.value
+      return await work()
+    }
+    tail = task
+    return task
   }
 
   private nonisolated static func write(
@@ -98,15 +116,16 @@ final class PushRegistration {
   /// invalidation, where the phone id may be one the phone no longer holds.
   func remove(_ macs: [PairedMac]) {
     let client = client
-    Task {
+    enqueue {
       for mac in macs {
         do {
           try await client.from("push_devices").delete(returning: .minimal)
             .eq("phone_id", value: mac.phoneId.lowercased()).eq("mac_id", value: mac.macId.lowercased()).execute()
         } catch {
-          RelayLog.shared.add("push row not removed: \(error.localizedDescription)")
+          await RelayLog.shared.add("push row not removed: \(error.localizedDescription)")
         }
       }
+      return nil
     }
   }
 
@@ -115,13 +134,18 @@ final class PushRegistration {
   func removeAll() async {
     let phoneIds = Set([DeviceKeys.shared.phoneId] + macs.map { $0.phoneId.lowercased() })
     macs = []
-    for phoneId in phoneIds {
-      do {
-        try await client.from("push_devices").delete(returning: .minimal).eq("phone_id", value: phoneId).execute()
-      } catch {
-        RelayLog.shared.add("push rows not removed: \(error.localizedDescription)")
+    let client = client
+    // After every earlier write, so none of them recreates a row once these are gone.
+    await enqueue {
+      for phoneId in phoneIds {
+        do {
+          try await client.from("push_devices").delete(returning: .minimal).eq("phone_id", value: phoneId).execute()
+        } catch {
+          await RelayLog.shared.add("push rows not removed: \(error.localizedDescription)")
+        }
       }
-    }
+      return nil
+    }.value
   }
 
   // MARK: - Toggles
@@ -135,10 +159,21 @@ final class PushRegistration {
   }
 
   /// Writes both toggles to every row of this phone: the table is their only home.
+  /// Queued with the registrations, so toggles flipped quickly land in order and a registration
+  /// in flight cannot write the previous ones back over them.
   func setPreferences(_ preferences: Preferences) async throws {
-    try await client.from("push_devices")
-      .update(Toggles(notify_waiting: preferences.waiting, notify_completed: preferences.completed), returning: .minimal)
-      .eq("phone_id", value: DeviceKeys.shared.phoneId).execute()
+    let client = client
+    let phoneId = DeviceKeys.shared.phoneId
+    let toggles = Toggles(notify_waiting: preferences.waiting, notify_completed: preferences.completed)
+    let failure = await enqueue {
+      do {
+        try await client.from("push_devices").update(toggles, returning: .minimal).eq("phone_id", value: phoneId).execute()
+        return nil
+      } catch {
+        return error
+      }
+    }.value
+    if let failure { throw failure }
   }
 
   // MARK: - Rows
