@@ -35,11 +35,6 @@ struct PromptComposer: View {
     let margin = ScreenCorners.margin(height: height)
     let menu = focused ? suggestions : []
     VStack(alignment: .leading, spacing: 8) {
-      if !menu.isEmpty {
-        SlashCommandMenu(commands: menu, pick: complete)
-          .liquidGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), tint: fieldTint, interactive: false)
-          .transition(.move(edge: .bottom).combined(with: .opacity))
-      }
       if hasNotice(length: length, status: status) {
         notices(length: length, status: status)
           .padding(.horizontal, 14)
@@ -88,6 +83,16 @@ struct PromptComposer: View {
         }
       }
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
+    }
+    // Over the composer, not in it: the composer's height sets the thread's bottom inset,
+    // and a menu in its layout would move the field every time it opens or closes.
+    .overlay(alignment: .top) {
+      if !menu.isEmpty {
+        SlashCommandMenu(commands: menu, pick: complete)
+          .liquidGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), tint: fieldTint, interactive: false)
+          .alignmentGuide(.top) { $0[.bottom] + 8 }
+          .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+      }
     }
     .animation(.snappy(duration: 0.2), value: menu.isEmpty)
     .padding(.horizontal, focused ? 8 : margin)
