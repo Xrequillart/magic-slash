@@ -35,7 +35,8 @@ struct AgentListView: View {
       content
         .background(theme.bg.ignoresSafeArea())
         .navigationTitle("Sessions")
-        .navigationBarTitleDisplayMode(.inline)
+        // A large title at the top left, which folds into the bar's centre on scroll.
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
           ToolbarItem(placement: .topBarLeading) {
             Button {
