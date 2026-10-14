@@ -21,6 +21,10 @@ struct AgentSessionView: View {
   @State private var atBottom = true
   /// The thread's visible height, to tell where its end marker sits.
   @State private var viewportHeight: CGFloat = 0
+  /// Where the end marker last sat in the thread, read again when the viewport resizes: the
+  /// marker can report before the viewport has a height, and a thread that never moves
+  /// would keep that first wrong reading.
+  @State private var markerY: CGFloat = 0
   /// Whether the thread was taken to its end once it arrived: the first transcript lands
   /// after the screen opens, so the scroll view's initial anchor alone misses it.
   @State private var landed = false
@@ -126,8 +130,11 @@ struct AgentSessionView: View {
       .background {
         GeometryReader { viewport in
           Color.clear
-            .onAppear { viewportHeight = viewport.size.height }
-            .onChange(of: viewport.size.height) { _, height in viewportHeight = height }
+            .onAppear { viewportHeight = viewport.size.height; updateAtBottom() }
+            .onChange(of: viewport.size.height) { _, height in
+              viewportHeight = height
+              updateAtBottom()
+            }
         }
       }
       .openingAtBottom()
@@ -142,7 +149,8 @@ struct AgentSessionView: View {
       // The desktop's `STICK_PX`: within 48 pt of the end counts as reading it. Above that,
       // the reader is looking at something, and the thread stays where they put it.
       .onPreferenceChange(BottomMarkerKey.self) { minY in
-        atBottom = minY <= viewportHeight + Self.stick
+        markerY = minY
+        updateAtBottom()
       }
       .onChange(of: scrollKey(chat: chat, runtime: runtime), initial: true) {
         if !landed {
@@ -158,7 +166,8 @@ struct AgentSessionView: View {
       .safeAreaInset(edge: .bottom) {
         if let runtime, let appAgentId = agent.appAgentId {
           // Drawn back while the reader is up the thread, full size again at the end.
-          PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId, compact: !atBottom)
+          // No conversation yet (Mac offline, still loading): nothing to read up, full size.
+          PromptComposer(relay: relay, runtime: runtime, appAgentId: appAgentId, compact: chat != nil && !atBottom)
             // The thread fades into the page's own ground under the composer, from a little
             // above it to the screen's edge, so the field reads over whatever scrolls past.
             .background(alignment: .bottom) {
@@ -210,6 +219,10 @@ struct AgentSessionView: View {
 
   private func leaseKey(agent: Agent, runtime: AgentRuntime?) -> String {
     "\(agent.appAgentId ?? "")|\(runtime?.macId ?? "")|\(runtime?.isCurrent == true)|\(relay.keyState == .unlocked)"
+  }
+
+  private func updateAtBottom() {
+    atBottom = markerY <= viewportHeight + Self.stick
   }
 
   /// No conversation to show yet, and why.
