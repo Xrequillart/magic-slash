@@ -97,6 +97,9 @@ struct PromptComposer: View {
     .scaleEffect(compact ? 0.8 : 1, anchor: .bottom)
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: compact)
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: focused)
+    .onChange(of: focused) { _, focused in
+      if focused { Haptics.tap() }
+    }
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }

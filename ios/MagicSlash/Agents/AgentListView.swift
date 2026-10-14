@@ -57,6 +57,10 @@ struct AgentListView: View {
           AgentSessionView(store: store, relay: relay, agentId: id)
         }
     }
+    // Back to the list, by the back button or the edge swipe alike.
+    .onChange(of: path.count) { old, new in
+      if new < old { Haptics.tap() }
+    }
     .task { await profile.load() }
     .sheet(item: $sheet) { sheet in
       switch sheet {
