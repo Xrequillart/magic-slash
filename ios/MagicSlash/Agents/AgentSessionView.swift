@@ -128,6 +128,13 @@ struct AgentSessionView: View {
       }
       .openingAtBottom()
       .scrollDismissesKeyboard(.interactively)
+      // A tap on the thread puts the keyboard away. Alongside the thread's own taps, so a
+      // link or a question's choice still answers the same tap.
+      .simultaneousGesture(
+        TapGesture().onEnded {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+      )
       // The desktop's `STICK_PX`: within 48 pt of the end counts as reading it. Above that,
       // the reader is looking at something, and the thread stays where they put it.
       .onPreferenceChange(BottomMarkerKey.self) { minY in
