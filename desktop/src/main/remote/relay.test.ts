@@ -153,11 +153,20 @@ function sentOn(channel: FakeChannel): RelayEnvelope[] {
   })
 }
 
-/** Join the channel the relay asked for and acknowledge its presence. */
+/**
+ * Join the channel the relay asked for and acknowledge its presence. Waits for the relay to
+ * call itself live and for the first snapshot it then sends: one fixed tick was enough
+ * locally and not on a loaded CI runner, where the snapshot came after the test read it.
+ */
 async function goLive(channel: FakeChannel): Promise<void> {
   const status = channel.subscribe.mock.calls[0][0] as (s: string) => void
   status('SUBSCRIBED')
+  await vi.waitFor(() => expect(getRemoteState().status).toBe('live'), { timeout: 2_000, interval: 5 })
   await tick()
+  // With phones paired, live means a snapshot goes out: waited for, briefly, since a relay
+  // with none paired sends nothing and the test goes on regardless.
+  await vi.waitFor(() => expect(sentOn(channel).some((e) => e.type === 'state')).toBe(true), { timeout: 200, interval: 5 })
+    .catch(() => undefined)
 }
 
 function broadcast(channel: FakeChannel, payload: unknown): void {
