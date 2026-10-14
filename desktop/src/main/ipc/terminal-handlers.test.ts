@@ -32,10 +32,13 @@ const term = vi.hoisted(() => ({
 }))
 // Captured onExit callback from the most recent createTerminal call.
 let capturedOnExit: ((code: number) => void) | undefined
+// And its onStateChange, to drive the waiting / completed transitions.
+let capturedOnStateChange: ((state: string, previousState: string) => void) | undefined
 
 vi.mock('../pty/terminal-manager', () => ({
   createTerminal: (...args: unknown[]) => {
     capturedOnExit = args[5] as (code: number) => void
+    capturedOnStateChange = args[4] as (state: string, previousState: string) => void
     term.createTerminal(...args)
     return { id: args[0], name: args[1], state: 'idle', repositories: [], branchName: null }
   },
@@ -104,7 +107,10 @@ vi.mock('../store/plan-sync', () => ({
   flushPlanSpec: (...args: unknown[]) => flushPlanSpec(...args),
 }))
 
-vi.mock('../config/config', () => ({ readConfig: vi.fn(() => ({ repositories: {} })) }))
+const readConfig = vi.hoisted(() => vi.fn((): { repositories: object; notifications?: Record<string, boolean> } => ({ repositories: {} })))
+vi.mock('../config/config', () => ({ readConfig: () => readConfig() }))
+const sendRemotePush = vi.hoisted(() => vi.fn(async (_id: string, _kind: string) => {}))
+vi.mock('../remote/push', () => ({ sendRemotePush: (id: string, kind: string) => sendRemotePush(id, kind), clearRemotePushCooldown: () => {} }))
 vi.mock('../config/validation', () => ({ expandPath: (p: string) => p }))
 vi.mock('../config/repo-validation', () => ({ checkRepoPath: vi.fn(() => ({ valid: true })) }))
 vi.mock('../store/hydrate', () => ({ ensureHydrated: vi.fn(async () => {}) }))
@@ -300,6 +306,33 @@ describe('session-end usage flush (terminal:kill)', () => {
 // tsc now enforces one half — STATUS_TO_ACTION is keyed on the union, so a new
 // status without an entry does not compile. This test enforces the other half, which
 // types cannot see: that no SKILL.md sends a status the union has never heard of.
+
+describe('push notifications to the paired phones', () => {
+  it('pushes on the waiting and completed transitions, whatever the focus and the desktop settings', async () => {
+    const showNotification = vi.fn()
+    // A focused window and both desktop notifications off: the desktop shows nothing.
+    setupTerminalHandlers(() => ({ isFocused: () => true, webContents: { send: vi.fn() } }) as never, showNotification, vi.fn())
+    readConfig.mockReturnValue({ repositories: {}, notifications: { agentWaiting: false, agentCompleted: false } })
+    try {
+      await createTerminal('claude-push-1')
+      capturedOnStateChange!('waiting', 'working')
+      capturedOnStateChange!('waiting', 'waiting')
+      capturedOnStateChange!('working', 'waiting')
+      capturedOnStateChange!('completed', 'working')
+      expect(sendRemotePush.mock.calls).toEqual([['claude-push-1', 'waiting'], ['claude-push-1', 'completed']])
+      expect(showNotification).not.toHaveBeenCalled()
+    } finally {
+      readConfig.mockReturnValue({ repositories: {} })
+    }
+  })
+
+  it('pushes nothing on other transitions', async () => {
+    await createTerminal('claude-push-2')
+    capturedOnStateChange!('working', 'idle')
+    capturedOnStateChange!('error', 'working')
+    expect(sendRemotePush).not.toHaveBeenCalled()
+  })
+})
 
 describe('the status contract with the skills', () => {
   /** Every `status=` value the shipped SKILL.md files actually send. */

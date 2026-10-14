@@ -28,6 +28,7 @@ import {
   RemoteKeychainUnavailableError,
   saveGeneration,
   saveIdentity,
+  setDevicePushKey,
 } from './identity-store'
 import { isRemoteModeEnabled, setRemoteModeEnabled } from './remote-mode'
 
@@ -108,6 +109,26 @@ describe('identity store', () => {
   it('reads a signing key that is not a string as none, and keeps the device', () => {
     const identity = loadOrCreateIdentity(ALICE)
     saveIdentity(ALICE, { ...identity, devices: [{ ...device, signPub: 42 as unknown as string }] })
+    expect(listDevices(ALICE)).toEqual([device])
+  })
+
+  it('stores a push key on the pairing it names only, once, and reads a device without one as paired', () => {
+    loadOrCreateIdentity(ALICE)
+    addDevice(ALICE, device)
+    expect(listDevices(ALICE)[0]).not.toHaveProperty('pushKey')
+    const key = Buffer.alloc(32, 7).toString('base64')
+    // Another pairing of the same phone (a stale `push-key`), or a phone not paired: nothing.
+    expect(setDevicePushKey(ALICE, device.phoneId, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', key)).toBeNull()
+    expect(setDevicePushKey(ALICE, 'ffffffff-ffff-4fff-8fff-ffffffffffff', device.pairingId, key)).toBeNull()
+    expect(setDevicePushKey(BOB, device.phoneId, device.pairingId, key)).toBeNull()
+    expect(listDevices(ALICE)).toEqual([device])
+    expect(setDevicePushKey(ALICE, device.phoneId, device.pairingId, key)?.devices).toEqual([{ ...device, pushKey: key }])
+    expect(listDevices(ALICE)).toEqual([{ ...device, pushKey: key }])
+    // The same key again writes nothing.
+    expect(setDevicePushKey(ALICE, device.phoneId, device.pairingId, key)).toBeNull()
+    // A push key that is not a string reads as none.
+    const identity = loadIdentity(ALICE)!
+    saveIdentity(ALICE, { ...identity, devices: [{ ...device, pushKey: 42 as unknown as string }] })
     expect(listDevices(ALICE)).toEqual([device])
   })
 

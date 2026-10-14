@@ -58,6 +58,26 @@ export function agentSubject(t: Translate, { ticketId, title, name, repositories
     : t('notification.agent.subject.named', { name: fallback })
 }
 
+/** The parts of a terminal a subject is built from: structural, so this module stays pure. */
+export interface AgentSubjectSource {
+  metadata?: { ticketId?: string; title?: string }
+  repositories?: string[]
+}
+
+/**
+ * What a notification needs to name this agent. `name` is the creation name and the
+ * last resort (see above for why it cannot stand on its own). Shared by the desktop's
+ * notifications and the phone's (remote/push.ts), so the two name an agent alike.
+ */
+export function subjectOf(terminal: AgentSubjectSource | undefined, name: string): AgentSubjectInput {
+  return {
+    ticketId: terminal?.metadata?.ticketId,
+    title: terminal?.metadata?.title,
+    name,
+    repositories: terminal?.repositories,
+  }
+}
+
 /** Title and body for an agent reaching `waiting` or `completed`. */
 export function agentNotification(
   t: Translate,
