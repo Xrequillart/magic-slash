@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { ArrowUp, Bot, ChevronRight, CircleAlert, Check, FilePen, FileText, FolderSearch, Globe, History, Image as ImageIcon, Info, ListOrdered, ListTodo, Paperclip, Sparkles, SquareTerminal, TextSearch, Wrench, X } from './icons'
+import { ArrowUp, BotMessageSquare, ChevronRight, CircleAlert, Check, FilePen, FileText, FolderSearch, Globe, History, Image as ImageIcon, Info, ListOrdered, ListTodo, MessageCircleQuestionMark, Paperclip, Sparkles, SquareTerminal, TextSearch, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
@@ -284,8 +284,9 @@ const BUILT_IN_MARKS: Record<string, IconComponent> = {
   Glob: FolderSearch,
   WebFetch: Globe,
   WebSearch: Globe,
-  Task: Bot,
-  Agent: Bot,
+  Task: BotMessageSquare,
+  Agent: BotMessageSquare,
+  AskUserQuestion: MessageCircleQuestionMark,
   TodoWrite: ListTodo,
   Skill: Sparkles,
 }
