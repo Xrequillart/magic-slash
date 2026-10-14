@@ -33,7 +33,7 @@ export function ToolMarkStackEntry({ theme, onOpen }: { theme: DesktopTheme; onO
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader title="ToolMarkStack" uses={usesOf('toolmarkstack')} onOpen={onOpen}>
         What a run of tool calls did, as overlapping marks the way AvatarStack overlaps
-        faces. The chat draws it on a grouped run’s line, before the count.
+        faces. The chat draws it before every tool line: a grouped run’s, and a single call’s as a run of one.
       </EntryHeader>
 
       <EntrySection

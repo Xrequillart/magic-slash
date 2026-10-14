@@ -3,7 +3,6 @@ import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, History, Image as 
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
-import { ToolMark } from './ToolMark'
 import { ToolMarkStack } from './ToolMarkStack'
 import { RAISED_PLATE } from './plate'
 import { CLAUDE_CORAL, ClaudeCode } from './brand'
@@ -1224,7 +1223,7 @@ function ToolLine({ entry }: { entry: Extract<ChatViewEntry, { kind: 'tool' }> }
         ) : (
           <Check className="w-3.5 h-3.5 flex-shrink-0 text-green" />
         )}
-        <ToolMark name={entry.name} />
+        <ToolMarkStack names={[entry.name]} />
         <span className="flex-shrink-0 font-medium text-ink">{entry.name}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-text-secondary/70" title={entry.summary}>{entry.summary}</span>
         {canOpen && <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-icon transition-transform ${open ? 'rotate-90' : ''}`} />}

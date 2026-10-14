@@ -2,7 +2,8 @@ import { ToolMark } from './ToolMark'
 
 /**
  * A RUN OF TOOL CALLS AS OVERLAPPING MARKS, one per call, oldest first, the way
- * `AvatarStack` overlaps faces: the line reads as what the run did.
+ * `AvatarStack` overlaps faces: the line reads as what the run did. A single call is a
+ * run of one, so every tool line of the chat wears the same white disc.
  *
  * Only the last `max` calls are drawn: a run of forty reads by its latest steps, and a
  * `+N` would repeat the count the line already prints beside it.
