@@ -24,5 +24,12 @@
   "signPublic": "046305eaa039d6fcfcfa66ee9e6c0e815bbc996fc197bc92ecf57cc2c5aa92d8acd95d1808338d50294a137082cabf0255941ad63639d3931b7e7d21abae9d1902",
   "signedPayload": "{\"v\":1,\"action\":\"answer\",\"macId\":\"b3c6a1f0-2d4e-4f8a-9c1b-7e5d3a2f1c0e\",\"phoneId\":\"5f9e8d7c-6b5a-4c3d-8e2f-1a0b9c8d7e6f\",\"pairingId\":\"9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\"commandId\":\"2c4e6a8b-0d1f-4e3a-9b5c-7d9e1f3a5b7c\",\"issuedAt\":1760000000000,\"appAgentId\":\"claude-1760000000000\",\"token\":\"0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0\",\"choice\":{\"kind\":\"answers\",\"answers\":[\"Café ☕\"]}}",
   "signature": "it7+BZpBTsTUJQCvna2Eu1QB0ln//BqecqhpQu3XMP0bCmdm9BDD/k2skE5UrKl6DlPrMvg7qGss792g5TkB6A==",
-  "signatureCryptoKit": "f6kBWmzRXiERNVilIzV11sFNmdchNZ25hvZo4NPrUmcA4YJN8iyzDjIvKI48o3yU4kaf0ux8GaBMiWVPI55zug=="
+  "signatureCryptoKit": "f6kBWmzRXiERNVilIzV11sFNmdchNZ25hvZo4NPrUmcA4YJN8iyzDjIvKI48o3yU4kaf0ux8GaBMiWVPI55zug==",
+  "pushKey": "a0a3a6a9acafb2b5b8bbbec1c4c7cacdd0d3d6d9dcdfe2e5e8ebeef1f4f7fafd",
+  "pairingId": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+  "kind": "waiting",
+  "pushAad": "push-v1|b3c6a1f0-2d4e-4f8a-9c1b-7e5d3a2f1c0e|5f9e8d7c-6b5a-4c3d-8e2f-1a0b9c8d7e6f|9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d|waiting",
+  "pushPlaintext": "{\"kind\":\"waiting\",\"appAgentId\":\"claude-1760000000000\",\"title\":\"Café ☕\",\"body\":\"Which database?\",\"sentAt\":1760000000000}",
+  "pushNonce": "0c0b0a090807060504030201",
+  "pushBox": "DAsKCQgHBgUEAwIB2nKmcc08y115rZE4c2S/9j4HIH1YwjcfNp7TX17dueNwI6jZrWEqSr895fInkv5qfAANc4LwmJj5qxhTQXaCHVXAPdW35RegzD5zpSabWC7Sz5aTgvXd44YQAWUnqOAIGwwxLrCVU4oFxvQFL26yf5zdsuWL1z56reMCj/NO5Vt2h4cpS/JL4cel"
 }
