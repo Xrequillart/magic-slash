@@ -21,6 +21,8 @@ struct PromptComposer: View {
 
   @State private var text = ""
   @FocusState private var focused: Bool
+  /// Set by a send, which leaves the field after its own haptic.
+  @State private var quietBlur = false
 
   /// The Mac refuses a longer prompt (§10), in UTF-16 units as it counts them.
   private static let maxLength = 10_000
@@ -103,7 +105,9 @@ struct PromptComposer: View {
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: compact)
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: focused)
     .onChange(of: focused) { _, focused in
-      if focused { Haptics.tap() }
+      // In and out of the field alike, but not twice for a send: its button already tapped.
+      if focused || !quietBlur { Haptics.tap() }
+      quietBlur = false
     }
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
@@ -214,6 +218,7 @@ struct PromptComposer: View {
     let macId = runtime.macId
     let appAgentId = appAgentId
     let prompt = trimmed
+    if focused { quietBlur = true }
     focused = false
     Task { await relay.prompt(macId: macId, appAgentId: appAgentId, text: prompt) }
   }
