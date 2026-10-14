@@ -71,10 +71,13 @@ struct NoteRow: View {
   let text: LocalizedStringKey
 
   var body: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 10) {
+    // The icon column of the rows above it (the paired Mac's laptop): same size, same
+    // width, same gap, so the note's text lines up with theirs.
+    HStack(spacing: 12) {
       Image(systemName: "info.circle")
-        .font(.system(size: 13))
+        .font(.system(size: 20))
         .foregroundStyle(theme.iconMuted)
+        .frame(width: 30)
       Text(text)
         .font(.cera(.footnote))
         .foregroundStyle(theme.textSecondary)
