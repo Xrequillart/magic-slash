@@ -90,7 +90,7 @@ struct PromptComposer: View {
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
     .animation(.snappy(duration: 0.2), value: menu.isEmpty)
-    .padding(.horizontal, margin)
+    .padding(.horizontal, focused ? 8 : margin)
     // As far from the bottom edge as from the sides, below the home indicator's inset, so
     // the round ends sit on the screen's own corners. Above the keyboard, just clear of it.
     .padding(.bottom, focused ? 8 : ScreenCorners.bottomPadding(margin: margin))
