@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.123.3] - 2026-10-14
+
+### Added
+
+- **Ios**: Show claude is working under the thread with the desktop's wave
+- **Ios**: Tap haptics on focusing the composer and on going back to the list
+- **Ios**: Widen the composer while it has the focus
+- **Ios**: Put the keyboard away on a tap in the thread
+- **Ios**: Fade the thread into the page under the composer
+- **Ios**: Suggest the mac's slash commands in the composer and paint them blue
+- **Desktop**: Send a paired iphone the slash commands it can suggest
+- **Ios**: Redraw the agent info cards for the phone in liquid glass
+- **Ios**: Fit the composer to the screen's corners and scale it down while scrolled up
+- **Ios**: Keep the connection log on disk across launches
+- **Ios**: Show each session's creation date in the list
+- **Ios**: Close every sheet with a cross and restyle the paired mac row
+- **Ios**: Draw the agent info sheet with the desktop's cards
+- **Ios**: Shrink the composer while reading up the thread and tint it with the theme
+- **Ios**: Show the forget-a-mac note as a list card like the others
+- **Ios**: Translate the app into French
+- **Ios**: Add an iPhone-only theme setting and a language row to the account sheet
+
+### Changed
+
+- **Ios**: Give the title card more room and a smaller title
+
+### Fixed
+
+- **Ios**: Open a fresh realtime socket on return to the foreground so the relay rejoins at once
+
 ## [0.123.2] - 2026-10-13
 
 ### Added
@@ -4088,6 +4118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.123.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.3
 [0.123.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.2
 [0.123.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.1
 [0.123.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.123.0
