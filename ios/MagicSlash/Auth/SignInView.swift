@@ -107,6 +107,13 @@ struct SignInView: View {
       .frame(maxWidth: .infinity)
       // In the middle of the screen while the keyboard is down, scrolling once it is up.
       .containerRelativeFrame(.vertical) { height, _ in height }
+      // A tap anywhere but a field or a button puts the keyboard away. Behind the content,
+      // so the fields and buttons still take their own taps first.
+      .background {
+        Color.clear
+          .contentShape(Rectangle())
+          .onTapGesture { focus = nil }
+      }
     }
     .scrollDismissesKeyboard(.interactively)
     .scrollBounceBehavior(.basedOnSize)
