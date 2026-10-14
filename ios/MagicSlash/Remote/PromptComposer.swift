@@ -88,12 +88,15 @@ struct PromptComposer: View {
     }
     // Over the composer, not in it: the composer's height sets the thread's bottom inset,
     // and a menu in its layout would move the field every time it opens or closes.
+    // Hung from a line of no height along the composer's top, so it grows upwards.
     .overlay(alignment: .top) {
-      if !menu.isEmpty {
-        SlashCommandMenu(commands: menu, pick: complete)
-          .liquidGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), tint: fieldTint, interactive: false)
-          .alignmentGuide(.top) { $0[.bottom] + 8 }
-          .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+      Color.clear.frame(height: 0).overlay(alignment: .bottom) {
+        if !menu.isEmpty {
+          SlashCommandMenu(commands: menu, pick: complete)
+            .liquidGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), tint: fieldTint, interactive: false)
+            .padding(.bottom, 8)
+            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+        }
       }
     }
     .animation(.snappy(duration: 0.2), value: menu.isEmpty)
