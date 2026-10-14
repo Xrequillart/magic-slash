@@ -15,8 +15,8 @@ struct PromptComposer: View {
   let relay: RelayStore
   let runtime: AgentRuntime
   let appAgentId: String
-  /// The reader has scrolled up the thread: the composer draws back, narrower, shorter and
-  /// closer to the bottom edge, until they are back at the end or start typing.
+  /// The reader has scrolled up the thread: the composer draws back, scaled down from its
+  /// bottom edge, until they are back at the end or start typing.
   var compact = false
 
   @State private var text = ""
@@ -31,7 +31,8 @@ struct PromptComposer: View {
     let length = trimmed.utf16.count
     let action = buttonAction(status: status)
     let compact = compact && !focused
-    let height: CGFloat = compact ? 38 : 48
+    let height: CGFloat = 48
+    let margin = ScreenCorners.margin(height: height)
     VStack(alignment: .leading, spacing: 8) {
       if hasNotice(length: length, status: status) {
         notices(length: length, status: status)
@@ -51,7 +52,7 @@ struct PromptComposer: View {
           .focused($focused)
           .disabled(sending)
           .padding(.horizontal, 16)
-          .padding(.vertical, compact ? 6 : 10)
+          .padding(.vertical, 10)
           // Cera sits high on its line: the field's own box is centred, then nudged so
           // the placeholder's x-height is, not its ascender.
           .offset(y: 1.5)
@@ -68,7 +69,7 @@ struct PromptComposer: View {
                 ProgressView().tint(action == .stop ? theme.ink : theme.onBrand)
               } else {
                 Image(systemName: action == .stop ? "stop.fill" : "arrow.up")
-                  .font(.system(size: (action == .stop ? 16 : 18) - (compact ? 3 : 0), weight: .bold))
+                  .font(.system(size: action == .stop ? 16 : 18, weight: .bold))
               }
             }
             .foregroundStyle(action == .stop ? theme.ink : theme.onBrand)
@@ -86,9 +87,13 @@ struct PromptComposer: View {
       }
       .animation(.spring(response: 0.32, dampingFraction: 0.72), value: action)
     }
-    .padding(.horizontal, compact ? 36 : 12)
-    .padding(.bottom, compact ? 2 : 8)
+    .padding(.horizontal, margin)
+    // As far from the bottom edge as from the sides, below the home indicator's inset, so
+    // the round ends sit on the screen's own corners. Above the keyboard, just clear of it.
+    .padding(.bottom, focused ? 8 : ScreenCorners.bottomPadding(margin: margin))
+    .scaleEffect(compact ? 0.8 : 1, anchor: .bottom)
     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: compact)
+    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: focused)
     .onChange(of: status) { _, status in
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }
@@ -198,5 +203,31 @@ struct PromptComposer: View {
     case (_, .done): nil
     case (_, .failed(let message)): .failure(message)
     }
+  }
+}
+
+/// The screen's rounded corners, so a bar along the bottom edge can follow them.
+@MainActor
+private enum ScreenCorners {
+  /// The display's corner radius: UIKit keeps it private, so it is read by key, and is 0 on
+  /// a square screen or if the key ever goes away.
+  static let radius: CGFloat = {
+    (UIScreen.main.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0
+  }()
+
+  /// The padding that puts a bar `margin` from the bottom edge, from inside the safe area:
+  /// negative, into the home indicator's strip. Without known corners, just above the strip.
+  static func bottomPadding(margin: CGFloat) -> CGFloat {
+    guard radius > 0 else { return 8 }
+    let inset = UIApplication.shared.connectedScenes
+      .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+      .first?.safeAreaInsets.bottom ?? 0
+    return margin - inset
+  }
+
+  /// The gap to keep on the sides and the bottom for a capsule `height` tall to be concentric
+  /// with the screen's corners: its round end then shares their centre.
+  static func margin(height: CGFloat) -> CGFloat {
+    max(radius - height / 2, 12)
   }
 }
