@@ -27,11 +27,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
   // MARK: - UNUserNotificationCenterDelegate
 
-  /// In the foreground too: the agent may not be the one on screen.
+  /// Never while the app is open: the user is watching their agents live, and the list shows
+  /// which one waits or is done. Nor kept in the Notification Center, where it would only
+  /// repeat what they already saw.
   nonisolated func userNotificationCenter(
     _ center: UNUserNotificationCenter, willPresent notification: UNNotification
   ) async -> UNNotificationPresentationOptions {
-    [.banner, .list, .sound]
+    []
   }
 
   /// A tap opens the agent the extension named. The generic fallback names none: the app just
