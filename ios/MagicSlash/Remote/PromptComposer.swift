@@ -19,7 +19,7 @@ struct PromptComposer: View {
   let runtime: AgentRuntime
   let appAgentId: String
   /// The reader has scrolled up the thread: the composer draws back, scaled down from its
-  /// bottom edge, until they are back at the end or start typing.
+  /// bottom edge, until they are back at the end, start typing or dictate.
   var compact = false
 
   @State private var text = ""
@@ -36,7 +36,9 @@ struct PromptComposer: View {
     let sending = isSending(status)
     let length = trimmed.utf16.count
     let action = buttonAction(status: status)
-    let compact = compact && !focused
+    // Never while the user writes or dictates: a growing prompt pushes the thread up, which
+    // reads as a scroll away from the end.
+    let compact = compact && !focused && !dictation.isActive
     let height: CGFloat = 48
     let margin = ScreenCorners.margin(height: height)
     let menu = focused ? suggestions : []
