@@ -1,5 +1,5 @@
 import { BotMessageSquare, FilePen, FileText, FolderSearch, Globe, ListTodo, MessageCircleQuestionMark, Sparkles, SquareTerminal, TextSearch, Wrench } from './icons'
-import { Figma, Github, Jira, JIRA_CHIP_GROUND, Notion, Slack } from './brand'
+import { Figma, Github, Jira, Notion, Slack } from './brand'
 import { MarkTile } from './MarkTile'
 import type { IconComponent } from './types'
 
@@ -14,8 +14,8 @@ import type { IconComponent } from './types'
  *
  * FIXED, NOT THEMED: white and light grey on every theme, the glyph in the fixed ink, so
  * a run of marks reads the same on the darkest ground as on the lightest. Jira's ground
- * is its chip's own 14% tint (`JIRA_CHIP_GROUND`), translucent: `ToolMarkStack` sets the
- * disc on the thread's ground, so it is a blue OF that ground and nothing shows through.
+ * is opaque too: its chip's 14% tint (`JIRA_CHIP_GROUND`) laid over the paper, so the disc
+ * is the same pale blue on every theme instead of a darker shade of a dark thread.
  */
 
 export interface ToolMarkProps {
@@ -26,6 +26,8 @@ export interface ToolMarkProps {
 /** The fixed paper and ink of `release-paper` / `release-ink`, and a grey between them. */
 const PAPER = '#FFFFFF'
 const GREY = '#E4E4E7'
+/** `JIRA_CHIP_GROUND` (Jira's blue at 14%) over `PAPER`, as one opaque colour. */
+const JIRA_PLATE = '#E1EEFF'
 const INK = 'rgb(10 10 11)'
 
 interface Plate {
@@ -57,7 +59,7 @@ const BUILT_IN_MARKS: Record<string, IconComponent> = {
 
 export function toolPlate(name: string): Plate {
   const [, server = '', tool = ''] = name.match(/^mcp__(.+?)__(.+)$/) ?? []
-  if (/atlassian|jira/i.test(server) && !/confluence/i.test(tool)) return { glyph: Jira, tint: JIRA_CHIP_GROUND }
+  if (/atlassian|jira/i.test(server) && !/confluence/i.test(tool)) return { glyph: Jira, tint: JIRA_PLATE }
   if (/notion/i.test(server)) return { glyph: Notion, tint: PAPER }
   if (/slack/i.test(server)) return { glyph: Slack, tint: PAPER }
   if (/figma/i.test(server)) return { glyph: Figma, tint: PAPER }

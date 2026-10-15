@@ -9,8 +9,7 @@ import { ToolMark } from './ToolMark'
  * `+N` would repeat the count the line already prints beside it.
  *
  * EACH DISC SITS ON THE THREAD'S GROUND (`surface-sunken`, the chat's), with a ring of
- * it: the disc on top cuts the one under it instead of drawing over it, and a translucent
- * plate (Jira's) is a tint of that ground rather than a window onto the disc below.
+ * it: the disc on top cuts the one under it instead of drawing over it.
  */
 
 export interface ToolMarkStackProps {
