@@ -54,6 +54,9 @@ struct PromptComposer: View {
         HStack(alignment: .bottom, spacing: 4) {
           PromptField(text: $text, focused: $focused, known: Set(commands.map(\.name)), editable: !sending)
             .padding(.vertical, 10)
+            // As tall as the microphone's column at least, so the bottom alignment that keeps
+            // the microphone on the last line leaves a single line centred.
+            .frame(minHeight: height)
             // Cera sits high on its line: the field's own box is centred, then nudged so
             // its capitals are.
             .offset(y: PromptField.capCentring)
