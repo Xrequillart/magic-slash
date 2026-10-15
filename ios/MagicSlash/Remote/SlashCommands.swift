@@ -218,8 +218,11 @@ private struct PromptTextView: UIViewRepresentable {
       // after what was written for the user.
       view.text = text
       view.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+      paint(view)
+      Self.revealCaret(view)
+    } else {
+      paint(view)
     }
-    paint(view)
     // Focus follows the binding, a turn later: becoming first responder mid-update warns.
     if focused != view.isFirstResponder {
       DispatchQueue.main.async {
@@ -235,7 +238,11 @@ private struct PromptTextView: UIViewRepresentable {
     let cap = Self.height(lines: Self.maxLines, width: width)
     let scrolls = fits > cap + 0.5
     if view.isScrollEnabled != scrolls {
-      DispatchQueue.main.async { view.isScrollEnabled = scrolls }
+      DispatchQueue.main.async {
+        view.isScrollEnabled = scrolls
+        // Turning scrolling on sends the view back to its top: back to the caret.
+        if scrolls { Self.revealCaret(view) }
+      }
     }
     return CGSize(width: width, height: min(fits, cap))
   }
@@ -250,18 +257,54 @@ private struct PromptTextView: UIViewRepresentable {
     return probe.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
   }
 
+  /// Scrolls a field taller than its lines to the caret, so the user sees where they write.
+  static func revealCaret(_ view: UITextView) {
+    guard view.isScrollEnabled else { return }
+    view.layoutIfNeeded()
+    view.scrollRangeToVisible(view.selectedRange)
+  }
+
   /// Ink everywhere, blue on the known commands. Left alone while the keyboard composes
   /// (a dictation, a Japanese input): restyling would cut the composition short.
+  ///
+  /// Called on every update of the composer, not only when the text changes. Restyling lays
+  /// the whole text out again, and a scrolling view then jumps back to its top: so it only
+  /// restyles what differs, and keeps where the view was scrolled to.
   private func paint(_ view: UITextView) {
     guard view.markedTextRange == nil else { return }
     let storage = view.textStorage
     let whole = NSRange(location: 0, length: storage.length)
+    let commands = SlashCommands.commandRanges(in: view.text, known: known).map { NSRange($0, in: view.text) }
+    guard !Self.painted(storage, font: Self.font, ink: ink, command: command, commands: commands) else { return }
+    let offset = view.contentOffset
+    let selection = view.selectedRange
     storage.beginEditing()
     storage.addAttributes([.font: Self.font, .foregroundColor: ink], range: whole)
-    for range in SlashCommands.commandRanges(in: view.text, known: known) {
-      storage.addAttribute(.foregroundColor, value: command, range: NSRange(range, in: view.text))
+    for range in commands {
+      storage.addAttribute(.foregroundColor, value: command, range: range)
     }
     storage.endEditing()
+    view.selectedRange = selection
+    if view.isScrollEnabled { view.setContentOffset(offset, animated: false) }
+  }
+
+  /// Whether the text already wears these colours: ink everywhere but the commands, in the
+  /// field's font.
+  private static func painted(_ storage: NSTextStorage, font: UIFont, ink: UIColor, command: UIColor, commands: [NSRange]) -> Bool {
+    let whole = NSRange(location: 0, length: storage.length)
+    var matches = true
+    storage.enumerateAttributes(in: whole) { attributes, range, stop in
+      let inCommand = commands.contains { NSIntersectionRange($0, range).length > 0 }
+      let wanted = inCommand ? command : ink
+      let whollyInside = !inCommand || commands.contains { NSIntersectionRange($0, range) == range }
+      if attributes[.font] as? UIFont != font
+        || attributes[.foregroundColor] as? UIColor != wanted
+        || !whollyInside {
+        matches = false
+        stop.pointee = true
+      }
+    }
+    return matches
   }
 
   func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -274,6 +317,7 @@ private struct PromptTextView: UIViewRepresentable {
     func textViewDidChange(_ view: UITextView) {
       parent.text = view.text
       parent.paint(view)
+      PromptTextView.revealCaret(view)
     }
 
     func textViewDidBeginEditing(_ view: UITextView) {
