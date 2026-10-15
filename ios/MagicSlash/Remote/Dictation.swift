@@ -32,6 +32,12 @@ final class Dictation {
   @ObservationIgnored private var task: SFSpeechRecognitionTask?
   /// What the field held at the start, spaced from what will be said.
   @ObservationIgnored private var prefix = ""
+  /// What was said in the pauses before the current stretch of speech: the recogniser starts
+  /// its transcript afresh after a pause, and would otherwise drop it.
+  @ObservationIgnored private var said = ""
+  /// The last transcript heard, and whether the recogniser marked it as the end of a stretch.
+  @ObservationIgnored private var last = ""
+  @ObservationIgnored private var lastEnded = false
   /// Counts the dictations, so a late result of a stopped one is dropped.
   @ObservationIgnored private var generation = 0
 
@@ -79,9 +85,12 @@ final class Dictation {
     self.request = request
     prefix = field.isEmpty || field.last?.isWhitespace == true ? field : field + " "
     text = field
+    said = ""
+    last = ""
+    lastEnded = false
     state = .listening
-    task = Self.recognize(recognizer, request) { [weak self] transcript, done in
-      Task { @MainActor in self?.receive(transcript, done: done, generation: current) }
+    task = Self.recognize(recognizer, request) { [weak self] transcript, ended, done in
+      Task { @MainActor in self?.receive(transcript, ended: ended, done: done, generation: current) }
     }
   }
 
@@ -102,9 +111,19 @@ final class Dictation {
     state = .idle
   }
 
-  private func receive(_ transcript: String?, done: Bool, generation current: Int) {
+  private func receive(_ transcript: String?, ended: Bool, done: Bool, generation current: Int) {
     guard current == generation, state == .listening else { return }
-    if let transcript, !transcript.isEmpty { text = prefix + transcript }
+    if let transcript, !transcript.isEmpty {
+      // A transcript that does not carry on the last one is a new stretch of speech, once the
+      // last was marked as ended, or when it is far shorter (an end the recogniser did not
+      // mark): the last one is kept. A shorter one otherwise is the recogniser rewording.
+      if !last.isEmpty, !transcript.hasPrefix(last), lastEnded || transcript.count < last.count / 2 {
+        said += last + " "
+      }
+      last = transcript
+      lastEnded = ended
+      text = prefix + said + transcript
+    }
     // A final result, an error, or the recogniser's own time limit.
     if done { stop() }
   }
@@ -145,10 +164,15 @@ final class Dictation {
   nonisolated private static func recognize(
     _ recognizer: SFSpeechRecognizer,
     _ request: SFSpeechAudioBufferRecognitionRequest,
-    report: @escaping @Sendable (String?, Bool) -> Void
+    report: @escaping @Sendable (_ transcript: String?, _ ended: Bool, _ done: Bool) -> Void
   ) -> SFSpeechRecognitionTask {
     recognizer.recognitionTask(with: request) { result, error in
-      report(result?.bestTranscription.formattedString, error != nil || result?.isFinal == true)
+      // The metadata comes with the last result of a stretch of speech, before a pause.
+      report(
+        result?.bestTranscription.formattedString,
+        result?.speechRecognitionMetadata != nil,
+        error != nil || result?.isFinal == true
+      )
     }
   }
 
