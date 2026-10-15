@@ -7,9 +7,9 @@ import SwiftUI
 /// under the marks drawn for white (Slack, Notion, Figma), and a light grey with the glyph
 /// in black for GitHub and for Claude Code's own tools, the wrench for anything else.
 ///
-/// Fixed, not themed: white, grey and ink are the same on every theme, so a run reads the
-/// same on the darkest ground as on the lightest. Jira's ground is its label's 14% tint,
-/// laid over the thread's ground so nothing shows through it.
+/// Fixed, not themed: white, grey, Jira's pale blue and ink are the same on every theme, so
+/// a run reads the same on the darkest ground as on the lightest. Jira's ground is opaque
+/// too: its label's 14% tint laid over white, so it is never a darker shade of a dark thread.
 struct ToolPlate {
   enum Mark {
     /// A logo that paints itself.
@@ -25,7 +25,8 @@ struct ToolPlate {
   static let paper = Color.white
   static let grey = Color(red: 228 / 255, green: 228 / 255, blue: 231 / 255)
   static let ink = Color(red: 10 / 255, green: 10 / 255, blue: 11 / 255)
-  static let jira = Color(red: 38 / 255, green: 132 / 255, blue: 1).opacity(0.14)
+  /// Jira's blue at 14% over `paper`, as one opaque colour: the desktop's `JIRA_PLATE`.
+  static let jira = Color(red: 225 / 255, green: 238 / 255, blue: 1)
 
   /// Claude Code's own tools, by the glyph of what they do (the desktop's Lucide picks,
   /// in SF Symbols).
@@ -79,7 +80,6 @@ struct ToolPlate {
 
 /// One tool call's disc.
 struct ToolMark: View {
-  @Environment(\.theme) private var theme
   let name: String
 
   static let size: CGFloat = 20
@@ -88,8 +88,6 @@ struct ToolMark: View {
   var body: some View {
     let plate = ToolPlate(name: name)
     ZStack {
-      // The thread's ground under the plate, so a translucent one (Jira's) is a tint of it.
-      Circle().fill(theme.bg)
       Circle().fill(plate.tint)
       mark(plate.mark)
     }
