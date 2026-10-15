@@ -11,6 +11,10 @@ enum AppPreferences {
     UserDefaults.standard.object(forKey: hapticsKey) as? Bool ?? true
   }
 
+  /// The key `@AppStorage` binds the dictation toggle to: the microphone in the prompt
+  /// field. On unless turned off.
+  static let dictationKey = "app.dictation"
+
   /// The key `@AppStorage` binds the theme picker to. Holds a `ThemeChoice`'s raw value.
   static let themeKey = "app.theme"
 

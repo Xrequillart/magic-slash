@@ -8,9 +8,12 @@ import SwiftUI
 /// question: answer that first. The send button springs in with the first character typed;
 /// with the field empty, the button stops the turn while the agent works or waits, and is
 /// gone otherwise. Each command asks for Face ID, since it is signed
-/// on its own.
+/// on its own. A microphone at the end of the field dictates the prompt, unless turned off
+/// in the settings.
 struct PromptComposer: View {
   @Environment(\.theme) private var theme
+  @Environment(\.scenePhase) private var scenePhase
+  @AppStorage(AppPreferences.dictationKey) private var dictationEnabled = true
 
   let relay: RelayStore
   let runtime: AgentRuntime
@@ -23,6 +26,7 @@ struct PromptComposer: View {
   @State private var focused = false
   /// Set by a send, which leaves the field after its own haptic.
   @State private var quietBlur = false
+  @State private var dictation = Dictation()
 
   /// The Mac refuses a longer prompt (§10), in UTF-16 units as it counts them.
   private static let maxLength = 10_000
@@ -47,13 +51,20 @@ struct PromptComposer: View {
       }
 
       HStack(alignment: .bottom, spacing: 8) {
-        PromptField(text: $text, focused: $focused, known: Set(commands.map(\.name)), editable: !sending)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 10)
-          // Cera sits high on its line: the field's own box is centred, then nudged so
-          // its capitals are.
-          .offset(y: PromptField.capCentring)
-          .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
+        HStack(alignment: .bottom, spacing: 4) {
+          PromptField(text: $text, focused: $focused, known: Set(commands.map(\.name)), editable: !sending)
+            .padding(.vertical, 10)
+            // Cera sits high on its line: the field's own box is centred, then nudged so
+            // its capitals are.
+            .offset(y: PromptField.capCentring)
+          if showsMicrophone(sending: sending) {
+            microphone(height: height)
+              .transition(.scale(scale: 0.5).combined(with: .opacity))
+          }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, showsMicrophone(sending: sending) ? 6 : 16)
+        .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
           .liquidGlass(in: RoundedRectangle(cornerRadius: height / 2), tint: fieldTint)
 
         if let action {
@@ -114,6 +125,60 @@ struct PromptComposer: View {
       // Taken by the Mac: the field is free for the next one. A refused prompt stays, to retry.
       if status?.action == .prompt, case .done = status?.phase { text = "" }
     }
+    .onChange(of: dictation.text) { _, said in
+      if let said, dictation.isActive { text = said }
+    }
+    // Typed over, or cleared: the dictation would write over the user's own words.
+    .onChange(of: text) { _, text in
+      if dictation.isActive, dictation.text != nil, text != dictation.text { dictation.stop() }
+    }
+    .onChange(of: dictationEnabled) { _, enabled in
+      if !enabled { dictation.stop() }
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase != .active { dictation.stop() }
+    }
+    .onDisappear { dictation.stop() }
+  }
+
+  // MARK: Dictation
+
+  private func showsMicrophone(sending: Bool) -> Bool {
+    dictationEnabled && !sending
+  }
+
+  /// Listens on a tap, stops on the next one. Filled with the accent while it listens.
+  private func microphone(height: CGFloat) -> some View {
+    let listening = dictation.state == .listening
+    let size: CGFloat = height - 12
+    return Button {
+      Haptics.tap()
+      if dictation.isActive {
+        dictation.stop()
+      } else {
+        let field = text
+        Task { await dictation.start(after: field) }
+      }
+    } label: {
+      Group {
+        if dictation.state == .starting {
+          ProgressView().tint(theme.icon)
+        } else {
+          Image(systemName: listening ? "mic.fill" : "mic")
+            .font(.system(size: 17, weight: .semibold))
+            .symbolEffect(.pulse, isActive: listening)
+        }
+      }
+      .foregroundStyle(listening ? theme.onBrand : theme.icon)
+      .frame(width: size, height: size)
+      .background(Circle().fill(listening ? theme.accent : .clear))
+      .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    // Centred in a one-line field, along the last line of a longer one.
+    .padding(.vertical, 6)
+    .animation(.snappy(duration: 0.2), value: dictation.state)
+    .accessibilityLabel(listening ? Text("Stop dictation") : Text("Dictate"))
   }
 
   /// The Mac's `/` commands (§13), none until it has sent them.
@@ -165,6 +230,14 @@ struct PromptComposer: View {
   @ViewBuilder
   private func notices(length: Int, status: AgentCommandStatus?) -> some View {
     VStack(alignment: .leading, spacing: 6) {
+      if let problem = dictation.problem, dictationEnabled {
+        switch problem {
+        case .denied:
+          notice("Allow the microphone and speech recognition for Magic Slash in the Settings app to dictate.", systemImage: "mic.slash")
+        case .unavailable:
+          notice("Dictation is not available right now.", systemImage: "mic.slash")
+        }
+      }
       if !runtime.isCurrent {
         notice("\(runtime.macName) is offline. Send when it is back, or on the Mac.", systemImage: "wifi.slash")
       } else if runtime.state == "waiting" {
@@ -180,7 +253,8 @@ struct PromptComposer: View {
   }
 
   private func hasNotice(length: Int, status: AgentCommandStatus?) -> Bool {
-    !runtime.isCurrent || runtime.state == "waiting" || length > Self.maxLength
+    (dictation.problem != nil && dictationEnabled)
+      || !runtime.isCurrent || runtime.state == "waiting" || length > Self.maxLength
       || status.flatMap(Self.line(for:)) != nil
   }
 
@@ -218,6 +292,7 @@ struct PromptComposer: View {
     let relay = relay
     let macId = runtime.macId
     let appAgentId = appAgentId
+    dictation.stop()
     let prompt = trimmed
     if focused { quietBlur = true }
     focused = false

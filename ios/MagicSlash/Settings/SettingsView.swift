@@ -19,6 +19,7 @@ struct SettingsView: View {
   let onSignOut: () -> Void
 
   @AppStorage(AppPreferences.hapticsKey) private var haptics = true
+  @AppStorage(AppPreferences.dictationKey) private var dictation = true
   @AppStorage(AppPreferences.themeKey) private var themeChoice = "desktop"
   @State private var path: [Page] = []
   @State private var confirmingSignOut = false
@@ -63,6 +64,12 @@ struct SettingsView: View {
 
           Toggle(isOn: $haptics) {
             RowLabel(title: "Haptic feedback", systemImage: "hand.tap")
+          }
+          .tint(theme.accent)
+          .listRowBackground(theme.surface)
+
+          Toggle(isOn: $dictation) {
+            RowLabel(title: "Dictation", systemImage: "mic")
           }
           .tint(theme.accent)
           .listRowBackground(theme.surface)

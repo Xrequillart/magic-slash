@@ -247,6 +247,16 @@
         }
       }
     },
+    "Allow the microphone and speech recognition for Magic Slash in the Settings app to dictate." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisez le micro et la reconnaissance vocale pour Magic Slash dans l'app Réglages pour dicter."
+          }
+        }
+      }
+    },
     "Already answered on the Mac, or expired." : {
       "localizations" : {
         "fr" : {
@@ -643,6 +653,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Refuser"
+          }
+        }
+      }
+    },
+    "Dictate" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dicter"
+          }
+        }
+      }
+    },
+    "Dictation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictée"
+          }
+        }
+      }
+    },
+    "Dictation is not available right now." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La dictée n'est pas disponible pour le moment."
           }
         }
       }
@@ -1765,6 +1805,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêter l'agent de %@."
+          }
+        }
+      }
+    },
+    "Stop dictation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la dictée"
           }
         }
       }

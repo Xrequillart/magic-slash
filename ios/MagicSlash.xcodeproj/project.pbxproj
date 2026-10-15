@@ -401,6 +401,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Magic Slash uses the camera to scan the pairing code your Mac shows.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Magic Slash uses Face ID to unlock the encrypted link to your Mac.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Magic Slash uses the microphone to dictate your prompts.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Magic Slash turns what you say into the text of your prompt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -436,6 +438,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Magic Slash uses the camera to scan the pairing code your Mac shows.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Magic Slash uses Face ID to unlock the encrypted link to your Mac.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Magic Slash uses the microphone to dictate your prompts.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Magic Slash turns what you say into the text of your prompt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
