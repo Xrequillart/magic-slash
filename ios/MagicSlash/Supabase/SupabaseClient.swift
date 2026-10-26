@@ -32,13 +32,30 @@ enum Backend {
         // Opt in to the next major's behaviour now: the stored session is emitted as is,
         // and AuthModel checks its expiry itself.
         auth: .init(emitLocalSessionAsInitialSession: true),
-        // The SDK's own word on the socket, in the connection log.
-        global: .init(logger: RealtimeLogTap()),
+        // The SDK's own word on the socket, in the connection log. The agent names this app
+        // in the desktop's Security & access list (desktop/src/sessionAgent.ts).
+        global: .init(headers: ["User-Agent": userAgent], logger: RealtimeLogTap()),
         // Realtime's protocol 1.0.0, as the desktop speaks it. Under 2.0.0 (the SDK's default)
         // the phone's presence never reached the Mac.
         realtime: RealtimeClientOptions(vsn: .v1)
       )
     )
+  }
+
+  /// `MagicSlash/<version> (iOS; iPhone)`, or `(iPadOS; iPad)`: the shape the desktop signs
+  /// in with, the model where it names its machine. iOS keeps the device's own name for apps
+  /// with a special entitlement, so the model is as far as it goes.
+  static var userAgent: String {
+    let version = infoString("CFBundleShortVersionString") ?? "0"
+    var system = utsname()
+    uname(&system)
+    let machine = withUnsafeBytes(of: &system.machine) { bytes in
+      String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+    }
+    // The Simulator reports the Mac's architecture, and the simulated model apart.
+    let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? machine
+    let isPad = model.hasPrefix("iPad")
+    return "MagicSlash/\(version) (\(isPad ? "iPadOS; iPad" : "iOS; iPhone"))"
   }
 
   private static func infoString(_ key: String) -> String? {
