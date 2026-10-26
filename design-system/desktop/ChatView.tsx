@@ -14,8 +14,9 @@ import { ChatBannerCard } from './ChatBannerCard'
 import { splitInsights } from './chatInsights'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
 import { ChatCommandMenu } from './ChatCommandMenu'
+import { ChatEmojiMenu } from './ChatEmojiMenu'
 import { commandSpans, matchCommands, slashTokenAt, type ChatCommand } from './chatCommandMatch'
-import { completeTrailingShortcode } from './chatEmoji'
+import { completeTrailingShortcode, emojiTokenAt, matchEmoji, type EmojiMatch } from './chatEmoji'
 import { expandPastes, pasteSpans, pasteToken, shouldFold, type ChatPaste } from './chatPaste'
 import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
 import { ChatBackgroundCard, type ChatBackgroundAgentData } from './ChatBackgroundCard'
@@ -327,12 +328,26 @@ export function ChatView({
   const menuOpen = matches.length > 0 && menuClosedFor !== draft
   useEffect(() => setHighlighted(0), [query])
 
+  // THE `:` LIST opens as Claude Code's does, on a colon and two shortcode characters right
+  // before the caret, and closes the same ways as the `/` menu. Never both at once: a
+  // slash word is not a shortcode.
+  const emojiToken = useMemo(
+    () => (emojiCompletion && !token ? emojiTokenAt(draft, caret) : null),
+    [emojiCompletion, token, draft, caret],
+  )
+  const emojiQuery = emojiToken?.query
+  const emojis = useMemo(() => (emojiQuery === undefined ? [] : matchEmoji(emojiQuery)), [emojiQuery])
+  const emojiOpen = emojis.length > 0 && menuClosedFor !== draft
+  const [emojiHighlighted, setEmojiHighlighted] = useState(0)
+  useEffect(() => setEmojiHighlighted(0), [emojiQuery])
+  const listOpen = menuOpen || emojiOpen
+
   // THE QUEUE CARD AND THE BACKGROUND CARD open on their buttons and close on them, on
   // Escape, on a click anywhere else, and by themselves once their list is empty. The `/`
   // menu takes their place while it is open: one card over the composer at a time.
   const [openCard, setOpenCard] = useState<'queue' | 'background' | null>(null)
-  const queueShown = openCard === 'queue' && queue.length > 0 && !menuOpen
-  const backgroundShown = openCard === 'background' && background.length > 0 && !menuOpen
+  const queueShown = openCard === 'queue' && queue.length > 0 && !listOpen
+  const backgroundShown = openCard === 'background' && background.length > 0 && !listOpen
   const cardShown = queueShown || backgroundShown
   useEffect(() => { if (queue.length === 0) setOpenCard((c) => (c === 'queue' ? null : c)) }, [queue.length])
   useEffect(() => { if (background.length === 0) setOpenCard((c) => (c === 'background' ? null : c)) }, [background.length])
@@ -477,6 +492,22 @@ export function ChatView({
     })
   }
 
+  // The shortcode becomes the emoji and a space, in place, as the terminal's Enter would.
+  const pickEmoji = (match: EmojiMatch) => {
+    const at = emojiToken ?? { start: caret, end: caret }
+    const after = draft.slice(at.end)
+    const inserted = `${match.emoji}${after.startsWith(' ') ? '' : ' '}`
+    const position = at.start + inserted.length + (after.startsWith(' ') ? 1 : 0)
+    setDraft(`${draft.slice(0, at.start)}${inserted}${after}`)
+    setCaret(position)
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      el.selectionStart = el.selectionEnd = position
+    })
+  }
+
   const turns = useMemo(() => groupTurns(entries), [entries])
 
   // ONLY THE LAST TURNS ARE MOUNTED: a long session drew thousands of nodes, and every
@@ -581,6 +612,24 @@ export function ChatView({
     // Cmd/Ctrl+arrow switches agents and Alt+arrow jumps the caret: only a bare arrow
     // is the box's own, for the menu as for the history.
     const bareArrow = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
+    if (emojiOpen && !event.nativeEvent.isComposing) {
+      const step = !bareArrow ? 0 : event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
+      if (step) {
+        event.preventDefault()
+        setEmojiHighlighted((emojiHighlighted + step + emojis.length) % emojis.length)
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMenuClosedFor(draft)
+        return
+      }
+      if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+        event.preventDefault()
+        pickEmoji(emojis[emojiHighlighted] ?? emojis[0])
+        return
+      }
+    }
     if (menuOpen) {
       const step = !bareArrow ? 0 : event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
       if (step) {
@@ -793,6 +842,11 @@ export function ChatView({
             {backgroundShown && (
               <div className="absolute inset-x-0 bottom-full z-20 pb-2 animate-fade-in motion-reduce:animate-none">
                 <ChatBackgroundCard agents={background} labels={labels.background} />
+              </div>
+            )}
+            {emojiOpen && (
+              <div className="absolute inset-x-0 bottom-full z-20 pb-2 animate-fade-in motion-reduce:animate-none">
+                <ChatEmojiMenu emojis={emojis} highlighted={emojiHighlighted} onPick={pickEmoji} onHover={setEmojiHighlighted} />
               </div>
             )}
             {menuOpen && (

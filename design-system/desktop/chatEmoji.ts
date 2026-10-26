@@ -7,9 +7,10 @@
  * it with the Enter that sends: with such an ending, that Enter only picked the emoji,
  * the prompt kept "👍 " and the chat, which had already emptied its box, showed nothing.
  *
- * So the chat does what the terminal would have done, before typing anything: the Enter
- * swaps the shortcode for its emoji in the chat's own box, and the next one sends. The
- * text that reaches the prompt then never ends on a shortcode.
+ * So the chat does what the terminal would have done, before typing anything: it shows the
+ * same list over its composer (`ChatEmojiMenu`), Enter or Tab takes the highlighted row,
+ * and the next Enter sends. Even with the list closed by Escape, Enter swaps the shortcode
+ * for the first row: the text that reaches the prompt never ends on a shortcode.
  *
  * Mirrors Claude Code 2.1: the same pattern, the same ranking (names that start with
  * what was typed, then the shortest), and the same space after the emoji.
@@ -22,19 +23,58 @@ const TRAILING_SHORTCODE = /(^|\s):([a-z0-9_+-]{2,})$/
 
 const NAMES = Object.keys(EMOJI_SHORTCODES)
 
-/** The emoji Claude Code's list would put first for what was typed after the colon. */
-function firstEmoji(query: string): string | undefined {
-  let best: string | undefined
-  let bestRank = Infinity
+/** One row of the `:` list: the emoji and the name it is found by. */
+export interface EmojiMatch {
+  name: string
+  emoji: string
+}
+
+/** How many rows the `:` list shows, as Claude Code's does. */
+const LIST_LENGTH = 8
+
+/**
+ * The emoji Claude Code's list would offer for what was typed after the colon, in its
+ * order: names that start with it, then the shortest. An emoji with several matching
+ * names shows once, under its best one.
+ */
+export function matchEmoji(query: string, limit = LIST_LENGTH): EmojiMatch[] {
+  const ranked: { name: string; rank: number }[] = []
   for (const name of NAMES) {
     if (!name.includes(query)) continue
-    const rank = (name.startsWith(query) ? 0 : 1_000) + name.length
-    if (rank < bestRank) {
-      best = name
-      bestRank = rank
-    }
+    ranked.push({ name, rank: (name.startsWith(query) ? 0 : 1_000) + name.length })
   }
-  return best === undefined ? undefined : EMOJI_SHORTCODES[best]
+  ranked.sort((a, b) => a.rank - b.rank)
+  const seen = new Set<string>()
+  const out: EmojiMatch[] = []
+  for (const { name } of ranked) {
+    const emoji = EMOJI_SHORTCODES[name]
+    if (seen.has(emoji)) continue
+    seen.add(emoji)
+    out.push({ name, emoji })
+    if (out.length === limit) break
+  }
+  return out
+}
+
+/**
+ * THE `:` BEING TYPED: a colon that opens the prompt or follows a space or a line break,
+ * then two shortcode characters or more, right before the caret, as Claude Code reads it.
+ * `start` is the colon, `end` the end of the word (it may run past the caret), `query`
+ * what was typed between the colon and the caret. Null otherwise: `10:30` is a time.
+ */
+export interface EmojiToken {
+  start: number
+  end: number
+  query: string
+}
+
+export function emojiTokenAt(text: string, caret: number): EmojiToken | null {
+  const match = TRAILING_SHORTCODE.exec(text.slice(0, caret))
+  if (!match) return null
+  const start = match.index + match[1].length
+  let end = caret
+  while (end < text.length && !/\s/.test(text[end])) end++
+  return { start, end, query: match[2] }
 }
 
 /**
@@ -43,9 +83,8 @@ function firstEmoji(query: string): string | undefined {
  * then Enter sends.
  */
 export function completeTrailingShortcode(text: string): string | null {
-  const match = TRAILING_SHORTCODE.exec(text)
-  if (!match) return null
-  const emoji = firstEmoji(match[2])
-  if (emoji === undefined) return null
-  return `${text.slice(0, match.index + match[1].length)}${emoji} `
+  const token = emojiTokenAt(text, text.length)
+  const first = token && matchEmoji(token.query, 1)[0]
+  if (!token || !first) return null
+  return `${text.slice(0, token.start)}${first.emoji} `
 }
