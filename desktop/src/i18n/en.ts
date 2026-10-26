@@ -3160,6 +3160,7 @@ export const en = {
   'security.others': 'Other devices and browsers',
   'security.app': 'Magic Slash app',
   'security.appOn': 'Magic Slash on {name}',
+  'security.mobileApp': 'Magic Slash mobile app',
   'security.browserOn': '{browser} on {os}',
   'security.unknown': 'Unknown device',
   'security.activeNow': 'Active now',

@@ -40,6 +40,21 @@ describe('parseSessionAgent', () => {
     expect(parseSessionAgent(ua)).toEqual({ kind: 'browser', name, os })
   })
 
+  it.each([
+    ['MagicSlash/0.125.3 (iOS; iPhone)', 'iPhone', 'iOS'],
+    ['MagicSlash/0.125.3 (iPadOS; iPad)', 'iPad', 'iPadOS'],
+  ])('reads the mobile app from its own agent %s', (ua, name, os) => {
+    expect(parseSessionAgent(ua)).toEqual({ kind: 'mobile', name, os })
+  })
+
+  it('reads iOS default agent as the mobile app, model unknown', () => {
+    expect(parseSessionAgent('MagicSlash/42 CFNetwork/3826.500.131 Darwin/24.5.0')).toEqual({
+      kind: 'mobile',
+      name: null,
+      os: null,
+    })
+  })
+
   it('leaves an agent it cannot read as other', () => {
     expect(parseSessionAgent('curl/8.7.1')).toEqual({ kind: 'other', name: null, os: null })
   })

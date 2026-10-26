@@ -1,27 +1,36 @@
 /**
  * What a signed-in session IS, read off the User-Agent it signed in with.
  *
- * TWO KINDS OF CLIENT sign in to an account: this app, and a browser on the web app. The
- * app sends its own agent (`desktopUserAgent` below), which carries the machine's name so
- * two Macs can be told apart. Sessions opened before it did carry Node's default agent
- * (`node`, `undici`) or nothing at all; those are still this app, just unnamed.
+ * THREE KINDS OF CLIENT sign in to an account: this app, the iPhone and iPad app, and a
+ * browser on the web app. This app sends its own agent (`desktopUserAgent` below), which
+ * carries the machine's name so two Macs can be told apart. Sessions opened before it did
+ * carry Node's default agent (`node`, `undici`) or nothing at all; those are still this app,
+ * just unnamed.
+ *
+ * The mobile app sends the same shape with its own OS and model: `MagicSlash/<version>
+ * (iOS; iPhone)` or `(iPadOS; iPad)` (ios/MagicSlash/Supabase/SupabaseClient.swift). Before
+ * it did, iOS sent its default agent, `MagicSlash/<build> CFNetwork/… Darwin/…`: the mobile
+ * app, model unknown.
  *
  * A browser is named by its engine family and its OS, which is as far as a User-Agent can
  * honestly be read. The order of the checks matters: Edge and Opera say "Chrome", and
  * Chrome says "Safari".
  */
 
-export type SessionKind = 'desktop' | 'browser' | 'other'
+export type SessionKind = 'desktop' | 'mobile' | 'browser' | 'other'
 
 export interface SessionAgent {
   kind: SessionKind
-  /** The browser (Chrome, Safari…), the machine's name for the app, or null. */
+  /** The browser (Chrome, Safari…), the machine's name for the app, its model (iPhone, iPad)
+   * for the mobile app, or null. */
   name: string | null
   /** The operating system, when the agent says. */
   os: string | null
 }
 
 const APP_PREFIX = 'MagicSlash/'
+/** The OS the mobile app names in its agent. */
+const MOBILE_OS = new Set(['iOS', 'iPadOS'])
 
 /**
  * The agent this app signs in with: `MagicSlash/<version> (<os>; <machine name>)`.
@@ -43,9 +52,12 @@ export function parseSessionAgent(userAgent: string | null | undefined): Session
   const ua = (userAgent ?? '').trim()
 
   if (ua.startsWith(APP_PREFIX)) {
+    // iOS's default agent, sent by the mobile app before it named itself.
+    if (/\bCFNetwork\//.test(ua)) return { kind: 'mobile', name: null, os: null }
     const inside = ua.match(/\(([^)]*)\)/)?.[1] ?? ''
     const [os, ...machine] = inside.split(';').map((part) => part.trim())
-    return { kind: 'desktop', name: machine.join(' ').trim() || null, os: os || null }
+    const kind = MOBILE_OS.has(os) ? 'mobile' : 'desktop'
+    return { kind, name: machine.join(' ').trim() || null, os: os || null }
   }
   // Node's fetch, before the app sent an agent of its own. Nothing else signs in from Node.
   if (ua === '' || /^(node|undici)\b/i.test(ua)) return { kind: 'desktop', name: null, os: null }

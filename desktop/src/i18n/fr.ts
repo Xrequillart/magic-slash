@@ -2743,6 +2743,7 @@ export const fr: Record<keyof typeof en, string> = {
   'security.others': 'Autres appareils et navigateurs',
   'security.app': 'Application Magic Slash',
   'security.appOn': 'Magic Slash sur {name}',
+  'security.mobileApp': 'Application mobile Magic Slash',
   'security.browserOn': '{browser} sur {os}',
   'security.unknown': 'Appareil inconnu',
   'security.activeNow': 'Actif en ce moment',

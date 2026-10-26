@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { EmptyState, SectionHeader, SettingsCard, type SettingsCardRow } from '@ds/desktop'
-import { Chrome, Firefox, Globe, LaptopMinimalCheck, LogOut, MagicSlash, MonitorSmartphone, RefreshCw, Safari, ShieldAlert } from '@ds/desktop/icons'
+import {
+  Chrome, Firefox, Globe, Laptop, LaptopMinimalCheck, LogOut, MonitorSmartphone, RefreshCw, Safari, ShieldAlert, Smartphone,
+  Tablet,
+} from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop/types'
 import type { AccountSession } from '../../../types'
 import { parseSessionAgent } from '../../../sessionAgent'
@@ -143,16 +146,22 @@ function describe(
       ? agent.name
         ? t('security.appOn', { name: agent.name })
         : t('security.app')
-      : agent.kind === 'browser'
-        ? agent.os
-          ? t('security.browserOn', { browser: agent.name ?? '', os: agent.os })
-          : (agent.name ?? '')
-        : t('security.unknown')
+      : agent.kind === 'mobile'
+        ? agent.name
+          ? t('security.appOn', { name: agent.name })
+          : t('security.mobileApp')
+        : agent.kind === 'browser'
+          ? agent.os
+            ? t('security.browserOn', { browser: agent.name ?? '', os: agent.os })
+            : (agent.name ?? '')
+          : t('security.unknown')
 
   const mark =
     agent.kind === 'desktop'
-      ? { glyph: MagicSlash, title: 'Magic Slash' }
-      : { glyph: BROWSER_MARKS[agent.name ?? ''] ?? Globe, title: agent.name ?? t('security.unknown') }
+      ? { glyph: Laptop, title: agent.name ?? 'Magic Slash' }
+      : agent.kind === 'mobile'
+        ? { glyph: agent.name === 'iPad' ? Tablet : Smartphone, title: agent.name ?? 'Magic Slash' }
+        : { glyph: BROWSER_MARKS[agent.name ?? ''] ?? Globe, title: agent.name ?? t('security.unknown') }
 
   // The session in use says so with its pill, on the right; the others say when.
   const activity = session.isCurrent ? null : t('security.lastActive', { time: relative(session.lastUsedAt, locale) })
