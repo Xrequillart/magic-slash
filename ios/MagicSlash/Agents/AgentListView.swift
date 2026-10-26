@@ -1,7 +1,10 @@
 import SwiftUI
 
+/// The sessions, and the one opened. On the iPhone, the session pushes over the list; on
+/// the iPad, the list stays as a sidebar beside it, the desktop's layout.
 struct AgentListView: View {
   @Environment(\.theme) private var theme
+  @Environment(\.horizontalSizeClass) private var sizeClass
 
   let store: AgentStore
   let relay: RelayStore
@@ -20,8 +23,9 @@ struct AgentListView: View {
   /// The sessions opened, as a path: rows push onto it themselves, which keeps the list
   /// free of the disclosure chevron a `NavigationLink` row draws.
   @State private var path: [String] = []
+  /// The session opened beside the sidebar, on a regular width.
+  @State private var selection: String?
   @State private var profile: ProfileStore
-  /// Bumped on every tap that should be felt: the header buttons and each session.
 
   init(
     store: AgentStore, relay: RelayStore, settings: DesktopSettingsStore, router: NotificationRouter,
@@ -36,37 +40,16 @@ struct AgentListView: View {
   }
 
   var body: some View {
-    // The system bar, as on a session's page: no backdrop of our own.
-    NavigationStack(path: $path) {
-      content
-        .background(theme.bg.ignoresSafeArea())
-        .navigationTitle("Sessions")
-        // A large title at the top left, which folds into the bar's centre on scroll.
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-          ToolbarItem(placement: .topBarLeading) {
-            Button {
-              Haptics.tap()
-              sheet = .account
-            } label: {
-              ProfileAvatar(profile: profile, size: 30)
-            }
-            .accessibilityLabel("Account")
-          }
-          ToolbarItem(placement: .topBarTrailing) {
-            PairingButton(relay: relay) {
-              Haptics.tap()
-              sheet = isPaired ? .macs : .pair
-            }
-          }
-        }
-        .navigationDestination(for: String.self) { id in
-          AgentSessionView(store: store, relay: relay, agentId: id)
-        }
+    Group {
+      if isRegular { split } else { stack }
     }
-    // Back to the list, by the back button or the edge swipe alike.
-    .onChange(of: path.count) { old, new in
-      if new < old { Haptics.tap() }
+    // Slide Over, Split View or a rotation can change the width: the open session follows.
+    .onChange(of: isRegular) { _, regular in
+      if regular {
+        selection = path.last ?? selection
+      } else {
+        path = selection.map { [$0] } ?? []
+      }
     }
     .task { await profile.load() }
     // Whichever comes last, the tap or the first read of the agents, opens the session.
@@ -87,6 +70,80 @@ struct AgentListView: View {
       case .macs:
         PairedMacsView(relay: relay) { self.sheet = .pair }
       }
+    }
+  }
+
+  private var isRegular: Bool { sizeClass == .regular }
+
+  private var stack: some View {
+    NavigationStack(path: $path) {
+      sessions
+        .navigationDestination(for: String.self) { id in
+          AgentSessionView(store: store, relay: relay, agentId: id)
+        }
+    }
+    // Back to the list, by the back button or the edge swipe alike.
+    .onChange(of: path.count) { old, new in
+      if new < old { Haptics.tap() }
+    }
+  }
+
+  private var split: some View {
+    NavigationSplitView {
+      sessions
+        .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
+    } detail: {
+      NavigationStack {
+        if let selection {
+          AgentSessionView(store: store, relay: relay, agentId: selection)
+            // A fresh page per session: its scroll position is its own.
+            .id(selection)
+        } else {
+          MessageScreen(
+            systemImage: "bubble.left.and.text.bubble.right",
+            title: "No session open",
+            message: "Pick a session in the list to read its conversation."
+          )
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .background(theme.bg.ignoresSafeArea())
+        }
+      }
+    }
+    .navigationSplitViewStyle(.balanced)
+  }
+
+  /// The list with its header: the account on the left, the Mac on the right. The system
+  /// bar, as on a session's page: no backdrop of our own.
+  private var sessions: some View {
+    content
+      .background(theme.bg.ignoresSafeArea())
+      .navigationTitle("Sessions")
+      // A large title at the top left, which folds into the bar's centre on scroll.
+      .navigationBarTitleDisplayMode(.large)
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button {
+            Haptics.tap()
+            sheet = .account
+          } label: {
+            ProfileAvatar(profile: profile, size: 30)
+          }
+          .accessibilityLabel("Account")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+          PairingButton(relay: relay) {
+            Haptics.tap()
+            sheet = isPaired ? .macs : .pair
+          }
+        }
+      }
+  }
+
+  private func open(_ id: String) {
+    if isRegular {
+      selection = id
+    } else {
+      path.append(id)
     }
   }
 
@@ -112,7 +169,11 @@ struct AgentListView: View {
     guard let agent = store.agents.first(where: { $0.appAgentId == request.appAgentId }) else { return }
     router.clear()
     sheet = nil
-    path = [agent.id]
+    if isRegular {
+      selection = agent.id
+    } else {
+      path = [agent.id]
+    }
   }
 
   private var isPaired: Bool {
@@ -198,12 +259,13 @@ struct AgentListView: View {
     ForEach(agents) { row in
       Button {
         Haptics.tap()
-        path.append(row.agent.id)
+        open(row.agent.id)
       } label: {
         AgentRow(agent: row.agent, state: liveState(of: row.agent))
       }
       .buttonStyle(.plain)
-      .listRowBackground(theme.bg)
+      // Beside the sidebar, the open session is marked as the desktop marks it.
+      .listRowBackground(isRegular && selection == row.agent.id ? theme.surface : theme.bg)
       // No rules between sessions: the spacing alone separates them.
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 18, trailing: 16))

@@ -1187,6 +1187,16 @@
         }
       }
     },
+    "No session open" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune session ouverte"
+          }
+        }
+      }
+    },
     "No spec linked to this agent" : {
       "localizations" : {
         "fr" : {
@@ -1464,6 +1474,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autorisation"
+          }
+        }
+      }
+    },
+    "Pick a session in the list to read its conversation." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une session dans la liste pour lire sa conversation."
           }
         }
       }
