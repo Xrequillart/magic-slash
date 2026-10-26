@@ -13,6 +13,7 @@ vi.mock('electron', () => ({
     }),
   },
   BrowserWindow: class {},
+  powerMonitor: { getSystemIdleState: vi.fn(() => 'active') },
 }))
 
 // terminal-manager is the source of getTerminal (the in-memory usage gauge) and
@@ -308,10 +309,10 @@ describe('session-end usage flush (terminal:kill)', () => {
 // types cannot see: that no SKILL.md sends a status the union has never heard of.
 
 describe('push notifications to the paired phones', () => {
-  it('pushes on the waiting and completed transitions, whatever the focus and the desktop settings', async () => {
+  it('pushes on the waiting and completed transitions, whatever the desktop settings', async () => {
     const showNotification = vi.fn()
-    // A focused window and both desktop notifications off: the desktop shows nothing.
-    setupTerminalHandlers(() => ({ isFocused: () => true, webContents: { send: vi.fn() } }) as never, showNotification, vi.fn())
+    // A window in the background and both desktop notifications off: the desktop shows nothing.
+    setupTerminalHandlers(() => ({ isFocused: () => false, webContents: { send: vi.fn() } }) as never, showNotification, vi.fn())
     readConfig.mockReturnValue({ repositories: {}, notifications: { agentWaiting: false, agentCompleted: false } })
     try {
       await createTerminal('claude-push-1')
@@ -324,6 +325,25 @@ describe('push notifications to the paired phones', () => {
     } finally {
       readConfig.mockReturnValue({ repositories: {} })
     }
+  })
+
+  it('pushes nothing while the person is at the Mac with the app in front', async () => {
+    setupTerminalHandlers(() => ({ isFocused: () => true, webContents: { send: vi.fn() } }) as never, vi.fn(), vi.fn())
+    await createTerminal('claude-push-3')
+    capturedOnStateChange!('waiting', 'working')
+    capturedOnStateChange!('completed', 'waiting')
+    expect(sendRemotePush).not.toHaveBeenCalled()
+  })
+
+  it('pushes when the app is in front of a Mac nobody uses', async () => {
+    const { powerMonitor } = await import('electron')
+    setupTerminalHandlers(() => ({ isFocused: () => true, webContents: { send: vi.fn() } }) as never, vi.fn(), vi.fn())
+    for (const idle of ['idle', 'locked'] as const) {
+      vi.mocked(powerMonitor.getSystemIdleState).mockReturnValueOnce(idle)
+      await createTerminal(`claude-push-${idle}`)
+      capturedOnStateChange!('completed', 'working')
+    }
+    expect(sendRemotePush.mock.calls).toEqual([['claude-push-idle', 'completed'], ['claude-push-locked', 'completed']])
   })
 
   it('pushes nothing on other transitions', async () => {

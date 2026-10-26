@@ -1,5 +1,5 @@
 import os from 'os'
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { ipcMain, BrowserWindow, dialog, powerMonitor } from 'electron'
 // Aliased: `t` is already the local name for a terminal throughout this file.
 import { t as translate } from '../i18n'
 import {
@@ -315,6 +315,20 @@ function flushPlanSpecSnapshot(id: string): void {
   flushPlanSpec(id, specPath)
 }
 
+/** How recently the keyboard or the mouse must have moved for the person to count as at the Mac. */
+const AT_DESKTOP_IDLE_S = 60
+
+/**
+ * The person is at this Mac, Magic Slash in front: the window has the focus and the Mac was
+ * used within the last minute. They see the agent change there, so the phones stay quiet. A
+ * window left focused on a Mac nobody sits at (idle, or locked) does not count: the phone is
+ * then how they hear of it.
+ */
+function personAtDesktop(): boolean {
+  if (!getMainWindow()?.isFocused()) return false
+  return powerMonitor.getSystemIdleState(AT_DESKTOP_IDLE_S) === 'active'
+}
+
 // Helper to show notification with cooldown, focus check and per-kind opt-out
 function maybeShowNotification(
   id: string,
@@ -397,9 +411,9 @@ function createTerminalCallbacks(id: string, name: string) {
       if (state === 'waiting' && previousState !== 'waiting') {
         const waiting = agentNotification(translate, 'waiting', subjectOf(t, name))
         maybeShowNotification(id, waiting.title, waiting.body, 'agentWaiting')
-        // The paired phones, whatever the window's focus and the desktop's own settings:
-        // the person is away from this screen, which is the whole point (push.ts).
-        void sendRemotePush(id, 'waiting')
+        // The paired phones, whatever the desktop's own settings, unless the person is at
+        // this Mac with the app in front: they are watching it happen (push.ts).
+        if (!personAtDesktop()) void sendRemotePush(id, 'waiting')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,
@@ -429,7 +443,7 @@ function createTerminalCallbacks(id: string, name: string) {
       if (state === 'completed' && previousState !== 'completed') {
         const finished = agentNotification(translate, 'completed', subjectOf(t, name))
         maybeShowNotification(id, finished.title, finished.body, 'agentCompleted')
-        void sendRemotePush(id, 'completed')
+        if (!personAtDesktop()) void sendRemotePush(id, 'completed')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,
