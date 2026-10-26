@@ -1738,6 +1738,16 @@
         }
       }
     },
+    "Sidebar" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barre latérale"
+          }
+        }
+      }
+    },
     "Sign in" : {
       "localizations" : {
         "fr" : {

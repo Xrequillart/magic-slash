@@ -25,6 +25,8 @@ struct AgentListView: View {
   @State private var path: [String] = []
   /// The session opened beside the sidebar, on a regular width.
   @State private var selection: String?
+  /// Whether the sidebar shows beside the session, on a regular width.
+  @State private var columns: NavigationSplitViewVisibility = .all
   @State private var profile: ProfileStore
 
   init(
@@ -89,54 +91,75 @@ struct AgentListView: View {
   }
 
   private var split: some View {
-    NavigationSplitView {
+    NavigationSplitView(columnVisibility: $columns) {
       sessions
         .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
+        // Its own toggle, beside the account, in place of the system's on the right.
+        .toolbar(removing: .sidebarToggle)
     } detail: {
       NavigationStack {
-        if let selection {
-          AgentSessionView(store: store, relay: relay, agentId: selection)
-            // A fresh page per session: its scroll position is its own.
-            .id(selection)
-        } else {
-          MessageScreen(
-            systemImage: "bubble.left.and.text.bubble.right",
-            title: "No session open",
-            message: "Pick a session in the list to read its conversation."
-          )
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(theme.bg.ignoresSafeArea())
+        Group {
+          if let selection {
+            AgentSessionView(store: store, relay: relay, agentId: selection)
+              // A fresh page per session: its scroll position is its own.
+              .id(selection)
+          } else {
+            MessageScreen(
+              systemImage: "bubble.left.and.text.bubble.right",
+              title: "No session open",
+              message: "Pick a session in the list to read its conversation."
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(theme.bg.ignoresSafeArea())
+          }
+        }
+        // The sidebar closed, its header moves over the session: the way back to it, the
+        // account and the Mac stay in reach.
+        .toolbar {
+          if columns == .detailOnly { header }
         }
       }
     }
     .navigationSplitViewStyle(.balanced)
   }
 
-  /// The list with its header: the account on the left, the Mac on the right. The system
-  /// bar, as on a session's page: no backdrop of our own.
+  /// The list with its header. The system bar, as on a session's page: no backdrop of
+  /// our own.
   private var sessions: some View {
     content
       .background(theme.bg.ignoresSafeArea())
       .navigationTitle("Sessions")
       // A large title at the top left, which folds into the bar's centre on scroll.
       .navigationBarTitleDisplayMode(.large)
-      .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button {
-            Haptics.tap()
-            sheet = .account
-          } label: {
-            ProfileAvatar(profile: profile, size: 30)
-          }
-          .accessibilityLabel("Account")
+      .toolbar { header }
+  }
+
+  /// The account on the left, in one group with the sidebar's toggle on the iPad, and the
+  /// Mac on the right.
+  @ToolbarContentBuilder
+  private var header: some ToolbarContent {
+    ToolbarItemGroup(placement: .topBarLeading) {
+      if isRegular {
+        Button("Sidebar", systemImage: "sidebar.left") {
+          Haptics.tap()
+          withAnimation { columns = columns == .detailOnly ? .all : .detailOnly }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-          PairingButton(relay: relay) {
-            Haptics.tap()
-            sheet = isPaired ? .macs : .pair
-          }
-        }
+        .tint(theme.ink)
       }
+      Button {
+        Haptics.tap()
+        sheet = .account
+      } label: {
+        ProfileAvatar(profile: profile, size: 30)
+      }
+      .accessibilityLabel("Account")
+    }
+    ToolbarItem(placement: .topBarTrailing) {
+      PairingButton(relay: relay) {
+        Haptics.tap()
+        sheet = isPaired ? .macs : .pair
+      }
+    }
   }
 
   private func open(_ id: String) {
