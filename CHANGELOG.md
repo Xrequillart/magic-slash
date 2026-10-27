@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.125.4] - 2026-10-27
+
+### Added
+
+- **Ios**: Group the sidebar toggle with the account and keep the header when the sidebar is closed
+
+### Fixed
+
+- **Desktop**: Stop the chat fade from dimming the last line of the thread
+
 ## [0.125.3] - 2026-10-26
 
 ### Added
@@ -4218,6 +4228,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.125.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.4
 [0.125.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.3
 [0.125.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.2
 [0.125.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.1
