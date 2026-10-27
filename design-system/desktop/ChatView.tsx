@@ -256,8 +256,9 @@ const FIELD_TEXT = 'py-1 text-sm leading-5 whitespace-pre-wrap break-words'
 const DOCK_GAP_PX = 24
 
 /** How far above the composer the thread starts fading out, and how far under its top
-    edge it is gone: a gradient, never a cut. */
-const FADE_ABOVE_PX = 56
+    edge it is gone: a gradient, never a cut. Kept inside DOCK_GAP_PX, so the last line
+    of the thread, resting at the bottom of its padding, is never dimmed. */
+const FADE_ABOVE_PX = 16
 const FADE_UNDER_PX = 12
 
 /** The same fade at the pane's top edge. The pinned prompt reminder sits just below it. */
