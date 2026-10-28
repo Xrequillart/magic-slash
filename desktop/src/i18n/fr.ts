@@ -2797,7 +2797,7 @@ export const fr: Record<keyof typeof en, string> = {
   'remote.pair.failed': 'Impossible d’envoyer votre réponse',
   'remote.devices': 'Appareils appairés',
   'remote.devices.empty': 'Aucun iPhone n’est encore appairé à ce compte.',
-  'remote.devices.pairedOn': 'Appairé le {date}',
+  'remote.devices.pairedOn': 'appairé le {date}',
   'remote.devices.note': 'Les appairages sont gardés sur ce Mac, pour ce compte uniquement. Un autre Mac a besoin de son propre appairage.',
   'remote.revoke': 'Révoquer',
   'remote.revoke.title': 'Révoquer {name} ?',

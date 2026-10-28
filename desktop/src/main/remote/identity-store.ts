@@ -49,6 +49,11 @@ export interface StoredRemoteDevice {
    * no notification from here.
    */
   pushKey?: string
+  /**
+   * Epoch ms of the last message this pairing sent that opened with its key, for display only.
+   * Stored at most every `LAST_SEEN_STEP_MS`, so it can lag the truth by that much.
+   */
+  lastSeenAt?: number
 }
 
 export interface RemoteIdentity {
@@ -101,7 +106,7 @@ function isDevice(value: unknown): value is StoredRemoteDevice {
 
 /** The fields of a device record, and only those: a `signPub` or `pushKey` that is not a string is left out. */
 function cleanDevice(d: StoredRemoteDevice): StoredRemoteDevice {
-  const { phoneId, name, pub, pairedAt, pairingId, signPub, pushKey } = d
+  const { phoneId, name, pub, pairedAt, pairingId, signPub, pushKey, lastSeenAt } = d
   return {
     phoneId,
     name,
@@ -110,6 +115,7 @@ function cleanDevice(d: StoredRemoteDevice): StoredRemoteDevice {
     pairingId,
     ...(typeof signPub === 'string' ? { signPub } : {}),
     ...(typeof pushKey === 'string' ? { pushKey } : {}),
+    ...(typeof lastSeenAt === 'number' && Number.isFinite(lastSeenAt) ? { lastSeenAt } : {}),
   }
 }
 
@@ -217,6 +223,23 @@ export function setDevicePushKey(userId: string, phoneId: string, pairingId: str
   const next: RemoteIdentity = {
     ...identity,
     devices: identity.devices.map((d) => (d === current ? { ...d, pushKey } : d)),
+  }
+  saveIdentity(userId, next)
+  return next
+}
+
+/**
+ * Store when a pairing was last heard from. Only on THAT pairing's record, like the push key.
+ * Returns the identity as now stored, or null when nothing was written. THROWS when it cannot
+ * be stored.
+ */
+export function setDeviceLastSeen(userId: string, phoneId: string, pairingId: string, lastSeenAt: number): RemoteIdentity | null {
+  const identity = loadIdentity(userId)
+  const current = identity?.devices.find((d) => d.phoneId === phoneId)
+  if (!identity || !current || current.pairingId !== pairingId) return null
+  const next: RemoteIdentity = {
+    ...identity,
+    devices: identity.devices.map((d) => (d === current ? { ...d, lastSeenAt } : d)),
   }
   saveIdentity(userId, next)
   return next

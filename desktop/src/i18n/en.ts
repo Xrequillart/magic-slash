@@ -3214,7 +3214,7 @@ export const en = {
   'remote.pair.failed': 'Could not send your answer',
   'remote.devices': 'Paired devices',
   'remote.devices.empty': 'No iPhone is paired with this account yet.',
-  'remote.devices.pairedOn': 'Paired {date}',
+  'remote.devices.pairedOn': 'paired {date}',
   'remote.devices.note': 'Pairings are kept on this Mac, for this account only. Another Mac needs its own pairing.',
   'remote.revoke': 'Revoke',
   'remote.revoke.title': 'Revoke {name}?',

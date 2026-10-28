@@ -4240,6 +4240,8 @@ export interface RemoteDevice {
   name: string
   /** Epoch ms. */
   pairedAt: number
+  /** Epoch ms of the last message the phone sent, to the minute. Absent until it sends one. */
+  lastSeenAt?: number
 }
 
 /**

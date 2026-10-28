@@ -8,11 +8,12 @@ import {
   type SettingsCardRow,
   type StatusTone,
 } from '@ds/desktop'
-import { QrCode, Smartphone, Unlink } from '@ds/desktop/icons'
+import { QrCode, Smartphone, Tablet, Unlink } from '@ds/desktop/icons'
 import type { RemoteDevice, RemotePairing, RemoteRelayStatus, RemoteState } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { useDialog } from '../../hooks/useDialog'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
+import { relativeTime } from '../../utils/relativeTime'
 import { useToggleRow } from './ToggleRow'
 
 /**
@@ -125,23 +126,30 @@ export function RemoteAccessPage() {
     })
   }
 
-  const deviceRow = (device: RemoteDevice): SettingsCardRow => ({
-    id: device.phoneId,
-    label: device.name,
-    icon: Smartphone,
-    hint: t('remote.devices.pairedOn', {
+  // The same row as Security & access: the device's mark, when it was last heard from, when it
+  // was paired.
+  const deviceRow = (device: RemoteDevice): SettingsCardRow => {
+    const activity = device.lastSeenAt ? t('security.lastActive', { time: relativeTime(device.lastSeenAt, locale) }) : null
+    const since = t('remote.devices.pairedOn', {
       date: new Date(device.pairedAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }),
-    }),
-    control: {
-      kind: 'button',
-      size: 'sm',
-      tone: 'danger',
-      icon: Unlink,
-      children: t('remote.revoke'),
-      disabled: revoking,
-      onClick: () => setRevokeTarget(device),
-    },
-  })
+    })
+    const hint = [activity, since].filter(Boolean).join(' · ')
+    return {
+      id: device.phoneId,
+      label: device.name,
+      mark: { glyph: /ipad/i.test(device.name) ? Tablet : Smartphone, title: device.name },
+      hint: hint.charAt(0).toLocaleUpperCase(locale) + hint.slice(1),
+      control: {
+        kind: 'button',
+        size: 'sm',
+        tone: 'danger',
+        icon: Unlink,
+        children: t('remote.revoke'),
+        disabled: revoking,
+        onClick: () => setRevokeTarget(device),
+      },
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">

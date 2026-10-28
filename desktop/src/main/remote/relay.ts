@@ -20,6 +20,7 @@ import {
   loadOrCreateIdentity,
   removeDevice,
   saveGeneration,
+  setDeviceLastSeen,
   setDevicePushKey,
   type RemoteIdentity,
   type StoredRemoteDevice,
@@ -137,6 +138,32 @@ const stateRequestSeen = new Map<string, { epoch: string; seq: number }>()
 /** The same, for `push-key` (§14). */
 const pushKeySeen = new Map<string, { epoch: string; seq: number }>()
 
+/**
+ * How often a phone's activity is written down. A phone renews its chat lease every few
+ * seconds while a conversation is open: storing each one would rewrite the encrypted file
+ * for nothing, and the page shows minutes at best.
+ */
+const LAST_SEEN_STEP_MS = 60_000
+
+/**
+ * A message from this pairing opened with its key: note the time on the record in memory,
+ * and on disk, at most every `LAST_SEEN_STEP_MS`. A failed write is only logged: the next
+ * message tries again.
+ */
+function markSeen(device: StoredRemoteDevice): void {
+  const self = identity
+  const account = userId
+  const now = Date.now()
+  if (!self || !account || (device.lastSeenAt && now - device.lastSeenAt < LAST_SEEN_STEP_MS)) return
+  self.devices = self.devices.map((d) => (d.phoneId === device.phoneId && d.pairingId === device.pairingId ? { ...d, lastSeenAt: now } : d))
+  try {
+    setDeviceLastSeen(account, device.phoneId, device.pairingId, now)
+  } catch (error) {
+    console.error('[remote] failed to store a last seen time:', error instanceof Error ? error.name : 'unknown error')
+  }
+  emitState()
+}
+
 /** Anti-replay for a phone → Mac message: true (and recorded) only when its seq moves forward. */
 function acceptSeq(seen: Map<string, { epoch: string; seq: number }>, phoneId: string, envelope: RelayEnvelope): boolean {
   const last = seen.get(phoneId)
@@ -216,7 +243,7 @@ function sessionUserId(): string | null {
 }
 
 function publicDevices(devices: StoredRemoteDevice[]): RemoteDevice[] {
-  return devices.map(({ phoneId, name, pairedAt }) => ({ phoneId, name, pairedAt }))
+  return devices.map(({ phoneId, name, pairedAt, lastSeenAt }) => ({ phoneId, name, pairedAt, ...(lastSeenAt ? { lastSeenAt } : {}) }))
 }
 
 function currentStatus(uid: string | null): RemoteRelayStatus {
@@ -488,6 +515,7 @@ function handleStateRequest(envelope: RelayEnvelope): void {
   const box = openEnvelope(envelope, key)
   if (!box || typeof box !== 'object' || (box as { pairingId?: unknown }).pairingId !== device.pairingId) return
   if (!acceptSeq(stateRequestSeen, device.phoneId, envelope)) return
+  markSeen(device)
   logRelayEvent(`state-request from phone:${device.phoneId}`)
   scheduler?.notifyPresenceJoin()
 }
@@ -513,6 +541,7 @@ function handlePushKey(envelope: RelayEnvelope): void {
   const { pairingId, pushKey } = box as Record<string, unknown>
   if (pairingId !== device.pairingId || typeof pushKey !== 'string' || !PUSH_KEY_RE.test(pushKey)) return
   if (!acceptSeq(pushKeySeen, device.phoneId, envelope)) return
+  markSeen(device)
   if (device.pushKey === pushKey) return
   try {
     setDevicePushKey(account, device.phoneId, device.pairingId, pushKey)
@@ -549,6 +578,7 @@ function handleChatRequest(envelope: RelayEnvelope): void {
   const { pairingId, appAgentId, commands: wantsCommands } = box as Record<string, unknown>
   if (pairingId !== device.pairingId || typeof appAgentId !== 'string') return
   if (!acceptSeq(chatRequestSeen, device.phoneId, envelope)) return
+  markSeen(device)
   if (!isAgentTerminal(appAgentId) || terminalOwner(appAgentId) !== account) {
     chatLeases.forget(device.phoneId)
     return
@@ -596,6 +626,7 @@ async function handleCommand(envelope: RelayEnvelope): Promise<void> {
   if (!key) return
   const box = openEnvelope(envelope, key)
   if (box === null) return
+  markSeen(device)
   const result = await commands.handle(
     { box, from: envelope.from, macId: self.macId, device },
     (command) => runCommand(command, self, account, device),
