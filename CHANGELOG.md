@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.125.5] - 2026-10-28
+
+### Added
+
+- **Desktop**: Show the last activity of each paired device in remote devices
+
+### Changed
+
+- **Desktop**: Share the relative time of the security page
+- **Desktop**: Deepen the tint of the prompt bubbles in the chat
+
 ## [0.125.4] - 2026-10-27
 
 ### Added
@@ -4228,6 +4239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.125.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.5
 [0.125.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.4
 [0.125.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.3
 [0.125.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.125.2
