@@ -10,6 +10,7 @@ import { parseSessionAgent } from '../../../sessionAgent'
 import { showToast } from '../../components/Toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useLocale, useT, type Translate } from '../../i18n'
+import { relativeTime } from '../../utils/relativeTime'
 
 /**
  * Security & Access: every device and browser signed in to the account, when each was
@@ -164,7 +165,7 @@ function describe(
         : { glyph: BROWSER_MARKS[agent.name ?? ''] ?? Globe, title: agent.name ?? t('security.unknown') }
 
   // The session in use says so with its pill, on the right; the others say when.
-  const activity = session.isCurrent ? null : t('security.lastActive', { time: relative(session.lastUsedAt, locale) })
+  const activity = session.isCurrent ? null : t('security.lastActive', { time: relativeTime(session.lastUsedAt, locale) })
   const since = session.createdAt
     ? t('security.signedInOn', {
         date: new Date(session.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -191,23 +192,4 @@ function place(session: AccountSession, locale: string): string | null {
     }
   }
   return [city, country].filter(Boolean).join(', ') || null
-}
-
-const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 365 * 24 * 3600],
-  ['month', 30 * 24 * 3600],
-  ['week', 7 * 24 * 3600],
-  ['day', 24 * 3600],
-  ['hour', 3600],
-  ['minute', 60],
-]
-
-function relative(iso: string | null, locale: string): string {
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-  if (!iso) return format.format(0, 'second')
-  const seconds = (new Date(iso).getTime() - Date.now()) / 1000
-  for (const [unit, size] of STEPS) {
-    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit)
-  }
-  return format.format(0, 'minute')
 }
