@@ -1185,7 +1185,7 @@ function MessageLine({ entry, highlight, stamp }: { entry: Extract<ChatViewEntry
     return (
       <div className="group flex flex-col gap-1">
         <div className="flex justify-end">
-          <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl bg-accent/10 px-3.5 py-2 text-sm text-ink">
+          <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl bg-accent/20 px-3.5 py-2 text-sm text-ink">
             {entry.text}
           </div>
         </div>
