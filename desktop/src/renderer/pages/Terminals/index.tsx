@@ -3,14 +3,13 @@ import { Bot } from '@ds/desktop/icons'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
-import { DEFAULT_SPLIT_NEW_AGENT_PANE, type InitialPromptMode, type LaunchMetadata } from '../../../types'
+import { DEFAULT_MAX_SESSIONS, DEFAULT_SPLIT_NEW_AGENT_PANE, type InitialPromptMode, type LaunchMetadata } from '../../../types'
 import { AgentPane } from '../../components/AgentPane'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 
 const DEFAULT_PATH = '~/Documents'
-const MAX_AGENTS = 12
 
 /**
  * What a `new-terminal` event may carry.
@@ -95,8 +94,8 @@ export function TerminalsPage() {
     if (isCreating) return
 
     // Block creation if max agents reached
-    if (terminals.length >= MAX_AGENTS) {
-      showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
+    if (terminals.length >= maxSessions) {
+      showToast(t('terminals.maxAgents', { count: maxSessions }), 'error')
       return
     }
 
@@ -131,6 +130,7 @@ export function TerminalsPage() {
   // because the sidebar's +, ⌘N and the File menu all arrive through the two listeners
   // below and must not disagree about it.
   const splitNewAgentPane = useStore((s) => s.config?.splitNewAgentPane) ?? DEFAULT_SPLIT_NEW_AGENT_PANE
+  const maxSessions = useStore((s) => s.config?.maxSessions) ?? DEFAULT_MAX_SESSIONS
   const newAgentPane = (): 'left' | 'right' => {
     if (!isSplitMode) return 'left'
     if (splitNewAgentPane === 'left' || splitNewAgentPane === 'right') return splitNewAgentPane
@@ -230,8 +230,8 @@ export function TerminalsPage() {
         if (!activeTerminalId) return
 
         // Check max agents limit
-        if (terminals.length >= MAX_AGENTS) {
-          showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
+        if (terminals.length >= maxSessions) {
+          showToast(t('terminals.maxAgents', { count: maxSessions }), 'error')
           return
         }
 
@@ -249,7 +249,7 @@ export function TerminalsPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeTerminalId, terminals, duplicateAgent, setActiveTerminal])
+  }, [activeTerminalId, terminals, duplicateAgent, setActiveTerminal, maxSessions])
 
   // Listen for Command+\ or Command+Left/Right to toggle focus between split panes
   useEffect(() => {

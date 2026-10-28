@@ -72,6 +72,7 @@ export const SETTINGS_ACCESS: Record<keyof UserSettingsRow, SettingAccess> = {
   default_model: 'sensitive',
   confirm_agent_archive: 'editable',
   agent_sort: 'editable',
+  max_sessions: 'editable',
   tasks_repo: 'sensitive',
   plans_repo: 'sensitive',
   workflow_confirm_chain: 'sensitive',

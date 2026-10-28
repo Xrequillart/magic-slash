@@ -245,6 +245,13 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // How many sessions may run at once; the Sessions page reads it off the config at creation.
+  const updateMaxSessions = useCallback(async (count: number) => {
+    const result = await window.electronAPI.config.setMaxSessions(count)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // The two sidebar panels, recorded the same way — Appearance shows them as one
   // pair, and the renderer reads the flags straight off the config to decide.
   const updateUsageCardEnabled = useCallback(async (enabled: boolean) => {
@@ -345,6 +352,7 @@ export function useConfig() {
     updateSyncClaudeTheme,
     updateCodeSyntax,
     updateCodeFontSize,
+    updateMaxSessions,
     updateDefaultModel,
     updateConfirmAgentArchive,
     updateWorkflowSettings,

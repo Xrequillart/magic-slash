@@ -1951,6 +1951,19 @@ export function sidebarPageOrder(stored: readonly SidebarPageId[] | undefined): 
   return [...known, ...SIDEBAR_PAGE_IDS.filter((id) => !known.includes(id))]
 }
 
+/**
+ * How many Claude Code sessions may run at once, in steps of 5. Each one is a CLI process
+ * with its own PTY, so the ceiling is the machine's, and 30 is as far as the setting goes.
+ */
+export const MAX_SESSIONS_OPTIONS = [5, 10, 15, 20, 25, 30] as const
+
+/** Never chosen: 15, the first step at or above the 12 the app was capped at before it could be set. */
+export const DEFAULT_MAX_SESSIONS = 15
+
+export function isValidMaxSessions(value: unknown): value is number {
+  return typeof value === 'number' && (MAX_SESSIONS_OPTIONS as readonly number[]).includes(value)
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -2179,6 +2192,8 @@ export interface Config {
    * the person, not of the machine.
    */
   agentSort?: AgentSortMode
+  /** How many sessions may run at once. Absent = DEFAULT_MAX_SESSIONS. Follows the account. */
+  maxSessions?: number
   /**
    * The repository the Tasks board opens on — a key of `repositories` above.
    *

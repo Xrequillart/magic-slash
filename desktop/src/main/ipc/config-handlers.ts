@@ -42,8 +42,8 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme,
+  AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, DEFAULT_MAX_SESSIONS, isValidAgentSort,
+  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidMaxSessions, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme,
   isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
   isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, type WorkflowSettings,
@@ -488,6 +488,14 @@ export function setupConfigHandlers() {
   ipcMain.handle('config:setCodeFontSize', async (_event, { size }: { size: unknown }) => {
     const config = readConfig()
     config.codeFontSize = isValidCodeFontSize(size) ? size : DEFAULT_CODE_FONT_SIZE
+    writeConfig(config)
+    return { config }
+  })
+
+  // How many sessions may run at once. Read by the renderer alone, when one is created.
+  ipcMain.handle('config:setMaxSessions', async (_event, { count }: { count: unknown }) => {
+    const config = readConfig()
+    config.maxSessions = isValidMaxSessions(count) ? count : DEFAULT_MAX_SESSIONS
     writeConfig(config)
     return { config }
   })

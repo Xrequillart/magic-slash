@@ -10,7 +10,7 @@ import { useT, type MessageKey } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
 import {
-  AGENT_SORT_MODES, DEFAULT_AGENT_SORT, CHAT_SEND_KEYS, CHAT_TOOL_DETAILS, CHAT_DIFF_DISPLAYS, CHAT_TIMESTAMPS,
+  AGENT_SORT_MODES, DEFAULT_AGENT_SORT, DEFAULT_MAX_SESSIONS, MAX_SESSIONS_OPTIONS, CHAT_SEND_KEYS, CHAT_TOOL_DETAILS, CHAT_DIFF_DISPLAYS, CHAT_TIMESTAMPS,
   type ChatSendKey, type ChatToolDetail, type ChatDiffDisplay, type ChatTimestamps,
   type AgentDisplayMode, type AgentSortMode, type AgentType, type ClaudeModelOption, type LaunchMode,
 } from '../../../types'
@@ -381,8 +381,18 @@ function ChatSection() {
 
 function ListSection() {
   const t = useT()
-  const { config, updateAgentSort } = useConfig()
+  const { config, updateAgentSort, updateMaxSessions } = useConfig()
   const current = config?.agentSort ?? DEFAULT_AGENT_SORT
+  const maxSessions = config?.maxSessions ?? DEFAULT_MAX_SESSIONS
+
+  const chooseMaxSessions = async (next: number) => {
+    if (next === maxSessions) return
+    try {
+      await updateMaxSessions(next)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
 
   return (
     <div>
@@ -400,6 +410,19 @@ function ListSection() {
               // The same write as the sidebar's menu, so the two doors cannot disagree.
               onChange: (next) => { if (next !== current) updateAgentSort(next as AgentSortMode) },
               ariaLabel: t('settings.agents.sort.label'),
+              width: SELECT_WIDTH,
+            },
+          },
+          {
+            id: 'maxSessions',
+            label: t('settings.agents.maxSessions.label'),
+            hint: t('settings.agents.maxSessions.help'),
+            control: {
+              kind: 'select',
+              value: String(maxSessions),
+              options: MAX_SESSIONS_OPTIONS.map((count) => ({ value: String(count), label: t('settings.agents.maxSessions.option', { count }) })),
+              onChange: (next) => chooseMaxSessions(Number(next)),
+              ariaLabel: t('settings.agents.maxSessions.label'),
               width: SELECT_WIDTH,
             },
           },

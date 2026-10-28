@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
+import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidMaxSessions, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
 import { SETTINGS_ACCESS } from './user-settings-access'
 import { applySettingsDefaults, isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
@@ -74,6 +74,7 @@ export interface UserSettingsRow {
   default_model: string | null
   confirm_agent_archive: boolean | null
   agent_sort: string | null
+  max_sessions: number | null
   tasks_repo: string | null
   plans_repo: string | null
   workflow_confirm_chain: string | null
@@ -137,6 +138,7 @@ export const SETTINGS_KEYS = [
   'defaultModel',
   'confirmAgentArchive',
   'agentSort',
+  'maxSessions',
   'tasksRepo',
   'plansRepo',
   'integrations',
@@ -209,6 +211,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     default_model: orNull(config.defaultModel),
     confirm_agent_archive: orNull(config.confirmAgentArchive),
     agent_sort: orNull(config.agentSort),
+    max_sessions: orNull(config.maxSessions),
     tasks_repo: orNull(config.tasksRepo),
     plans_repo: orNull(config.plansRepo),
     workflow_confirm_chain: orNull(config.workflow?.confirmChain),
@@ -288,6 +291,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // "unset" — the list then falls back to newest-first, the order it always had, rather
   // than to no order at all.
   if (isValidAgentSort(row.agent_sort)) config.agentSort = row.agent_sort
+  if (isValidMaxSessions(row.max_sessions)) config.maxSessions = row.max_sessions
   // NOT re-validated against anything, unlike the five above, because there is no
   // enum to validate against: the value is a key of `Config.repositories`, and which
   // keys are legal is this account's own business and changes as repositories come

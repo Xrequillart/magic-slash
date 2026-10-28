@@ -2,7 +2,7 @@ import type { MessageKey, Translate } from '../i18n'
 import { LEVEL_LABEL_KEYS, ROLE_LABEL_KEYS, STYLE_LABEL_KEYS } from '../i18n'
 import { LANGUAGES } from '../languages'
 import { THEMES, THEME_IDS } from '../theme'
-import { CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, CODE_SYNTAX_FAMILY_IDS, WORKFLOW_CHAIN_LIMITS, type McpServerId } from '../../types'
+import { CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, MAX_SESSIONS_OPTIONS, CODE_SYNTAX_FAMILY_IDS, WORKFLOW_CHAIN_LIMITS, type McpServerId } from '../../types'
 import { AGENT_TYPE_OPTIONS, CHAT_DIFFS_LABEL, CHAT_SEND_KEY_LABEL, CHAT_TIMESTAMPS_LABEL, CHAT_TOOL_DETAIL_LABEL, DISPLAY_MODE_OPTIONS, LAUNCH_MODE_OPTIONS, SORT_LABEL } from '../pages/Config/AgentsPage'
 import { PR_WATCHER_INTERVAL_LABEL } from '../pages/Config/CodeReviewsPage'
 import { MCP_SERVER_HINTS, MCP_SERVER_NAMES } from '../pages/Config/McpServersCard'
@@ -224,6 +224,12 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
     labelKey: 'settings.agents.sort.label',
     helpKey: 'settings.agents.sort.help',
     options: keys(Object.values(SORT_LABEL)),
+  },
+  {
+    tab: 'agents',
+    labelKey: 'settings.agents.maxSessions.label',
+    helpKey: 'settings.agents.maxSessions.help',
+    options: (t) => MAX_SESSIONS_OPTIONS.map((count) => t('settings.agents.maxSessions.option', { count })),
   },
   {
     tab: 'agents',

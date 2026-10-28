@@ -80,6 +80,9 @@ const configApi = {
   setCodeFontSize: (size: number): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setCodeFontSize', { size }),
 
+  setMaxSessions: (count: number): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setMaxSessions', { count }),
+
   codeSample: (language: CodeSampleLanguage): Promise<CodeSample> =>
     ipcRenderer.invoke('config:codeSample', { language }),
 

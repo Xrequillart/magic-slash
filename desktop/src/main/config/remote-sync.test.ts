@@ -81,6 +81,7 @@ const emptyRow = (): UserSettingsRow => ({
   sidebar_compact: null,
   default_agent_type: null,
   agent_sort: null,
+  max_sessions: null,
   tasks_repo: null,
   plans_repo: null,
   workflow_confirm_chain: null,
