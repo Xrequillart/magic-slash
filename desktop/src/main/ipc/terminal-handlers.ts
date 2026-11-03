@@ -1,4 +1,5 @@
 import os from 'os'
+import path from 'path'
 import { ipcMain, BrowserWindow, dialog, powerMonitor } from 'electron'
 // Aliased: `t` is already the local name for a terminal throughout this file.
 import { t as translate } from '../i18n'
@@ -31,6 +32,7 @@ import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } fro
 import { agentNotification, subjectOf } from '../notifications/agent-message'
 import { clearRemotePushCooldown, sendRemotePush } from '../remote/push'
 import { resolveAgentCwd } from '../pty/agent-cwd'
+import { isFolderTrusted } from '../pty/folder-trust'
 import { resumableSession } from '../pty/resume-session'
 import {
   saveAgent,
@@ -953,6 +955,25 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:newSession', async (_event, { id }) => {
     if (typeof id !== 'string') return false
     return newTerminalSession(id)
+  })
+
+  // Claude Code's folder trust dialog, which the chat cannot see (see folder-trust.ts): the
+  // folder's name while the agent's folder is not trusted yet, null otherwise.
+  ipcMain.handle('terminal:needsTrust', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
+    const cwd = getTerminalCwd(id)
+    if (!cwd) return null
+    return (await isFolderTrusted(cwd)) === false ? path.basename(cwd) : null
+  })
+
+  // The chat's "Trust" button: the Enter that picks the dialog's first, highlighted answer
+  // ("Yes, I trust this folder"). Sent only while the folder is still untrusted, so a click
+  // that lands after the dialog was answered in the terminal types nothing.
+  ipcMain.handle('terminal:acceptTrust', async (_event, { id }) => {
+    if (typeof id !== 'string') return false
+    const cwd = getTerminalCwd(id)
+    if (!cwd || (await isFolderTrusted(cwd)) !== false) return false
+    return writeToTerminal(id, '\r')
   })
 
   // A new session's offer to hand Claude the agent's earlier conversations: how many

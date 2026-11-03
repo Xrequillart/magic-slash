@@ -214,6 +214,8 @@ export interface ChatContextOffer {
   onDecline: () => void
   /** The digest is being written: the accept button waits. */
   busy?: boolean
+  /** The card's mark. Absent: the history mark of the context offer. */
+  icon?: IconComponent
 }
 
 /** The tools whose line `toolDetail: 'changes'` keeps: they change files or run commands. */
@@ -807,7 +809,10 @@ export function ChatView({
           {contextOffer && (
             <div className={`pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-xl border border-line ${RAISED_PLATE} px-4 py-3 animate-fade-in motion-reduce:animate-none`}>
               <div className="flex items-start gap-2 text-left">
-                <History className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                {(() => {
+                  const Mark = contextOffer.icon ?? History
+                  return <Mark className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                })()}
                 <p className="text-sm text-ink">{contextOffer.text}</p>
               </div>
               <div className="flex gap-2">

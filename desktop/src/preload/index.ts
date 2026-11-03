@@ -339,6 +339,12 @@ const terminalApi = {
   newSession: (id: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:newSession', { id }),
 
+  needsTrust: (id: string): Promise<string | null> =>
+    ipcRenderer.invoke('terminal:needsTrust', { id }),
+
+  acceptTrust: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:acceptTrust', { id }),
+
   contextSessions: (id: string): Promise<number> =>
     ipcRenderer.invoke('terminal:contextSessions', { id }),
 

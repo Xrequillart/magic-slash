@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatView, type ChatCommand, type ChatContextOffer, type MenuBarAnswer } from '@ds/desktop'
+import { FolderLock } from '@ds/desktop/icons'
 import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
@@ -121,6 +122,14 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
     send,
   )
 
+  // Claude Code's folder trust dialog, which only the terminal draws: asked in the chat
+  // instead, while it stands. Before the context offer, which needs a session to send to.
+  const trustOffer = useTrustOffer(
+    terminal.id,
+    isVisible && showChat && loaded && entries.length === 0 && terminal.state !== 'working',
+    () => setDisplayMode(terminal.id, 'terminal'),
+  )
+
   // When the conversation began: its first prompt's own time.
   const locale = useLocale()
   const startedAt = entries.find((e) => e.kind === 'user' && e.at !== undefined)
@@ -158,7 +167,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             // A resume under way, or the first read not back yet: either way the empty
             // view would claim a conversation that has simply not arrived.
             loading={resuming || !loaded}
-            contextOffer={contextOffer}
+            contextOffer={trustOffer ?? contextOffer}
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
             onSend={send}
@@ -275,6 +284,65 @@ function useKeptChat(terminalId: string, shown: boolean): boolean {
     setKept(true)
   }, [shown, terminalId])
   return kept
+}
+
+/** How often the trust card checks whether the folder was trusted, in the terminal or here. */
+const TRUST_POLL_MS = 2_000
+
+/**
+ * THE FOLDER TRUST CARD: Claude Code asks whether to trust a folder it has never run in,
+ * in a dialog of its TUI that no hook reports (main/pty/folder-trust.ts). While the agent's
+ * folder is untrusted, the empty chat asks the same thing: "Trust" sends the Enter that
+ * accepts the dialog, the other button shows the terminal and its two answers.
+ *
+ * Checked again every TRUST_POLL_MS while it stands, so it goes as soon as Claude Code has
+ * recorded the answer, wherever it was given.
+ */
+function useTrustOffer(terminalId: string, active: boolean, showTerminal: () => void): ChatContextOffer | undefined {
+  const t = useT()
+  const [folder, setFolder] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!active) {
+      setFolder(null)
+      return
+    }
+    let live = true
+    const check = () => {
+      window.electronAPI.terminal.needsTrust(terminalId)
+        .then((name) => {
+          if (!live) return
+          setFolder(name)
+          if (!name) setBusy(false)
+        })
+        .catch(() => { if (live) setFolder(null) })
+    }
+    check()
+    const timer = setInterval(check, TRUST_POLL_MS)
+    return () => {
+      live = false
+      clearInterval(timer)
+    }
+  }, [active, terminalId])
+
+  const accept = useCallback(() => {
+    setBusy(true)
+    window.electronAPI.terminal.acceptTrust(terminalId)
+      .then((sent) => { if (!sent) setBusy(false) })
+      .catch(() => setBusy(false))
+  }, [terminalId])
+
+  if (!folder) return undefined
+  return {
+    text: t('chat.trust.offer', { folder }),
+    accept: t('chat.trust.accept'),
+    decline: t('chat.trust.terminal'),
+    onAccept: accept,
+    onDecline: showTerminal,
+    busy,
+    icon: FolderLock,
+  }
 }
 
 /** The agents whose context offer was answered, until their chat has something in it. */
