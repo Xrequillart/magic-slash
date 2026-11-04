@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatView, type ChatCommand, type ChatContextOffer, type MenuBarAnswer } from '@ds/desktop'
 import { FolderLock } from '@ds/desktop/icons'
-import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
+import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type NumberedChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
 import { useLocale, useT } from '../i18n'
@@ -241,7 +241,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   )
 }
 
-const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [], background: [] }
+const EMPTY_CHAT: NumberedChatSnapshot = { entries: [], queue: [], background: [], seq: 0 }
 
 /**
  * THE CHATS KEPT MOUNTED WHILE HIDDEN, most recently shown last.
@@ -488,7 +488,7 @@ function useResumeLoader(terminalId: string, pushes: number): boolean {
  * small, and a list that is replaced cannot drift from the one it came from).
  */
 function useChat(terminalId: string): ChatSnapshot & { pushes: number; loaded: boolean } {
-  const [chat, setChat] = useState<ChatSnapshot>(EMPTY_CHAT)
+  const [chat, setChat] = useState<NumberedChatSnapshot>(EMPTY_CHAT)
   // How many pushes have landed: the resume loader waits for one after the swap.
   const [pushes, setPushes] = useState(0)
   // Whether anything has been read yet: until then an empty list means "not known", and
@@ -496,25 +496,40 @@ function useChat(terminalId: string): ChatSnapshot & { pushes: number; loaded: b
   const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     let live = true
-    let pushed = false
-    const unsubscribe = window.electronAPI.terminal.onChat(({ id, entries, queue, background }) => {
-      if (id !== terminalId) return
-      pushed = true
-      setChat({ entries, queue, background })
+    // What the pushes apply to, read synchronously: they arrive faster than a render.
+    let current: NumberedChatSnapshot = EMPTY_CHAT
+    const show = (next: NumberedChatSnapshot) => {
+      current = next
+      setChat(next)
+    }
+    const read = () => window.electronAPI.terminal.getChat(terminalId).then((snapshot) => {
+      // A push that landed first is as new as this read, or newer.
+      if (live && snapshot.seq >= current.seq) show(snapshot)
+    }).catch(() => {}).finally(() => { if (live) setLoaded(true) })
+    // Each push is what changed since the one before it (main/chat/chat-push.ts): the
+    // entries it does not resend keep their objects, so their turns are not drawn again.
+    const unsubscribe = window.electronAPI.terminal.onChat(terminalId, (push) => {
+      if (push.seq <= current.seq) return
       setPushes((n) => n + 1)
+      // One was missed: this patch is not for what is held, so the whole is read again.
+      if (push.base !== current.seq) return void read()
+      show({
+        seq: push.seq,
+        entries: current.entries.slice(0, push.from).concat(push.tail),
+        queue: push.queue,
+        background: push.background,
+      })
       setLoaded(true)
     })
+    setChat(EMPTY_CHAT)
     setLoaded(false)
-    window.electronAPI.terminal.getChat(terminalId).then((initial) => {
-      // A push that landed first is newer than this read.
-      if (live && !pushed) setChat(initial)
-    }).catch(() => {}).finally(() => { if (live) setLoaded(true) })
+    void read()
     return () => {
       live = false
       unsubscribe()
     }
   }, [terminalId])
-  return { ...chat, pushes, loaded }
+  return { entries: chat.entries, queue: chat.queue, background: chat.background, pushes, loaded }
 }
 
 /** The question the agent is blocked on, kept current by `terminal:question`. */

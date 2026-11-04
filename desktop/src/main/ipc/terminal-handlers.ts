@@ -50,6 +50,7 @@ import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../conf
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
 import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt, watchTranscript } from '../chat/transcript-watcher'
+import { numberedSnapshot } from '../chat/chat-push'
 import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import { clearTerminalOwners, forgetTerminalOwner, recordTerminalOwner } from '../remote/terminal-owners'
@@ -880,8 +881,8 @@ export function setupTerminalHandlers(
 
   // The chat view's entries and queue so far; later ones arrive as `terminal:chat` events.
   ipcMain.handle('terminal:getChat', async (_event, { id }) => {
-    if (typeof id !== 'string') return { entries: [], queue: [] }
-    return getChatSnapshot(id)
+    if (typeof id !== 'string') return { entries: [], queue: [], background: [], seq: 0 }
+    return numberedSnapshot(id, getChatSnapshot(id))
   })
 
   // Escape from the chat view, and what it did: see interruptTerminal.

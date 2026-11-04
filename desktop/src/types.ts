@@ -1020,6 +1020,30 @@ export interface ChatSnapshot {
 }
 
 /**
+ * A snapshot as the renderer reads it (`terminal:getChat`): numbered by the last push
+ * sent, so the pushes that follow it can be applied to it (see main/chat/chat-push.ts).
+ */
+export interface NumberedChatSnapshot extends ChatSnapshot {
+  seq: number
+}
+
+/**
+ * ONE `terminal:chat` PUSH: what changed since the push numbered `base`. The entries
+ * from `from` on are replaced by `tail`; the ones before it are the very objects the
+ * renderer already holds, so the turns they make are not drawn again. A renderer that
+ * is not at `base` missed a push and reads the snapshot again.
+ */
+export interface ChatPush {
+  id: string
+  seq: number
+  base: number
+  from: number
+  tail: ChatEntry[]
+  queue: ChatQueuedPrompt[]
+  background: ChatBackgroundAgent[]
+}
+
+/**
  * What a file edit changed, from Claude Code's own record of it (`toolUseResult`:
  * `structuredPatch` for an edit, the whole `content` for a file written new).
  * `lines` are unified-diff lines: a `+`, `-` or ` ` and the text.

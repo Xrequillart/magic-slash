@@ -5,7 +5,7 @@ import type { ResolvedWorkflow } from '../workflow/model'
 import { parseRemotePairing, parseRemoteState } from './remote-guards'
 import type { WorkflowOverlay } from '../workflow/overlay'
 import type { ChatSendKey, ChatToolDetail, ChatDiffDisplay, ChatTimestamps } from '../types'
-import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, RemotePairing, RemoteState, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
+import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatPush, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NumberedChatSnapshot, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, RemotePairing, RemoteState, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -16,6 +16,12 @@ export interface TerminalInfo {
   repositories: string[]
   createdAt?: Date
 }
+
+// The chat pushes, by agent: one IPC listener for all of them (see `onChat`).
+const chatListeners = new Map<string, Set<(push: ChatPush) => void>>()
+ipcRenderer.on('terminal:chat', (_event: IpcRendererEvent, push: ChatPush) => {
+  chatListeners.get(push.id)?.forEach((listener) => listener(push))
+})
 
 // Config API
 const configApi = {
@@ -388,13 +394,19 @@ const terminalApi = {
     return () => ipcRenderer.removeListener('terminal:restoredDraft', listener)
   },
 
-  getChat: (id: string): Promise<ChatSnapshot> =>
+  getChat: (id: string): Promise<NumberedChatSnapshot> =>
     ipcRenderer.invoke('terminal:getChat', { id }),
 
-  onChat: (callback: (data: { id: string } & ChatSnapshot) => void) => {
-    const listener = (_event: IpcRendererEvent, data: { id: string } & ChatSnapshot) => callback(data)
-    ipcRenderer.on('terminal:chat', listener)
-    return () => ipcRenderer.removeListener('terminal:chat', listener)
+  // Handed to that agent's listeners only: each call across the bridge copies the push,
+  // and every open agent listening to every agent's pushes multiplied that copy.
+  onChat: (id: string, callback: (push: ChatPush) => void) => {
+    let listeners = chatListeners.get(id)
+    if (!listeners) chatListeners.set(id, (listeners = new Set()))
+    listeners.add(callback)
+    return () => {
+      listeners.delete(callback)
+      if (listeners.size === 0 && chatListeners.get(id) === listeners) chatListeners.delete(id)
+    }
   },
 
   // Event listeners

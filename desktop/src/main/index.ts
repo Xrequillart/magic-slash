@@ -4,6 +4,7 @@ import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals, submitToTerminal, interruptTerminal } from './ipc/terminal-handlers'
 import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
+import { chatPush } from './chat/chat-push'
 import { commandEnded, commandStarting } from './chat/command-diff'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setCommandDiffCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener, holdAsk, answerHeld } from './questions/pending-questions'
@@ -855,7 +856,7 @@ async function initializeHooksAndSessions() {
     })
 
     setChatListener((terminalId, chat) => {
-      if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, ...chat })
+      if (mainWindow) mainWindow.webContents.send('terminal:chat', chatPush(terminalId, chat))
       // The paired phones reading this conversation get its new tail (remote/PROTOCOL.md §11).
       notifyRemoteChat(terminalId)
     })
