@@ -124,7 +124,10 @@ struct AgentSessionView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        .frame(maxWidth: .infinity)
+        // Exactly the screen's width, not at least it: one row wider than the thread (a
+        // rigid line, a table that misjudged its fit) made the scroll view take its width,
+        // and the composer with it, both centred and cut on either side.
+        .containerRelativeFrame(.horizontal)
       }
       .coordinateSpace(name: Self.thread)
       .background {
