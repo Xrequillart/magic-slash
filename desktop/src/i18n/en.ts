@@ -206,6 +206,7 @@ export const en = {
   'sidebar.sort.repository': 'By repository',
   // The header of the last group in `repository` mode: the agents whose working
   // directory matches no configured repository. Decoration, never selectable.
+  'sidebar.asleep': 'Asleep: resumes when opened',
   'sidebar.group.noRepository': 'No repository',
   // A count above the list, not a group header: the agents it counts keep their row.
   'sidebar.needsAttention': 'Needs attention',

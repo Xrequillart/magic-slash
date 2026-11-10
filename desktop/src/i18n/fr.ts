@@ -169,6 +169,7 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.sort.recent': 'Plus récent',
   'sidebar.sort.status': 'Par statut',
   'sidebar.sort.repository': 'Par dépôt',
+  'sidebar.asleep': 'En veille : reprend à l’ouverture',
   'sidebar.group.noRepository': 'Sans dépôt',
   // Un compteur au-dessus de la liste, pas un en-tête de groupe : les agents
   // comptés gardent leur ligne.

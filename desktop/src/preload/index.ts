@@ -433,6 +433,12 @@ const terminalApi = {
     return () => ipcRenderer.removeListener('terminal:state', listener)
   },
 
+  onAsleep: (callback: (data: { id: string; asleep: boolean }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; asleep: boolean }) => callback(data)
+    ipcRenderer.on('terminal:asleep', listener)
+    return () => ipcRenderer.removeListener('terminal:asleep', listener)
+  },
+
   onExit: (callback: (data: { id: string; exitCode: number }) => void) => {
     const listener = (_event: IpcRendererEvent, data: { id: string; exitCode: number }) => callback(data)
     ipcRenderer.on('terminal:exit', listener)

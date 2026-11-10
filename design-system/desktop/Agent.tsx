@@ -91,6 +91,17 @@ const AGENT_CSS = `
 @media (prefers-reduced-motion: reduce) {
   .ds-agent-ask { animation: none; }
 }
+.ds-agent-zz > span {
+  animation: ds-agent-zz-drift 2.8s ease-in-out infinite;
+}
+.ds-agent-zz > span:last-child { animation-delay: 0.6s; }
+@keyframes ds-agent-zz-drift {
+  0%, 100% { transform: translateY(0); opacity: 0.45; }
+  50% { transform: translateY(-18%); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-agent-zz > span { animation: none; opacity: 1; }
+}
 `
 
 const STYLE_ID = 'ds-agent-styles'
@@ -141,6 +152,13 @@ export interface AgentProps {
    * moves to the tooltip and the accessible name.
    */
   compact?: boolean
+  /**
+   * ITS CLAUDE CODE IS ASLEEP: stopped after a while alone to free its memory, to start
+   * again on the same conversation when it is opened. Drawn as a `zZ` in place of what
+   * an agent at rest shows (nothing, or the tick of a finished turn), in the idle grey:
+   * it is a fact about the process, not a sixth state of the work.
+   */
+  asleep?: boolean
   /** Margins and width. Not the grounds, the padding or any of the state colours. */
   className?: string
 }
@@ -155,11 +173,14 @@ export function Agent({
   draggable,
   onDragStart,
   compact = false,
+  asleep = false,
   className = '',
 }: AgentProps) {
   useAgentStyles()
 
-  const spec = STATES[state]
+  // Only an agent at rest sleeps; at work or on a question, the state says more.
+  const sleeping = asleep && (state === 'idle' || state === 'completed')
+  const spec = STATES[sleeping ? 'idle' : state]
 
   if (compact) {
     const fullName = ticketId ? `${ticketId} ${name}` : name
@@ -178,9 +199,11 @@ export function Agent({
           ${className}`}
       >
         <span className={`flex items-center ${spec.text}`}>
-          {state === 'idle'
-            ? <Icon glyph={Bot} size="md" tone="inherit" />
-            : <StateGlyph state={state} />}
+          {sleeping
+            ? <SleepGlyph />
+            : state === 'idle'
+              ? <Icon glyph={Bot} size="md" tone="inherit" />
+              : <StateGlyph state={state} />}
         </span>
       </button>
     )
@@ -209,12 +232,30 @@ export function Agent({
         </Text>
       </span>
 
-      {state !== 'idle' && (
+      {sleeping ? (
+        <span className={`flex items-center flex-shrink-0 ${spec.text}`}>
+          <SleepGlyph />
+        </span>
+      ) : state !== 'idle' && (
         <span className={`flex items-center flex-shrink-0 ${spec.text}`}>
           <StateGlyph state={state} />
         </span>
       )}
     </button>
+  )
+}
+
+/**
+ * A small `z` and a bigger `Z`, rising in turn: the agent's Claude Code is asleep. Type
+ * rather than an icon, since no icon set draws it, sized to the 16px box the state
+ * glyphs share so the right-hand edge stays one column.
+ */
+function SleepGlyph() {
+  return (
+    <span aria-hidden="true" className="ds-agent-zz relative inline-block h-4 w-4 flex-shrink-0 font-semibold leading-none">
+      <span className="absolute bottom-0 left-0.5 text-[8px]">z</span>
+      <span className="absolute right-0 top-0 text-[11px]">Z</span>
+    </span>
   )
 }
 

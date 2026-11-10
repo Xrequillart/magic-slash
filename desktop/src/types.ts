@@ -1212,6 +1212,8 @@ export interface TerminalInfo {
   infoSidebarOpen?: boolean
   /** See `Agent.displayMode`. Absent = never decided, resolved at read time. */
   displayMode?: AgentDisplayMode
+  /** Its Claude Code is stopped after a while alone, to free memory (main/pty/idle-sleep.ts). */
+  asleep?: boolean
 }
 
 /**

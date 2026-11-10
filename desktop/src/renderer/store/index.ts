@@ -452,6 +452,7 @@ interface AppState {
   updateTerminalBranch: (id: string, branchName: string | null) => void
   updateTerminalMetadata: (id: string, metadata: Partial<TerminalMetadata>) => void
   updateTerminalRepositories: (id: string, repositories: string[]) => void
+  updateTerminalAsleep: (id: string, asleep: boolean) => void
   removeTerminal: (id: string) => void
   clearTerminals: () => void
   setActiveTerminal: (id: string | null) => void
@@ -727,6 +728,13 @@ export const useStore = create<AppState>()(
           set((s) => ({
             terminals: s.terminals.map((t) =>
               t.id === id ? { ...t, repositories } : t
+            ),
+          })),
+
+        updateTerminalAsleep: (id, asleep) =>
+          set((s) => ({
+            terminals: s.terminals.map((t) =>
+              t.id === id && Boolean(t.asleep) !== asleep ? { ...t, asleep } : t
             ),
           })),
 

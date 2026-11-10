@@ -300,6 +300,12 @@ const WAKE_TIMEOUT_MS = 15_000
 /** The agents shown in a pane: never put to sleep. Reported by the renderer. */
 const visibleTerminals = new Set<string>()
 
+/** Told when an agent falls asleep or wakes, for the sidebar's `zZ`. */
+let onSleepChange: ((id: string, asleep: boolean) => void) | null = null
+export function setSleepChangeListener(listener: (id: string, asleep: boolean) => void): void {
+  onSleepChange = listener
+}
+
 // Track PTY listener disposables for cleanup (Phase 2.3)
 const ptyDisposables = new Map<string, Array<{ dispose: () => void }>>()
 
@@ -925,6 +931,7 @@ export function launchClaude(
     killPty(terminal.pty)
     markClaudeExited(id)
     terminal.asleep = true
+    onSleepChange?.(id, true)
     return true
   }
 
@@ -969,6 +976,7 @@ export function launchClaude(
         terminal.cwd = cwd
         terminal.lastActiveAt = Date.now()
         restartTrackers.delete(id)
+        onSleepChange?.(id, false)
         listening = terminal.pty.onData((data) => {
           if (woken && ready.seen(data)) done()
         })

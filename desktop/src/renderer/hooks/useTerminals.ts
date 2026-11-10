@@ -11,6 +11,7 @@ export function useTerminals() {
     updateTerminalBranch,
     updateTerminalMetadata,
     updateTerminalRepositories,
+    updateTerminalAsleep,
     removeTerminal,
     setActiveTerminal,
   } = useStore()
@@ -60,7 +61,13 @@ export function useTerminals() {
       updateTerminalRepositories(id, repositories)
     })
 
+    const unsubAsleep = window.electronAPI.terminal.onAsleep(({ id, asleep }) => {
+      if (shouldIgnoreTerminal(id)) return
+      updateTerminalAsleep(id, asleep)
+    })
+
     return () => {
+      unsubAsleep()
       unsubData()
       unsubState()
       unsubExit()
@@ -68,7 +75,7 @@ export function useTerminals() {
       unsubMetadata()
       unsubRepositories()
     }
-  }, [updateTerminalState, updateTerminalBranch, updateTerminalMetadata, updateTerminalRepositories])
+  }, [updateTerminalState, updateTerminalBranch, updateTerminalMetadata, updateTerminalRepositories, updateTerminalAsleep])
 
   // Track if we've already loaded terminals
   const hasLoadedRef = useRef(false)

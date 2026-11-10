@@ -27,6 +27,7 @@ import {
   writeContextDigest,
   setTerminalVisible,
   wakeTerminal,
+  setSleepChangeListener,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { readEmojiCompletion } from '../claude-emoji-completion'
@@ -620,6 +621,11 @@ export function setupTerminalHandlers(
   agentStateCallback?: () => void,
 ) {
   getMainWindow = mainWindowGetter
+  // The sidebar's `zZ`: an agent's Claude Code put to sleep, or woken.
+  setSleepChangeListener((id, asleep) => {
+    const win = getMainWindow?.()
+    if (win && !win.isDestroyed()) win.webContents.send('terminal:asleep', { id, asleep })
+  })
   showNotification = notificationCallback
   onAgentChange = agentChangeCallback || null
   onAgentStateChange = agentStateCallback || null
@@ -848,6 +854,7 @@ export function setupTerminalHandlers(
       // through rather than defaulted on the way out.
       infoSidebarOpen: agentMap.get(t.id)?.infoSidebarOpen,
       displayMode: agentMap.get(t.id)?.displayMode,
+      asleep: Boolean(t.asleep),
     }))
   })
 

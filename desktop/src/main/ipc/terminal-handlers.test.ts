@@ -37,6 +37,7 @@ let capturedOnExit: ((code: number) => void) | undefined
 let capturedOnStateChange: ((state: string, previousState: string) => void) | undefined
 
 vi.mock('../pty/terminal-manager', () => ({
+  setSleepChangeListener: () => {},
   createTerminal: (...args: unknown[]) => {
     capturedOnExit = args[5] as (code: number) => void
     capturedOnStateChange = args[4] as (state: string, previousState: string) => void
