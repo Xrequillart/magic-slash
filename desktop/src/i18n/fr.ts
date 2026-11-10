@@ -2151,6 +2151,7 @@ export const fr: Record<keyof typeof en, string> = {
   'chat.diff.truncated': 'Coupé ici. La suite est dans le fichier.',
   'chat.diff.showAll': 'Voir les {count} lignes',
   'chat.diff.close': 'Fermer',
+  'chat.code.copy': 'Copier le code',
   'chat.attach': 'Joindre des fichiers',
   'chat.attach.remove': 'Retirer',
   'chat.attach.drop': 'Déposez pour joindre',

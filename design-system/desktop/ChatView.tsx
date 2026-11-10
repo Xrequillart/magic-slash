@@ -7,7 +7,7 @@ import { ToolMarkStack } from './ToolMarkStack'
 import { RAISED_PLATE } from './plate'
 import { CLAUDE_CORAL, ClaudeCode } from './brand'
 import { ClaudeCodeMascot } from './ClaudeCodeMascot'
-import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
+import { ChatCodeCopyContext, ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatInsightCard } from './ChatInsightCard'
 import { ChatBannerCard } from './ChatBannerCard'
@@ -83,6 +83,9 @@ export interface ChatViewLabels {
   toolGroup: string
   /** Over the thread, while earlier turns are not mounted. */
   earlier: string
+  /** A fenced block's copy button, at rest and for the two seconds after. */
+  copyCode: string
+  codeCopied: string
   attach: string
   removeAttachment: string
   dropFiles: string
@@ -294,6 +297,9 @@ export function ChatView({
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], background = [], loading = false,
   sendKey = 'enter', emojiCompletion = true, toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
 }: ChatViewProps) {
+  // One object for as long as the words hold, so the blocks under it do not redraw with
+  // every render of the thread.
+  const codeCopy = useMemo(() => ({ copy: labels.copyCode, copied: labels.codeCopied }), [labels.copyCode, labels.codeCopied])
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
@@ -710,6 +716,7 @@ export function ChatView({
   // veil, and no colour laid on top would match it in every theme.
   const threadFade = `linear-gradient(to bottom, transparent, black ${FADE_TOP_PX}px, black calc(100% - ${dockHeight + FADE_ABOVE_PX}px), transparent calc(100% - ${Math.max(dockHeight - FADE_UNDER_PX, 0)}px))`
   return (
+    <ChatCodeCopyContext.Provider value={codeCopy}>
     <div
       className="relative h-full bg-surface-sunken"
       style={codeFontSize ? ({ '--chat-code-size': `${codeFontSize}px` } as CSSProperties) : undefined}
@@ -976,6 +983,7 @@ export function ChatView({
         </div>
       )}
     </div>
+    </ChatCodeCopyContext.Provider>
   )
 }
 

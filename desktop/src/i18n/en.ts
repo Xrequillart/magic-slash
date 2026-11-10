@@ -2244,6 +2244,7 @@ export const en = {
   'chat.diff.truncated': 'Cut short here. The rest is in the file.',
   'chat.diff.showAll': 'Show all {count} lines',
   'chat.diff.close': 'Close',
+  'chat.code.copy': 'Copy code',
   'chat.attach': 'Attach files',
   'chat.attach.remove': 'Remove',
   'chat.attach.drop': 'Drop to attach',

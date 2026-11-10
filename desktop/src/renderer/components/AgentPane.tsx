@@ -209,6 +209,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               diffTruncated: t('chat.diff.truncated'),
               diffShowAll: t('chat.diff.showAll'),
               diffClose: t('chat.diff.close'),
+              copyCode: t('chat.code.copy'),
+              codeCopied: t('common.copied'),
               toolGroup: t('chat.toolGroup'),
               earlier: t('chat.earlier'),
               attach: t('chat.attach'),
