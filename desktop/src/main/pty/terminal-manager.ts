@@ -12,7 +12,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
 import { createTuiReadyScanner } from './tui-ready'
-import { replayHeld, shouldSleep, SLEEP_SWEEP_MS } from './idle-sleep'
+import { replayHeld, shouldSleep, sleepAfterMs, SLEEP_SWEEP_MS } from './idle-sleep'
 import { bufferOutlivesExit } from './exited-buffer'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
@@ -20,7 +20,7 @@ import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
 import { cwdForTranscript, readSessionTitle, sessionIdOf, withSession } from './resume-session'
 import type { ClaudeSessionEntry, TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
-import { isValidModelName } from '../../types'
+import { DEFAULT_SESSION_SLEEP_MINUTES, isValidModelName, isValidSessionSleepMinutes } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -1407,6 +1407,9 @@ export function wakeTerminal(id: string): Promise<boolean> {
 
 /** Puts to sleep every agent left alone long enough (see idle-sleep.ts). */
 export function sleepIdleTerminals(now: number = Date.now()): void {
+  const minutes = readConfig().sessionSleepMinutes
+  const afterMs = sleepAfterMs(isValidSessionSleepMinutes(minutes) ? minutes : undefined, DEFAULT_SESSION_SLEEP_MINUTES)
+  if (afterMs === null) return
   for (const [id, terminal] of terminals) {
     if (!terminal.sleep) continue
     const candidate = {
@@ -1417,7 +1420,7 @@ export function sleepIdleTerminals(now: number = Date.now()): void {
       asleep: Boolean(terminal.asleep),
       restarting: Boolean(terminal.isRestarting),
     }
-    if (!shouldSleep(candidate, now)) continue
+    if (!shouldSleep(candidate, now, afterMs)) continue
     // Read last, and only for the few that got this far: it copies the chat.
     if (getChatSnapshot(id).background.length > 0) continue
     try {

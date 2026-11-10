@@ -13,8 +13,14 @@ import type { TerminalState } from '../../types'
  * in terminal-manager, which pulls node-pty.
  */
 
-/** How long an agent must be left alone, and out of sight, before it sleeps. */
-export const SLEEP_AFTER_MS = 15 * 60_000
+/**
+ * How long an agent must be left alone, and out of sight, before it sleeps: the setting
+ * (Settings → Sessions), in minutes. 0 never puts one to sleep.
+ */
+export function sleepAfterMs(minutes: number | undefined, fallback: number): number | null {
+  const chosen = minutes ?? fallback
+  return chosen > 0 ? chosen * 60_000 : null
+}
 
 /** How often the agents are looked over. */
 export const SLEEP_SWEEP_MS = 60_000
@@ -36,10 +42,10 @@ export interface SleepCandidate {
  * holds and a restart would lose), not in error (what the terminal shows is the
  * explanation), and with no background agent of its own still at work.
  */
-export function shouldSleep(c: SleepCandidate, now: number): boolean {
+export function shouldSleep(c: SleepCandidate, now: number, afterMs: number): boolean {
   if (c.asleep || c.restarting || c.visible || c.background > 0) return false
   if (c.state !== 'idle' && c.state !== 'completed') return false
-  return now - c.lastActiveAt >= SLEEP_AFTER_MS
+  return now - c.lastActiveAt >= afterMs
 }
 
 /**

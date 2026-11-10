@@ -2482,6 +2482,7 @@ describe('user settings', () => {
       default_agent_type: null,
       agent_sort: null,
       max_sessions: null,
+      session_sleep_minutes: null,
       tasks_repo: null,
       plans_repo: null,
       workflow_confirm_chain: null,

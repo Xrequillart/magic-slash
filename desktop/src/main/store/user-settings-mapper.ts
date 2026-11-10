@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidMaxSessions, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
+import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidMaxSessions, isValidSessionSleepMinutes, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
 import { SETTINGS_ACCESS } from './user-settings-access'
 import { applySettingsDefaults, isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
@@ -75,6 +75,7 @@ export interface UserSettingsRow {
   confirm_agent_archive: boolean | null
   agent_sort: string | null
   max_sessions: number | null
+  session_sleep_minutes: number | null
   tasks_repo: string | null
   plans_repo: string | null
   workflow_confirm_chain: string | null
@@ -139,6 +140,7 @@ export const SETTINGS_KEYS = [
   'confirmAgentArchive',
   'agentSort',
   'maxSessions',
+  'sessionSleepMinutes',
   'tasksRepo',
   'plansRepo',
   'integrations',
@@ -212,6 +214,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     confirm_agent_archive: orNull(config.confirmAgentArchive),
     agent_sort: orNull(config.agentSort),
     max_sessions: orNull(config.maxSessions),
+    session_sleep_minutes: orNull(config.sessionSleepMinutes),
     tasks_repo: orNull(config.tasksRepo),
     plans_repo: orNull(config.plansRepo),
     workflow_confirm_chain: orNull(config.workflow?.confirmChain),
@@ -292,6 +295,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // than to no order at all.
   if (isValidAgentSort(row.agent_sort)) config.agentSort = row.agent_sort
   if (isValidMaxSessions(row.max_sessions)) config.maxSessions = row.max_sessions
+  if (isValidSessionSleepMinutes(row.session_sleep_minutes)) config.sessionSleepMinutes = row.session_sleep_minutes
   // NOT re-validated against anything, unlike the five above, because there is no
   // enum to validate against: the value is a key of `Config.repositories`, and which
   // keys are legal is this account's own business and changes as repositories come

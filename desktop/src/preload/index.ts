@@ -89,6 +89,9 @@ const configApi = {
   setMaxSessions: (count: number): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setMaxSessions', { count }),
 
+  setSessionSleepMinutes: (minutes: number): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setSessionSleepMinutes', { minutes }),
+
   codeSample: (language: CodeSampleLanguage): Promise<CodeSample> =>
     ipcRenderer.invoke('config:codeSample', { language }),
 

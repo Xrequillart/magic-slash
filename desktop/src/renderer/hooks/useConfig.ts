@@ -245,6 +245,13 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // After how long alone an agent's Claude Code sleeps; the main process reads it.
+  const updateSessionSleepMinutes = useCallback(async (minutes: number) => {
+    const result = await window.electronAPI.config.setSessionSleepMinutes(minutes)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // How many sessions may run at once; the Sessions page reads it off the config at creation.
   const updateMaxSessions = useCallback(async (count: number) => {
     const result = await window.electronAPI.config.setMaxSessions(count)
@@ -353,6 +360,7 @@ export function useConfig() {
     updateCodeSyntax,
     updateCodeFontSize,
     updateMaxSessions,
+    updateSessionSleepMinutes,
     updateDefaultModel,
     updateConfirmAgentArchive,
     updateWorkflowSettings,
