@@ -67,6 +67,8 @@ export interface ChatViewLabels {
   /** What the empty session's robot says in its speech bubble. */
   greeting: string
   working: string
+  /** Beside the wave while `waking`. */
+  waking?: string
   /** Under the loader while `loading`. */
   loading?: string
   waiting: string
@@ -110,6 +112,12 @@ export interface ChatViewProps {
   entries: ChatViewEntry[]
   /** The agent is at work: the composer stays open (Claude Code queues), a wave shows. */
   working?: boolean
+  /**
+   * The agent's Claude Code is starting again on this conversation, after it was put to
+   * sleep. The thread stays as it is, a wave says so at its end, and the composer stays
+   * open: what is sent meanwhile goes once it is up.
+   */
+  waking?: boolean
   /** The agent is blocked on something only the terminal can answer. */
   waiting?: boolean
   /** `attachments` are file paths, in the order they were added. */
@@ -292,7 +300,7 @@ const WINDOW_ENTRIES = 120
 const EARLIER_PX = 400
 
 export function ChatView({
-  entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
+  entries, working, waking = false, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], background = [], loading = false,
   sendKey = 'enter', emojiCompletion = true, toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
@@ -780,12 +788,12 @@ export function ChatView({
               busy={answering}
             />
           )}
-          {working && !waiting && !question && (
+          {(waking || (working && !waiting && !question)) && (
             // A tool line's own box (px-2 py-1, a 14px mark first), so the wave stands in
             // the column of the marks above it and at their height.
-            <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/70">
+            <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/70 animate-fade-in motion-reduce:animate-none">
               <Loader variant="wave" size="sm" tone="accent" className="flex-shrink-0" />
-              <span>{labels.working}</span>
+              <span>{waking ? labels.waking ?? labels.working : labels.working}</span>
             </div>
           )}
         </div>

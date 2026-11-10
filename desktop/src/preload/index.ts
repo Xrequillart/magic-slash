@@ -297,6 +297,14 @@ const terminalApi = {
   submit: (id: string, data: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:submit', { id, data }),
 
+  // Whether the agent is shown in a pane: a shown agent's Claude Code is never put to sleep.
+  setVisible: (id: string, visible: boolean): Promise<void> =>
+    ipcRenderer.invoke('terminal:setVisible', { id, visible }),
+
+  // Starts an agent put to sleep again. Resolves once it can be typed into: true if it slept.
+  wake: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:wake', { id }),
+
   resize: (id: string, cols: number, rows: number) =>
     ipcRenderer.invoke('terminal:resize', { id, cols, rows }),
 

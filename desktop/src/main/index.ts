@@ -12,7 +12,7 @@ import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude, getTerminal } from './pty/terminal-manager'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude, getTerminal, startIdleSleep } from './pty/terminal-manager'
 import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
@@ -367,6 +367,8 @@ function setupHandlers() {
     // Any runtime state change, a PTY exit included: the paired phones hear it at once.
     () => notifyRemoteState(),
   )
+  // Agents left alone a quarter hour give their Claude Code's memory back (idle-sleep.ts).
+  startIdleSleep()
 
   // Initialize PR review watcher and its IPC handlers
   prReviewWatcher = new PRReviewWatcher(

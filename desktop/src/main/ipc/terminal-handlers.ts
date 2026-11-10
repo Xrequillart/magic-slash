@@ -25,6 +25,8 @@ import {
   newTerminalSession,
   countContextSessions,
   writeContextDigest,
+  setTerminalVisible,
+  wakeTerminal,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { readEmojiCompletion } from '../claude-emoji-completion'
@@ -760,6 +762,18 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:submit', async (_event, { id, data }) => {
     if (typeof id !== 'string' || typeof data !== 'string' || !data) return false
     return submitToTerminal(id, data)
+  })
+
+  // An agent shown in a pane, or no longer: a shown one is never put to sleep (idle-sleep.ts).
+  ipcMain.handle('terminal:setVisible', async (_event, { id, visible }) => {
+    if (typeof id !== 'string' || typeof visible !== 'boolean') return
+    setTerminalVisible(id, visible)
+  })
+
+  // Opened: wakes an agent put to sleep. Resolves once it can be typed into.
+  ipcMain.handle('terminal:wake', async (_event, { id }) => {
+    if (typeof id !== 'string') return false
+    return wakeTerminal(id)
   })
 
   // Resize terminal

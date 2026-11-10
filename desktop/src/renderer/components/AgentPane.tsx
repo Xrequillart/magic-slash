@@ -46,6 +46,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const mode = useStore((s) => resolveDisplayMode(terminal, s.config))
   const { entries, queue, background, pushes, loaded } = useChat(terminal.id)
   const resuming = useResumeLoader(terminal.id, pushes)
+  const waking = useWakeOnShow(terminal.id, isVisible)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
   const [restored, setRestored] = useState<string | null>(null)
@@ -167,6 +168,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             // A resume under way, or the first read not back yet: either way the empty
             // view would claim a conversation that has simply not arrived.
             loading={resuming || !loaded}
+            waking={waking}
             contextOffer={trustOffer ?? contextOffer}
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
@@ -202,6 +204,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               empty: t('chat.empty'),
               greeting: t('chat.greeting'),
               working: t('chat.working'),
+              waking: t('chat.resuming'),
               loading: t(resuming ? 'chat.resuming' : 'chat.loadingConversation'),
               waiting: t('chat.waiting'),
               showTerminal: t('chat.showTerminal'),
@@ -450,6 +453,43 @@ function useDoubleCtrlC(terminalId: string, active: boolean): void {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [terminalId, active, t])
+}
+
+/** How long a wake may take before the chat says so: a quick one shows nothing. */
+const WAKE_LOADER_DELAY_MS = 150
+
+/**
+ * Tells the main process whether this agent is shown, and wakes it when it is: an agent
+ * left alone long enough has its Claude Code stopped to free its memory (idle-sleep.ts in
+ * the main process). Answers whether it is waking, for the chat's loader.
+ */
+function useWakeOnShow(terminalId: string, isVisible: boolean): boolean {
+  const [waking, setWaking] = useState(false)
+
+  useEffect(() => {
+    void window.electronAPI.terminal.setVisible(terminalId, isVisible).catch(() => {})
+    if (!isVisible) return
+    let live = true
+    const timer = setTimeout(() => { if (live) setWaking(true) }, WAKE_LOADER_DELAY_MS)
+    window.electronAPI.terminal.wake(terminalId)
+      .catch(() => false)
+      .finally(() => {
+        clearTimeout(timer)
+        if (live) setWaking(false)
+      })
+    return () => {
+      live = false
+      clearTimeout(timer)
+      setWaking(false)
+    }
+  }, [terminalId, isVisible])
+
+  // Gone from the screen altogether: no longer shown, whatever it last said.
+  useEffect(() => () => {
+    void window.electronAPI.terminal.setVisible(terminalId, false).catch(() => {})
+  }, [terminalId])
+
+  return waking
 }
 
 /**
