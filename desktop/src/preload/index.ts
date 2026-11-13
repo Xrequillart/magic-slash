@@ -89,6 +89,9 @@ const configApi = {
   setMaxSessions: (count: number): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setMaxSessions', { count }),
 
+  setSessionSleepMinutes: (minutes: number): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setSessionSleepMinutes', { minutes }),
+
   codeSample: (language: CodeSampleLanguage): Promise<CodeSample> =>
     ipcRenderer.invoke('config:codeSample', { language }),
 
@@ -297,6 +300,14 @@ const terminalApi = {
   submit: (id: string, data: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:submit', { id, data }),
 
+  // Whether the agent is shown in a pane: a shown agent's Claude Code is never put to sleep.
+  setVisible: (id: string, visible: boolean): Promise<void> =>
+    ipcRenderer.invoke('terminal:setVisible', { id, visible }),
+
+  // Starts an agent put to sleep again. Resolves once it can be typed into: true if it slept.
+  wake: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:wake', { id }),
+
   resize: (id: string, cols: number, rows: number) =>
     ipcRenderer.invoke('terminal:resize', { id, cols, rows }),
 
@@ -420,6 +431,12 @@ const terminalApi = {
     const listener = (_event: IpcRendererEvent, data: { id: string; state: TerminalState; previousState: TerminalState }) => callback(data)
     ipcRenderer.on('terminal:state', listener)
     return () => ipcRenderer.removeListener('terminal:state', listener)
+  },
+
+  onAsleep: (callback: (data: { id: string; asleep: boolean }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; asleep: boolean }) => callback(data)
+    ipcRenderer.on('terminal:asleep', listener)
+    return () => ipcRenderer.removeListener('terminal:asleep', listener)
   },
 
   onExit: (callback: (data: { id: string; exitCode: number }) => void) => {

@@ -25,6 +25,9 @@ import {
   newTerminalSession,
   countContextSessions,
   writeContextDigest,
+  setTerminalVisible,
+  wakeTerminal,
+  setSleepChangeListener,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { readEmojiCompletion } from '../claude-emoji-completion'
@@ -618,6 +621,11 @@ export function setupTerminalHandlers(
   agentStateCallback?: () => void,
 ) {
   getMainWindow = mainWindowGetter
+  // The sidebar's `zZ`: an agent's Claude Code put to sleep, or woken.
+  setSleepChangeListener((id, asleep) => {
+    const win = getMainWindow?.()
+    if (win && !win.isDestroyed()) win.webContents.send('terminal:asleep', { id, asleep })
+  })
   showNotification = notificationCallback
   onAgentChange = agentChangeCallback || null
   onAgentStateChange = agentStateCallback || null
@@ -762,6 +770,18 @@ export function setupTerminalHandlers(
     return submitToTerminal(id, data)
   })
 
+  // An agent shown in a pane, or no longer: a shown one is never put to sleep (idle-sleep.ts).
+  ipcMain.handle('terminal:setVisible', async (_event, { id, visible }) => {
+    if (typeof id !== 'string' || typeof visible !== 'boolean') return
+    setTerminalVisible(id, visible)
+  })
+
+  // Opened: wakes an agent put to sleep. Resolves once it can be typed into.
+  ipcMain.handle('terminal:wake', async (_event, { id }) => {
+    if (typeof id !== 'string') return false
+    return wakeTerminal(id)
+  })
+
   // Resize terminal
   ipcMain.handle('terminal:resize', async (_event, { id, cols, rows }) => {
     if (typeof id !== 'string' || typeof cols !== 'number' || typeof rows !== 'number') return
@@ -834,6 +854,7 @@ export function setupTerminalHandlers(
       // through rather than defaulted on the way out.
       infoSidebarOpen: agentMap.get(t.id)?.infoSidebarOpen,
       displayMode: agentMap.get(t.id)?.displayMode,
+      asleep: Boolean(t.asleep),
     }))
   })
 

@@ -6,11 +6,11 @@ import { useFormatSelect } from './FormatSelect'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useClaudeEmojiCompletion } from '../../hooks/useClaudeEmojiCompletion'
-import { useT, type MessageKey } from '../../i18n'
+import { useT, type MessageKey, type Translate } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
 import {
-  AGENT_SORT_MODES, DEFAULT_AGENT_SORT, DEFAULT_MAX_SESSIONS, MAX_SESSIONS_OPTIONS, CHAT_SEND_KEYS, CHAT_TOOL_DETAILS, CHAT_DIFF_DISPLAYS, CHAT_TIMESTAMPS,
+  AGENT_SORT_MODES, DEFAULT_AGENT_SORT, DEFAULT_MAX_SESSIONS, MAX_SESSIONS_OPTIONS, DEFAULT_SESSION_SLEEP_MINUTES, SESSION_SLEEP_OPTIONS, CHAT_SEND_KEYS, CHAT_TOOL_DETAILS, CHAT_DIFF_DISPLAYS, CHAT_TIMESTAMPS,
   type ChatSendKey, type ChatToolDetail, type ChatDiffDisplay, type ChatTimestamps,
   type AgentDisplayMode, type AgentSortMode, type AgentType, type ClaudeModelOption, type LaunchMode,
 } from '../../../types'
@@ -46,6 +46,13 @@ export const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; des
   { value: 'auto', labelKey: 'settings.launchMode.auto', descriptionKey: 'settings.launchMode.auto.help' },
   { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
 ]
+
+/** A sleep delay as the select says it: never, minutes under the hour, hours from it. */
+export function sleepOptionLabel(t: Translate, minutes: number): string {
+  if (minutes === 0) return t('settings.agents.sleep.never')
+  if (minutes >= 60) return t('settings.agents.sleep.hours', { count: minutes / 60 })
+  return t('settings.agents.sleep.minutes', { count: minutes })
+}
 
 export const SORT_LABEL: Record<AgentSortMode, MessageKey> = {
   recent: 'sidebar.sort.recent',
@@ -381,9 +388,19 @@ function ChatSection() {
 
 function ListSection() {
   const t = useT()
-  const { config, updateAgentSort, updateMaxSessions } = useConfig()
+  const { config, updateAgentSort, updateMaxSessions, updateSessionSleepMinutes } = useConfig()
   const current = config?.agentSort ?? DEFAULT_AGENT_SORT
   const maxSessions = config?.maxSessions ?? DEFAULT_MAX_SESSIONS
+  const sleepMinutes = config?.sessionSleepMinutes ?? DEFAULT_SESSION_SLEEP_MINUTES
+
+  const chooseSleepMinutes = async (next: number) => {
+    if (next === sleepMinutes) return
+    try {
+      await updateSessionSleepMinutes(next)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
 
   const chooseMaxSessions = async (next: number) => {
     if (next === maxSessions) return
@@ -423,6 +440,19 @@ function ListSection() {
               options: MAX_SESSIONS_OPTIONS.map((count) => ({ value: String(count), label: t('settings.agents.maxSessions.option', { count }) })),
               onChange: (next) => chooseMaxSessions(Number(next)),
               ariaLabel: t('settings.agents.maxSessions.label'),
+              width: SELECT_WIDTH,
+            },
+          },
+          {
+            id: 'sessionSleep',
+            label: t('settings.agents.sleep.label'),
+            hint: t('settings.agents.sleep.help'),
+            control: {
+              kind: 'select',
+              value: String(sleepMinutes),
+              options: SESSION_SLEEP_OPTIONS.map((minutes) => ({ value: String(minutes), label: sleepOptionLabel(t, minutes) })),
+              onChange: (next) => chooseSleepMinutes(Number(next)),
+              ariaLabel: t('settings.agents.sleep.label'),
               width: SELECT_WIDTH,
             },
           },

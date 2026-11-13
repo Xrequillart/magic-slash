@@ -7,7 +7,7 @@ import { ToolMarkStack } from './ToolMarkStack'
 import { RAISED_PLATE } from './plate'
 import { CLAUDE_CORAL, ClaudeCode } from './brand'
 import { ClaudeCodeMascot } from './ClaudeCodeMascot'
-import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
+import { ChatCodeCopyContext, ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatInsightCard } from './ChatInsightCard'
 import { ChatBannerCard } from './ChatBannerCard'
@@ -67,6 +67,8 @@ export interface ChatViewLabels {
   /** What the empty session's robot says in its speech bubble. */
   greeting: string
   working: string
+  /** Beside the wave while `waking`. */
+  waking?: string
   /** Under the loader while `loading`. */
   loading?: string
   waiting: string
@@ -83,6 +85,9 @@ export interface ChatViewLabels {
   toolGroup: string
   /** Over the thread, while earlier turns are not mounted. */
   earlier: string
+  /** A fenced block's copy button, at rest and for the two seconds after. */
+  copyCode: string
+  codeCopied: string
   attach: string
   removeAttachment: string
   dropFiles: string
@@ -107,6 +112,12 @@ export interface ChatViewProps {
   entries: ChatViewEntry[]
   /** The agent is at work: the composer stays open (Claude Code queues), a wave shows. */
   working?: boolean
+  /**
+   * The agent's Claude Code is starting again on this conversation, after it was put to
+   * sleep. The thread stays as it is, a wave says so at its end, and the composer stays
+   * open: what is sent meanwhile goes once it is up.
+   */
+  waking?: boolean
   /** The agent is blocked on something only the terminal can answer. */
   waiting?: boolean
   /** `attachments` are file paths, in the order they were added. */
@@ -289,11 +300,14 @@ const WINDOW_ENTRIES = 120
 const EARLIER_PX = 400
 
 export function ChatView({
-  entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
+  entries, working, waking = false, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], background = [], loading = false,
   sendKey = 'enter', emojiCompletion = true, toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
 }: ChatViewProps) {
+  // One object for as long as the words hold, so the blocks under it do not redraw with
+  // every render of the thread.
+  const codeCopy = useMemo(() => ({ copy: labels.copyCode, copied: labels.codeCopied }), [labels.copyCode, labels.codeCopied])
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
@@ -710,6 +724,7 @@ export function ChatView({
   // veil, and no colour laid on top would match it in every theme.
   const threadFade = `linear-gradient(to bottom, transparent, black ${FADE_TOP_PX}px, black calc(100% - ${dockHeight + FADE_ABOVE_PX}px), transparent calc(100% - ${Math.max(dockHeight - FADE_UNDER_PX, 0)}px))`
   return (
+    <ChatCodeCopyContext.Provider value={codeCopy}>
     <div
       className="relative h-full bg-surface-sunken"
       style={codeFontSize ? ({ '--chat-code-size': `${codeFontSize}px` } as CSSProperties) : undefined}
@@ -773,12 +788,12 @@ export function ChatView({
               busy={answering}
             />
           )}
-          {working && !waiting && !question && (
+          {(waking || (working && !waiting && !question)) && (
             // A tool line's own box (px-2 py-1, a 14px mark first), so the wave stands in
             // the column of the marks above it and at their height.
-            <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/70">
+            <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/70 animate-fade-in motion-reduce:animate-none">
               <Loader variant="wave" size="sm" tone="accent" className="flex-shrink-0" />
-              <span>{labels.working}</span>
+              <span>{waking ? labels.waking ?? labels.working : labels.working}</span>
             </div>
           )}
         </div>
@@ -976,6 +991,7 @@ export function ChatView({
         </div>
       )}
     </div>
+    </ChatCodeCopyContext.Provider>
   )
 }
 

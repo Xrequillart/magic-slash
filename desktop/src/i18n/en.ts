@@ -206,6 +206,7 @@ export const en = {
   'sidebar.sort.repository': 'By repository',
   // The header of the last group in `repository` mode: the agents whose working
   // directory matches no configured repository. Decoration, never selectable.
+  'sidebar.asleep': 'Asleep: resumes when opened',
   'sidebar.group.noRepository': 'No repository',
   // A count above the list, not a group header: the agents it counts keep their row.
   'sidebar.needsAttention': 'Needs attention',
@@ -1590,6 +1591,11 @@ export const en = {
   'settings.agents.maxSessions.label': 'Maximum sessions',
   'settings.agents.maxSessions.help': 'How many Claude Code sessions can be open at once. Each one is a process of its own on this Mac.',
   'settings.agents.maxSessions.option': '{count} sessions',
+  'settings.agents.sleep.label': 'Sleep after',
+  'settings.agents.sleep.help': 'An agent left alone this long has its Claude Code stopped to free memory. It resumes on the same conversation when you open it or write to it.',
+  'settings.agents.sleep.never': 'Never',
+  'settings.agents.sleep.minutes': 'After {count} min',
+  'settings.agents.sleep.hours': 'After {count} h',
   'settings.agents.panel.section': 'Session panel',
   'settings.agents.archive.section': 'Archiving',
   'settings.agents.archive.confirm.label': 'Confirm before archiving',
@@ -2244,6 +2250,7 @@ export const en = {
   'chat.diff.truncated': 'Cut short here. The rest is in the file.',
   'chat.diff.showAll': 'Show all {count} lines',
   'chat.diff.close': 'Close',
+  'chat.code.copy': 'Copy code',
   'chat.attach': 'Attach files',
   'chat.attach.remove': 'Remove',
   'chat.attach.drop': 'Drop to attach',

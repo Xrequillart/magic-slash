@@ -1212,6 +1212,8 @@ export interface TerminalInfo {
   infoSidebarOpen?: boolean
   /** See `Agent.displayMode`. Absent = never decided, resolved at read time. */
   displayMode?: AgentDisplayMode
+  /** Its Claude Code is stopped after a while alone, to free memory (main/pty/idle-sleep.ts). */
+  asleep?: boolean
 }
 
 /**
@@ -1988,6 +1990,19 @@ export function isValidMaxSessions(value: unknown): value is number {
   return typeof value === 'number' && (MAX_SESSIONS_OPTIONS as readonly number[]).includes(value)
 }
 
+/**
+ * After how many minutes alone an agent's Claude Code is put to sleep to free its memory,
+ * and resumed when it is opened (main/pty/idle-sleep.ts). 0 never puts one to sleep.
+ */
+export const SESSION_SLEEP_OPTIONS = [0, 5, 15, 30, 60, 120] as const
+
+/** Never chosen: a quarter hour, what the sleep shipped with. */
+export const DEFAULT_SESSION_SLEEP_MINUTES = 15
+
+export function isValidSessionSleepMinutes(value: unknown): value is number {
+  return typeof value === 'number' && (SESSION_SLEEP_OPTIONS as readonly number[]).includes(value)
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -2218,6 +2233,8 @@ export interface Config {
   agentSort?: AgentSortMode
   /** How many sessions may run at once. Absent = DEFAULT_MAX_SESSIONS. Follows the account. */
   maxSessions?: number
+  /** Minutes alone before an agent's Claude Code sleeps; 0 = never. Absent = DEFAULT_SESSION_SLEEP_MINUTES. */
+  sessionSleepMinutes?: number
   /**
    * The repository the Tasks board opens on — a key of `repositories` above.
    *

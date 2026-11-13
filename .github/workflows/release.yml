@@ -61,7 +61,9 @@ jobs:
 
   build-desktop:
     name: Build Desktop App
-    runs-on: macos-14
+    # macos-15: GitHub retired the macos-14 image ("configuration 'macos-14-arm64-us-default'
+    # is not supported"). The iOS workflow already builds on 15.
+    runs-on: macos-15
     needs: release
 
     steps:

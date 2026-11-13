@@ -235,10 +235,14 @@ export function Sidebar() {
     colors: Record<string, string>,
   ): SidebarAgentRow[] => list.map((terminal, index) => {
     const groupKey = groupKeyOf(terminal)
+    const name = terminal.metadata?.title || terminal.name
     return {
       id: terminal.id,
-      name: terminal.metadata?.title || terminal.name,
+      name,
       state: terminal.state,
+      asleep: terminal.asleep,
+      // The name first: in the compact column the tooltip is all the row says.
+      title: terminal.asleep ? `${name} · ${t('sidebar.asleep')}` : undefined,
       active: activeId === terminal.id,
       heading: showRepoHeaders && isGroupStart(list, index)
         ? {

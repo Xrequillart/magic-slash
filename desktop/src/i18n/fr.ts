@@ -169,6 +169,7 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.sort.recent': 'Plus récent',
   'sidebar.sort.status': 'Par statut',
   'sidebar.sort.repository': 'Par dépôt',
+  'sidebar.asleep': 'En veille : reprend à l’ouverture',
   'sidebar.group.noRepository': 'Sans dépôt',
   // Un compteur au-dessus de la liste, pas un en-tête de groupe : les agents
   // comptés gardent leur ligne.
@@ -1549,6 +1550,11 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.agents.maxSessions.label': 'Sessions maximum',
   'settings.agents.maxSessions.help': 'Combien de sessions Claude Code peuvent être ouvertes en même temps. Chacune est un processus à part sur ce Mac.',
   'settings.agents.maxSessions.option': '{count} sessions',
+  'settings.agents.sleep.label': 'Mise en veille',
+  'settings.agents.sleep.help': 'Un agent laissé seul aussi longtemps voit sa session Claude Code arrêtée pour libérer de la mémoire. Elle reprend sur la même conversation dès que tu l’ouvres ou lui écris.',
+  'settings.agents.sleep.never': 'Jamais',
+  'settings.agents.sleep.minutes': 'Après {count} min',
+  'settings.agents.sleep.hours': 'Après {count} h',
   'settings.agents.panel.section': 'Panneau de la session',
   'settings.agents.archive.section': 'Archivage',
   'settings.agents.archive.confirm.label': 'Confirmer avant d’archiver',
@@ -2151,6 +2157,7 @@ export const fr: Record<keyof typeof en, string> = {
   'chat.diff.truncated': 'Coupé ici. La suite est dans le fichier.',
   'chat.diff.showAll': 'Voir les {count} lignes',
   'chat.diff.close': 'Fermer',
+  'chat.code.copy': 'Copier le code',
   'chat.attach': 'Joindre des fichiers',
   'chat.attach.remove': 'Retirer',
   'chat.attach.drop': 'Déposez pour joindre',

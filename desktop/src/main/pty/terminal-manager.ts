@@ -1,5 +1,5 @@
 import * as pty from 'node-pty'
-import { forgetClaudeProcess, markClaudeExited, markClaudeStarted, resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
+import { forgetClaudeProcess, getChatSnapshot, markClaudeExited, markClaudeStarted, resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
 import { ChatTranscript } from '../chat/transcript'
 import { DIGEST_SESSIONS, digestSessions } from '../chat/session-digest'
 import * as os from 'os'
@@ -12,6 +12,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
 import { createTuiReadyScanner } from './tui-ready'
+import { replayHeld, shouldSleep, sleepAfterMs, SLEEP_SWEEP_MS } from './idle-sleep'
 import { bufferOutlivesExit } from './exited-buffer'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
@@ -19,7 +20,7 @@ import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
 import { cwdForTranscript, readSessionTitle, sessionIdOf, withSession } from './resume-session'
 import type { ClaudeSessionEntry, TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
-import { isValidModelName } from '../../types'
+import { DEFAULT_SESSION_SLEEP_MINUTES, isValidModelName, isValidSessionSleepMinutes } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -108,6 +109,7 @@ export function updateTerminalStateFromHook(terminalId: string, state: string) {
 
   const previousState = terminal.state
   terminal.state = newState
+  terminal.lastActiveAt = Date.now()
 
   // Update activity time for working state
   if (newState === 'working') {
@@ -234,6 +236,16 @@ export interface Terminal {
    *  the session `resumeId` names. Only set for agents (launchClaude), not for plain
    *  shells. */
   respawn?: (cwd: string, notice?: string, resumeId?: string) => void
+  /** The last input, state change, wake, or moment it was left: what `idle-sleep` counts from. */
+  lastActiveAt?: number
+  /** Its Claude Code is stopped to free its memory (see idle-sleep.ts); `pty` is the dead one. */
+  asleep?: boolean
+  /** Stops its Claude Code, keeping everything else. Agents only. Answers whether it did. */
+  sleep?: () => boolean
+  /** Starts it again on the same conversation; resolves once its input box is up. */
+  wake?: () => Promise<boolean>
+  /** Keeps input that arrives while it sleeps or wakes, to replay once it is up. */
+  holdInput?: (data: string) => boolean
 }
 
 const terminals = new Map<string, Terminal>()
@@ -281,6 +293,18 @@ const STABLE_RUN_MS = 30_000
  * above the banner is a blemish, a prompt that never appears is a broken button.
  */
 const TUI_READY_TIMEOUT_MS = 8_000
+
+/** How long a waking agent may keep its input before it is let through anyway. */
+const WAKE_TIMEOUT_MS = 15_000
+
+/** The agents shown in a pane: never put to sleep. Reported by the renderer. */
+const visibleTerminals = new Set<string>()
+
+/** Told when an agent falls asleep or wakes, for the sidebar's `zZ`. */
+let onSleepChange: ((id: string, asleep: boolean) => void) | null = null
+export function setSleepChangeListener(listener: (id: string, asleep: boolean) => void): void {
+  onSleepChange = listener
+}
 
 // Track PTY listener disposables for cleanup (Phase 2.3)
 const ptyDisposables = new Map<string, Array<{ dispose: () => void }>>()
@@ -409,6 +433,9 @@ export function createTerminal(
 export function writeToTerminal(id: string, data: string): boolean {
   const terminal = terminals.get(id)
   if (!terminal) return false
+  terminal.lastActiveAt = Date.now()
+  // Asleep or waking: kept, and the agent woken, rather than written into a dead PTY.
+  if (terminal.holdInput?.(data)) return true
   try {
     terminal.pty.write(data)
   } catch (e) {
@@ -430,7 +457,8 @@ export function resizeTerminal(id: string, cols: number, rows: number): void {
   if (terminal.cols === cols && terminal.rows === rows) return
   terminal.cols = cols
   terminal.rows = rows
-  terminal.pty.resize(cols, rows)
+  // Asleep: the size is kept for the PTY it wakes on.
+  if (!terminal.asleep) terminal.pty.resize(cols, rows)
 }
 
 export function killTerminal(id: string): void {
@@ -444,8 +472,10 @@ export function killTerminal(id: string): void {
       for (const d of disposables) d.dispose()
       ptyDisposables.delete(id)
     }
-    killPty(terminal.pty)
+    // Asleep, its process group is long gone, and the number may be someone else's now.
+    if (!terminal.asleep) killPty(terminal.pty)
     terminals.delete(id)
+    visibleTerminals.delete(id)
     displayBuffers.delete(id)
     lastActivityTime.delete(id)
     restartTrackers.delete(id)
@@ -540,7 +570,7 @@ export function cleanupAllTerminals(): void {
       if (disposables) {
         for (const d of disposables) d.dispose()
       }
-      killPty(terminal.pty)
+      if (!terminal.asleep) killPty(terminal.pty)
     } catch (e) {
       console.error(`Error killing terminal ${id}:`, e)
     }
@@ -835,12 +865,13 @@ export function launchClaude(
       for (const d of oldDisposables) d.dispose()
     }
 
-    // Kill the old PTY process
+    // Kill the old PTY process. Asleep, there is none: its group is long gone.
     try {
-      killPty(terminal.pty)
+      if (!terminal.asleep) killPty(terminal.pty)
     } catch {
       // Already dead, ignore
     }
+    terminal.asleep = false
 
     const previousState = terminal.state
     pendingResume = resumeId ?? null
@@ -879,6 +910,93 @@ export function launchClaude(
     }
   }
 
+  /**
+   * THE SLEEP: the Claude Code process stopped, everything else kept — the terminal, its
+   * place in the UI, its screen, and the transcript watch, so the chat stays as it was.
+   * What it wakes on is the conversation it was in (see idle-sleep.ts).
+   */
+  let resumeOnWake: string | null = null
+  let held: Array<{ data: string; at: number }> | null = null
+  let woken: Promise<boolean> | null = null
+
+  const sleep = (): boolean => {
+    if (terminal.asleep || terminal.isRestarting || woken) return false
+    const transcript = terminal.metadata.usage?.transcriptPath ?? terminal.metadata.claudeTranscriptPath
+    // Only a conversation that is on disk can be resumed; none, and it wakes on a fresh one.
+    resumeOnWake = transcript && fs.existsSync(transcript) ? sessionIdOf(transcript) : null
+    const old = ptyDisposables.get(id)
+    if (old) for (const d of old) d.dispose()
+    ptyDisposables.delete(id)
+    clearPendingQuestion(id)
+    killPty(terminal.pty)
+    markClaudeExited(id)
+    terminal.asleep = true
+    onSleepChange?.(id, true)
+    return true
+  }
+
+  const wake = (): Promise<boolean> => {
+    if (woken) return woken
+    if (!terminal.asleep) return Promise.resolve(false)
+    const resumeId = resumeOnWake
+    const transcript = terminal.metadata.usage?.transcriptPath ?? terminal.metadata.claudeTranscriptPath
+    // Where the conversation was had: `--resume` only looks in that folder's sessions.
+    const cwd = (resumeId && transcript && cwdForTranscript(transcript, sessionCwds(terminal))) || terminal.cwd
+    held = held ?? []
+    woken = new Promise<boolean>((resolve) => {
+      const ready = createTuiReadyScanner()
+      let timer: ReturnType<typeof setTimeout> | null = null
+      let listening: { dispose: () => void } | null = null
+      const done = () => {
+        if (timer) clearTimeout(timer)
+        listening?.dispose()
+        const input = held ?? []
+        held = null
+        woken = null
+        replayHeld(input, (data) => {
+          try {
+            terminal.pty.write(data)
+          } catch (e) {
+            console.error(`[wake] Failed to replay input into terminal ${id}:`, e)
+          }
+        })
+        resolve(true)
+      }
+      // Its first draw may never announce itself (a resume that fails, an old CLI):
+      // the input is let through anyway rather than kept for good.
+      timer = setTimeout(done, WAKE_TIMEOUT_MS)
+      try {
+        terminal.asleep = false
+        pendingResume = resumeId
+        // The resumed Claude Code draws the conversation again: on a clean screen, not
+        // over the one it was put to sleep on.
+        displayBuffers.set(id, '')
+        onData('\x1b[2J\x1b[H')
+        terminal.pty = createPtyProcess(cwd, terminal.cols, terminal.rows)
+        terminal.cwd = cwd
+        terminal.lastActiveAt = Date.now()
+        restartTrackers.delete(id)
+        onSleepChange?.(id, false)
+        listening = terminal.pty.onData((data) => {
+          if (woken && ready.seen(data)) done()
+        })
+      } catch (e) {
+        console.error(`[wake] Failed for terminal ${id}:`, e)
+        terminal.asleep = true
+        done()
+      }
+    })
+    return woken
+  }
+
+  const holdInput = (data: string): boolean => {
+    if (!terminal.asleep && !held) return false
+    if (!held) held = []
+    held.push({ data, at: Date.now() })
+    void wake()
+    return true
+  }
+
   // Detect initial git branch
   const initialBranch = detectGitBranch(workingDir)
 
@@ -908,7 +1026,11 @@ export function launchClaude(
     // box, along with whatever the person had added to it. And true of a resumed
     // session, which holds the whole conversation it was quit on.
     hasUserInput: Boolean(initialPrompt) || Boolean(resumeSessionId),
-    respawn: respawnInCwd
+    respawn: respawnInCwd,
+    lastActiveAt: Date.now(),
+    sleep,
+    wake,
+    holdInput,
   }
 
   terminals.set(id, terminal)
@@ -1274,3 +1396,52 @@ export function relaunchTerminalInResolvedCwd(terminalId: string): string | null
   return target
 }
 
+
+/**
+ * Whether an agent is shown in a pane. Leaving it restarts its count towards sleep:
+ * the quarter hour is from when it was last looked at.
+ */
+export function setTerminalVisible(id: string, visible: boolean): void {
+  const terminal = terminals.get(id)
+  if (visible) visibleTerminals.add(id)
+  else visibleTerminals.delete(id)
+  if (terminal) terminal.lastActiveAt = Date.now()
+}
+
+/** Wakes an agent put to sleep. Answers once it can be typed into: true if it was asleep. */
+export function wakeTerminal(id: string): Promise<boolean> {
+  return terminals.get(id)?.wake?.() ?? Promise.resolve(false)
+}
+
+/** Puts to sleep every agent left alone long enough (see idle-sleep.ts). */
+export function sleepIdleTerminals(now: number = Date.now()): void {
+  const minutes = readConfig().sessionSleepMinutes
+  const afterMs = sleepAfterMs(isValidSessionSleepMinutes(minutes) ? minutes : undefined, DEFAULT_SESSION_SLEEP_MINUTES)
+  if (afterMs === null) return
+  for (const [id, terminal] of terminals) {
+    if (!terminal.sleep) continue
+    const candidate = {
+      state: terminal.state,
+      lastActiveAt: terminal.lastActiveAt ?? now,
+      visible: visibleTerminals.has(id),
+      background: 0,
+      asleep: Boolean(terminal.asleep),
+      restarting: Boolean(terminal.isRestarting),
+    }
+    if (!shouldSleep(candidate, now, afterMs)) continue
+    // Read last, and only for the few that got this far: it copies the chat.
+    if (getChatSnapshot(id).background.length > 0) continue
+    try {
+      terminal.sleep()
+    } catch (e) {
+      console.error(`[sleepIdleTerminals] Failed for terminal ${id}:`, e)
+    }
+  }
+}
+
+/** Starts looking agents over for sleep. Once, at launch. */
+export function startIdleSleep(): () => void {
+  const timer = setInterval(() => sleepIdleTerminals(), SLEEP_SWEEP_MS)
+  timer.unref?.()
+  return () => clearInterval(timer)
+}

@@ -101,7 +101,7 @@ export interface SidebarSelectAction extends Omit<SelectIconProps, 'size' | 'cla
 
 /** One row of a list: an agent, plus the repository heading it may open. */
 export interface SidebarAgentRow
-  extends Pick<AgentProps, 'name' | 'state' | 'ticketId' | 'active' | 'title'> {
+  extends Pick<AgentProps, 'name' | 'state' | 'ticketId' | 'active' | 'title' | 'asleep'> {
   /** Stable across renders — the agent's id, not an index. */
   id: string
   /**
@@ -388,6 +388,7 @@ function AgentRows({ list, compact }: { list: SidebarList; compact: boolean }) {
             ticketId={agent.ticketId}
             active={agent.active}
             title={agent.title}
+            asleep={agent.asleep}
             draggable={list.draggable}
             onClick={(event) => list.onSelectAgent?.(agent.id, event)}
             onDragStart={(event) => list.onAgentDragStart?.(agent.id, event)}

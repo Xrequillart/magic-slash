@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.127.0] - 2026-11-10
+
+### Added
+
+- **Desktop**: Show a sleeping zz beside an agent whose claude code is asleep
+
+## [0.126.4] - 2026-11-10
+
+### Changed
+
+- **Ci**: Build the desktop release on macos-15, macos-14 is retired
+
+## [0.126.3] - 2026-11-10
+
+### Added
+
+- **Desktop**: Let the agents' sleep delay be chosen in settings
+- **Desktop**: Add a copy button to the chat's code blocks
+
+### Changed
+
+- **Desktop**: Put idle agents' Claude Code to sleep and resume it when opened
+
+### Fixed
+
+- **Ios**: Keep the session screen at the screen's width when a row is wider
+
 ## [0.126.2] - 2026-11-04
 
 ### Changed
@@ -4257,6 +4284,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.127.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.127.0
+[0.126.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.4
+[0.126.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.3
 [0.126.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.2
 [0.126.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.1
 [0.126.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.0

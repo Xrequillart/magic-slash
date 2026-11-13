@@ -1,7 +1,8 @@
-import { Children, isValidElement, memo, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react'
+import { Children, createContext, isValidElement, memo, useContext, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChatTable } from './ChatTable'
+import { CopyButton } from './CopyButton'
 
 /**
  * WHAT CLAUDE WROTE, AS IT MEANT IT — headings, bold, lists, tables, links, inline code,
@@ -19,6 +20,21 @@ import { ChatTable } from './ChatTable'
  */
 
 export type ChatHighlighter = (code: string, lang: string | undefined) => Promise<string | null>
+
+/**
+ * THE COPY BUTTON'S WORDS, for every fenced block under it. A context rather than a prop:
+ * the markdown is drawn from five places in a thread (a turn, an insight, a banner, a
+ * question's preview), and each would otherwise carry two strings it never reads.
+ * Absent, a block has no copy button.
+ */
+export interface ChatCodeCopyLabels {
+  /** The tooltip and accessible name at rest. Already translated. */
+  copy: string
+  /** For the two seconds after. Already translated. */
+  copied: string
+}
+
+export const ChatCodeCopyContext = createContext<ChatCodeCopyLabels | null>(null)
 
 export interface ChatMarkdownProps {
   text: string
@@ -74,6 +90,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({ text, highlight }: Chat
 const SHIKI_RESET = '[&_pre]:!bg-transparent [&_pre]:m-0 [&_pre]:whitespace-pre [&_code]:font-mono'
 
 function CodeBlock({ code, lang, highlight }: { code: string; lang?: string; highlight?: ChatHighlighter }) {
+  const copy = useContext(ChatCodeCopyContext)
   const [html, setHtml] = useState<string | null>(null)
   useEffect(() => {
     if (!highlight) return
@@ -84,8 +101,14 @@ function CodeBlock({ code, lang, highlight }: { code: string; lang?: string; hig
 
   return (
     <div className="my-3 overflow-hidden rounded-lg border border-line-subtle bg-surface">
-      {lang && (
-        <div className="border-b border-line-subtle px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-text-secondary/70">{lang}</div>
+      {(lang || copy) && (
+        // The copy sits in the block's head, beside the language, so it never lies over
+        // the code it copies: a block without a language still gets the head, empty on
+        // the left.
+        <div className="flex items-center justify-between gap-2 border-b border-line-subtle py-0.5 pl-3 pr-1">
+          <span className="font-mono text-[10px] uppercase tracking-wide text-text-secondary/70">{lang}</span>
+          {copy && <CopyButton value={code} label={copy.copy} copiedLabel={copy.copied} size="xs" />}
+        </div>
       )}
       {html ? (
         // Shiki's output: the code escaped, wrapped in coloured spans.
