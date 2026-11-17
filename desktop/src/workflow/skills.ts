@@ -7,13 +7,14 @@
  * holds every copy to the folders under `skills/`). Pure, no node import, so a
  * renderer may import it too.
  */
-export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
+export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-auto-review', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
 /**
  * Side doors off the cycle rather than steps of it: /magic:plan-change reworks a
  * plan already filed, /magic:continue resumes a ticket already started, and
- * /magic:review reviews a pull request, your own or a colleague's, so what follows
- * it depends on whose PR it is rather than on a flow. None is a node of the default
+ * /magic:review reviews a colleague's pull request, so what follows it is theirs to
+ * decide rather than a flow's (reviewing your own PR is /magic:auto-review, a step of
+ * the cycle). None is a node of the default
  * workflow. They are entered by hand, from wherever the user is, and a flow that
  * "suggested" them after every step would be noise.
  */

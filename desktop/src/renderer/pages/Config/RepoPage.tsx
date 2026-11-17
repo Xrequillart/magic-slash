@@ -207,6 +207,7 @@ const SKILL_INTROS = {
   start: { command: '/magic:start', icon: skillIcon('magic-start'), lead: 'repo.start.intro' },
   commit: { command: '/magic:commit', icon: skillIcon('magic-commit'), lead: 'repo.commit.intro' },
   pr: { command: '/magic:pr', icon: skillIcon('magic-pr'), lead: 'repo.pr.intro' },
+  'auto-review': { command: '/magic:auto-review', icon: skillIcon('magic-auto-review'), lead: 'repo.autoReview.intro' },
   review: { command: '/magic:review', icon: skillIcon('magic-review'), lead: 'repo.review.intro' },
   resolve: { command: '/magic:resolve', icon: skillIcon('magic-resolve'), lead: 'repo.resolve.intro' },
 } satisfies Record<string, { command: string; icon: IconComponent; lead: MessageKey }>
@@ -2829,7 +2830,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         // The comment lands on the TICKET and carries the PR link. It sits here
         // rather than with the tracker's address because it is the pull request that
         // triggers it — the same reason the auto-link row above is on this tab.
-        // /magic:review and /magic:done read it too.
+        // /magic:auto-review, /magic:review and /magic:done read it too.
         switchRow('commentOnPR', t('repo.issues.commentOnPR'), t('repo.issues.commentOnPRHelp'),
           commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
         {
@@ -2846,6 +2847,30 @@ export function RepoPage({ repoName }: RepoPageProps) {
       // The comment /magic:pr leaves on the ticket, and the start of the ticket cascade.
       langRow('jiraComment', t('repo.issues.commentLang'), t('repo.issues.commentLangHelp')),
     ]),
+  ]
+
+  // ONE set of review settings, read by both review skills: /magic:auto-review (a step of
+  // the cycle, so they show in its inspector) and /magic:review (a side door, so they show
+  // in the Annex tab). Two copies would let the two places disagree about one value.
+  const reviewStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'draft',
+      title: t('repo.review.groupDraft'),
+      rows: [
+        switchRow('confidenceScore', t('repo.review.confidenceScore'), t('repo.review.confidenceScoreHelp'),
+          reviewConfidenceScoreVal, (next) => handleReviewSettingChange('confidenceScore', next)),
+        {
+          id: 'reviewMode',
+          label: t('repo.review.mode'),
+          hint: t('repo.review.modeHelp'),
+          disabled: readOnly,
+          control: enumControl(t, reviewModeVal, REVIEW_MODES, REVIEW_MODE_LABEL,
+            (next) => handleReviewSettingChange('mode', next), t('repo.review.mode')),
+        },
+      ],
+    },
+    // Inherits the pull request language when unset, so it is handed the resolved value.
+    languagesGroup([langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs))]),
   ]
 
   const resolveStepSettings: WorkflowInspectorSettings[] = [
@@ -3021,6 +3046,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
         replyVerbosity: resolveReplyVerbosityVal,
       })),
       settings: resolveStepSettings,
+    },
+    'magic-auto-review': {
+      intro: introOf('auto-review', reviewSummary({ confidenceScore: reviewConfidenceScoreVal, mode: reviewModeVal })),
+      settings: reviewStepSettings,
     },
   }
 
@@ -3478,26 +3507,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
           skill="review"
           summary={reviewSummary({ confidenceScore: reviewConfidenceScoreVal, mode: reviewModeVal })}
         />
-        <SettingsCard
-          title={t('repo.review.groupDraft')}
-          rows={[
-            switchRow('confidenceScore', t('repo.review.confidenceScore'), t('repo.review.confidenceScoreHelp'),
-              reviewConfidenceScoreVal, (next) => handleReviewSettingChange('confidenceScore', next)),
-            {
-              id: 'reviewMode',
-              label: t('repo.review.mode'),
-              hint: t('repo.review.modeHelp'),
-              disabled: readOnly,
-              control: enumControl(t, reviewModeVal, REVIEW_MODES, REVIEW_MODE_LABEL,
-                (next) => handleReviewSettingChange('mode', next), t('repo.review.mode')),
-            },
-          ]}
-        />
-        <SettingsCard
-          title={t('repo.langs.section')}
-          // Inherits the pull request language when unset, so it is handed the resolved value.
-          rows={[langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs))]}
-        />
+        {reviewStepSettings.map((group) => (
+          <SettingsCard key={group.id} title={group.title} rows={group.rows} />
+        ))}
         </div>
       )}
 

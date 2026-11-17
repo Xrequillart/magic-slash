@@ -37,6 +37,7 @@ echo "  • ~/.claude/skills/magic-start/"
 echo "  • ~/.claude/skills/magic-continue/"
 echo "  • ~/.claude/skills/magic-commit/"
 echo "  • ~/.claude/skills/magic-pr/"
+echo "  • ~/.claude/skills/magic-auto-review/"
 echo "  • ~/.claude/skills/magic-review/"
 echo "  • ~/.claude/skills/magic-resolve/"
 echo "  • ~/.claude/skills/magic-done/"
@@ -66,7 +67,7 @@ echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 
-for skill in magic-plan magic-plan-change magic-start magic-continue magic-commit magic-pr magic-review magic-resolve magic-done magic-action; do
+for skill in magic-plan magic-plan-change magic-start magic-continue magic-commit magic-pr magic-auto-review magic-review magic-resolve magic-done magic-action; do
   if [ -d "$SKILLS_DIR/$skill" ]; then
     rm -rf "${SKILLS_DIR:?}/${skill:?}"
     echo "   ✓ Removed: $SKILLS_DIR/$skill/"
