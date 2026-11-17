@@ -46,13 +46,17 @@ with `method: "delete_pending"` and tell the user the review was not posted.
 
 ## 2. The event
 
-From the comments actually posted:
+From the comments actually posted **plus the open findings** (`references/analysis.md` §1.4:
+unresolved threads of other reviewers you agree with, which are counted but not reposted):
 
-| Comments posted | Event |
-| --------------- | ----- |
+| Comments posted and open findings | Event |
+| --------------------------------- | ----- |
 | none, or only `nit` and `general comment` | `APPROVE` |
 | at least one `to address` | `REQUEST_CHANGES` |
 | otherwise (`minor`, `question`) | `COMMENT` |
+
+The body names each open finding in one line (`Still open: @reviewer's point on path:line`), so
+the event is explained by what the reader can see.
 
 On **your own PR** GitHub refuses `APPROVE` and `REQUEST_CHANGES`: always `COMMENT`. That is
 every `/magic:auto-review`, and a `/magic:review` that turned out to target your own PR.

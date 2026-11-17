@@ -140,6 +140,9 @@ What I verified, and what I did not
 | {…} | ⚠️ partly | {what part, what is left} |
 | {…} | ❌ not verified | {why: needs a browser, a real account, data I cannot see} |
 
+Already raised, still open
+  • {path:line}, {label}, raised by {reviewer}: {one line}. Counted, not reposted.
+
 Comments to post
 
 {n}. {path}:{line} ({and :{other line}}), {to address / minor (kind) / nit (kind) / question / general comment}
@@ -179,6 +182,9 @@ Ce que j'ai vérifié, et ce que je n'ai pas vérifié
 | {R1, C1, un check CI, un scénario de test de la PR, un cas limite} | ✅ vérifié | {lu path:line / job CI "unit" vert / le test x le couvre} |
 | {…} | ⚠️ en partie | {quelle partie, ce qui reste} |
 | {…} | ❌ non vérifié | {pourquoi : il faut un navigateur, un vrai compte, des données que je ne vois pas} |
+
+Déjà soulevés, toujours ouverts
+  • {path:line}, {label}, soulevé par {reviewer} : {une ligne}. Compté, pas reposté.
 
 Commentaires à poster
 

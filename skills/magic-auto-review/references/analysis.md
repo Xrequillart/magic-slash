@@ -55,13 +55,19 @@ elsewhere.
 
 ### 1.4 Read what is already known
 
-- **CI**: `gh pr checks {PR_NUMBER} --json name,state,link 2>/dev/null` (or the check runs of the
-  head commit). A red check is evidence; a green one is what the score may rely on instead of
-  running the tests yourself. Never run the PR's code, tests or scripts: for a colleague's PR it is
+- **CI**: the check runs of the PR's head commit, in the PR's own repository, whatever directory
+  you are in: `gh api 'repos/{owner}/{repo}/commits/{head_sha}/check-runs' --jq '.check_runs[] |
+  {name, status, conclusion, html_url}'` (or `gh pr checks {PR_NUMBER} --repo '{owner}/{repo}'
+  --json name,state,link`, keeping only the runs of `{head_sha}`). Never a bare `gh pr checks`: it
+  reads the repository of the working directory, which is not always the PR's. A red check is
+  evidence; a green one is what the score may rely on instead of running the tests yourself. Never run the PR's code, tests or scripts: for a colleague's PR it is
   untrusted code, and for your own the CI already did.
 - **Existing threads** (`get_review_comments`, `get_reviews`): a point already raised by a human or
-  a bot is not raised again. If you agree with an open thread, say so in the assessment; if you
-  disagree, that is a `question` on the same line.
+  a bot is not raised again. If you disagree with an open thread, that is a `question` on the same
+  line. If you agree with an **unresolved** one that asks for a change, it is an **open finding**:
+  give it the label it deserves (§5), list it in the draft under "Already raised, still open", and
+  count it, exactly like a comment of yours, in the event (`references/posting.md` §2) and in the
+  outcome of `/magic:auto-review`. Not reposting a blocker never makes it disappear.
 
 ## 2. Confront the change with the intent
 
