@@ -27,9 +27,17 @@ migration and is years of releases out of date).
 Keep the JSON in memory: every bash block runs in its own shell, so a variable set here does not
 survive into the next one.
 
-Identify the current repository by comparing `$PWD` (a worktree resolves to its repository) with
-the `path` of each entry in `.repositories`. For each parameter below, take the repository's value,
-else the default.
+Identify **the repository of the pull request under review**, not the one you happen to be in:
+
+1. Once Step 1 has found the PR, take its `owner/repo`.
+2. Match it against each entry of `.repositories`, by the `owner/repo` of the entry's `origin`
+   remote (`git -C '<entry path>' remote get-url origin`). That entry is the repository.
+3. Before the PR is known (Step 0), or when no entry matches, fall back to the entry whose `path`
+   contains `$PWD` (a worktree resolves to its repository), for the languages only.
+
+For each parameter below, take that repository's value, else the default. When the PR's repository
+is **not configured** in Magic Slash, use the defaults, and in particular `review.mode: "ask"`:
+another repository's `"post"` never applies to a PR it does not own.
 
 ## 2. Parameters
 

@@ -3,9 +3,19 @@
 > Shared, byte for byte, by `magic-auto-review` and `magic-review`. A test holds the two copies
 > identical: edit one, copy it to the other.
 
-Post only the comments the user kept (or all of them when `review.mode` is `"post"`). Each
-numbered comment tied to a line becomes an inline comment; a general comment goes into the review
-body.
+Post only the comments the user kept (or all of them when `review.mode` is `"post"`).
+
+**Every comment that asks for a change is a thread**, never body text: `/magic:resolve` builds its
+work list from review threads, so a request left in the body would reach `findings` and then be
+silently dropped by the fix step.
+
+- tied to a line: an inline comment (`subjectType: "LINE"`)
+- not tied to a line (a missing requirement, a problem with a whole file): a file comment
+  (`subjectType: "FILE"`) on the changed file where the change belongs; for a requirement with no
+  file at all, on the changed file closest to it (the entry point, the feature's main component),
+  saying so in the comment
+- only a `general comment` that asks for **no code change** (about the PR as a whole, its
+  description, its scope) goes into the review body
 
 ## 1. The calls
 

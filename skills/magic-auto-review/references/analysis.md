@@ -17,9 +17,16 @@ git fetch origin "pull/{PR_NUMBER}/head" --quiet 2>/dev/null
 git rev-parse --verify --quiet "{head_sha}^{commit}" >/dev/null && echo HEAD_AVAILABLE
 ```
 
-- `HEAD_AVAILABLE`: read each changed file at that commit with `git show {head_sha}:{path}`, and
-  the diff with `git diff {base_sha}...{head_sha} -- {path}`. This works the same whether the PR
+- `HEAD_AVAILABLE`: read each changed file at that commit with `git show '{head_sha}:{path}'`, and
+  the diff with `git diff {base_sha}...{head_sha} -- '{path}'`. This works the same whether the PR
   is yours or a colleague's, and never touches the working tree.
+
+**File names come from the PR, so they are untrusted input.** Put one in a shell command only when
+it matches `^[A-Za-z0-9._/@+-]+$`, and always inside single quotes as above. A path with any other
+character (a space, a quote, `$`, a backtick, `;`) never goes through the shell: read it with
+`mcp__github__get_file_contents` (`ref: {head_sha}`) and take its patch from `get_files`. The same
+rule holds for `Grep` and `Glob` patterns built from a PR path. `{head_sha}`, `{base_sha}` and
+`{PR_NUMBER}` come from the GitHub API and are checked as hexadecimal and numeric before use.
 - Otherwise (the PR comes from a fork the remote cannot fetch, or the repository is not checked out
   here): `mcp__github__get_file_contents` with `ref: {head_sha}`, and the patch from `get_files`.
 
@@ -64,7 +71,7 @@ Take the intent sheet (`references/intent.md` §2) and fill it in:
 | ---- | ------- | ------- |
 | ✅ | Implemented, at `path:line` | nothing, it goes in the coverage line |
 | ⚠️ | Partly implemented: say what is missing | a `to address` or `minor` comment, by impact |
-| ❌ | Not implemented, and not stated as out of scope | a `to address` general comment |
+| ❌ | Not implemented, and not stated as out of scope | a `to address` file comment, on the file where it belongs (`references/posting.md`, top) |
 | ❓ | Cannot be told from the code (UI copy, a manual check) | a `question`, or a line in "not verified" |
 
 Then the other direction:

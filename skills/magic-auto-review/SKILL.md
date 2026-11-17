@@ -1,6 +1,6 @@
 ---
 name: magic:auto-review
-description: Reviews YOUR OWN pull request before a human does - reads the PR description, the ticket and its spec, checks the code delivers what was asked, then posts the findings on GitHub so /magic:resolve can fix them. Runs on its own after /magic:pr in the default workflow. Triggers on "auto-review", "self-review", "review my PR", "relis ma PR", "check my PR", "vérifie ma PR", "relis ce que j'ai fait", or any request to review the current branch's pull request. Do NOT use it for a colleague's pull request ("review PR #123 from Alice", "regarde la PR de Paul"): that is /magic:review.
+description: Reviews YOUR OWN pull request before a human does - reads the PR description, the ticket and its spec, checks the code delivers what was asked, then posts the findings on GitHub so /magic:resolve can fix them. Runs on its own after /magic:pr in the default workflow. Triggers on "auto-review", "self-review", "review my PR", "relis ma PR", "check my PR", "vérifie ma PR", "relis ce que j'ai fait", or any request to review the current branch's pull request. Do NOT use it for a colleague's pull request ("review PR 123 from Alice", "regarde la PR de Paul"), use /magic:review instead.
 argument-hint: <TICKET-ID | PR number> (optional)
 allowed-tools: Bash(*), Read, Glob, Grep, Skill, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 disallowed-tools: Write, Edit, NotebookEdit

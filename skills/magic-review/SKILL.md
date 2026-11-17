@@ -1,6 +1,6 @@
 ---
 name: magic:review
-description: Reviews a COLLEAGUE's pull request - reads the PR description, the ticket and its spec, checks the code delivers what was asked, drafts the comments and posts them on GitHub once you agree. Triggers on "review PR #123", "review the PR from", "regarde la PR de", "relis la PR de", "code review", "revue de code", "review this PR" with a number or URL, "PRs waiting for my review", "les PR à relire". Do NOT use it for your own pull request ("auto-review", "self-review", "relis ma PR", "check my PR"): that is /magic:auto-review, which also hands over to /magic:resolve.
+description: Reviews a COLLEAGUE's pull request - reads the PR description, the ticket and its spec, checks the code delivers what was asked, drafts the comments and posts them on GitHub once you agree. Triggers on "review PR 123", "review the PR from", "regarde la PR de", "relis la PR de", "code review", "revue de code", "review this PR" with a number or URL, "PRs waiting for my review", "les PR à relire". Do NOT use it for your own pull request ("auto-review", "self-review", "relis ma PR", "check my PR"), use /magic:auto-review instead, which also hands over to /magic:resolve.
 argument-hint: <PR number | PR URL | TICKET-ID> (optional)
 allowed-tools: Bash(*), Read, Glob, Grep, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 disallowed-tools: Write, Edit, NotebookEdit
