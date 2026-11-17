@@ -1,19 +1,20 @@
 # Magic Slash
 
-9 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:plan-change`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
+10 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:plan-change`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:auto-review`, `/magic:review`, `/magic:resolve`, `/magic:done`.
 
 ## Project Structure
 
 ```text
 magic-slash/
-├── skills/            # Claude Code skills (9 skills) - SKILL.md files
+├── skills/            # Claude Code skills (10 skills) - SKILL.md files
 │   ├── magic-plan/    #   Turn an idea into a spec, then an epic and its stories
 │   ├── magic-plan-change/#   Rework a plan's spec and update the tickets it filed
 │   ├── magic-start/   #   Start a task from a Jira ticket or GitHub issue
 │   ├── magic-continue/#   Resume work on an existing ticket
 │   ├── magic-commit/  #   Create atomic commits with conventional messages
 │   ├── magic-pr/      #   Push, create PR and update Jira
-│   ├── magic-review/  #   Review a Pull Request (self or external)
+│   ├── magic-auto-review/#   Review your own PR against its ticket, a step of the default workflow
+│   ├── magic-review/  #   Review a colleague's Pull Request (side door, same structure)
 │   ├── magic-resolve/ #   Address review comments and force-push fixes
 │   ├── magic-done/    #   Finalize after PR merge (transition Jira to Done)
 │   ├── magic-action/  #   Hidden: carries out a workflow action (Slack message…), never typed
@@ -75,7 +76,7 @@ npm run ios:relay-check  # Replay the relay crypto vectors against RelayCrypto.s
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`, `ios`
+  - Scopes: `start`, `continue`, `commit`, `pr`, `auto-review`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`, `ios`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)
