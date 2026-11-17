@@ -10,6 +10,7 @@ import {
   ListCheck,
   NotebookPen,
   Rocket,
+  ScanEye,
   ScanSearch,
   Wrench,
   type LucideIcon,
@@ -199,6 +200,7 @@ const COMMAND_GLYPHS: Partial<Record<MagicCommandIcon, LucideIcon>> = {
   Rocket,
   GitCommit: GitCommitHorizontal,
   GitPullRequest,
+  ScanEye,
   ScanSearch,
   Wrench,
   CheckCircle: CircleCheckBig,
@@ -264,7 +266,7 @@ const STOPS: readonly {
     glyphClass: 'text-brand',
     mark: 'github',
   },
-  { id: 'review', command: 'review' },
+  { id: 'auto-review', command: 'auto-review' },
   { id: 'resolve', command: 'resolve' },
   // The SECOND human beat, and it comes after `resolve`: a reviewer approves once the
   // comments they left have been answered. Green like `validation` — the two stops that

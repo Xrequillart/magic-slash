@@ -71,7 +71,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
       />
 
       <Card className="p-4">
-        <dl className="grid grid-cols-3 gap-2 sm:grid-cols-9">
+        <dl className="grid grid-cols-3 gap-2 sm:grid-cols-10">
           {TRACKED_SKILLS.map(({ skill, label }) => {
             // Absent means never run: the RPC returns no row rather than a zero, so
             // this is where absence becomes the number to print.

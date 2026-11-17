@@ -92,7 +92,7 @@ const WINDOW_HEIGHT = 800
 const WINDOW_ZOOM = 0.652
 
 /**
- * ALL EIGHT SKILLS MAGIC SLASH SHIPS, and all eight because the rail counts them: a group
+ * ALL NINE SKILLS MAGIC SLASH SHIPS, and all nine because the rail counts them: a group
  * reading "BUILT-IN 8" over six rows is a drawing contradicting itself. Named the way the
  * app names them — the colon form every `SKILL.md` in `skills/` declares. Their pictures
  * are the `skill-*.png` the site already ships.
@@ -103,6 +103,7 @@ const BUILT_IN = [
   { name: 'magic:continue', picto: '/img/skill-continue.png', description: 'site.commands.continue' },
   { name: 'magic:commit', picto: '/img/skill-commit.png', description: 'site.commands.commit' },
   { name: 'magic:pr', picto: '/img/skill-pr.png', description: 'site.commands.pr' },
+  { name: 'magic:auto-review', picto: '/img/skill-review.png', description: 'site.commands.autoReview' },
   { name: 'magic:review', picto: '/img/skill-review.png', description: 'site.commands.review' },
   { name: 'magic:resolve', picto: '/img/skill-resolve.png', description: 'site.commands.resolve' },
   { name: 'magic:done', picto: '/img/skill-done.png', description: 'site.commands.done' },

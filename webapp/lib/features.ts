@@ -186,6 +186,7 @@ const COMMAND_LABELS: Record<MagicCommandId, string> = {
   commit: 'Commit',
   // Not "Pr". This is the whole reason the table is a table.
   pr: 'PR',
+  'auto-review': 'Auto-review',
   review: 'Review',
   resolve: 'Resolve',
   done: 'Done',
@@ -517,17 +518,19 @@ const COMMAND_DESCRIPTIONS: Record<MagicCommandId, MessageKey> = {
   continue: 'site.commands.continue',
   commit: 'site.commands.commit',
   pr: 'site.commands.pr',
+  'auto-review': 'site.commands.autoReview',
   review: 'site.commands.review',
   resolve: 'site.commands.resolve',
   done: 'site.commands.done',
 }
 
 /**
- * The two commands that take a row of their own — see the note on `span` in `Feature`,
- * and the one on the `.map()` below. Named rather than inlined so the reason lives in
- * one place and `features.test.ts` can pin the pair.
+ * The commands that take a row of their own: the two bookends, and `resolve`, the odd
+ * one out of the three review cards (see the note on `span` in `Feature`, and the one on
+ * the `.map()` below). Named rather than inlined so the reason lives in one place and
+ * `features.test.ts` can pin the list.
  */
-const FULL_WIDTH_COMMANDS: readonly MagicCommandId[] = ['plan', 'done']
+const FULL_WIDTH_COMMANDS: readonly MagicCommandId[] = ['plan', 'resolve', 'done']
 
 /**
  * Which commands carry a drawn visual, and which drawing. A partial record: the six
@@ -591,7 +594,7 @@ const CARD_CAPTIONS: Partial<Record<MagicCommandId, MessageKey>> = {
   plan: 'site.features.groupPlan',
   start: 'site.features.groupBuild',
   commit: 'site.features.groupPropose',
-  review: 'site.features.groupReview',
+  'auto-review': 'site.features.groupReview',
   done: 'site.features.groupFinish',
 }
 

@@ -119,8 +119,9 @@ const SCRIPTS: Record<Exclude<WorkflowStepId, 'plan'>, readonly Segment[]> = {
     { kind: 'card', node: <PullRequestCard passed={0} review="none" comments={0} number={PR} /> },
   ],
   review: [
-    { kind: 'command', id: 'review', arg: `#${PR}` },
-    { kind: 'task', doing: 'Reading the diff', text: 'Diff read against the project conventions', secs: 6.4 },
+    { kind: 'command', id: 'auto-review', arg: `#${PR}` },
+    { kind: 'task', doing: 'Reading the ticket', text: 'Ticket and acceptance criteria read', secs: 1.2 },
+    { kind: 'task', doing: 'Reading the diff', text: 'Diff read against the ticket and the project conventions', secs: 6.4 },
     { kind: 'task', doing: 'Posting the findings', text: '3 findings posted on their lines', secs: 1.1 },
     { kind: 'command', id: 'resolve' },
     { kind: 'task', doing: 'Reading the threads', text: '3 threads read', secs: 0.7 },

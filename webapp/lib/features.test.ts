@@ -46,7 +46,7 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
     family: 'workflow',
     anchor: 'workflow',
     layout: 'cards',
-    features: ['plan', 'start', 'continue', 'commit', 'pr', 'review', 'resolve', 'done'],
+    features: ['plan', 'start', 'continue', 'commit', 'pr', 'auto-review', 'review', 'resolve', 'done'],
   },
   {
     family: 'desktop',
@@ -269,6 +269,7 @@ describe('FEATURE_FAMILIES', () => {
       'Continue',
       'Commit',
       'PR',
+      'Auto-review',
       'Review',
       'Resolve',
       'Done',
@@ -280,13 +281,14 @@ describe('FEATURE_FAMILIES', () => {
     // `tsc` error there — but `tsc` does not run on `webapp/` in CI. Without this, a
     // missing row would reach the page as `undefined` and head a card with nothing.
     for (const command of MAGIC_COMMANDS) {
-      expect(commandLabel(command.command), command.id).toMatch(/^[A-Z][A-Za-z]*$/)
+      expect(commandLabel(command.command), command.id).toMatch(/^[A-Z][A-Za-z-]*$/)
     }
   })
 
-  it('gives a row of its own to the two commands that bookend the loop', () => {
+  it('gives a row of its own to the two commands that bookend the loop, and to resolve', () => {
     // `plan` opens the cycle and `done` closes it, so each takes the full width and the
-    // six between them pair off — start/continue, commit/pr, review/resolve. The grid
+    // six between them pair off: start/continue, commit/pr, auto-review/review. `resolve`
+    // is the seventh, so it takes the row of its own a pair would otherwise leave half empty. The grid
     // is two columns, so this field IS the composition: get it wrong and the pairs break
     // across rows.
     //
@@ -297,7 +299,7 @@ describe('FEATURE_FAMILIES', () => {
     )
     // And in the conventions grid, the workflow that opens it and the launch modes that
     // close it, around three pairs.
-    expect(full).toEqual(['plan', 'done', 'repoWorkflow', 'profile', 'languages', 'permissionModes'])
+    expect(full).toEqual(['plan', 'resolve', 'done', 'repoWorkflow', 'profile', 'languages', 'permissionModes'])
   })
 
   it('sets no card width on a family that draws rows', () => {
@@ -403,7 +405,7 @@ describe('FEATURE_FAMILIES', () => {
     const captioned = FEATURE_FAMILIES.flatMap((family) =>
       family.features.filter((feature) => feature.caption).map((feature) => feature.id),
     )
-    expect(captioned).toEqual(['plan', 'start', 'commit', 'review', 'done'])
+    expect(captioned).toEqual(['plan', 'start', 'commit', 'auto-review', 'done'])
   })
 
   it('names a visual this page knows how to draw', () => {

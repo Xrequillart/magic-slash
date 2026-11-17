@@ -23,6 +23,7 @@ import {
   Plug,
   RefreshCw,
   Rocket,
+  ScanEye,
   ScanSearch,
   ScrollText,
   Search,
@@ -126,7 +127,7 @@ import { VISUALS } from './visuals'
 type FeatureGlyph = React.ComponentType<{ className?: string }>
 
 const ICONS: Record<FeatureIcon, FeatureGlyph> = {
-  // The eight commands, from `MagicCommandIcon`. Their rows print a `picto` instead, but
+  // The nine commands, from `MagicCommandIcon`. Their rows print a `picto` instead, but
   // they are in the union and therefore in the map: a picto that went missing would
   // otherwise leave the tile with nothing at all to fall back to.
   NotebookPen,
@@ -134,6 +135,7 @@ const ICONS: Record<FeatureIcon, FeatureGlyph> = {
   Play,
   GitCommit,
   GitPullRequest,
+  ScanEye,
   ScanSearch,
   Wrench,
   CheckCircle,

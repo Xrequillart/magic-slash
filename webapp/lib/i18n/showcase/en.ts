@@ -132,7 +132,7 @@ export const showcaseEn = {
    * where the header's pages have always opened.
    */
   'site.downloadPage.lead':
-    'One installer for macOS. Drop it in Applications, open it once, and the first launch sets up everything the eight commands need.',
+    'One installer for macOS. Drop it in Applications, open it once, and the first launch sets up everything the nine commands need.',
 
   // ── Download page ──────────────────────────────────────────────────────────
   /**
@@ -194,7 +194,7 @@ export const showcaseEn = {
   'site.downloadPage.stepChecksTitle': 'Checks the prerequisites',
   'site.downloadPage.stepChecksBody':
     'Claude Code, Node.js and Git, with their versions and a one-line fix for whichever one is missing.',
-  'site.downloadPage.stepSkillsTitle': 'Installs the eight commands',
+  'site.downloadPage.stepSkillsTitle': 'Installs the nine commands',
   'site.downloadPage.stepSkillsBody':
     'The <code>/magic:</code> skills land in <code>~/.claude/skills/</code>, where Claude Code picks them up in every project on the machine.',
   'site.downloadPage.stepMcpTitle': 'Wires Jira and GitHub',
@@ -252,7 +252,7 @@ export const showcaseEn = {
    * the reader who knows git will recognise as the deliberate choice it is.
    */
   'site.hero.subtitle':
-    'The spec, the tickets, the worktree, the commits, the review, the closed ticket: eight skills handle everything around the code. And one app makes your life easier.',
+    'The spec, the tickets, the worktree, the commits, the review, the closed ticket: nine skills handle everything around the code. And one app makes your life easier.',
   /**
    * The two buttons. `downloadCta` is `primary` and opens `/download` — the page, not
    * the .dmg, so the reader meets the prerequisites before the file lands. It is also
@@ -281,7 +281,7 @@ export const showcaseEn = {
    * that was cut; the `ladder*` and `skill*` keys were the seven command cards an
    * animated orbit replaced, itself since replaced by an illustration.
    */
-  'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
+  'site.hero.eyebrow': '9 Claude Code skills + a desktop app',
   'site.hero.cta': 'Start free',
   'site.hero.howCta': 'See how it works',
   'site.hero.ladderStart': 'An idea?',
@@ -316,7 +316,7 @@ export const showcaseEn = {
    * commands"), and that is not an oversight left behind: it sits in running prose under
    * the window, where the ordinary rule applies again.
    */
-  'site.pillars.skillsTitle': '8 Claude Code skills',
+  'site.pillars.skillsTitle': '9 Claude Code skills',
   'site.pillars.skillsDesc':
     'From /magic:plan to /magic:done, they run the whole cycle in your terminal: the spec, the branch, the commits, the pull request, the review, the ticket closed behind you.',
   /**
@@ -493,7 +493,7 @@ export const showcaseEn = {
   'site.desktop.highlightParallel': 'Twelve agents in parallel',
   'site.desktop.highlightContext': 'All your context, saved',
   'site.desktop.highlightTrackers': 'Jira and GitHub connected',
-  'site.desktop.highlightCommands': 'The eight /magic: commands',
+  'site.desktop.highlightCommands': 'The nine /magic: commands',
 
   // ── The bands under the /desktop hero ──────────────────────────────────────
   /**
@@ -818,7 +818,7 @@ export const showcaseEn = {
   'site.workflow.commitDesc':
     'The working tree is split into atomic commits with conventional messages, pushed, and the pull request writes itself with the ticket linked.',
   /**
-   * ④ `/magic:review` and `/magic:resolve`. "In its own thread" is the half people do not
+   * ④ `/magic:auto-review` and `/magic:resolve`. "In its own thread" is the half people do not
    * expect: the fix is one thing, the REPLY on the conversation that asked for it is what
    * makes a review actually close.
    */
@@ -849,7 +849,7 @@ export const showcaseEn = {
   // it: "from idea to merged PR" is the one line a reader has already met, and this is the
   // page that shows the five moves it takes.
   // The pill carries the Claude Code mark beside it, as the homepage hero's does.
-  'site.workflowPage.eyebrow': '8 Claude Code skills',
+  'site.workflowPage.eyebrow': '9 Claude Code skills',
   'site.workflowPage.title': 'From idea to merged PR, in five steps.',
   'site.workflowPage.subtitle':
     'Magic Slash is a layer on top of Claude Code. Every step of the cycle is one command in your terminal: the agent reads the ticket, does the work, and stops exactly where you want to decide.',
@@ -975,7 +975,7 @@ export const showcaseEn = {
    * both catalogues against `MAGIC_COMMANDS.length`, so it cannot drift from the eight
    * the product actually ships.
    */
-  'site.skillsBand.title': '8 skills do the whole cycle.',
+  'site.skillsBand.title': '9 skills do the whole cycle.',
   /**
    * ONE PARAGRAPH, and what it adds to the title is the DIVISION OF LABOUR: what the agent
    * does, and what is left for you. The three verbs are the three artefacts the terminal
@@ -999,7 +999,7 @@ export const showcaseEn = {
   /** The button, out to the inventory of all eight on `/features`. */
   'site.skillsBand.cta': 'See the workflow',
   /** ① The count, which is the one claim a reader can check against the page. */
-  'site.skillsBand.pointSkills': '8 skills, one per step of the cycle',
+  'site.skillsBand.pointSkills': '9 skills, one per step of the cycle',
   /** ② The span, named by its two ENDS — the same shape as the page's own headline. */
   'site.skillsBand.pointCycle': 'From the first idea to the merged pull request',
   /**
@@ -1352,14 +1352,14 @@ export const showcaseEn = {
     'You get finished work to review, not a pile of code to sort out.',
   // The commands, kept on the page on purpose: they are the actual surface a user
   // types, so hiding them entirely would leave "it gets built" unexplained.
-  'site.how.commandsTitle': 'The eight commands',
+  'site.how.commandsTitle': 'The nine commands',
   'site.how.commandsIntro': 'Type <strong>/magic:</strong> to find them all at once.',
   'site.how.planDesc': '<strong>/magic:plan</strong> turns an idea into tickets, ready to build.',
   'site.how.startDesc': '<strong>/magic:start</strong> picks up a task and starts building it.',
   'site.how.continueDesc': '<strong>/magic:continue</strong> resumes a job you left open.',
   'site.how.commitDesc': '<strong>/magic:commit</strong> saves the work with a clear message.',
   'site.how.prDesc': '<strong>/magic:pr</strong> opens the pull request, ready to review.',
-  'site.how.reviewDesc': '<strong>/magic:review</strong> reviews it against your conventions.',
+  'site.how.reviewDesc': '<strong>/magic:auto-review</strong> reviews it against the ticket and your conventions.',
   'site.how.resolveDesc': '<strong>/magic:resolve</strong> applies the review feedback.',
   'site.how.doneDesc': '<strong>/magic:done</strong> closes it out and cleans up.',
   'site.how.seeDocs': 'See the docs',
@@ -1382,8 +1382,10 @@ export const showcaseEn = {
     'Picks a job back up exactly where you — or a colleague — left it.',
   'site.commands.commit': 'Cuts the work into atomic commits, each with a clear message.',
   'site.commands.pr': 'Pushes, opens the pull request, updates the ticket.',
+  'site.commands.autoReview':
+    'Reviews your own pull request as soon as it is open: checks the code against the ticket and the description, then posts its findings for /magic:resolve.',
   'site.commands.review':
-    'Reads the diff back against your project’s conventions, and leaves its findings on the lines they belong to.',
+    'Reviews a colleague’s pull request the same way: reads the diff back against your project’s conventions, and leaves its findings on the lines they belong to.',
   'site.commands.resolve':
     'Applies the review feedback — and argues back where a suggestion deserves a compromise rather than obedience.',
   'site.commands.done':
@@ -1399,7 +1401,7 @@ export const showcaseEn = {
   'site.features.subtitle': 'Nine things the product does — and where each one is written up.',
   /** Shared by all nine cards: the link is the card, this is only its wording. */
   'site.features.learnMore': 'Learn more',
-  'site.features.commandsTitle': 'Eight commands',
+  'site.features.commandsTitle': 'Nine commands',
   'site.features.commandsDesc': 'One per step, from the first idea to the merge.',
   'site.features.workflowsTitle': 'Workflows',
   'site.features.workflowsDesc': 'The chains of commands that carry a whole task.',
@@ -1473,11 +1475,11 @@ export const showcaseEn = {
   'site.features.sidebarSelfUpdating':
     'The sidebar keeps itself up to date: the skills and Claude Code write the status, the branch, the commits and the pull request into it as the work goes. And everything stays editable by hand, with a click in the desktop app.',
   'site.features.skillsIndependent':
-    'The grid reads as a pipeline because a whole ticket usually is one — but every skill stands on its own. Run the eight in order, or reach for a single one: /magic:commit on work you wrote by hand, /magic:review on somebody else’s pull request.',
+    'The grid reads as a pipeline because a whole ticket usually is one — but every skill stands on its own. Run them in order, or reach for a single one: /magic:commit on work you wrote by hand, /magic:review on somebody else’s pull request.',
   'site.features.groupPlan': 'One skill to get organised: an epic, and the stories under it.',
   'site.features.groupBuild': 'Two skills to get the work moving.',
   'site.features.groupPropose': 'Two skills to put it up for review.',
-  'site.features.groupReview': 'Two skills to read it back, and answer what comes back.',
+  'site.features.groupReview': 'Three skills to read it back, and answer what comes back.',
   'site.features.groupFinish': 'One skill to finish, and clear the agent that did the work.',
   // ── The /features start card ───────────────────────────────────────────────
   // The four lines the terminal in the `/magic:start` card reports, in the order
@@ -1928,7 +1930,7 @@ export const showcaseEn = {
     'It runs on your own subscription, on your own machine. Nothing is re-hosted in between.',
   'site.features.machineSetupTitle': 'Set up on launch',
   'site.features.machineSetupDesc':
-    'The eight skills, the MCP servers, the hooks and the permissions are checked, and installed if missing, every time the app starts.',
+    'The nine skills, the MCP servers, the hooks and the permissions are checked, and installed if missing, every time the app starts.',
   // The row is headed "Tasks", the app's own name for the screen, so the line under it
   // does the describing — and it says the whole claim rather than half of it: not only
   // that the backlog is in the window, but that a ticket in it is one click from an
@@ -2108,7 +2110,7 @@ export const showcaseEn = {
   // ── The legend under the drawing ───────────────────────────────────────
   'site.skillsCard.legendRailTitle': 'Every skill on the machine',
   'site.skillsCard.legendRailDesc':
-    'The rail lists all three origins at once: the eight Magic Slash ships, the ones you wrote for yourself, and the ones each registered repository carries in .claude/. Click one and it opens beside the list.',
+    'The rail lists all three origins at once: the nine Magic Slash ships, the ones you wrote for yourself, and the ones each registered repository carries in .claude/. Click one and it opens beside the list.',
   'site.skillsCard.legendBudgetTitle': 'A budget that follows the model',
   'site.skillsCard.legendBudgetDesc':
     'Claude Code spends about 1% of the context window listing your skills. The gauges are scaled to the window the running agent reports, so the same library reads comfortable on a 1M model and tight on a 200K one.',
@@ -2239,7 +2241,7 @@ export const showcaseEn = {
 
   'site.faq.prerequisites.q': 'What do I need before installing it?',
   'site.faq.prerequisites.a':
-    'Three things: <strong>Claude Code</strong>, installed and authenticated; <strong>Node.js 20</strong> or newer, which the Jira and GitHub MCP servers run on; and <strong>Git 2.20</strong> or newer, for worktree support. The first launch checks all three, installs the eight skills into <code>~/.claude/skills/</code> and configures the MCP servers — there is no script to run.',
+    'Three things: <strong>Claude Code</strong>, installed and authenticated; <strong>Node.js 20</strong> or newer, which the Jira and GitHub MCP servers run on; and <strong>Git 2.20</strong> or newer, for worktree support. The first launch checks all three, installs the nine skills into <code>~/.claude/skills/</code> and configures the MCP servers — there is no script to run.',
 
   'site.faq.platforms.q': 'Which operating systems are supported?',
   'site.faq.platforms.a':
@@ -2263,7 +2265,7 @@ export const showcaseEn = {
 
   'site.faq.terminal.q': 'Do I have to use the desktop app?',
   'site.faq.terminal.a':
-    'No. The eight commands work in any terminal, in VS Code and in the JetBrains IDEs — anywhere Claude Code runs. The app is what adds the parts a terminal cannot: several agents side by side, live tracking of what each one is doing, the ticket beside the code, and a notification when one of them needs you.',
+    'No. The nine commands work in any terminal, in VS Code and in the JetBrains IDEs — anywhere Claude Code runs. The app is what adds the parts a terminal cannot: several agents side by side, live tracking of what each one is doing, the ticket beside the code, and a notification when one of them needs you.',
 
   'site.faq.workflow.q': 'Does the workflow run outside the app?',
   'site.faq.workflow.a':
@@ -2287,7 +2289,7 @@ export const showcaseEn = {
 
   'site.faq.uninstall.q': 'How do I uninstall it?',
   'site.faq.uninstall.a':
-    'One script: <code>install/uninstall.sh</code>. It removes the eight skills, the Jira and GitHub MCP servers, every permission the setup added to <code>~/.claude/settings.json</code>, the app itself and <code>~/.config/magic-slash/</code>. Your repositories and your Claude Code install are left exactly as they were.',
+    'One script: <code>install/uninstall.sh</code>. It removes the nine skills, the Jira and GitHub MCP servers, every permission the setup added to <code>~/.claude/settings.json</code>, the app itself and <code>~/.config/magic-slash/</code>. Your repositories and your Claude Code install are left exactly as they were.',
 
   // ── Closing CTA (homepage) ─────────────────────────────────────────────────
   //
@@ -2511,7 +2513,7 @@ export const showcaseEn = {
   // no address in the repository to offer instead.
   'site.privacy.scope.title': 'What this covers',
   'site.privacy.scope.body':
-    'Magic Slash is three things: a native macOS app, eight skills that run inside Claude Code, and an account that keeps your configuration and your team in sync. This page covers all three, and the site you are reading it on.<br><br>It is published on GitHub by one person, under the handle <code>xrequillart</code>, rather than by a company, so there is no registered entity to name here and no support address to write to. The way to reach us is to open an issue on the repository, which is the link at the bottom of this page.',
+    'Magic Slash is three things: a native macOS app, nine skills that run inside Claude Code, and an account that keeps your configuration and your team in sync. This page covers all three, and the site you are reading it on.<br><br>It is published on GitHub by one person, under the handle <code>xrequillart</code>, rather than by a company, so there is no registered entity to name here and no support address to write to. The way to reach us is to open an issue on the repository, which is the link at the bottom of this page.',
   // THE CLAIM THE PAGE IS REALLY FOR. Sourced from: no Anthropic SDK in either
   // `package.json` and Claude Code spawned as a local PTY; `desktop/src/main/github.ts`,
   // which shells out to `gh auth token` and MEMOISES the answer in a module-level
@@ -2725,7 +2727,7 @@ export const showcaseEn = {
     'What Magic Slash is provided as, what you may do with it, and what it does not promise. It is short because the product is free, its code public and its scope small.',
   'site.terms.what.title': 'What Magic Slash is',
   'site.terms.what.body':
-    'A native macOS app, eight skills that run inside Claude Code, and a free account that keeps your configuration, your repositories and your team in step across machines. There is no paid plan, no subscription and no billing of any kind: nothing in the product charges you for anything. The costs you do pay are your own, to Anthropic for Claude Code and to whoever hosts your code and your tickets.',
+    'A native macOS app, nine skills that run inside Claude Code, and a free account that keeps your configuration, your repositories and your team in step across machines. There is no paid plan, no subscription and no billing of any kind: nothing in the product charges you for anything. The costs you do pay are your own, to Anthropic for Claude Code and to whoever hosts your code and your tickets.',
   // PolyForm Shield 1.0.0, from `LICENSE` and both `package.json` files, which carry
   // `SEE LICENSE IN LICENSE` because Shield has no SPDX identifier to put there. The page
   // NAMES the licence and refuses to restate it: a second copy of a licence is a second
@@ -2739,7 +2741,7 @@ export const showcaseEn = {
   // whether using it at work is allowed. It is; competing with it is not.
   'site.terms.license.title': 'The code, and its licence',
   'site.terms.license.body':
-    'Every part of Magic Slash you install is covered by the <strong>PolyForm Shield License 1.0.0</strong>: the desktop app, the eight skills, this site, and the database schema behind the account. The code stays public, and you may read it, change it and use it for any purpose, at home or at work, including work you are paid for. One purpose is excluded: using it to provide a product that competes with Magic Slash. The <code>LICENSE</code> file in the repository is the licence itself, and it is what governs your use of the code. This page does not rewrite its grant and adds no condition to it. The link at the bottom opens it.<br><br>Releases up to v0.91.3 were published under the MIT licence and stay available under it. What this page covers is what the licence does not: the hosted account, and the services the app talks to on your behalf.',
+    'Every part of Magic Slash you install is covered by the <strong>PolyForm Shield License 1.0.0</strong>: the desktop app, the nine skills, this site, and the database schema behind the account. The code stays public, and you may read it, change it and use it for any purpose, at home or at work, including work you are paid for. One purpose is excluded: using it to provide a product that competes with Magic Slash. The <code>LICENSE</code> file in the repository is the licence itself, and it is what governs your use of the code. This page does not rewrite its grant and adds no condition to it. The link at the bottom opens it.<br><br>Releases up to v0.91.3 were published under the MIT licence and stay available under it. What this page covers is what the licence does not: the hosted account, and the services the app talks to on your behalf.',
   // Email and password, from `signInWithPassword` on both clients — there is no OAuth
   // sign-in and no magic link. The second paragraph is the honest half: the account is
   // free, so the page promises it will exist rather than promising it will last.

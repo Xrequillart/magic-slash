@@ -32,6 +32,7 @@ export const TRACKED_SKILLS: { skill: string; label: string }[] = [
   { skill: 'magic-continue', label: '/magic:continue' },
   { skill: 'magic-commit', label: '/magic:commit' },
   { skill: 'magic-pr', label: '/magic:pr' },
+  { skill: 'magic-auto-review', label: '/magic:auto-review' },
   { skill: 'magic-review', label: '/magic:review' },
   { skill: 'magic-resolve', label: '/magic:resolve' },
   { skill: 'magic-done', label: '/magic:done' },

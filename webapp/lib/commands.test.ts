@@ -8,21 +8,21 @@ import { MAGIC_COMMANDS } from './commands'
  * this fails to RESOLVE rather than shipping a broken build.
  *
  * What it pins is the two things a reader of the landing page would notice and a type
- * would not: that all eight are there, and that they are in the order a job goes
+ * would not: that all nine are there, and that they are in the order a job goes
  * through them.
  */
 
 /** The cycle, written out rather than derived — the point is to fix it. */
-const CYCLE = ['plan', 'start', 'continue', 'commit', 'pr', 'review', 'resolve', 'done']
+const CYCLE = ['plan', 'start', 'continue', 'commit', 'pr', 'auto-review', 'review', 'resolve', 'done']
 
 describe('magic commands', () => {
-  it('lists the eight commands in cycle order', () => {
+  it('lists the nine commands in cycle order', () => {
     expect(MAGIC_COMMANDS.map((command) => command.id)).toEqual(CYCLE)
   })
 
   it('spells every command the way it is typed', () => {
     for (const command of MAGIC_COMMANDS) {
-      expect(command.command, command.id).toMatch(/^\/magic:[a-z]+$/)
+      expect(command.command, command.id).toMatch(/^\/magic:[a-z-]+$/)
       // The command is `/magic:` plus the id, not merely shaped like it: a typo here
       // would put a command on the page that does not exist.
       expect(command.command).toBe(`/magic:${command.id}`)

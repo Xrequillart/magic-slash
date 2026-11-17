@@ -61,7 +61,7 @@ describe('the workflow band and its page', () => {
     }
   })
 
-  it('walks the eight commands in cycle order, and skips only `continue`', () => {
+  it('walks the commands in cycle order, and skips only `continue` and `review`', () => {
     // `MAGIC_COMMANDS` is in CYCLE order and that order IS the content (see its header),
     // so the five steps have to read the same way — a band that showed `commit` before
     // `start` would be describing a workflow nobody runs.
@@ -73,7 +73,9 @@ describe('the workflow band and its page', () => {
     const covered = WORKFLOW_STEPS.flatMap((step) => step.commands)
     const cycle = MAGIC_COMMANDS.map((command) => command.id)
 
-    expect(covered).toEqual(cycle.filter((id) => id !== 'continue'))
+    // `review` is the other one: reviewing a colleague's pull request is a side door, the
+    // loop's own review is `auto-review`.
+    expect(covered).toEqual(cycle.filter((id) => id !== 'continue' && id !== 'review'))
   })
 
   it('gives exactly one step the wide card', () => {
