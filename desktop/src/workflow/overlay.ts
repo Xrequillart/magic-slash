@@ -367,6 +367,15 @@ function defaultLink(from: string, to: string): WorkflowLink | undefined {
   return DEFAULT_LINKS.find((link) => link.from === from && link.to === to)
 }
 
+/**
+ * Whether the default flow links `from → to` on `outcome`. One default link may be written
+ * on several outcomes (pr → auto-review, on `pr_created` and on `ci_green`): it is still
+ * one link, kept under one `from>to` key, so any of its outcomes names it.
+ */
+function isDefaultLinkOn(from: string, to: string, outcome: string | undefined): boolean {
+  return DEFAULT_LINKS.some((link) => link.from === from && link.to === to && link.outcome === outcome)
+}
+
 export function isDefaultLink(from: string, to: string): boolean {
   return defaultLink(from, to) !== undefined
 }
@@ -1009,7 +1018,7 @@ export function addLink(overlay: WorkflowOverlay, from: string, to: string, outc
  */
 export function removeLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
   const base = liveDefaultLink(overlay, from, to)
-  if (base && base.outcome === outcome) {
+  if (base && isDefaultLinkOn(from, to, outcome)) {
     const key = linkKey(from, to)
     const { [key]: _was, ...kinds } = overlay.kinds
     return { ...overlay, kinds, removedLinks: [...(overlay.removedLinks ?? []), key] }
@@ -1023,7 +1032,7 @@ export function removeLink(overlay: WorkflowOverlay, from: string, to: string, o
  */
 export function setLinkKind(overlay: WorkflowOverlay, from: string, to: string, kind: WorkflowLinkKind, outcome?: string): WorkflowOverlay {
   const base = liveDefaultLink(overlay, from, to)
-  if (base && base.outcome === outcome) {
+  if (base && isDefaultLinkOn(from, to, outcome)) {
     const { [linkKey(from, to)]: _was, ...kinds } = overlay.kinds
     return { ...overlay, kinds: base.kind === kind ? kinds : { ...kinds, [linkKey(from, to)]: kind } }
   }

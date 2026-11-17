@@ -312,9 +312,10 @@ const RUN: readonly Phase[] = [
     ],
   },
   {
-    id: 'review',
+    id: 'auto-review',
     arg: '87',
     steps: [
+      { doing: 'Reading the ticket', text: 'PROJ-143 read: 3 acceptance criteria', secs: 1.2 },
       { doing: 'Reading the diff', text: 'Diff read: 4 files, +214 −18', secs: 11.4 },
       { doing: 'Posting the comments', text: '2 comments posted on the PR', secs: 1.7 },
     ],

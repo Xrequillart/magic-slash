@@ -1310,7 +1310,7 @@ export interface RepositoryConfig {
      */
     spec?: string
     /**
-     * The language /magic:review writes its comments and review body in, on GitHub.
+     * The language /magic:auto-review and /magic:review write their comments and review body in, on GitHub.
      * Inherits `pullRequest` when unset: a review is read where the pull request is,
      * by the same people. Resolved with resolveReviewLanguage().
      */
@@ -1363,9 +1363,13 @@ export interface RepositoryConfig {
      */
     replyVerbosity?: string    // 'minimal' | 'normal' | 'detailed'
   }
+  /**
+   * The review settings, one set read by both review skills: /magic:auto-review (your
+   * own PR, a step of the cycle) and /magic:review (a colleague's PR, a side door).
+   */
   review?: {
     /**
-     * Whether /magic:review gives a confidence score out of 10 (and the reasons for the
+     * Whether the review gives a confidence score out of 10 (and the reasons for the
      * missing points) in its draft and in the review body. True by default.
      */
     confidenceScore?: boolean
@@ -1373,7 +1377,8 @@ export interface RepositoryConfig {
      * - 'ask'  show the draft, then ask the human what to post. The default.
      * - 'post' post every comment straight away, no question.
      *
-     * See skills/magic-review/SKILL.md step 8.
+     * See the "Present the draft" step of skills/magic-auto-review/SKILL.md and
+     * skills/magic-review/SKILL.md.
      */
     mode?: string              // 'ask' | 'post'
   }  /**

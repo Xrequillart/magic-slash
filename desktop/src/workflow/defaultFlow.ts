@@ -3,8 +3,8 @@ import { HIDDEN_SKILLS, SIDE_SKILLS, SKILLS } from './skills'
 
 /**
  * The flow every repository follows until it has one of its own: today's cycle,
- * written down as a line: plan, start, commit, pr, resolve, done. /magic:review is
- * not on it (see SIDE_SKILLS).
+ * written down as a line: plan, start, commit, pr, auto-review, resolve, done.
+ * /magic:review, the review of a colleague's PR, is not on it (see SIDE_SKILLS).
  *
  * The nodes are DERIVED from the shipped skills list rather than spelled out a ninth
  * time: every skill of the cycle, minus the side doors (SIDE_SKILLS). What that list
@@ -19,21 +19,32 @@ const TRAITS: Record<string, NodeTraits> = {
   start: { mode: 'blocking', required: true, outcomes: ['implemented'], provides: ['worktree', 'branch'] },
   commit: { mode: 'blocking', required: true, outcomes: ['committed'], provides: ['commits'] },
   pr: { mode: 'blocking', required: true, outcomes: ['pr_created', 'review_comments', 'ci_green'], provides: ['pr'] },
+  'auto-review': { mode: 'advisory', required: false, outcomes: ['clean', 'findings'], provides: ['review'] },
   resolve: { mode: 'blocking', required: false, outcomes: ['resolved'], provides: ['fixes'] },
   done: { mode: 'advisory', required: true, outcomes: ['done'], provides: [] },
 }
 
 /**
- * Today's hand-offs. `pr_created`, `ci_green` and `done` lead nowhere on purpose: the
- * skills keep their closing text there. pr → resolve is the one `auto` link: review
- * comments already waiting on a PR are addressed without asking. Once they are,
- * /magic:done is the next step, taken when the PR is merged.
+ * Today's hand-offs. Once the PR exists (`pr_created`, or `ci_green` when /magic:pr
+ * watched the CI), /magic:auto-review reviews it on its own and posts what it found on
+ * GitHub: its `findings` are then addressed by /magic:resolve without asking, like the
+ * review comments /magic:pr already found waiting (`review_comments`, which goes
+ * straight to resolve). A `clean` review, or a resolve, suggests /magic:done, taken when
+ * the PR is merged. `done` leads nowhere: the skill keeps its closing text.
+ *
+ * pr → auto-review is ONE link of the product on two outcomes, so it is written twice:
+ * the overlay keys a default link by its two ends (`pr>auto-review`), so taking it off
+ * or changing its kind applies to both lines (overlay.ts, removeLink / setLinkKind).
  */
 export const DEFAULT_LINKS: WorkflowLink[] = [
   { from: 'plan', to: 'start', kind: 'suggest' },
   { from: 'start', to: 'commit', kind: 'suggest' },
   { from: 'commit', to: 'pr', kind: 'suggest' },
+  { from: 'pr', to: 'auto-review', kind: 'auto', outcome: 'pr_created' },
+  { from: 'pr', to: 'auto-review', kind: 'auto', outcome: 'ci_green' },
   { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments' },
+  { from: 'auto-review', to: 'resolve', kind: 'auto', outcome: 'findings' },
+  { from: 'auto-review', to: 'done', kind: 'suggest', outcome: 'clean' },
   { from: 'resolve', to: 'done', kind: 'suggest' },
 ]
 

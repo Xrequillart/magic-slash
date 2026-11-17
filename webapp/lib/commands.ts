@@ -1,7 +1,7 @@
 /**
- * The eight commands, in CYCLE ORDER — the canonical list, and the only one.
+ * The nine commands, in CYCLE ORDER — the canonical list, and the only one.
  *
- * `plan` first because it runs before there is a ticket to start, then the seven that
+ * `plan` first because it runs before there is a ticket to start, then the eight that
  * carry one ticket from opening to closing. The order IS the content: the landing page
  * presents these as a cycle, and a list in alphabetical or historical order would show
  * `commit` before `start`.
@@ -28,13 +28,14 @@
  * every such gap into a compile error at the map that forgot the row.
  */
 
-/** The eight, as a type — so a `Record` keyed by one is exhaustive. */
+/** The nine, as a type — so a `Record` keyed by one is exhaustive. */
 export type MagicCommandId =
   | 'plan'
   | 'start'
   | 'continue'
   | 'commit'
   | 'pr'
+  | 'auto-review'
   | 'review'
   | 'resolve'
   | 'done'
@@ -46,6 +47,7 @@ export type MagicCommandIcon =
   | 'Play'
   | 'GitCommit'
   | 'GitPullRequest'
+  | 'ScanEye'
   | 'ScanSearch'
   | 'Wrench'
   | 'CheckCircle'
@@ -69,6 +71,7 @@ export const MAGIC_COMMANDS: readonly MagicCommand[] = [
   { id: 'continue', command: '/magic:continue', icon: 'Play' },
   { id: 'commit', command: '/magic:commit', icon: 'GitCommit' },
   { id: 'pr', command: '/magic:pr', icon: 'GitPullRequest' },
+  { id: 'auto-review', command: '/magic:auto-review', icon: 'ScanEye' },
   { id: 'review', command: '/magic:review', icon: 'ScanSearch' },
   { id: 'resolve', command: '/magic:resolve', icon: 'Wrench' },
   { id: 'done', command: '/magic:done', icon: 'CheckCircle' },

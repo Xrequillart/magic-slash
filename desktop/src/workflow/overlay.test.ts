@@ -95,6 +95,21 @@ describe('editing', () => {
     expect(setLinkKind(redrawn, 'start', 'commit', 'auto').kinds).toEqual({})
   })
 
+  it('treats pr → auto-review, one default link on two outcomes, as one link', () => {
+    const links = (overlay: WorkflowOverlay) => composeWorkflow(overlay).links.filter((l) => l.from === 'pr' && l.to === 'auto-review')
+    expect(links(EMPTY_OVERLAY).map((l) => l.outcome)).toEqual(['pr_created', 'ci_green'])
+    // Taken off from either outcome, both go: they share the `pr>auto-review` key.
+    for (const outcome of ['pr_created', 'ci_green']) {
+      const off = removeLink(EMPTY_OVERLAY, 'pr', 'auto-review', outcome)
+      expect(off.removedLinks).toEqual(['pr>auto-review'])
+      expect(links(off)).toEqual([])
+    }
+    // Its kind, changed from either outcome, changes on both.
+    const asked = setLinkKind(EMPTY_OVERLAY, 'pr', 'auto-review', 'suggest', 'ci_green')
+    expect(asked.kinds).toEqual({ 'pr>auto-review': 'suggest' })
+    expect(links(asked).map((l) => l.kind)).toEqual(['suggest', 'suggest'])
+  })
+
   it('takes a built-in step off the canvas with all its links, and puts it back unlinked', () => {
     const overlay = removeNode(addLink(withCheck(), 'commit', CHECK), 'commit')
     const flow = composeWorkflow(overlay)

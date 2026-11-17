@@ -26,7 +26,7 @@ describe('workflowCanvasData', () => {
 
   it('names each node after its skill', () => {
     const labels = Object.fromEntries(data.nodes.map((node) => [node.id, node.label]))
-    expect(labels).toMatchObject({ plan: 'Plan', commit: 'Commit', pr: 'PR', resolve: 'Resolve', done: 'Done' })
+    expect(labels).toMatchObject({ plan: 'Plan', commit: 'Commit', pr: 'PR', 'auto-review': 'Auto Review', resolve: 'Resolve', done: 'Done' })
   })
 
   it('draws no review node, /magic:review being a side door', () => {
@@ -150,6 +150,7 @@ describe('skillOptions', () => {
       ['magic-plan', 'builtin'],
       ['magic-commit', 'builtin'],
       ['magic-pr', 'builtin'],
+      ['magic-auto-review', 'builtin'],
       ['magic-resolve', 'builtin'],
       ['magic-done', 'builtin'],
       ['lint', 'custom'],

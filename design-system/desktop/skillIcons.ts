@@ -1,5 +1,5 @@
 import {
-  CircleCheck, ClipboardList, GitCommitHorizontal, GitPullRequest, MessageSquare, Play, ScanSearch, Sparkles,
+  CircleCheck, ClipboardList, GitCommitHorizontal, GitPullRequest, MessageSquare, Play, ScanEye, ScanSearch, Sparkles,
 } from './icons'
 import type { IconComponent } from './types'
 
@@ -20,6 +20,7 @@ const SKILL_ICONS: Record<string, IconComponent> = {
   'magic-start': Play,
   'magic-commit': GitCommitHorizontal,
   'magic-pr': GitPullRequest,
+  'magic-auto-review': ScanEye,
   'magic-review': ScanSearch,
   'magic-resolve': MessageSquare,
   'magic-done': CircleCheck,

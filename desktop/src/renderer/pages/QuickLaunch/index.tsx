@@ -11,6 +11,7 @@ const COMMANDS: { name: string; descriptionKey: MessageKey }[] = [
   { name: '/magic:continue', descriptionKey: 'quickLaunch.cmd.continue' },
   { name: '/magic:commit', descriptionKey: 'quickLaunch.cmd.commit' },
   { name: '/magic:pr', descriptionKey: 'quickLaunch.cmd.pr' },
+  { name: '/magic:auto-review', descriptionKey: 'quickLaunch.cmd.autoReview' },
   { name: '/magic:review', descriptionKey: 'quickLaunch.cmd.review' },
   { name: '/magic:resolve', descriptionKey: 'quickLaunch.cmd.resolve' },
   { name: '/magic:done', descriptionKey: 'quickLaunch.cmd.done' },

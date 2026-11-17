@@ -26,7 +26,7 @@ describe('buildWorkflowNext on the default flow', () => {
     expect(nextOf('magic-commit', 'committed', { lang: 'fr' }).lines[0].text).toBe('   • Lance /magic:pr pour créer une Pull Request')
   })
 
-  it('chains pr into resolve on review comments, and offers nothing on ci_green', () => {
+  it('chains pr into resolve on review comments, and into auto-review once the PR is up', () => {
     expect(nextOf('magic-pr', 'review_comments')).toEqual({
       lines: [],
       chain: {
@@ -34,7 +34,24 @@ describe('buildWorkflowNext on the default flow', () => {
       },
       actions: [],
     })
-    expect(nextOf('magic-pr', 'ci_green')).toEqual({ lines: [], chain: null, actions: [] })
+    for (const outcome of ['pr_created', 'ci_green']) {
+      expect(nextOf('magic-pr', outcome)).toEqual({
+        lines: [],
+        chain: {
+          skill: 'magic-auto-review', command: '/magic:auto-review', text: "➡️  Continuing with /magic:auto-review, as this repository's workflow says.", custom: false, confirm: false,
+        },
+        actions: [],
+      })
+    }
+  })
+
+  it('chains auto-review into resolve on findings, and suggests done on a clean review', () => {
+    expect(nextOf('magic-auto-review', 'findings').chain?.skill).toBe('magic-resolve')
+    expect(nextOf('magic-auto-review', 'clean')).toEqual({
+      lines: [{ kind: 'suggest', skill: 'magic-done', command: '/magic:done', broken: null, text: '   • Run /magic:done to finalize the task once the PR is merged' }],
+      chain: null,
+      actions: [],
+    })
   })
 
   it('drops the suggestions of a failed step', () => {

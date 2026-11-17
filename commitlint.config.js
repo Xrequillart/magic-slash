@@ -26,6 +26,7 @@ module.exports = {
         'continue',
         'commit',
         'pr',
+        'auto-review',
         'review',
         'resolve',
         'done',

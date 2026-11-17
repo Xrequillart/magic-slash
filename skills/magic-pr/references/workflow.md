@@ -1,15 +1,16 @@
 # Workflow protocol
 
 The same file ships in every cycle skill (`magic-plan`, `magic-start`, `magic-commit`, `magic-pr`,
-`magic-resolve`, `magic-done`), byte for byte. It is copied rather than shared
+`magic-auto-review`, `magic-resolve`, `magic-done`), byte for byte. It is copied rather than shared
 because the skills updater installs `skills/<skill>/**` and nothing else: a shared folder would
 never reach the user's machine. A test holds the copies identical, so edit one and copy it to the
-five others.
+six others.
 
 `magic-plan-change`, `magic-continue` and `magic-review` do not carry it. They are side doors,
 entered by hand from wherever the user is, not steps of the cycle, and the default flow has no node
-for them. A review can target your own PR or a colleague's, so what follows it depends on whose PR
-it is, not on a flow: `/magic:review` ends on its own closing text.
+for them. `/magic:review` reviews a colleague's pull request, so what follows it is the author's
+business, not a flow: it ends on its own closing text. Reviewing your own pull request is
+`/magic:auto-review`, which is a step of the cycle.
 
 ## 1. The principle: do your own job, then ask what follows
 

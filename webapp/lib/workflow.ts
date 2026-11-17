@@ -185,7 +185,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     tone: 'rose',
     title: 'site.workflow.reviewTitle',
     description: 'site.workflow.reviewDesc',
-    commands: ['review', 'resolve'],
+    commands: ['auto-review', 'resolve'],
   },
   {
     id: 'done',
@@ -218,6 +218,7 @@ export const COMMAND_DESCRIPTIONS: Record<MagicCommandId, MessageKey> = {
   continue: 'site.commands.continue',
   commit: 'site.commands.commit',
   pr: 'site.commands.pr',
+  'auto-review': 'site.commands.autoReview',
   review: 'site.commands.review',
   resolve: 'site.commands.resolve',
   done: 'site.commands.done',

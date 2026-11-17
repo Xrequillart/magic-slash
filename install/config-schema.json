@@ -147,7 +147,7 @@
             "review": {
               "type": "string",
               "enum": ["en", "fr"],
-              "description": "Language /magic:review posts its comments and review body in. Unset falls back to `pullRequest`, then to English."
+              "description": "Language /magic:auto-review and /magic:review post their comments and review body in. Unset falls back to `pullRequest`, then to English."
             }
           },
           "additionalProperties": false,
@@ -225,7 +225,7 @@
             }
           },
           "additionalProperties": false,
-          "description": "/magic:review settings"
+          "description": "Review settings, shared by /magic:auto-review and /magic:review"
         },
         "start": {
           "type": "object",

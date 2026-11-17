@@ -33,8 +33,8 @@ describe('DEFAULT_WORKFLOW', () => {
     }
   })
 
-  it('runs the cycle plan, start, commit, pr, resolve, done', () => {
-    expect(DEFAULT_WORKFLOW.nodes.map((n) => n.id)).toEqual(['plan', 'start', 'commit', 'pr', 'resolve', 'done'])
+  it('runs the cycle plan, start, commit, pr, auto-review, resolve, done', () => {
+    expect(DEFAULT_WORKFLOW.nodes.map((n) => n.id)).toEqual(['plan', 'start', 'commit', 'pr', 'auto-review', 'resolve', 'done'])
   })
 
   it('leaves plan-change, continue and review out', () => {
@@ -48,7 +48,7 @@ describe('DEFAULT_WORKFLOW', () => {
     expect(DEFAULT_WORKFLOW.entry).toEqual(['plan', 'start'])
   })
 
-  it('reproduces today\'s suggestions', () => {
+  it('runs /magic:auto-review on its own once the PR exists, and /magic:resolve on what it found', () => {
     const next = (skill: string, outcome: string | null) => {
       const { auto, suggestions } = resolveNext(DEFAULT_WORKFLOW, skill, outcome)
       return { auto: auto?.to ?? null, suggest: suggestions.map((l) => l.to) }
@@ -56,11 +56,17 @@ describe('DEFAULT_WORKFLOW', () => {
     expect(next('magic-plan', 'planned')).toEqual({ auto: null, suggest: ['start'] })
     expect(next('magic-start', 'implemented')).toEqual({ auto: null, suggest: ['commit'] })
     expect(next('magic-commit', 'committed')).toEqual({ auto: null, suggest: ['pr'] })
-    expect(next('magic-pr', 'pr_created')).toEqual({ auto: null, suggest: [] })
+    expect(next('magic-pr', 'pr_created')).toEqual({ auto: 'auto-review', suggest: [] })
     expect(next('magic-pr', 'review_comments')).toEqual({ auto: 'resolve', suggest: [] })
-    expect(next('magic-pr', 'ci_green')).toEqual({ auto: null, suggest: [] })
+    expect(next('magic-pr', 'ci_green')).toEqual({ auto: 'auto-review', suggest: [] })
+    expect(next('magic-auto-review', 'findings')).toEqual({ auto: 'resolve', suggest: [] })
+    expect(next('magic-auto-review', 'clean')).toEqual({ auto: null, suggest: ['done'] })
     expect(next('magic-resolve', 'resolved')).toEqual({ auto: null, suggest: ['done'] })
     expect(next('magic-done', 'done')).toEqual({ auto: null, suggest: [] })
+  })
+
+  it('keeps /magic:auto-review advisory: a failed review chains nowhere, since it has no outcome to take', () => {
+    expect(resolveNext(DEFAULT_WORKFLOW, 'magic-auto-review', null, { failed: true, reason: 'gh down' })).toEqual({ auto: null, suggestions: [] })
   })
 
   it('breaks the pr → resolve chain when /magic:pr fails', () => {

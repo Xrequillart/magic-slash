@@ -37,7 +37,8 @@
 | `/magic:continue`    | Resume work on an existing ticket                  |
 | `/magic:commit`      | Create an atomic commit with conventional message  |
 | `/magic:pr`          | Push, create PR and update Jira                    |
-| `/magic:review`      | Review a Pull Request (self or external)           |
+| `/magic:auto-review` | Review your own PR against its ticket, post findings |
+| `/magic:review`      | Review a colleague's Pull Request                  |
 | `/magic:resolve`     | Address review comments and force-push fixes       |
 | `/magic:done`        | Finalize after PR merge (transition Jira to Done)  |
 
@@ -51,7 +52,8 @@ You can also invoke skills using natural language:
 - "je reprends PROJ-123" or "continue PROJ-123" → `/magic:continue`
 - "je suis prêt à committer" or "ready to commit" → `/magic:commit`
 - "on peut créer la PR" or "create the PR" → `/magic:pr`
-- "regarde la PR" or "review my PR" → `/magic:review`
+- "relis ma PR" or "self-review my PR" → `/magic:auto-review`
+- "regarde la PR de Julien" or "review my colleague's PR" → `/magic:review`
 - "corriger les commentaires" or "fix review comments" → `/magic:resolve`
 - "la PR est mergée" or "the PR is merged" → `/magic:done`
 
@@ -81,7 +83,7 @@ provide. Settings → Application → Machine setup reports the same thing at an
 2. Asks where your tickets live (Jira + GitHub, or GitHub only)
 3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
-4. Installs the 9 skills into `~/.claude/skills/`
+4. Installs the 10 skills into `~/.claude/skills/`
 5. Configures Claude Code's hooks, statusline and permission allowlist — the statusline wrapper is what feeds the usage card, and it relays your own statusline if you have one
 6. Checks your prerequisites and reports what is missing
 
@@ -295,20 +297,34 @@ Next steps:
 3. Merge the PR once approved
 ```
 
-### /magic:review - Review a Pull Request
+### /magic:auto-review - Review your own Pull Request
 
 ```bash
-/magic:review          # Review the PR for the current branch
-/magic:review PROJ-42  # Review a specific ticket's PR
+/magic:auto-review          # Review the PR for the current branch
+/magic:auto-review PROJ-42  # Review a specific ticket's PR
 ```
 
-1. Detect the PR associated with the current branch (or a given ticket)
-2. Determine if this is a self-review or an external review
-3. Fetch the PR diff and changed files
-4. Analyze each file for issues, suggestions, and good practices
-5. Submit the review on GitHub with categorized inline comments (Blocking / Suggestion / Praise)
+A step of the default workflow: `/magic:pr` chains into it once the PR is created (or once the CI is green, when it watches it).
 
-> **Note:** This skill is read-only — it does not modify any files.
+1. Find the PR of the current branch (or of a given ticket)
+2. Read the intent first: the ticket, its acceptance criteria, the `/magic:plan` spec if there is one, the PR description and the commits
+3. Read the change: the diff, the full files around it, the tests and the repository's conventions
+4. Check the code does what the intent asks, then look for bugs, security, performance, tests and breaking changes
+5. Show the draft, ask what to post (or post directly, per the repository's **Before posting** setting), and post it on GitHub
+6. When something needs a change, the workflow chains into `/magic:resolve`; a clean review suggests `/magic:done`
+
+> **Note:** This skill is read-only: it does not modify any files.
+
+### /magic:review - Review a colleague's Pull Request
+
+```bash
+/magic:review #842          # Review a given PR
+/magic:review PROJ-42       # Review a specific ticket's PR
+```
+
+The same structure as `/magic:auto-review`, for somebody else's PR: a side door, outside the workflow, that ends on its own closing text. Both share the repository's review settings (confidence score, before posting, review language).
+
+> **Note:** This skill is read-only: it does not modify any files.
 
 ### /magic:resolve - Address review feedback
 
@@ -595,7 +611,7 @@ magic-slash/
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
 │   └── package.json
-├── skills/                        # Claude Code skills (9 skills)
+├── skills/                        # Claude Code skills (10 skills)
 │   ├── magic-plan/               # Turn an idea into an epic and its stories
 │   │   ├── SKILL.md
 │   │   └── references/
@@ -614,7 +630,12 @@ magic-slash/
 │   ├── magic-pr/                 # Push and create PR
 │   │   ├── SKILL.md
 │   │   └── references/
-│   ├── magic-review/SKILL.md     # Review a Pull Request
+│   ├── magic-auto-review/        # Review your own PR
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-review/             # Review a colleague's PR
+│   │   ├── SKILL.md
+│   │   └── references/
 │   ├── magic-resolve/            # Address review feedback
 │   │   ├── SKILL.md
 │   │   └── references/

@@ -26,7 +26,7 @@ export function listingEntries(): ListingResult {
   return collectListingEntries({ home: os.homedir(), repos, builtIn: BUILT_IN_SKILLS, env: process.env })
 }
 
-const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
+const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-auto-review', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
 interface SkillInfo {
   name: string

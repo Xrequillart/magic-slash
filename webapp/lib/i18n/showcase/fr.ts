@@ -47,7 +47,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // `/download` est une vraie page désormais : plus de « en cours d’écriture ». Voir la
   // note côté anglais ; le reste de la famille est plus bas.
   'site.downloadPage.lead':
-    'Un seul installeur pour macOS. Glissez-le dans Applications, ouvrez-le une fois, et le premier lancement met en place tout ce dont les huit commandes ont besoin.',
+    'Un seul installeur pour macOS. Glissez-le dans Applications, ouvrez-le une fois, et le premier lancement met en place tout ce dont les neuf commandes ont besoin.',
 
   // ── Page de téléchargement ─────────────────────────────────────────────────
   'site.downloadPage.versionBadge': 'Version {version} · publiée le {date}',
@@ -79,7 +79,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.downloadPage.stepChecksTitle': 'Vérifie les prérequis',
   'site.downloadPage.stepChecksBody':
     'Claude Code, Node.js et Git, avec leurs versions et la ligne à lancer pour celui qui manque.',
-  'site.downloadPage.stepSkillsTitle': 'Installe les huit commandes',
+  'site.downloadPage.stepSkillsTitle': 'Installe les neuf commandes',
   'site.downloadPage.stepSkillsBody':
     'Les skills <code>/magic:</code> se posent dans <code>~/.claude/skills/</code>, où Claude Code les retrouve dans chaque projet de la machine.',
   'site.downloadPage.stepMcpTitle': 'Branche Jira et GitHub',
@@ -105,7 +105,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // Formulation de Xavier, reprise telle quelle. « Worktree », « commits », « review »,
   // « spec » restent en anglais : c'est le vocabulaire du métier, celui que l'app emploie.
   'site.hero.subtitle':
-    'La spec, les tickets, le worktree, les commits, la review, le ticket fermé : tout ce qui entoure le code, huit skills s’en occupent. Et une app vous simplifie la vie.',
+    'La spec, les tickets, le worktree, les commits, la review, le ticket fermé : tout ce qui entoure le code, neuf skills s’en occupent. Et une app vous simplifie la vie.',
   'site.hero.downloadCta': 'Télécharger pour Mac',
   'site.hero.workflowCta': 'Voir le workflow',
   // Le formulaire de liste d'attente, à la place des boutons de téléchargement hors
@@ -119,7 +119,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.waitlist.error': 'Une erreur est survenue. Réessayez dans un instant.',
   // Retirées, conservées comme toutes les familles que la page a abandonnées : voir la
   // note côté anglais.
-  'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
+  'site.hero.eyebrow': '9 skills Claude Code + une app desktop',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
   'site.hero.ladderStart': 'Une idée ?',
@@ -135,7 +135,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // ── Les deux piliers ───────────────────────────────────────────────────────
   // « product builder » reste en anglais : c'est le terme que le métier emploie en
   // français, et le hero le portait déjà avant de céder sa place au parallélisme.
-  'site.pillars.skillsTitle': '8 skills Claude Code',
+  'site.pillars.skillsTitle': '9 skills Claude Code',
   'site.pillars.skillsDesc':
     'De /magic:plan à /magic:done, elles déroulent le cycle entier dans votre terminal : la spec, la branche, les commits, la pull request, la review, le ticket refermé derrière vous.',
   // Nomme l'acte, comme les étapes voisines : c'est ce que `/magic:plan` produit, et ce
@@ -184,7 +184,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.desktop.highlightParallel': 'Douze agents en parallèle',
   'site.desktop.highlightContext': 'Tout le contexte sauvegardé',
   'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
-  'site.desktop.highlightCommands': 'Les huit commandes /magic:',
+  'site.desktop.highlightCommands': 'Les neuf commandes /magic:',
 
   // ── Les bandes sous le hero de /desktop ────────────────────────────────────
   // Ce que fait l'application, bande par bande. Les cartes dessinées viennent de /features
@@ -384,7 +384,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
 
   // ── La page workflow, autour des cinq étapes ───────────────────────────────
   // Voir la note côté anglais. Pas de nom de commande, pas de tiret cadratin.
-  'site.workflowPage.eyebrow': '8 skills Claude Code',
+  'site.workflowPage.eyebrow': '9 skills Claude Code',
   'site.workflowPage.title': 'De l’idée à la PR mergée, en cinq étapes.',
   'site.workflowPage.subtitle':
     'Magic Slash est une surcouche à Claude Code. Chaque étape du cycle est une commande dans votre terminal : l’agent lit le ticket, fait le travail, et s’arrête exactement là où vous voulez décider.',
@@ -480,11 +480,11 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   //
   // « skills » RESTE EN ANGLAIS, comme dans le reste du site et dans l’app : c’est le mot
   // que Claude Code emploie pour ces fichiers, et « compétences » désignerait autre chose.
-  'site.skillsBand.title': '8 skills font tout le cycle.',
+  'site.skillsBand.title': '9 skills font tout le cycle.',
   'site.skillsBand.subtitle':
     'Une commande par moment de la vie d’un ticket. L’agent lit le tracker, écrit le code, ouvre la pull request et répond à sa review. Ce qu’il vous reste, c’est de lire et de dire oui.',
   'site.skillsBand.cta': 'Voir le workflow',
-  'site.skillsBand.pointSkills': '8 skills, une par étape du cycle',
+  'site.skillsBand.pointSkills': '9 skills, une par étape du cycle',
   'site.skillsBand.pointCycle': 'De la première idée à la pull request mergée',
   'site.skillsBand.pointHands': 'Vous validez le plan, le reste se déroule seul',
 
@@ -663,7 +663,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.how.step3Title': 'Vous validez',
   'site.how.step3Desc':
     'Vous recevez du travail fini à relire, pas un tas de code à trier.',
-  'site.how.commandsTitle': 'Les huit commandes',
+  'site.how.commandsTitle': 'Les neuf commandes',
   'site.how.commandsIntro':
     'Tapez <strong>/magic:</strong> pour les retrouver toutes d’un coup.',
   'site.how.planDesc':
@@ -675,7 +675,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.how.commitDesc':
     '<strong>/magic:commit</strong> enregistre le travail avec un message clair.',
   'site.how.prDesc': '<strong>/magic:pr</strong> ouvre la pull request, prête à relire.',
-  'site.how.reviewDesc': '<strong>/magic:review</strong> la relit selon vos conventions.',
+  'site.how.reviewDesc': '<strong>/magic:auto-review</strong> la relit au regard du ticket et de vos conventions.',
   'site.how.resolveDesc': '<strong>/magic:resolve</strong> applique les retours de review.',
   'site.how.doneDesc': '<strong>/magic:done</strong> clôture et nettoie derrière.',
   'site.how.seeDocs': 'Voir la doc',
@@ -691,8 +691,10 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.commands.commit':
     'Découpe le travail en commits atomiques, chacun avec un message clair.',
   'site.commands.pr': 'Pousse, ouvre la pull request, met à jour le ticket.',
+  'site.commands.autoReview':
+    'Relit votre propre pull request dès qu’elle est ouverte : vérifie le code au regard du ticket et de la description, puis poste ses remarques pour /magic:resolve.',
   'site.commands.review':
-    'Relit le diff à l’aune des conventions de votre projet, et pose ses remarques sur les lignes concernées.',
+    'Relit la pull request d’un collègue de la même façon : relit le diff à l’aune des conventions de votre projet, et pose ses remarques sur les lignes concernées.',
   'site.commands.resolve':
     'Applique les retours de review — et discute avec le reviewer quand une suggestion mérite un compromis plutôt qu’une obéissance.',
   'site.commands.done':
@@ -703,7 +705,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.features.subtitle':
     'Neuf choses que fait le produit — et où chacune est documentée.',
   'site.features.learnMore': 'En savoir plus',
-  'site.features.commandsTitle': 'Huit commandes',
+  'site.features.commandsTitle': 'Neuf commandes',
   'site.features.commandsDesc': 'Une par étape, de la première idée au merge.',
   'site.features.workflowsTitle': 'Enchaînements',
   'site.features.workflowsDesc': 'Les chaînes de commandes qui portent une tâche entière.',
@@ -745,11 +747,11 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.features.sidebarSelfUpdating':
     'La sidebar se met à jour toute seule : les skills et Claude Code y écrivent le statut, la branche, les commits et la pull request au fil du travail. Et tout reste modifiable à la main, d’un clic depuis l’application.',
   'site.features.skillsIndependent':
-    'La grille se lit comme un pipeline parce qu’un ticket entier en est un — mais chaque skill est autonome. Enchaînez les huit, ou n’en appelez qu’un : /magic:commit sur du travail écrit à la main, /magic:review sur la pull request de quelqu’un d’autre.',
+    'La grille se lit comme un pipeline parce qu’un ticket entier en est un — mais chaque skill est autonome. Enchaînez-les, ou n’en appelez qu’un : /magic:commit sur du travail écrit à la main, /magic:review sur la pull request de quelqu’un d’autre.',
   'site.features.groupPlan': 'Un skill pour s’organiser : une épic, et les stories dessous.',
   'site.features.groupBuild': 'Deux skills pour lancer le travail.',
   'site.features.groupPropose': 'Deux skills pour le mettre en revue.',
-  'site.features.groupReview': 'Deux skills pour le relire, et traiter les retours.',
+  'site.features.groupReview': 'Trois skills pour le relire, et traiter les retours.',
   'site.features.groupFinish': 'Un skill pour finir, et libérer l’agent qui a travaillé.',
   // ── The /features start card ───────────────────────────────────────────────
   // The four lines the terminal in the `/magic:start` card reports, in the order
@@ -1093,7 +1095,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
     'Tout tourne sur votre abonnement, sur votre machine. Rien n’est réhébergé au milieu.',
   'site.features.machineSetupTitle': 'Configuré au démarrage',
   'site.features.machineSetupDesc':
-    'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés, et installés s’ils manquent, à chaque lancement de l’app.',
+    'Les neuf skills, les serveurs MCP, les hooks et les permissions sont vérifiés, et installés s’ils manquent, à chaque lancement de l’app.',
   // Voir la note du catalogue anglais.
   'site.features.plansDesc':
     'Toutes les sessions /magic:plan de votre équipe dans une seule fenêtre : l’idée de départ, le dépôt concerné, qui l’a écrite et les tickets qu’elle a produits. Ouvrez-en une et la spec est là, titres, tableaux et code compris.',
@@ -1252,7 +1254,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // ── La légende sous le dessin ──────────────────────────────────────────
   'site.skillsCard.legendRailTitle': 'Toutes les skills de la machine',
   'site.skillsCard.legendRailDesc':
-    'Le rail liste les trois origines d’un coup : les huit que Magic Slash embarque, celles que vous vous êtes écrites, et celles que chaque dépôt enregistré porte dans .claude/. Un clic ouvre la skill à côté de la liste.',
+    'Le rail liste les trois origines d’un coup : les neuf que Magic Slash embarque, celles que vous vous êtes écrites, et celles que chaque dépôt enregistré porte dans .claude/. Un clic ouvre la skill à côté de la liste.',
   'site.skillsCard.legendBudgetTitle': 'Un budget qui suit le modèle',
   'site.skillsCard.legendBudgetDesc':
     'Claude Code dépense environ 1 % de la fenêtre de contexte à lister vos skills. Les jauges sont calées sur la fenêtre que rapporte l’agent en cours : la même bibliothèque est confortable sur un modèle à 1M et serrée sur un 200K.',
@@ -1357,7 +1359,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
 
   'site.faq.prerequisites.q': 'Que faut-il avant de l’installer ?',
   'site.faq.prerequisites.a':
-    'Trois choses : <strong>Claude Code</strong>, installé et authentifié ; <strong>Node.js 20</strong> ou plus récent, sur lequel tournent les serveurs MCP Jira et GitHub ; et <strong>Git 2.20</strong> ou plus récent, pour les worktrees. Au premier lancement, l’app vérifie les trois, installe les huit skills dans <code>~/.claude/skills/</code> et configure les serveurs MCP — il n’y a aucun script à lancer.',
+    'Trois choses : <strong>Claude Code</strong>, installé et authentifié ; <strong>Node.js 20</strong> ou plus récent, sur lequel tournent les serveurs MCP Jira et GitHub ; et <strong>Git 2.20</strong> ou plus récent, pour les worktrees. Au premier lancement, l’app vérifie les trois, installe les neuf skills dans <code>~/.claude/skills/</code> et configure les serveurs MCP — il n’y a aucun script à lancer.',
 
   'site.faq.platforms.q': 'Quels systèmes d’exploitation sont supportés ?',
   'site.faq.platforms.a':
@@ -1381,7 +1383,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
 
   'site.faq.terminal.q': 'Suis-je obligé d’utiliser l’app de bureau ?',
   'site.faq.terminal.a':
-    'Non. Les huit commandes fonctionnent dans n’importe quel terminal, dans VS Code et dans les IDE JetBrains — partout où tourne Claude Code. L’app apporte ce qu’un terminal ne peut pas : plusieurs agents côte à côte, le suivi en direct de ce que chacun fait, le ticket à côté du code, et une notification quand l’un d’eux a besoin de vous.',
+    'Non. Les neuf commandes fonctionnent dans n’importe quel terminal, dans VS Code et dans les IDE JetBrains — partout où tourne Claude Code. L’app apporte ce qu’un terminal ne peut pas : plusieurs agents côte à côte, le suivi en direct de ce que chacun fait, le ticket à côté du code, et une notification quand l’un d’eux a besoin de vous.',
 
   'site.faq.workflow.q': 'Le workflow fonctionne-t-il en dehors de l’app ?',
   'site.faq.workflow.a':
@@ -1401,11 +1403,11 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
 
   'site.faq.updates.q': 'Comment se passent les mises à jour ?',
   'site.faq.updates.a':
-    'L’app interroge les GitHub Releases au lancement, télécharge la nouvelle version en arrière-plan, puis propose <strong>Redémarrer</strong> ou <strong>Plus tard</strong> dans la barre latérale — rien ne prend l’écran. Les huit skills intégrés sont resynchronisés au même moment ; les skills que vous avez écrits ne sont jamais touchés.',
+    'L’app interroge les GitHub Releases au lancement, télécharge la nouvelle version en arrière-plan, puis propose <strong>Redémarrer</strong> ou <strong>Plus tard</strong> dans la barre latérale — rien ne prend l’écran. Les neuf skills intégrés sont resynchronisés au même moment ; les skills que vous avez écrits ne sont jamais touchés.',
 
   'site.faq.uninstall.q': 'Comment le désinstaller ?',
   'site.faq.uninstall.a':
-    'Un seul script : <code>install/uninstall.sh</code>. Il retire les huit skills, les serveurs MCP Jira et GitHub, toutes les permissions ajoutées à <code>~/.claude/settings.json</code>, l’app elle-même et <code>~/.config/magic-slash/</code>. Vos dépôts et votre installation de Claude Code restent exactement en l’état.',
+    'Un seul script : <code>install/uninstall.sh</code>. Il retire les neuf skills, les serveurs MCP Jira et GitHub, toutes les permissions ajoutées à <code>~/.claude/settings.json</code>, l’app elle-même et <code>~/.config/magic-slash/</code>. Vos dépôts et votre installation de Claude Code restent exactement en l’état.',
 
   // ── CTA de clôture (page d'accueil) ────────────────────────────────────────
   //
@@ -1601,7 +1603,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
     'Ce que Magic Slash conserve, ce qui ne quitte jamais votre machine, et comment tout effacer. Chaque phrase de cette page décrit quelque chose de vérifiable : l’app, le site et le schéma de la base sont dans le même dépôt ouvert.',
   'site.privacy.scope.title': 'Ce que couvre cette page',
   'site.privacy.scope.body':
-    'Magic Slash, c’est trois choses : une app macOS native, huit skills qui s’exécutent dans Claude Code, et un compte qui synchronise votre configuration et votre équipe. Cette page couvre les trois, ainsi que le site sur lequel vous la lisez.<br><br>Le projet est publié sur GitHub par une personne, sous le pseudonyme <code>xrequillart</code>, et non par une société : il n’y a donc pas d’entité juridique à nommer ici, ni d’adresse de support à qui écrire. Pour nous joindre, ouvrez une issue sur le dépôt, par le lien en bas de cette page.',
+    'Magic Slash, c’est trois choses : une app macOS native, neuf skills qui s’exécutent dans Claude Code, et un compte qui synchronise votre configuration et votre équipe. Cette page couvre les trois, ainsi que le site sur lequel vous la lisez.<br><br>Le projet est publié sur GitHub par une personne, sous le pseudonyme <code>xrequillart</code>, et non par une société : il n’y a donc pas d’entité juridique à nommer ici, ni d’adresse de support à qui écrire. Pour nous joindre, ouvrez une issue sur le dépôt, par le lien en bas de cette page.',
   'site.privacy.local.title': 'Ce qui ne quitte jamais votre machine',
   'site.privacy.local.body':
     'Votre code, vos prompts et vos diffs. Claude Code tourne comme un processus sur votre machine, sur votre propre abonnement Anthropic, et Magic Slash ne s’intercale pas entre les deux : rien de ce qu’il lit ou écrit ne nous est relayé.<br><br>Vos identifiants non plus : aucun n’est téléversé où que ce soit. GitHub passe par votre propre CLI <code>gh</code>. L’app lui demande un token, garde cette réponse en mémoire tant qu’elle tourne, et ne l’écrit jamais sur le disque. Jira, si vous le connectez, est une autorisation OAuth dans votre navigateur. Elle demande trois portées, et aucune ne permet d’écrire dans un site Jira : deux en lecture, et la troisième, <code>offline_access</code>, est celle qui délivre le jeton de rafraîchissement qui maintient la connexion d’une session à l’autre.<br><br>Deux jetons sont conservés sur le disque, tous deux dans <code>~/.config/magic-slash/</code> et tous deux chiffrés par le trousseau macOS. Le premier est celui de votre session Magic Slash. Le second apparaît dès que vous connectez Jira, et c’est l’identifiant Atlassian lui-même : le jeton de rafraîchissement, le jeton d’accès en cours et son expiration, l’identifiant et l’adresse de votre site Jira, et le nom affiché du compte. Déconnecter Jira dans l’app supprime ce fichier. Ni l’un ni l’autre n’est jamais téléversé, et le pont entre Claude Code et l’app n’écoute que sur <code>127.0.0.1</code>.<br><br>Il y a une exception, et elle a un interrupteur : <strong>/magic:plan</strong> téléverse le fichier de spécification qu’il rédige, pour que le plan soit lisible depuis le web et depuis vos autres machines. C’est le seul contenu de fichier qui quitte votre machine, et la section plus bas explique comment l’arrêter.',
@@ -1639,10 +1641,10 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
     'Ce que Magic Slash fournit, ce que vous pouvez en faire, et ce qu’il ne promet pas. La page est courte parce que le produit est gratuit, son code public et son périmètre modeste.',
   'site.terms.what.title': 'Ce qu’est Magic Slash',
   'site.terms.what.body':
-    'Une app macOS native, huit skills qui s’exécutent dans Claude Code, et un compte gratuit qui synchronise votre configuration, vos dépôts et votre équipe d’une machine à l’autre. Il n’y a ni offre payante, ni abonnement, ni facturation d’aucune sorte : rien dans le produit ne vous fait payer quoi que ce soit. Les coûts que vous payez sont les vôtres : Anthropic pour Claude Code, et l’hébergeur de votre code et de vos tickets.',
+    'Une app macOS native, neuf skills qui s’exécutent dans Claude Code, et un compte gratuit qui synchronise votre configuration, vos dépôts et votre équipe d’une machine à l’autre. Il n’y a ni offre payante, ni abonnement, ni facturation d’aucune sorte : rien dans le produit ne vous fait payer quoi que ce soit. Les coûts que vous payez sont les vôtres : Anthropic pour Claude Code, et l’hébergeur de votre code et de vos tickets.',
   'site.terms.license.title': 'Le code, et sa licence',
   'site.terms.license.body':
-    'Tout ce que vous installez de Magic Slash est couvert par la <strong>licence PolyForm Shield 1.0.0</strong> : l’app de bureau, les huit skills, ce site, et le schéma de base de données derrière le compte. Le code reste public, et vous pouvez le lire, le modifier et l’utiliser pour n’importe quel usage, chez vous comme au travail, y compris un travail rémunéré. Un seul usage est exclu : s’en servir pour fournir un produit qui concurrence Magic Slash. Le fichier <code>LICENSE</code> du dépôt est la licence elle-même, et c’est lui qui régit votre usage du code. Cette page n’en réécrit pas la portée et n’y ajoute aucune condition. Le lien en bas l’ouvre.<br><br>Les versions jusqu’à la v0.91.3 ont été publiées sous licence MIT et le restent. Ce que cette page couvre, c’est ce que la licence ne couvre pas : le compte hébergé, et les services que l’app contacte pour vous.',
+    'Tout ce que vous installez de Magic Slash est couvert par la <strong>licence PolyForm Shield 1.0.0</strong> : l’app de bureau, les neuf skills, ce site, et le schéma de base de données derrière le compte. Le code reste public, et vous pouvez le lire, le modifier et l’utiliser pour n’importe quel usage, chez vous comme au travail, y compris un travail rémunéré. Un seul usage est exclu : s’en servir pour fournir un produit qui concurrence Magic Slash. Le fichier <code>LICENSE</code> du dépôt est la licence elle-même, et c’est lui qui régit votre usage du code. Cette page n’en réécrit pas la portée et n’y ajoute aucune condition. Le lien en bas l’ouvre.<br><br>Les versions jusqu’à la v0.91.3 ont été publiées sous licence MIT et le restent. Ce que cette page couvre, c’est ce que la licence ne couvre pas : le compte hébergé, et les services que l’app contacte pour vous.',
   'site.terms.account.title': 'Votre compte',
   'site.terms.account.body':
     'Un compte demande une adresse e-mail et un mot de passe, et garder ce mot de passe pour vous est votre part du marché. Tout ce qui est fait depuis votre compte est considéré comme fait par vous.<br><br>Vous pouvez supprimer le compte quand vous le souhaitez, depuis l’app ou depuis le web, et la page de confidentialité dit précisément ce que cela efface. Dans l’autre sens : c’est un service gratuit adossé à un projet publié sur GitHub, pas un abonnement que vous auriez souscrit. Il peut évoluer, et il peut un jour s’arrêter.',
