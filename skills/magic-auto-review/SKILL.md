@@ -135,7 +135,7 @@ was chained from `/magic:pr` on its own: the comments go out under the user's na
 2. **Jira.** When the review was posted, the ticket is a Jira ticket, `integrations.atlassian` is
    not `false` and `issues.commentOnPR` is not `false`: add `MSG_JIRA_REVIEW_COMMENT` on it.
 3. **Status** (`references/review-config.md` §4): `changes%20requested` when a comment to fix was
-   posted (`to address`, `minor` or `question`) or an open finding remains; otherwise `CI%20green` when every check passed,
+   posted (`to address`, `minor` or `question`) or an open finding with one of those labels remains; otherwise `CI%20green` when every check passed,
    else `PR%20created`.
 
 ## Step 8: Summary and next step
@@ -145,8 +145,8 @@ says (`/workflow/next`, with the skill `magic-auto-review`):
 
 | Result of this run | Outcome |
 | --- | --- |
-| At least one comment labelled `to address`, `minor` or `question` was posted, or an open finding of another reviewer remains (`references/analysis.md` §1.4) | `findings` |
-| The review was posted with no such comment and no open finding (nothing, or only `nit` and `general comment`) | `clean` |
+| At least one comment labelled `to address`, `minor` or `question` was posted, or an open finding of another reviewer with one of those labels remains (`references/analysis.md` §1.4) | `findings` |
+| The review was posted with no such comment and no such open finding (nothing, or only `nit` and `general comment`) | `clean` |
 | The user chose **Post nothing**, the PR was not found, or it is someone else's (Step 1) | none: nothing to ask |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 

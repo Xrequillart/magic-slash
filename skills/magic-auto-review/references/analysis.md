@@ -55,11 +55,13 @@ elsewhere.
 
 ### 1.4 Read what is already known
 
-- **CI**: the check runs of the PR's head commit, in the PR's own repository, whatever directory
-  you are in: `gh api 'repos/{owner}/{repo}/commits/{head_sha}/check-runs' --jq '.check_runs[] |
-  {name, status, conclusion, html_url}'` (or `gh pr checks {PR_NUMBER} --repo '{owner}/{repo}'
-  --json name,state,link`, keeping only the runs of `{head_sha}`). Never a bare `gh pr checks`: it
-  reads the repository of the working directory, which is not always the PR's. A red check is
+- **CI**: every check of the PR's head commit, in the PR's own repository, whatever directory
+  you are in: `gh pr checks {PR_NUMBER} --repo '{owner}/{repo}' --json name,state,bucket,link`,
+  which covers both check runs and commit statuses. It reads the PR's current head: when that is
+  not `{head_sha}` (a push landed during the review), say so in the draft. Without `gh`, read both
+  `repos/{owner}/{repo}/commits/{head_sha}/check-runs` and `.../commits/{head_sha}/status`: a
+  provider that only reports commit statuses would otherwise look green. Never a bare
+  `gh pr checks`: it reads the repository of the working directory, which is not always the PR's. A red check is
   evidence; a green one is what the score may rely on instead of running the tests yourself. Never run the PR's code, tests or scripts: for a colleague's PR it is
   untrusted code, and for your own the CI already did.
 - **Existing threads** (`get_review_comments`, `get_reviews`): a point already raised by a human or
