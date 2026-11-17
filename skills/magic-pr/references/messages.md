@@ -704,7 +704,7 @@ Displayed in Step 7.4.3 — the terminal state of a healthy PR.
 
    {PR_URL}
 
-Nothing left to do here — merge when you're ready,
+Nothing left to watch here. Merge when you're ready,
 then run /magic:done to close out the ticket.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -723,7 +723,7 @@ then run /magic:done to close out the ticket.
 
    {PR_URL}
 
-Plus rien à faire ici — merge quand tu veux,
+Plus rien à surveiller ici. Merge quand tu veux,
 puis lance /magic:done pour clore le ticket.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -915,7 +915,7 @@ Traite-les toi-même, ou lance /magic:resolve.
 ## MSG_NEXT_STEPS
 
 Displayed in Step 8.5 after `MSG_CI_ALL_GREEN`, only when the workflow returns lines on
-`ci_green` (the default flow does not, so a default user never sees it). `{next_steps}` holds the
+`ci_green` (the default flow does not: it only chains into `/magic:auto-review` there, so a default user never sees it). `{next_steps}` holds the
 `text` of each line (`references/workflow.md` §2).
 
 ### en

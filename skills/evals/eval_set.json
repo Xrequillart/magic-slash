@@ -85,16 +85,16 @@
   },
   {
     "id": 13,
-    "query": "review the PR please",
+    "query": "review my colleague's PR #842 please",
     "expected_skill": "magic:review",
-    "notes": "Direct review request",
+    "notes": "Someone else's PR = magic:review (side door), not the self-review step",
     "difficulty": "easy"
   },
   {
     "id": 14,
     "query": "can you do a self-review before I ask my colleague?",
-    "expected_skill": "magic:review",
-    "notes": "Self-review context",
+    "expected_skill": "magic:auto-review",
+    "notes": "Self-review of your own PR before a human reviews it = magic:auto-review",
     "difficulty": "easy"
   },
   {
@@ -190,9 +190,9 @@
   },
   {
     "id": 28,
-    "query": "regarde la PR s'il te plait",
+    "query": "regarde la PR de Julien s'il te plait",
     "expected_skill": "magic:review",
-    "notes": "French PR review request",
+    "notes": "French review request on a colleague's PR = magic:review",
     "difficulty": "easy"
   },
   {
@@ -438,6 +438,55 @@
     "query": "PROJ-412 changed scope, start working on it",
     "expected_skill": "magic:start",
     "notes": "Boundary with magic:plan-change: 'changed scope' is about a ticket to work on, not a plan to rework. A ticket id plus 'start' is magic:start",
+    "difficulty": "hard"
+  },
+  {
+    "id": 64,
+    "query": "auto-review",
+    "expected_skill": "magic:auto-review",
+    "notes": "The skill's own name",
+    "difficulty": "easy"
+  },
+  {
+    "id": 65,
+    "query": "relis ma PR avant que je la passe en review",
+    "expected_skill": "magic:auto-review",
+    "notes": "French self-review of one's own PR",
+    "difficulty": "easy"
+  },
+  {
+    "id": 66,
+    "query": "self-review my PR against the ticket",
+    "expected_skill": "magic:auto-review",
+    "notes": "Self-review phrasing, checking the PR does what the ticket asks",
+    "difficulty": "easy"
+  },
+  {
+    "id": 67,
+    "query": "vérifie que ma PR fait bien ce que demande le ticket",
+    "expected_skill": "magic:auto-review",
+    "notes": "French: own PR checked against the ticket's intent",
+    "difficulty": "medium"
+  },
+  {
+    "id": 68,
+    "query": "can you review https://github.com/acme/api/pull/311 for Sarah?",
+    "expected_skill": "magic:review",
+    "notes": "A PR URL on someone else's behalf = colleague review",
+    "difficulty": "medium"
+  },
+  {
+    "id": 69,
+    "query": "fais la revue de code de la PR #57 d'un collègue",
+    "expected_skill": "magic:review",
+    "notes": "French colleague PR review",
+    "difficulty": "easy"
+  },
+  {
+    "id": 70,
+    "query": "apply the fixes from the auto-review comments",
+    "expected_skill": "magic:resolve",
+    "notes": "Boundary: addressing review comments, even the auto-review's own, is magic:resolve",
     "difficulty": "hard"
   }
 ]

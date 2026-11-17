@@ -436,7 +436,7 @@ When `checks.state` is `all_passed` (or `no_checks`) **and** `review.actionable_
    [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=CI%20green" > /dev/null 2>&1 || true
    ```
 
-3. **Stop.** The work is done: do not chain into `/magic:resolve` or any other skill, and do not ask the user for anything else. The outcome is `ci_green` (Step 8.5), after which the default flow has nothing: the run ends on `MSG_CI_ALL_GREEN`, as it always has. Only what the app returns for `ci_green` may add a next step, and only at Step 8.5, never from here.
+3. **Stop watching.** Do not chain into `/magic:resolve` or any other skill from here, and do not ask the user for anything else. The outcome is `ci_green` (Step 8.5). Only what the app returns for `ci_green` may add a next step, and only at Step 8.5, never from here: the default flow chains into `/magic:auto-review` there, once this run is recorded.
 
 ### 7.4.4: Checks failed — auto-fix loop
 
@@ -489,11 +489,11 @@ In multi-repo mode, each PR's next step is asked from its own worktree, with tha
 
 Where each outcome renders:
 
-- `pr_created`: `{next_steps}` in the **manual** variant of `MSG_SUMMARY` (Step 7.3), one numbered line per line, its `text` without the bullet, followed by this skill's own lines, numbered on. The default flow has nothing on `pr_created`: `{next_steps}` is empty and the list starts at this skill's own lines.
+- `pr_created`: `{next_steps}` in the **manual** variant of `MSG_SUMMARY` (Step 7.3), one numbered line per line, its `text` without the bullet, followed by this skill's own lines, numbered on. The default flow has no line on `pr_created`, only a `chain` into `/magic:auto-review`: `{next_steps}` is empty, the list starts at this skill's own lines, and the chain is followed after Step 9.
 - `review_comments`: already handled in Step 7.4.5, which chained or suggested from the same answer. Do not ask again: nothing is rendered or followed here.
-- `ci_green`: nothing for the default flow. Lines the app returns on `ci_green` are shown as `MSG_NEXT_STEPS` after `MSG_CI_ALL_GREEN`.
+- `ci_green`: no line for the default flow, only a `chain` into `/magic:auto-review`. Lines the app returns on `ci_green` (a custom flow) are shown as `MSG_NEXT_STEPS` after `MSG_CI_ALL_GREEN`.
 
-Then Step 9. A `chain` left to follow (only possible on `pr_created` or `ci_green`, from a custom flow) is followed only after Step 9 has recorded the run.
+Then Step 9. A `chain` left to follow (only possible on `pr_created` or `ci_green`: the default flow's, into `/magic:auto-review`, or a custom flow's) is followed only after Step 9 has recorded the run, as `references/workflow.md` §2 says.
 
 ---
 
