@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.128.0] - 2026-11-17
+
+### Added
+
+- **Landing**: Show /magic:auto-review in the cycle and the skill lists
+- **Desktop**: Run /magic:auto-review after /magic:pr in the default workflow
+- **Auto-review**: Add /magic:auto-review and give /magic:review the same structure
+
+### Changed
+
+- **Readme**: Document /magic:auto-review and the colleague review
+- **Deps**: Bump typescript-eslint
+- **Deps**: Bump the linters group across 1 directory with 4 updates
+- **Deps**: Bump vitest from 5.0.3 to 5.1.0
+- **Deps**: Bump globals from 17.13.0 to 17.14.0
+- **Deps**: Bump actions/cache from 4 to 6
+
+### Fixed
+
+- **Auto-review**: Read commit statuses and ignore open nits in the outcome
+- **Auto-review**: Read the reviewed repo's checks and count open blockers
+- **Auto-review**: Address review feedback
+
 ## [0.127.0] - 2026-11-10
 
 ### Added
@@ -4284,6 +4307,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.128.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.128.0
 [0.127.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.127.0
 [0.126.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.4
 [0.126.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.126.3
